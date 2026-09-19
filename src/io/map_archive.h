@@ -163,6 +163,11 @@ public:
     /// 유닛의 소유자를 바꾼다 (0-11).
     Result setUnitOwner(std::size_t unitIndex, std::uint8_t owner);
 
+    /// 로케이션의 범위를 바꾼다. 좌표는 픽셀이며 left<=right, top<=bottom 이어야 한다.
+    Result setLocationBounds(std::size_t locationIndex,
+                             std::uint32_t left, std::uint32_t top,
+                             std::uint32_t right, std::uint32_t bottom);
+
     /// 마지막 편집을 되돌린다. 되돌릴 것이 없으면 실패.
     Result undo();
 

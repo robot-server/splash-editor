@@ -442,6 +442,37 @@ Result MapArchive::setUnitOwner(std::size_t unitIndex, std::uint8_t owner)
     return Result::success();
 }
 
+Result MapArchive::setLocationBounds(std::size_t locationIndex,
+                                     std::uint32_t left, std::uint32_t top,
+                                     std::uint32_t right, std::uint32_t bottom)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (locationIndex >= map.numLocations())
+            return Result::failure("로케이션 번호가 범위를 벗어났습니다.");
+
+        Chk::Location location = map.getLocation(locationIndex);
+        location.left = left;
+        location.top = top;
+        location.right = right;
+        location.bottom = bottom;
+
+        // replaceLocation 은 한 번의 변경으로 기록된다.
+        map.replaceLocation(locationIndex, location);
+        impl_->undoSteps.push_back(1);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("로케이션을 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 Result MapArchive::undo()
 {
     if (!impl_->isOpen())

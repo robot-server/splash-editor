@@ -122,6 +122,9 @@ public:
     /// 유닛의 소유자를 바꾼다 (0-11).
     bool setUnitOwner(std::size_t unitIndex, std::uint8_t owner);
 
+    /// 로케이션을 옮긴다(크기는 유지). 좌표는 픽셀.
+    bool moveLocation(std::size_t locationIndex, std::int64_t dx, std::int64_t dy);
+
     bool canUndo() const;
     bool canRedo() const;
     bool undo();

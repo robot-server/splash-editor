@@ -615,11 +615,40 @@ void MapView::paintUnits(QPainter & painter, const QRect & dirty)
 
 void MapView::clearSelection()
 {
-    if (selectedUnit_ == -1)
+    if (selectedUnit_ == -1 && selectedLocation_ == -1)
         return;
     selectedUnit_ = -1;
+    selectedLocation_ = -1;
     emit selectionChanged(-1);
     viewport()->update();
+}
+
+int MapView::locationAt(const QPointF & screenPos) const
+{
+    if (document_ == nullptr || !document_->isOpen() || !showLocations_)
+        return -1;
+
+    const auto & locations = document_->locations();
+    int best = -1;
+    double bestArea = 0;
+
+    for (std::size_t i = 0; i < locations.size(); ++i)
+    {
+        const auto & location = locations[i];
+        const QPointF topLeft = mapToScreen(location.left, location.top);
+        const QPointF bottomRight = mapToScreen(location.right, location.bottom);
+        const QRectF bounds(topLeft, bottomRight);
+        if (!bounds.contains(screenPos))
+            continue;
+
+        const double area = bounds.width() * bounds.height();
+        if (best < 0 || area < bestArea)
+        {
+            best = static_cast<int>(i);
+            bestArea = area;
+        }
+    }
+    return best;
 }
 
 QPointF MapView::screenToMap(const QPointF & screen) const
@@ -673,19 +702,31 @@ void MapView::mousePressEvent(QMouseEvent * event)
         return;
     }
 
-    const int hit = unitAt(event->position());
-    if (hit != selectedUnit_)
+    // 유닛이 로케이션보다 위에 있다 — 겹치면 유닛을 먼저 집는다.
+    const int unitHit = unitAt(event->position());
+    const int locationHit = (unitHit >= 0) ? -1 : locationAt(event->position());
+
+    if (unitHit != selectedUnit_ || locationHit != selectedLocation_)
     {
-        selectedUnit_ = hit;
-        emit selectionChanged(hit);
+        selectedUnit_ = unitHit;
+        selectedLocation_ = locationHit;
+        emit selectionChanged(unitHit);
     }
 
-    if (hit >= 0)
+    if (unitHit >= 0)
     {
         dragging_ = true;
         dragStartMap_ = screenToMap(event->position());
-        const auto & unit = document_->units()[static_cast<std::size_t>(hit)];
+        const auto & unit = document_->units()[static_cast<std::size_t>(unitHit)];
         dragStartUnitPos_ = QPoint(unit.x, unit.y);
+    }
+    else if (locationHit >= 0)
+    {
+        dragging_ = true;
+        dragStartMap_ = screenToMap(event->position());
+        const auto & location = document_->locations()[static_cast<std::size_t>(locationHit)];
+        dragStartUnitPos_ = QPoint(static_cast<int>(location.left),
+                                   static_cast<int>(location.top));
     }
 
     viewport()->update();
@@ -694,7 +735,8 @@ void MapView::mousePressEvent(QMouseEvent * event)
 
 void MapView::mouseMoveEvent(QMouseEvent * event)
 {
-    if (!dragging_ || selectedUnit_ < 0 || document_ == nullptr)
+    if (!dragging_ || document_ == nullptr ||
+        (selectedUnit_ < 0 && selectedLocation_ < 0))
     {
         QAbstractScrollArea::mouseMoveEvent(event);
         return;
@@ -724,18 +766,33 @@ void MapView::mouseReleaseEvent(QMouseEvent * event)
 
     dragging_ = false;
 
-    if (hasPreview_ && selectedUnit_ >= 0 && document_ != nullptr)
+    if (hasPreview_ && document_ != nullptr)
     {
-        const auto & unit = document_->units()[static_cast<std::size_t>(selectedUnit_)];
-        const bool moved = (unit.x != previewPos_.x()) || (unit.y != previewPos_.y());
-        if (moved)
+        auto * doc = const_cast<chk::MapDocument *>(document_);
+
+        if (selectedUnit_ >= 0)
         {
-            auto * doc = const_cast<chk::MapDocument *>(document_);
-            if (doc->moveUnit(static_cast<std::size_t>(selectedUnit_),
-                              static_cast<std::uint16_t>(previewPos_.x()),
-                              static_cast<std::uint16_t>(previewPos_.y())))
+            const auto & unit = document_->units()[static_cast<std::size_t>(selectedUnit_)];
+            if (unit.x != previewPos_.x() || unit.y != previewPos_.y())
             {
-                emit documentEdited();
+                if (doc->moveUnit(static_cast<std::size_t>(selectedUnit_),
+                                  static_cast<std::uint16_t>(previewPos_.x()),
+                                  static_cast<std::uint16_t>(previewPos_.y())))
+                {
+                    emit documentEdited();
+                }
+            }
+        }
+        else if (selectedLocation_ >= 0)
+        {
+            const auto & location =
+                document_->locations()[static_cast<std::size_t>(selectedLocation_)];
+            const std::int64_t dx = previewPos_.x() - static_cast<std::int64_t>(location.left);
+            const std::int64_t dy = previewPos_.y() - static_cast<std::int64_t>(location.top);
+            if (dx != 0 || dy != 0)
+            {
+                if (doc->moveLocation(static_cast<std::size_t>(selectedLocation_), dx, dy))
+                    emit documentEdited();
             }
         }
     }
@@ -795,17 +852,28 @@ void MapView::paintLocations(QPainter & painter, const QRect & dirty)
     painter.setFont(font);
     const QFontMetrics metrics(font);
 
-    for (const auto & location : locations)
+    for (std::size_t index = 0; index < locations.size(); ++index)
     {
-        const QPointF topLeft = mapToScreen(location.left, location.top);
-        const QPointF bottomRight = mapToScreen(location.right, location.bottom);
+        const auto & location = locations[index];
+        const bool isSelected = (static_cast<int>(index) == selectedLocation_);
+
+        // 드래그 중인 로케이션은 손을 따라 움직이는 자리에 그린다.
+        const double offsetX = (isSelected && hasPreview_)
+            ? previewPos_.x() - static_cast<double>(location.left) : 0.0;
+        const double offsetY = (isSelected && hasPreview_)
+            ? previewPos_.y() - static_cast<double>(location.top) : 0.0;
+
+        const QPointF topLeft = mapToScreen(location.left + offsetX, location.top + offsetY);
+        const QPointF bottomRight =
+            mapToScreen(location.right + offsetX, location.bottom + offsetY);
         const QRectF bounds(topLeft, bottomRight);
 
         if (!dirty.intersects(bounds.toAlignedRect().adjusted(-1, -1, 1, 1)))
             continue;
 
-        painter.setPen(QPen(edge, 1.0, Qt::DashLine));
-        painter.setBrush(QColor(255, 220, 90, 28));
+        painter.setPen(isSelected ? QPen(QColor(90, 255, 120), 2.0)
+                                  : QPen(edge, 1.0, Qt::DashLine));
+        painter.setBrush(isSelected ? QColor(90, 255, 120, 40) : QColor(255, 220, 90, 28));
         painter.drawRect(bounds);
 
         // 이름은 사각형이 글자를 담을 만큼 클 때만 그린다.

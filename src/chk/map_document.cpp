@@ -208,6 +208,48 @@ bool MapDocument::setUnitOwner(std::size_t unitIndex, std::uint8_t owner)
     return true;
 }
 
+bool MapDocument::moveLocation(std::size_t locationIndex, std::int64_t dx, std::int64_t dy)
+{
+    if (locationIndex >= locations_.size())
+    {
+        lastError_ = "로케이션 번호가 범위를 벗어났습니다.";
+        return false;
+    }
+
+    const MapLocation & current = locations_[locationIndex];
+
+    // 맵 밖으로 나가지 않도록 잘라 낸다. 좌표는 부호 없는 값이라
+    // 음수로 내려가면 거대한 값이 되어 버린다.
+    const std::int64_t width  = static_cast<std::int64_t>(current.right) - current.left;
+    const std::int64_t height = static_cast<std::int64_t>(current.bottom) - current.top;
+    const std::int64_t maxX = static_cast<std::int64_t>(info_.width) * 32 - width;
+    const std::int64_t maxY = static_cast<std::int64_t>(info_.height) * 32 - height;
+
+    const std::int64_t newLeft = std::clamp<std::int64_t>(
+        static_cast<std::int64_t>(current.left) + dx, 0, std::max<std::int64_t>(0, maxX));
+    const std::int64_t newTop = std::clamp<std::int64_t>(
+        static_cast<std::int64_t>(current.top) + dy, 0, std::max<std::int64_t>(0, maxY));
+
+    const io::Result result = archive_.setLocationBounds(
+        current.index,
+        static_cast<std::uint32_t>(newLeft),
+        static_cast<std::uint32_t>(newTop),
+        static_cast<std::uint32_t>(newLeft + width),
+        static_cast<std::uint32_t>(newTop + height));
+
+    if (!result)
+    {
+        lastError_ = result.message;
+        return false;
+    }
+
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
 bool MapDocument::canUndo() const { return undoDepth_ > 0; }
 bool MapDocument::canRedo() const { return redoDepth_ > 0; }
 

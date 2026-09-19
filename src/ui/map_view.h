@@ -42,6 +42,10 @@ public:
 
     /// 선택된 유닛 번호. 없으면 -1.
     int selectedUnit() const { return selectedUnit_; }
+
+    /// 선택된 로케이션 번호(표시 목록 기준). 없으면 -1.
+    int selectedLocation() const { return selectedLocation_; }
+
     void clearSelection();
 
     /// 선택된 유닛을 지운다. 지웠으면 true.
@@ -107,6 +111,10 @@ private:
 
     /// 그 자리에 있는 유닛 번호. 없으면 -1. 위에 그려진 것이 우선한다.
     int unitAt(const QPointF & screenPos);
+
+    /// 그 자리에 있는 로케이션 번호. 없으면 -1. 작은 것이 우선한다 —
+    /// 큰 로케이션 안에 작은 것이 겹쳐 있을 때 작은 쪽을 집어야 쓸모 있다.
+    int locationAt(const QPointF & screenPos) const;
     void paintLocations(QPainter & painter, const QRect & dirty);
 
     /// 저그 건물 주변의 크립. 지형 위, 유닛 아래에 그린다.
@@ -148,6 +156,7 @@ private:
 
     // 선택과 드래그
     int selectedUnit_ = -1;
+    int selectedLocation_ = -1;
     bool dragging_ = false;
     QPointF dragStartMap_;      ///< 드래그 시작 시 맵 좌표
     QPoint dragStartUnitPos_;   ///< 드래그 시작 시 유닛 좌표

@@ -237,6 +237,22 @@ void MainWindow::onSelectionChanged(int unitIndex)
 
     if (unitIndex < 0)
     {
+        // 유닛이 아니면 로케이션이 잡혔을 수 있다.
+        const int locationIndex = mapView_->selectedLocation();
+        const auto & locations = document_.locations();
+        if (locationIndex >= 0 && static_cast<std::size_t>(locationIndex) < locations.size())
+        {
+            const auto & location = locations[static_cast<std::size_t>(locationIndex)];
+            statusBar()->showMessage(
+                tr("로케이션 #%1  %2  (%3, %4)-(%5, %6)")
+                    .arg(location.index)
+                    .arg(location.name.empty() ? tr("(이름 없음)")
+                                               : QString::fromStdString(location.name))
+                    .arg(location.left).arg(location.top)
+                    .arg(location.right).arg(location.bottom));
+            return;
+        }
+
         statusBar()->clearMessage();
         return;
     }
