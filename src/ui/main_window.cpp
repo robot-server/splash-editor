@@ -19,6 +19,7 @@
 #include <QApplication>
 #include <QCloseEvent>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QLineEdit>
@@ -270,6 +271,9 @@ void MainWindow::buildMenus()
     openAction->setShortcut(QKeySequence::Open);
     connect(openAction, &QAction::triggered, this, &MainWindow::onOpen);
 
+    recentMenu_ = fileMenu->addMenu(tr("최근 파일(&R)"));
+    rebuildRecentMenu();
+
     saveAction_ = fileMenu->addAction(tr("저장(&S)"));
     saveAction_->setShortcut(QKeySequence::Save);
     connect(saveAction_, &QAction::triggered, this, &MainWindow::onSave);
@@ -483,6 +487,11 @@ void MainWindow::buildMenus()
     showLocations->setChecked(mapView_->locationsVisible());
     showLocations->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_2));
     connect(showLocations, &QAction::toggled, mapView_, &MapView::setLocationsVisible);
+
+    QAction * showGrid = viewMenu->addAction(tr("격자 표시(&G)"));
+    showGrid->setCheckable(true);
+    showGrid->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_G));
+    connect(showGrid, &QAction::toggled, mapView_, &MapView::setGridVisible);
 
     QAction * showCreep = viewMenu->addAction(tr("크립 표시(&C)"));
     showCreep->setCheckable(true);
@@ -788,6 +797,59 @@ void MainWindow::onMapProperties()
         refreshFromDocument();
         statusBar()->showMessage(tr("맵 속성을 바꿨습니다"), 3000);
     }
+}
+
+void MainWindow::rememberRecentFile(const QString & path)
+{
+    if (path.isEmpty())
+        return;
+
+    QSettings settings;
+    QStringList recent = settings.value(QStringLiteral("recentFiles")).toStringList();
+
+    recent.removeAll(path);
+    recent.prepend(path);
+    while (recent.size() > 8)
+        recent.removeLast();
+
+    settings.setValue(QStringLiteral("recentFiles"), recent);
+    rebuildRecentMenu();
+}
+
+void MainWindow::rebuildRecentMenu()
+{
+    if (recentMenu_ == nullptr)
+        return;
+
+    recentMenu_->clear();
+
+    const QStringList recent =
+        QSettings().value(QStringLiteral("recentFiles")).toStringList();
+
+    if (recent.isEmpty())
+    {
+        QAction * empty = recentMenu_->addAction(tr("(없음)"));
+        empty->setEnabled(false);
+        return;
+    }
+
+    for (const QString & path : recent)
+    {
+        // 메뉴에는 파일 이름만 보이고, 전체 경로는 툴팁으로 둔다.
+        QAction * action = recentMenu_->addAction(QFileInfo(path).fileName());
+        action->setToolTip(path);
+        connect(action, &QAction::triggered, this, [this, path] {
+            if (confirmDiscardChanges())
+                openPath(path);
+        });
+    }
+
+    recentMenu_->addSeparator();
+    QAction * clear = recentMenu_->addAction(tr("목록 비우기"));
+    connect(clear, &QAction::triggered, this, [this] {
+        QSettings().remove(QStringLiteral("recentFiles"));
+        rebuildRecentMenu();
+    });
 }
 
 void MainWindow::onStringEditor()
@@ -1268,6 +1330,7 @@ void MainWindow::openPath(const QString & path)
     if (unitPalette_ != nullptr)
         unitPalette_->setTilesetId(document_.info().tilesetId);
 
+    rememberRecentFile(path);
     refreshFromDocument();
     statusBar()->showMessage(tr("열었습니다: %1").arg(path), 4000);
 }

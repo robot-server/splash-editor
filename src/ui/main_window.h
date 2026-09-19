@@ -10,6 +10,7 @@
 #include <QMainWindow>
 
 class QDockWidget;
+class QMenu;
 class QLabel;
 
 namespace splash::ui {
@@ -54,6 +55,8 @@ private slots:
     void onUnitProperties();
     void onPlayerSettings();
     void onStringEditor();
+    void rememberRecentFile(const QString & path);
+    void rebuildRecentMenu();
 
 private:
     void buildMenus();
@@ -73,6 +76,7 @@ private:
     io::GameGraphics tileset_;
     MapView * mapView_ = nullptr;
     TilePalette * tilePalette_ = nullptr;
+    QMenu * recentMenu_ = nullptr;
     QDockWidget * paletteDock_ = nullptr;
     UnitPalette * unitPalette_ = nullptr;
     QDockWidget * unitDock_ = nullptr;

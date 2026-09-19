@@ -131,6 +131,14 @@ void MapView::setLocationsVisible(bool visible)
     viewport()->update();
 }
 
+void MapView::setGridVisible(bool visible)
+{
+    if (showGrid_ == visible)
+        return;
+    showGrid_ = visible;
+    viewport()->update();
+}
+
 void MapView::setCreepVisible(bool visible)
 {
     if (showCreep_ == visible)
@@ -284,6 +292,24 @@ void MapView::paintEvent(QPaintEvent * event)
     // 크립은 지형 위, 유닛 아래.
     if (showCreep_)
         paintCreep(painter, dirty);
+    // 격자는 지형 위, 나머지 아래. 좌표를 가늠하는 용도라 옅게 긋는다.
+    if (showGrid_ && tile >= 8.0)
+    {
+        painter.save();
+        painter.setPen(QPen(QColor(255, 255, 255, 40), 1.0));
+        for (int tx = firstX; tx <= lastX + 1; ++tx)
+        {
+            const double x = tx * tile - originX;
+            painter.drawLine(QPointF(x, dirty.top()), QPointF(x, dirty.bottom()));
+        }
+        for (int ty = firstY; ty <= lastY + 1; ++ty)
+        {
+            const double y = ty * tile - originY;
+            painter.drawLine(QPointF(dirty.left(), y), QPointF(dirty.right(), y));
+        }
+        painter.restore();
+    }
+
     if (showLocations_)
         paintLocations(painter, dirty);
     if (showUnits_)

@@ -134,6 +134,10 @@ public:
     bool locationsVisible() const { return showLocations_; }
     bool creepVisible() const { return showCreep_; }
 
+    /// 타일 격자를 그릴지.
+    bool gridVisible() const { return showGrid_; }
+    void setGridVisible(bool visible);
+
 public slots:
     void setUnitsVisible(bool visible);
     void setLocationsVisible(bool visible);
@@ -227,6 +231,7 @@ private:
     bool showUnits_ = true;
     bool showLocations_ = true;
     bool showCreep_ = true;
+    bool showGrid_ = false;
 
     // 선택과 드래그
     Tool tool_ = Tool::Select;
