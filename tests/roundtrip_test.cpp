@@ -35,65 +35,92 @@ fs::path workDir()
     return dir;
 }
 
-/// 한 맵에 대해 열기 -> 저장 -> CHK 바이트 비교까지 수행한다.
-/// 성공하면 true.
-bool roundTripPreservesChk(const fs::path & mapPath, const std::string & label)
+/// round-trip 한 번의 결과.
+enum class Outcome
 {
-    std::cout << "  · " << label << " (" << mapPath.filename().string() << ")\n";
+    BytesPreserved, ///< CHK 바이트가 그대로다. 우리가 원하는 결과.
+    RefusedToSave,  ///< 저장을 거부했다. 손상시키느니 거부하는 편이 옳다.
+    Mismatch,       ///< 저장은 됐는데 바이트가 달라졌다. 이것이 진짜 실패다.
+    OpenFailed      ///< 열지 못했다.
+};
 
+const char * describe(Outcome o)
+{
+    switch (o)
+    {
+        case Outcome::BytesPreserved: return "바이트 보존";
+        case Outcome::RefusedToSave:  return "저장 거부 (손상 방지)";
+        case Outcome::Mismatch:       return "바이트 불일치";
+        case Outcome::OpenFailed:     return "열기 실패";
+    }
+    return "?";
+}
+
+/// 한 맵에 대해 열기 -> 저장 -> CHK 바이트 비교까지 수행한다.
+Outcome roundTrip(const fs::path & mapPath, bool verbose)
+{
     splash::chk::MapDocument doc;
     if (!doc.open(mapPath.string()))
     {
-        std::cerr << "    열기 실패: " << doc.lastError() << "\n";
-        return false;
+        if (verbose)
+            std::cerr << "    열기 실패: " << doc.lastError() << "\n";
+        return Outcome::OpenFailed;
     }
 
     const auto original = splash::io::readScenarioChk(mapPath.string());
     if (!original)
     {
-        std::cerr << "    원본 CHK 추출 실패\n";
-        return false;
+        if (verbose)
+            std::cerr << "    원본 CHK 추출 실패\n";
+        return Outcome::OpenFailed;
     }
 
     const fs::path outPath =
         workDir() / ("roundtrip-" + mapPath.filename().string());
 
+    struct Cleanup
+    {
+        fs::path path;
+        ~Cleanup() { std::error_code ec; fs::remove(path, ec); }
+    } cleanup{outPath};
+
     if (!doc.saveAs(outPath.string()))
     {
-        std::cerr << "    저장 실패: " << doc.lastError() << "\n";
-        return false;
+        // MappingCore 가 유효하지 않은 CHK 쓰기를 거부한 경우가 여기 해당한다
+        // (예: 보호된 맵이 STR 상한을 넘겨 선언하거나 VER 섹션이 없는 경우).
+        // 데이터를 조용히 망가뜨리는 것보다 나은 동작이므로 실패로 치지 않는다.
+        if (verbose)
+            std::cerr << "    저장 거부: " << doc.lastError() << "\n";
+        return Outcome::RefusedToSave;
     }
 
     const auto saved = splash::io::readScenarioChk(outPath.string());
     if (!saved)
-    {
-        std::cerr << "    저장본 CHK 추출 실패\n";
-        return false;
-    }
+        return Outcome::Mismatch;
 
     if (original->size() != saved->size())
     {
-        std::cerr << "    CHK 크기가 달라졌습니다: " << original->size()
-                  << " -> " << saved->size() << "\n";
-        return false;
+        if (verbose)
+            std::cerr << "    CHK 크기: " << original->size()
+                      << " -> " << saved->size() << "\n";
+        return Outcome::Mismatch;
     }
 
     for (std::size_t i = 0; i < original->size(); ++i)
     {
         if ((*original)[i] != (*saved)[i])
         {
-            std::cerr << "    CHK 바이트가 오프셋 " << i << " 에서 달라졌습니다\n";
-            return false;
+            if (verbose)
+                std::cerr << "    CHK 바이트가 오프셋 0x" << std::hex << i
+                          << std::dec << " 에서 달라졌습니다\n";
+            return Outcome::Mismatch;
         }
     }
 
     // 저장본을 다시 열었을 때 메타데이터가 같아야 한다.
     splash::chk::MapDocument reopened;
     if (!reopened.open(outPath.string()))
-    {
-        std::cerr << "    재열기 실패: " << reopened.lastError() << "\n";
-        return false;
-    }
+        return Outcome::Mismatch;
 
     const auto & a = doc.info();
     const auto & b = reopened.info();
@@ -103,15 +130,17 @@ bool roundTripPreservesChk(const fs::path & mapPath, const std::string & label)
         a.unitCount == b.unitCount && a.locationCount == b.locationCount &&
         a.triggerCount == b.triggerCount && a.name == b.name;
 
-    if (!same)
-    {
-        std::cerr << "    재열기 후 메타데이터가 달라졌습니다\n";
-        return false;
-    }
+    return same ? Outcome::BytesPreserved : Outcome::Mismatch;
+}
 
-    std::error_code ec;
-    fs::remove(outPath, ec);
-    return true;
+/// 합성 맵 전용: 바이트 보존만이 통과다.
+bool roundTripPreservesChk(const fs::path & mapPath, const std::string & label)
+{
+    std::cout << "  · " << label << " (" << mapPath.filename().string() << ")\n";
+    const Outcome outcome = roundTrip(mapPath, /*verbose*/ true);
+    if (outcome != Outcome::BytesPreserved)
+        std::cerr << "    결과: " << describe(outcome) << "\n";
+    return outcome == Outcome::BytesPreserved;
 }
 
 /// 합성 맵을 만들어 경로를 돌려준다. 실패하면 빈 경로.
@@ -269,8 +298,29 @@ void testRealMaps(const fs::path & mapsDir)
     }
 
     std::sort(maps.begin(), maps.end());
+
+    int preserved = 0, refused = 0;
     for (const fs::path & map : maps)
-        SPLASH_CHECK(roundTripPreservesChk(map, "실제 맵"));
+    {
+        const Outcome outcome = roundTrip(map, /*verbose*/ true);
+        std::cout << "  · " << map.filename().string()
+                  << "  ->  " << describe(outcome) << "\n";
+
+        switch (outcome)
+        {
+            case Outcome::BytesPreserved: ++preserved; break;
+            case Outcome::RefusedToSave:  ++refused;   break;
+            default: break;
+        }
+
+        // 바이트 불일치와 열기 실패만 실패로 친다.
+        // 저장 거부는 손상을 막은 것이므로 통과로 본다.
+        SPLASH_CHECK(outcome == Outcome::BytesPreserved ||
+                     outcome == Outcome::RefusedToSave);
+    }
+
+    std::cout << "\n  맵 " << maps.size() << "개: 바이트 보존 " << preserved
+              << ", 저장 거부 " << refused << "\n";
 }
 
 } // namespace

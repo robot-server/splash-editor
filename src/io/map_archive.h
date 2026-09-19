@@ -27,6 +27,11 @@ struct RawMapInfo
     std::size_t locationCount = 0;   ///< MRGN 항목 수
     std::size_t triggerCount = 0;    ///< TRIG 항목 수
     std::size_t stringCount = 0;     ///< STR 에 저장된 문자열 수
+
+    /// 맵 보호가 감지되었는지. 보호된 맵은 섹션이 의도적으로 망가져 있어
+    /// (가짜 중복 섹션, 부풀린 STR, 잘린 MTXM 등) 원본 바이트를 그대로
+    /// 되돌려 쓸 수 없는 것이 정상이다.
+    bool isProtected = false;
 };
 
 /// 새 맵을 만들 때의 대상 포맷. MappingCore 의 SaveType 중 우리가 쓰는 것만 노출한다.

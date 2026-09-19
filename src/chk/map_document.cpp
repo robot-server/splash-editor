@@ -167,6 +167,7 @@ void MapDocument::refreshInfo()
     info_.locationCount = raw.locationCount;
     info_.triggerCount  = raw.triggerCount;
     info_.stringCount   = raw.stringCount;
+    info_.isProtected   = raw.isProtected;
 }
 
 } // namespace splash::chk

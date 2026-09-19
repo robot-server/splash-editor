@@ -27,6 +27,10 @@ struct MapInfo
     std::size_t locationCount = 0;
     std::size_t triggerCount = 0;
     std::size_t stringCount = 0;
+
+    /// 맵 보호 감지 여부. 보호된 맵은 재저장 시 바이트가 달라지거나
+    /// 저장이 거부되는 것이 정상이다.
+    bool isProtected = false;
 };
 
 /// 타일셋 원시값 -> 표시 이름. 알 수 없는 값도 문자열로 돌려준다.

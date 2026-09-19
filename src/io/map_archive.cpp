@@ -374,6 +374,7 @@ RawMapInfo MapArchive::info() const
         out.locationCount = map.numLocations();
         out.triggerCount  = map.numTriggers();
         out.stringCount   = map.getCapacity();
+        out.isProtected   = map.isProtected();
     }
     catch (const std::exception &)
     {
