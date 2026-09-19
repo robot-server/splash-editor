@@ -273,7 +273,7 @@ const QPixmap * MapView::creepPattern()
         return nullptr;
 
     // 같은 타일만 반복하면 격자가 눈에 띈다. 변형을 섞어 한 장으로 만든다.
-    constexpr int kPatternTiles = 4;
+    constexpr int kPatternTiles = 8; // 반복이 덜 보이도록 넓게 만든다
     const int side = kPatternTiles * io::kTilePixels;
     QImage pattern(side, side, QImage::Format_RGBA8888);
     pattern.fill(Qt::transparent);
@@ -284,9 +284,17 @@ const QPixmap * MapView::creepPattern()
         for (int tx = 0; tx < kPatternTiles; ++tx)
         {
             // 좌표를 섞어 고른다 — 순서대로 깔면 줄무늬가 눈에 띈다.
-            const std::size_t pick =
-                ((static_cast<std::size_t>(tx) * 73856093u) ^
-                 (static_cast<std::size_t>(ty) * 19349663u)) % creepTiles.size();
+            const std::size_t hash = (static_cast<std::size_t>(tx) * 73856093u) ^
+                                     (static_cast<std::size_t>(ty) * 19349663u);
+
+            // 크립 타일은 앞쪽이 평범한 질감, 뒤쪽이 구멍·촉수 같은 장식이다.
+            // 균등하게 깔면 장식이 과해진다 — 드물게만 섞는다.
+            const std::size_t plainCount =
+                std::max<std::size_t>(1, creepTiles.size() / 3);
+            const bool useDecor = (hash % 11 == 0) && creepTiles.size() > plainCount;
+            const std::size_t pick = useDecor
+                ? plainCount + (hash / 11) % (creepTiles.size() - plainCount)
+                : hash % plainCount;
             if (!tileset_->renderTile(tilesetId, creepTiles[pick], rgba.data()))
                 continue;
 
@@ -334,13 +342,13 @@ void MapView::paintCreep(QPainter & painter, const QRect & dirty)
         if (!tileset_->isCreepBuilding(unit.type))
             continue;
 
-        // 가로가 세로보다 넓다. StarCraft 의 크립도 그렇게 퍼진다.
-        constexpr double kRadiusX = 6.0 * io::kTilePixels;
-        constexpr double kRadiusY = 4.0 * io::kTilePixels;
+        const auto range = tileset_->creepRange(unit.type);
+        if (range.radiusX <= 0.0 || range.radiusY <= 0.0)
+            continue;
 
         const QPointF center = mapToScreen(unit.x, unit.y);
         QPainterPath ellipse;
-        ellipse.addEllipse(center, kRadiusX * zoom_, kRadiusY * zoom_);
+        ellipse.addEllipse(center, range.radiusX * zoom_, range.radiusY * zoom_);
         area = area.united(ellipse);
         any = true;
     }

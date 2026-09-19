@@ -545,8 +545,6 @@ int cmdRender(const std::string & mapPath,
             // 크립을 만드는 건물들의 영향 범위(타원 합집합)를 마스크로 만든다.
             std::vector<bool> mask(
                 static_cast<std::size_t>(pixelsWide) * pixelsTall, false);
-            constexpr double kRadiusX = 6.0 * splash::io::kTilePixels;
-            constexpr double kRadiusY = 4.0 * splash::io::kTilePixels;
             std::size_t creepBuildings = 0;
 
             for (const auto & u : archiveUnits)
@@ -554,6 +552,12 @@ int cmdRender(const std::string & mapPath,
                 if (!tileset.isCreepBuilding(u.type))
                     continue;
                 ++creepBuildings;
+
+                const auto range = tileset.creepRange(u.type);
+                const double kRadiusX = range.radiusX;
+                const double kRadiusY = range.radiusY;
+                if (kRadiusX <= 0.0 || kRadiusY <= 0.0)
+                    continue;
 
                 const long long x0 = std::max(0LL, static_cast<long long>(u.x - kRadiusX));
                 const long long x1 = std::min(pixelsWide - 1, static_cast<long long>(u.x + kRadiusX));
@@ -592,8 +596,17 @@ int cmdRender(const std::string & mapPath,
                         // (x+y) 로 고르면 대각선 줄무늬가 생긴다. 좌표를 섞어 쓴다.
                         const std::size_t tileX = static_cast<std::size_t>(x / splash::io::kTilePixels);
                         const std::size_t tileY = static_cast<std::size_t>(y / splash::io::kTilePixels);
-                        const std::size_t variant =
-                            ((tileX * 73856093u) ^ (tileY * 19349663u)) % creepPixels.size();
+                        const std::size_t hash = (tileX * 73856093u) ^ (tileY * 19349663u);
+
+                        // 크립 타일은 앞쪽이 평범한 질감, 뒤쪽이 구멍·촉수 같은
+                        // 장식이다. 균등하게 깔면 장식이 과해진다 — 드물게만 섞는다.
+                        const std::size_t plainCount =
+                            std::max<std::size_t>(1, creepPixels.size() / 3);
+                        const bool useDecor =
+                            (hash % 11 == 0) && creepPixels.size() > plainCount;
+                        const std::size_t variant = useDecor
+                            ? plainCount + (hash / 11) % (creepPixels.size() - plainCount)
+                            : hash % plainCount;
                         const auto & buf = creepPixels[variant];
                         const std::size_t at =
                             ((y % splash::io::kTilePixels) * splash::io::kTilePixels +

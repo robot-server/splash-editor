@@ -170,6 +170,26 @@ bool GameGraphics::isCreepBuilding(std::uint16_t unitType) const
     return (dat.flags & Sc::Unit::Flags::CreepBuilding) != 0;
 }
 
+GameGraphics::CreepRange GameGraphics::creepRange(std::uint16_t unitType) const
+{
+    CreepRange range;
+    if (!isCreepBuilding(unitType))
+        return range;
+
+    const Sc::Unit & units = impl_->scData->units;
+    const auto & dat = units.getUnit(Sc::Unit::Type(unitType));
+
+    // 건물이 차지하는 크기에서 출발해 바깥으로 얼마쯤 더 퍼진다고 본다.
+    // 게임은 건물마다 정해진 패턴으로 크립을 놓지만 그 표는 데이터 파일이
+    // 아니라 게임 내부에 있다. 크기에 비례시키는 것이 가장 가까운 근사다.
+    constexpr double kMarginX = 4.0 * kTilePixels;
+    constexpr double kMarginY = 3.0 * kTilePixels;
+
+    range.radiusX = dat.starEditPlacementBoxWidth / 2.0 + kMarginX;
+    range.radiusY = dat.starEditPlacementBoxHeight / 2.0 + kMarginY;
+    return range;
+}
+
 std::vector<std::uint16_t> GameGraphics::creepTileIds(std::uint16_t tilesetId) const
 {
     std::vector<std::uint16_t> out;

@@ -64,6 +64,11 @@ public:
     /// 이 유닛이 크립을 만드는 저그 건물인지 (units.dat 의 CreepBuilding 특성).
     bool isCreepBuilding(std::uint16_t unitType) const;
 
+    /// 크립이 퍼지는 대략적인 범위(픽셀 반지름). 건물 크기에 따라 달라진다.
+    /// 게임의 정확한 확산 규칙은 데이터에 드러나 있지 않아 근사값이다.
+    struct CreepRange { double radiusX = 0.0; double radiusY = 0.0; };
+    CreepRange creepRange(std::uint16_t unitType) const;
+
     /// 크립 바닥으로 쓸 수 있는 타일 ID 들. 없으면 빈 벡터.
     std::vector<std::uint16_t> creepTileIds(std::uint16_t tilesetId) const;
 
