@@ -442,6 +442,34 @@ Result MapArchive::setUnitOwner(std::size_t unitIndex, std::uint8_t owner)
     return Result::success();
 }
 
+Result MapArchive::setTile(std::size_t tileX, std::size_t tileY, std::uint16_t tileValue)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (tileX >= map.getTileWidth() || tileY >= map.getTileHeight())
+            return Result::failure("타일 좌표가 맵 범위를 벗어났습니다.");
+
+        // Scope::Both 는 MTXM 과 TILE 을 각각 고치므로 액션이 두 개 생긴다
+        // (Scenario::setTile 이 create_action 을 두 번 호출한다).
+        // TILE 섹션이 없는 맵에서는 하나만 생긴다.
+        const bool hasEditorTiles =
+            map.read.editorTiles.size() > (tileY * map.getTileWidth() + tileX);
+
+        map.setTile(tileX, tileY, tileValue, Chk::Scope::Both);
+        impl_->undoSteps.push_back(hasEditorTiles ? 2 : 1);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("타일을 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 Result MapArchive::setLocationBounds(std::size_t locationIndex,
                                      std::uint32_t left, std::uint32_t top,
                                      std::uint32_t right, std::uint32_t bottom)
@@ -471,6 +499,21 @@ Result MapArchive::setLocationBounds(std::size_t locationIndex,
         return Result::failure(std::string("로케이션을 바꾸지 못했습니다: ") + e.what());
     }
     return Result::success();
+}
+
+void MapArchive::mergeLastEdits(int count)
+{
+    if (count <= 1)
+        return;
+
+    int total = 0;
+    for (int i = 0; i < count && !impl_->undoSteps.empty(); ++i)
+    {
+        total += impl_->undoSteps.back();
+        impl_->undoSteps.pop_back();
+    }
+    if (total > 0)
+        impl_->undoSteps.push_back(total);
 }
 
 Result MapArchive::undo()

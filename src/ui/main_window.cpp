@@ -3,6 +3,7 @@
 #include "ui/map_view.h"
 
 #include <QAction>
+#include <QActionGroup>
 #include <QApplication>
 #include <QGroupBox>
 #include <QSettings>
@@ -65,6 +66,9 @@ void MainWindow::buildCentralWidget()
 
     connect(mapView_, &MapView::documentEdited, this, &MainWindow::onDocumentEdited);
     connect(mapView_, &MapView::selectionChanged, this, &MainWindow::onSelectionChanged);
+    connect(mapView_, &MapView::brushTileChanged, this, [this](std::uint16_t tileId) {
+        statusBar()->showMessage(tr("브러시 타일: %1").arg(tileId), 3000);
+    });
 
     auto * side = new QWidget(this);
     auto * outer = new QVBoxLayout(side);
@@ -155,6 +159,48 @@ void MainWindow::buildMenus()
     deleteAction_ = editMenu->addAction(tr("선택 삭제(&D)"));
     deleteAction_->setShortcut(QKeySequence::Delete);
     connect(deleteAction_, &QAction::triggered, this, &MainWindow::onDeleteSelection);
+
+    QMenu * toolMenu = menuBar()->addMenu(tr("도구(&T)"));
+
+    auto * toolGroup = new QActionGroup(this);
+    toolGroup->setExclusive(true);
+
+    QAction * selectTool = toolMenu->addAction(tr("선택(&S)"));
+    selectTool->setCheckable(true);
+    selectTool->setChecked(true);
+    selectTool->setShortcut(QKeySequence(Qt::Key_S));
+    toolGroup->addAction(selectTool);
+    connect(selectTool, &QAction::triggered, this,
+            [this] { mapView_->setTool(MapView::Tool::Select);
+                     statusBar()->showMessage(tr("선택 도구"), 2000); });
+
+    QAction * terrainTool = toolMenu->addAction(tr("지형 칠하기(&T)"));
+    terrainTool->setCheckable(true);
+    terrainTool->setShortcut(QKeySequence(Qt::Key_T));
+    toolGroup->addAction(terrainTool);
+    connect(terrainTool, &QAction::triggered, this,
+            [this] { mapView_->setTool(MapView::Tool::Terrain);
+                     statusBar()->showMessage(
+                         tr("지형 도구 — Alt+클릭으로 타일 집기"), 4000); });
+
+    toolMenu->addSeparator();
+
+    for (int size : {1, 2, 4, 8})
+    {
+        QAction * action = toolMenu->addAction(tr("브러시 %1x%1").arg(size));
+        action->setCheckable(true);
+        action->setChecked(size == 1);
+        connect(action, &QAction::triggered, this, [this, size, toolMenu] {
+            mapView_->setBrushSize(size);
+            statusBar()->showMessage(tr("브러시 %1x%1").arg(size), 2000);
+            // 같은 그룹의 다른 크기는 해제한다
+            for (QAction * other : toolMenu->actions())
+            {
+                if (other->isCheckable() && other->text().startsWith(tr("브러시")))
+                    other->setChecked(other->text() == tr("브러시 %1x%1").arg(size));
+            }
+        });
+    }
 
     QMenu * viewMenu = menuBar()->addMenu(tr("보기(&V)"));
 

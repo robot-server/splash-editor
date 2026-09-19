@@ -257,6 +257,21 @@ void MapView::paintEvent(QPaintEvent * event)
         }
     }
 
+    // 지형 브러시로 칠하는 중이면 그 자리를 미리 보여 준다.
+    if (!strokeTiles_.empty())
+    {
+        const double tileSize = scaledTileSize();
+        const int ox = horizontalScrollBar()->value();
+        const int oy = verticalScrollBar()->value();
+        painter.setPen(Qt::NoPen);
+        painter.setBrush(QColor(120, 200, 255, 90));
+        for (const auto & [tx, ty] : strokeTiles_)
+        {
+            painter.drawRect(QRectF(tx * tileSize - ox, ty * tileSize - oy,
+                                    tileSize, tileSize));
+        }
+    }
+
     // 크립은 지형 위, 유닛 아래.
     if (showCreep_)
         paintCreep(painter, dirty);
@@ -613,6 +628,61 @@ void MapView::paintUnits(QPainter & painter, const QRect & dirty)
     painter.restore();
 }
 
+void MapView::setTool(Tool tool)
+{
+    if (tool_ == tool)
+        return;
+    tool_ = tool;
+    clearSelection();
+    viewport()->setCursor(tool == Tool::Terrain ? Qt::CrossCursor : Qt::ArrowCursor);
+    viewport()->update();
+}
+
+void MapView::setBrushTile(std::uint16_t tileId)
+{
+    if (brushTile_ == tileId)
+        return;
+    brushTile_ = tileId;
+    emit brushTileChanged(tileId);
+}
+
+void MapView::setBrushSize(int size)
+{
+    brushSize_ = std::clamp(size, 1, 16);
+}
+
+void MapView::paintTerrainAt(const QPointF & screenPos)
+{
+    if (document_ == nullptr || !document_->isOpen())
+        return;
+
+    const QPointF mapPos = screenToMap(screenPos);
+    const int centerX = static_cast<int>(mapPos.x()) / io::kTilePixels;
+    const int centerY = static_cast<int>(mapPos.y()) / io::kTilePixels;
+
+    const auto & info = document_->info();
+    const int half = brushSize_ / 2;
+
+    for (int dy = 0; dy < brushSize_; ++dy)
+    {
+        for (int dx = 0; dx < brushSize_; ++dx)
+        {
+            const int tx = centerX - half + dx;
+            const int ty = centerY - half + dy;
+            if (tx < 0 || ty < 0 || tx >= info.width || ty >= info.height)
+                continue;
+
+            // 같은 획에서 같은 자리를 여러 번 칠하지 않는다.
+            const std::pair<std::size_t, std::size_t> at{
+                static_cast<std::size_t>(tx), static_cast<std::size_t>(ty)};
+            if (std::find(strokeTiles_.begin(), strokeTiles_.end(), at) == strokeTiles_.end())
+                strokeTiles_.push_back(at);
+        }
+    }
+
+    viewport()->update();
+}
+
 void MapView::clearSelection()
 {
     if (selectedUnit_ == -1 && selectedLocation_ == -1)
@@ -702,6 +772,33 @@ void MapView::mousePressEvent(QMouseEvent * event)
         return;
     }
 
+    if (tool_ == Tool::Terrain)
+    {
+        // Alt 를 누른 채 찍으면 그 자리의 타일을 브러시로 집는다(스포이드).
+        if (event->modifiers() & Qt::AltModifier)
+        {
+            const QPointF mapPos = screenToMap(event->position());
+            const int tx = static_cast<int>(mapPos.x()) / io::kTilePixels;
+            const int ty = static_cast<int>(mapPos.y()) / io::kTilePixels;
+            const auto & info = document_->info();
+            const auto & tiles = document_->tiles();
+            if (tx >= 0 && ty >= 0 && tx < info.width && ty < info.height)
+            {
+                const std::size_t index = static_cast<std::size_t>(ty) * info.width + tx;
+                if (index < tiles.size())
+                    setBrushTile(tiles[index]);
+            }
+            event->accept();
+            return;
+        }
+
+        painting_ = true;
+        strokeTiles_.clear();
+        paintTerrainAt(event->position());
+        event->accept();
+        return;
+    }
+
     // 유닛이 로케이션보다 위에 있다 — 겹치면 유닛을 먼저 집는다.
     const int unitHit = unitAt(event->position());
     const int locationHit = (unitHit >= 0) ? -1 : locationAt(event->position());
@@ -735,6 +832,13 @@ void MapView::mousePressEvent(QMouseEvent * event)
 
 void MapView::mouseMoveEvent(QMouseEvent * event)
 {
+    if (painting_)
+    {
+        paintTerrainAt(event->position());
+        event->accept();
+        return;
+    }
+
     if (!dragging_ || document_ == nullptr ||
         (selectedUnit_ < 0 && selectedLocation_ < 0))
     {
@@ -758,6 +862,23 @@ void MapView::mouseMoveEvent(QMouseEvent * event)
 
 void MapView::mouseReleaseEvent(QMouseEvent * event)
 {
+    if (painting_)
+    {
+        painting_ = false;
+        if (!strokeTiles_.empty() && document_ != nullptr)
+        {
+            auto * doc = const_cast<chk::MapDocument *>(document_);
+            if (doc->setTiles(strokeTiles_, brushTile_))
+            {
+                refresh();
+                emit documentEdited();
+            }
+        }
+        strokeTiles_.clear();
+        event->accept();
+        return;
+    }
+
     if (!dragging_)
     {
         QAbstractScrollArea::mouseReleaseEvent(event);

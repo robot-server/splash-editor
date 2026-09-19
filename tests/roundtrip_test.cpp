@@ -379,6 +379,72 @@ void testEditUndoOnRealMap(const fs::path & mapsDir)
     }
 }
 
+/// 지형을 칠한 뒤 되돌리면 원본 바이트가 복원되어야 한다.
+void testTerrainEditUndo()
+{
+    std::cout << "\n[지형 편집 -> 실행 취소]\n";
+
+    const fs::path mapPath =
+        makeSyntheticMap("terrain-edit.scm", splash::io::MapFormat::HybridScm, 4, 64, 64, false);
+    if (mapPath.empty())
+    {
+        splash::test::registry().fail("지형 테스트용 맵 생성", __FILE__, __LINE__);
+        return;
+    }
+    struct Cleanup { fs::path path; ~Cleanup() { std::error_code ec; fs::remove(path, ec); } }
+        cleanup{mapPath};
+
+    const auto original = splash::io::readScenarioChk(mapPath.string());
+    SPLASH_CHECK(original.has_value());
+    if (!original)
+        return;
+
+    splash::chk::MapDocument doc;
+    if (!doc.open(mapPath.string()))
+    {
+        splash::test::registry().fail("지형 테스트용 맵 열기", __FILE__, __LINE__);
+        return;
+    }
+
+    const auto & tilesBefore = doc.tiles();
+    SPLASH_CHECK(!tilesBefore.empty());
+    if (tilesBefore.empty())
+        return;
+
+    const std::uint16_t originalTile = tilesBefore[0];
+    const std::uint16_t newTile = static_cast<std::uint16_t>(originalTile + 1);
+
+    // 브러시 한 획 = 여러 타일, 실행 취소는 한 번에 되돌아가야 한다.
+    const std::vector<std::pair<std::size_t, std::size_t>> stroke {
+        {0, 0}, {1, 0}, {2, 0}, {0, 1}, {1, 1}
+    };
+    SPLASH_CHECK(doc.setTiles(stroke, newTile));
+    SPLASH_CHECK(doc.isModified());
+    SPLASH_CHECK(doc.canUndo());
+    SPLASH_CHECK_EQ(doc.tiles()[0], newTile);
+
+    // 한 번만 되돌려도 획 전체가 취소되어야 한다
+    SPLASH_CHECK(doc.undo());
+    SPLASH_CHECK(!doc.canUndo());
+    SPLASH_CHECK_EQ(doc.tiles()[0], originalTile);
+    for (const auto & [x, y] : stroke)
+    {
+        const std::size_t index = y * doc.info().width + x;
+        SPLASH_CHECK_EQ(doc.tiles()[index], tilesBefore[index]);
+    }
+
+    // 저장 결과가 원본과 같아야 진짜 되돌린 것이다
+    const fs::path outPath = workDir() / "terrain-edit-out.scm";
+    struct Cleanup2 { fs::path path; ~Cleanup2() { std::error_code ec; fs::remove(path, ec); } }
+        cleanup2{outPath};
+
+    SPLASH_CHECK(doc.saveAs(outPath.string()));
+    const auto saved = splash::io::readScenarioChk(outPath.string());
+    SPLASH_CHECK(saved.has_value());
+    if (saved)
+        SPLASH_CHECK(*original == *saved);
+}
+
 /// tests/maps/ 에 실제 맵이 있으면 전부 round-trip 한다.
 ///
 /// 이 디렉터리는 비어 있을 수 있다(저작권 자료라 저장소에 커밋하지 않는다).
@@ -455,6 +521,7 @@ int main(int argc, char ** argv)
     testFailureHandling();
     testSyntheticRoundTrips();
     testEditUndoRestoresBytes();
+    testTerrainEditUndo();
     testRealMaps(mapsDir);
 
     std::cout << "\n[실제 맵 편집 -> 실행 취소]\n";

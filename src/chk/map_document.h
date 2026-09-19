@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace splash::chk {
@@ -121,6 +122,14 @@ public:
 
     /// 유닛의 소유자를 바꾼다 (0-11).
     bool setUnitOwner(std::size_t unitIndex, std::uint8_t owner);
+
+    /// 지형 타일 하나를 바꾼다. 좌표는 타일 단위.
+    bool setTile(std::size_t tileX, std::size_t tileY, std::uint16_t tileValue);
+
+    /// 여러 타일을 한 번의 편집으로 묶어 바꾼다(브러시 한 획).
+    /// 실행 취소도 한 번에 되돌아간다.
+    bool setTiles(const std::vector<std::pair<std::size_t, std::size_t>> & positions,
+                  std::uint16_t tileValue);
 
     /// 로케이션을 옮긴다(크기는 유지). 좌표는 픽셀.
     bool moveLocation(std::size_t locationIndex, std::int64_t dx, std::int64_t dy);

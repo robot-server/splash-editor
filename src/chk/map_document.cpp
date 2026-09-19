@@ -208,6 +208,49 @@ bool MapDocument::setUnitOwner(std::size_t unitIndex, std::uint8_t owner)
     return true;
 }
 
+bool MapDocument::setTile(std::size_t tileX, std::size_t tileY, std::uint16_t tileValue)
+{
+    const io::Result result = archive_.setTile(tileX, tileY, tileValue);
+    if (!result)
+    {
+        lastError_ = result.message;
+        return false;
+    }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setTiles(const std::vector<std::pair<std::size_t, std::size_t>> & positions,
+                           std::uint16_t tileValue)
+{
+    if (positions.empty())
+        return false;
+
+    // 브러시 한 획은 실행 취소도 한 번에 되돌아가야 한다.
+    // 타일마다 액션이 하나씩 생기므로, 획 전체를 한 묶음으로 센다.
+    int applied = 0;
+    for (const auto & [x, y] : positions)
+    {
+        if (archive_.setTile(x, y, tileValue))
+            ++applied;
+    }
+
+    if (applied == 0)
+        return false;
+
+    // archive_ 는 타일마다 1 액션으로 세어 두었다. 그것들을 한 묶음으로 합친다.
+    archive_.mergeLastEdits(applied);
+
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
 bool MapDocument::moveLocation(std::size_t locationIndex, std::int64_t dx, std::int64_t dy)
 {
     if (locationIndex >= locations_.size())

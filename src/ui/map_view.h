@@ -15,6 +15,7 @@
 #include <QPixmap>
 
 #include <cstdint>
+#include <utility>
 #include <vector>
 
 namespace splash::chk { class MapDocument; }
@@ -27,6 +28,13 @@ class MapView : public QAbstractScrollArea
     Q_OBJECT
 
 public:
+    /// 지금 마우스가 무슨 일을 하는지.
+    enum class Tool
+    {
+        Select,  ///< 유닛·로케이션 고르고 옮기기
+        Terrain  ///< 지형 칠하기
+    };
+
     explicit MapView(QWidget * parent = nullptr);
     ~MapView() override;
 
@@ -58,10 +66,24 @@ signals:
     /// 선택이 바뀌었다 (없으면 -1).
     void selectionChanged(int unitIndex);
 
+    /// 지형 브러시가 집은 타일이 바뀌었다.
+    void brushTileChanged(std::uint16_t tileId);
+
 public:
 
     double zoom() const { return zoom_; }
     void setZoom(double factor);
+
+    Tool tool() const { return tool_; }
+    void setTool(Tool tool);
+
+    /// 지형 브러시가 칠할 타일. 스포이드로 바꾼다.
+    std::uint16_t brushTile() const { return brushTile_; }
+    void setBrushTile(std::uint16_t tileId);
+
+    /// 브러시 한 변의 타일 수 (1, 2, 4 …).
+    int brushSize() const { return brushSize_; }
+    void setBrushSize(int size);
 
     bool unitsVisible() const { return showUnits_; }
     bool locationsVisible() const { return showLocations_; }
@@ -112,6 +134,9 @@ private:
     /// 그 자리에 있는 유닛 번호. 없으면 -1. 위에 그려진 것이 우선한다.
     int unitAt(const QPointF & screenPos);
 
+    /// 지형 모드에서 그 자리에 브러시를 찍는다.
+    void paintTerrainAt(const QPointF & screenPos);
+
     /// 그 자리에 있는 로케이션 번호. 없으면 -1. 작은 것이 우선한다 —
     /// 큰 로케이션 안에 작은 것이 겹쳐 있을 때 작은 쪽을 집어야 쓸모 있다.
     int locationAt(const QPointF & screenPos) const;
@@ -155,6 +180,12 @@ private:
     bool showCreep_ = true;
 
     // 선택과 드래그
+    Tool tool_ = Tool::Select;
+    std::uint16_t brushTile_ = 0;
+    int brushSize_ = 1;
+    bool painting_ = false;
+    std::vector<std::pair<std::size_t, std::size_t>> strokeTiles_; ///< 이번 획에 칠한 자리
+
     int selectedUnit_ = -1;
     int selectedLocation_ = -1;
     bool dragging_ = false;

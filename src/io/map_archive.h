@@ -163,10 +163,20 @@ public:
     /// 유닛의 소유자를 바꾼다 (0-11).
     Result setUnitOwner(std::size_t unitIndex, std::uint8_t owner);
 
+    /// 지형 타일 하나를 바꾼다. 좌표는 타일 단위.
+    ///
+    /// 에디터용(TILE)과 게임용(MTXM)을 함께 쓴다 — 둘이 어긋나면 에디터에
+    /// 보이는 것과 게임에서 도는 것이 달라진다.
+    Result setTile(std::size_t tileX, std::size_t tileY, std::uint16_t tileValue);
+
     /// 로케이션의 범위를 바꾼다. 좌표는 픽셀이며 left<=right, top<=bottom 이어야 한다.
     Result setLocationBounds(std::size_t locationIndex,
                              std::uint32_t left, std::uint32_t top,
                              std::uint32_t right, std::uint32_t bottom);
+
+    /// 마지막 n 개의 편집을 하나로 묶는다. 브러시 한 획처럼 여러 번 고친
+    /// 것을 한 번에 되돌리기 위해 쓴다.
+    void mergeLastEdits(int count);
 
     /// 마지막 편집을 되돌린다. 되돌릴 것이 없으면 실패.
     Result undo();
