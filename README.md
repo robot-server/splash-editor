@@ -19,7 +19,8 @@ StarCraft: Brood War / Remastered 맵 에디터. Windows · macOS · Linux.
 - 빈 맵 새로 만들기 (CLI)
 - **CHK 바이트를 보존하는 round-trip** — 편집하지 않은 섹션은 한 바이트도 바뀌지 않는다
 - **지형 보기** — 게임 설치본의 타일셋으로 실제 지형을 그린다. 스크롤 · 확대/축소
-- **유닛 · 로케이션 보기** — 실제 유닛 스프라이트(플레이어 색 적용), 로케이션 이름 (토글 가능)
+- **유닛 · 로케이션 보기** — 실제 유닛 스프라이트(그림자·플레이어 색 적용), 로케이션 이름
+- **크립 보기** — 저그 건물 주변 크립 (토글 가능)
 
 ## 아직 안 되는 것
 
@@ -118,6 +119,7 @@ cmake --build build --config RelWithDebInfo
 | 실제 크기 | `⌘0` |
 | 유닛 표시 | `⌘1` |
 | 로케이션 표시 | `⌘2` |
+| 크립 표시 | `⌘3` |
 
 ### CLI
 
@@ -145,8 +147,15 @@ CLI 는 GUI 없이 코어를 두드리는 도구이자 테스트 하네스다.
 # 지형을 이미지로 뽑기 (타일셋 디코딩 검증용, PPM 출력)
 ./build/src/cli/splash-cli render map.scx "/경로/StarCraft" out.ppm
 
-# 유닛·로케이션을 겹쳐 그리기
-./build/src/cli/splash-cli render map.scx "/경로/StarCraft" out.ppm --units --locations
+# 유닛·로케이션·크립을 겹쳐 그리기
+./build/src/cli/splash-cli render map.scx "/경로/StarCraft" out.ppm --units --locations --creep
+
+# 유닛 하나만 검증용으로 뽑기 (격자·경계·중심 표시)
+./build/src/cli/splash-cli unit-image "/경로/StarCraft" 176 out.ppm 0 0 1500
+
+# 타일셋 조사 / 타일 시트 뽑기
+./build/src/cli/splash-cli tileset-info "/경로/StarCraft" 4
+./build/src/cli/splash-cli tile-sheet "/경로/StarCraft" 4 0 16 sheet.ppm
 
 # 유닛·로케이션 목록 보기
 ./build/src/cli/splash-cli units map.scx 30
@@ -248,7 +257,20 @@ GRP 의 행 압축 규약(투명/단색/얼룩 라인)은 MappingCore 의 `Sc::S
 이 캡슐화한 것을 그대로 쓴다. 플레이어 색은 팔레트 인덱스 8-15 구간을
 `tunit.pcx` 의 플레이어별 8색 그라데이션으로 바꿔 넣어 표현한다.
 
-스프라이트는 (유닛 타입, 소유자) 조합으로 캐시한다.
+스프라이트는 (유닛 타입, 소유자, 자원량 구간) 조합으로 캐시한다.
+
+유닛 하나는 단일 이미지가 아니라 여러 이미지 오버레이로 구성된다
+(본체 + 그림자 + 부가물). 그 조립은 iscript 가 정하므로 MappingCore 의
+`AnimContext` 를 돌려서 얻는다. 이 계층은 OpenGL 에 의존하지 않아
+QPainter 경로에서도 그대로 쓸 수 있다.
+
+그림자는 배경을 어둡게 하는 효과다(`dark.pcx` 는 "배경색 → 어두운 색"
+매핑표다). 스프라이트를 따로 그리는 구조에서는 배경을 모르므로 반투명
+검정으로 근사하고, 합성하는 쪽에서 알파를 섞는다.
+
+크립 바닥 타일은 타일셋에서 `Creep` 플래그가 선 타일 그룹을 찾아 쓴다.
+그룹 안에서 실제 메가타일이 배정된 칸만 고르고(남는 칸은 0 으로 채워져
+있다), 좌표를 섞어 변형을 골라 격자 줄무늬가 생기지 않게 한다.
 
 **코어에는 Qt 타입이 없다.** `splash_io` 와 `splash_core` 는 Qt 를 링크하지
 않으며, 헤더에 표준 라이브러리 타입만 노출한다. UI 는 `MapDocument` 만 알고,

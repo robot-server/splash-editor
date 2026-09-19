@@ -157,6 +157,98 @@ bool GameGraphics::load(const std::string & installPath, std::string * error)
     return true;
 }
 
+bool GameGraphics::isCreepBuilding(std::uint16_t unitType) const
+{
+    if (!hasUnitGraphics())
+        return false;
+
+    const Sc::Unit & units = impl_->scData->units;
+    if (unitType >= units.numUnitTypes())
+        return false;
+
+    const auto & dat = units.getUnit(Sc::Unit::Type(unitType));
+    return (dat.flags & Sc::Unit::Flags::CreepBuilding) != 0;
+}
+
+std::vector<std::uint16_t> GameGraphics::creepTileIds(std::uint16_t tilesetId) const
+{
+    std::vector<std::uint16_t> out;
+    if (!impl_->loaded)
+        return out;
+
+    const Sc::Terrain::Tiles & tiles = impl_->tiles(tilesetId);
+
+    // 크립 바닥이 어느 그룹인지는 타일셋 데이터가 알려 준다 — Creep 플래그가
+    // 선 타일 그룹이 그것이다. 인덱스를 고정하지 않는 이유는 타일셋마다
+    // 배치가 다를 수 있기 때문이다.
+    std::size_t kCreepGroup = 0;
+    bool found = false;
+    for (std::size_t i = 0; i < tiles.tileGroups.size(); ++i)
+    {
+        if (tiles.tileGroups[i].flags & Sc::Terrain::TileGroup::Flags::Creep)
+        {
+            kCreepGroup = i;
+            found = true;
+            break;
+        }
+    }
+    if (!found)
+        return out;
+
+    const auto & group = tiles.tileGroups[kCreepGroup];
+
+    // 같은 메가타일을 가리키는 칸이 여러 개다(빈 칸은 보통 같은 값으로 채워진다).
+    // 서로 다른 메가타일을 가리키는 칸만 골라야 변형이 실제로 다르다.
+    std::vector<std::uint16_t> seen;
+    for (std::size_t sub = 0; sub < 16; ++sub)
+    {
+        const std::uint16_t megaTileIndex = group.megaTileIndex[sub];
+        // 0 은 "배정 없음"이다. 그룹 안의 남는 칸이 0 으로 채워져 있으므로
+        // 이것을 크립 타일로 쓰면 검은 칸이 섞인다.
+        if (megaTileIndex == 0 || megaTileIndex >= tiles.tileGraphics.size())
+            continue;
+        if (std::find(seen.begin(), seen.end(), megaTileIndex) != seen.end())
+            continue;
+
+        seen.push_back(megaTileIndex);
+        out.push_back(static_cast<std::uint16_t>(kCreepGroup * 16 + sub));
+    }
+
+    if (std::getenv("SPLASH_DEBUG_CREEP") != nullptr)
+    {
+        std::cerr << "    creep group=" << kCreepGroup << " tiles=" << out.size() << " :";
+        for (std::size_t sub = 0; sub < 16; ++sub)
+            std::cerr << " " << group.megaTileIndex[sub];
+        std::cerr << "\n";
+    }
+
+    return out;
+}
+
+GameGraphics::TilesetInfo GameGraphics::describeTileset(std::uint16_t tilesetId) const
+{
+    TilesetInfo info;
+    if (!impl_->loaded)
+        return info;
+
+    const Sc::Terrain::Tiles & tiles = impl_->tiles(tilesetId);
+    info.tileGroupCount = tiles.tileGroups.size();
+    info.megaTileCount = tiles.tileGraphics.size();
+
+    for (std::size_t i = 0; i < tiles.tileGroups.size(); ++i)
+    {
+        const std::uint16_t flags = tiles.tileGroups[i].flags;
+        if (flags & Sc::Terrain::TileGroup::Flags::Creep)
+            info.creepGroups.push_back(static_cast<std::uint16_t>(i));
+        if (flags & Sc::Terrain::TileGroup::Flags::TemporaryCreep)
+            info.tempCreepGroups.push_back(static_cast<std::uint16_t>(i));
+        if (flags & Sc::Terrain::TileGroup::Flags::RecedingCreep)
+            info.recedingGroups.push_back(static_cast<std::uint16_t>(i));
+    }
+
+    return info;
+}
+
 bool GameGraphics::hasUnitGraphics() const
 {
     return impl_->loaded && impl_->unitsLoaded;

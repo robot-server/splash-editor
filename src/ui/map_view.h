@@ -42,10 +42,12 @@ public:
 
     bool unitsVisible() const { return showUnits_; }
     bool locationsVisible() const { return showLocations_; }
+    bool creepVisible() const { return showCreep_; }
 
 public slots:
     void setUnitsVisible(bool visible);
     void setLocationsVisible(bool visible);
+    void setCreepVisible(bool visible);
 
     void zoomIn();
     void zoomOut();
@@ -75,6 +77,12 @@ private:
     void paintUnits(QPainter & painter, const QRect & dirty);
     void paintLocations(QPainter & painter, const QRect & dirty);
 
+    /// 저그 건물 주변의 크립. 지형 위, 유닛 아래에 그린다.
+    void paintCreep(QPainter & painter, const QRect & dirty);
+
+    /// 크립 바닥 패턴. 타일 변형을 섞어 한 장으로 만들어 둔다.
+    const QPixmap * creepPattern();
+
     /// 현재 줌에서 타일 한 변의 화면 픽셀 수.
     double scaledTileSize() const;
 
@@ -87,8 +95,11 @@ private:
     QHash<std::uint16_t, QPixmap> tileCache_;
     QHash<std::uint32_t, UnitSprite> unitCache_;
     double zoom_ = 1.0;
+    QPixmap creepPattern_;
+    bool creepPatternReady_ = false;
     bool showUnits_ = true;
     bool showLocations_ = true;
+    bool showCreep_ = true;
 };
 
 } // namespace splash::ui

@@ -164,6 +164,12 @@ void MainWindow::buildMenus()
     showLocations->setChecked(mapView_->locationsVisible());
     showLocations->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_2));
     connect(showLocations, &QAction::toggled, mapView_, &MapView::setLocationsVisible);
+
+    QAction * showCreep = viewMenu->addAction(tr("크립 표시(&C)"));
+    showCreep->setCheckable(true);
+    showCreep->setChecked(mapView_->creepVisible());
+    showCreep->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_3));
+    connect(showCreep, &QAction::toggled, mapView_, &MapView::setCreepVisible);
 }
 
 void MainWindow::onChooseInstallPath()

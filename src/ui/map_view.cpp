@@ -5,6 +5,7 @@
 
 #include <QFontMetrics>
 #include <QImage>
+#include <QPainterPath>
 #include <QPaintEvent>
 #include <QPainter>
 #include <QScrollBar>
@@ -52,6 +53,8 @@ void MapView::refresh()
 {
     tileCache_.clear();
     unitCache_.clear();
+    creepPattern_ = QPixmap();
+    creepPatternReady_ = false;
     updateScrollRanges();
     viewport()->update();
 }
@@ -109,6 +112,14 @@ void MapView::setLocationsVisible(bool visible)
     if (showLocations_ == visible)
         return;
     showLocations_ = visible;
+    viewport()->update();
+}
+
+void MapView::setCreepVisible(bool visible)
+{
+    if (showCreep_ == visible)
+        return;
+    showCreep_ = visible;
     viewport()->update();
 }
 
@@ -238,10 +249,129 @@ void MapView::paintEvent(QPaintEvent * event)
         }
     }
 
+    // 크립은 지형 위, 유닛 아래.
+    if (showCreep_)
+        paintCreep(painter, dirty);
     if (showLocations_)
         paintLocations(painter, dirty);
     if (showUnits_)
         paintUnits(painter, dirty);
+}
+
+const QPixmap * MapView::creepPattern()
+{
+    if (creepPatternReady_)
+        return creepPattern_.isNull() ? nullptr : &creepPattern_;
+
+    creepPatternReady_ = true;
+    if (tileset_ == nullptr || !tileset_->isLoaded() || document_ == nullptr)
+        return nullptr;
+
+    const std::uint16_t tilesetId = document_->info().tilesetId;
+    const std::vector<std::uint16_t> creepTiles = tileset_->creepTileIds(tilesetId);
+    if (creepTiles.empty())
+        return nullptr;
+
+    // 같은 타일만 반복하면 격자가 눈에 띈다. 변형을 섞어 한 장으로 만든다.
+    constexpr int kPatternTiles = 4;
+    const int side = kPatternTiles * io::kTilePixels;
+    QImage pattern(side, side, QImage::Format_RGBA8888);
+    pattern.fill(Qt::transparent);
+
+    std::vector<std::uint8_t> rgba(io::kTileRgbaBytes);
+    for (int ty = 0; ty < kPatternTiles; ++ty)
+    {
+        for (int tx = 0; tx < kPatternTiles; ++tx)
+        {
+            // 좌표를 섞어 고른다 — 순서대로 깔면 줄무늬가 눈에 띈다.
+            const std::size_t pick =
+                ((static_cast<std::size_t>(tx) * 73856093u) ^
+                 (static_cast<std::size_t>(ty) * 19349663u)) % creepTiles.size();
+            if (!tileset_->renderTile(tilesetId, creepTiles[pick], rgba.data()))
+                continue;
+
+            for (int y = 0; y < io::kTilePixels; ++y)
+            {
+                for (int x = 0; x < io::kTilePixels; ++x)
+                {
+                    const std::size_t at =
+                        (static_cast<std::size_t>(y) * io::kTilePixels + x) * 4;
+                    pattern.setPixelColor(tx * io::kTilePixels + x,
+                                          ty * io::kTilePixels + y,
+                                          QColor(rgba[at + 0], rgba[at + 1], rgba[at + 2]));
+                }
+            }
+        }
+    }
+
+    creepPattern_ = QPixmap::fromImage(pattern);
+    return creepPattern_.isNull() ? nullptr : &creepPattern_;
+}
+
+void MapView::paintCreep(QPainter & painter, const QRect & dirty)
+{
+    if (tileset_ == nullptr || !tileset_->hasUnitGraphics())
+        return;
+
+    const auto & units = document_->units();
+    if (units.empty())
+        return;
+
+    const QPixmap * pattern = creepPattern();
+    if (pattern == nullptr)
+        return;
+
+    // 크립을 만드는 건물들의 영향 범위를 타원 합집합으로 모은다.
+    //
+    // 게임은 건물마다 다른 반경으로 크립을 퍼뜨리고 타일 단위로 가장자리를
+    // 다듬지만, 그 규칙은 게임 데이터에 드러나 있지 않다. 여기서는 건물
+    // 주변 타원으로 근사한다 — 위치와 대략적인 범위를 보여 주는 것이 목적이다.
+    QPainterPath area;
+    bool any = false;
+
+    for (const auto & unit : units)
+    {
+        if (!tileset_->isCreepBuilding(unit.type))
+            continue;
+
+        // 가로가 세로보다 넓다. StarCraft 의 크립도 그렇게 퍼진다.
+        constexpr double kRadiusX = 6.0 * io::kTilePixels;
+        constexpr double kRadiusY = 4.0 * io::kTilePixels;
+
+        const QPointF center = mapToScreen(unit.x, unit.y);
+        QPainterPath ellipse;
+        ellipse.addEllipse(center, kRadiusX * zoom_, kRadiusY * zoom_);
+        area = area.united(ellipse);
+        any = true;
+    }
+
+    if (!any)
+        return;
+
+    painter.save();
+    painter.setClipPath(area, Qt::IntersectClip);
+
+    // 패턴은 맵 좌표에 고정되어야 스크롤할 때 미끄러지지 않는다.
+    const double originX = horizontalScrollBar()->value();
+    const double originY = verticalScrollBar()->value();
+    const double patternSide = pattern->width() * zoom_;
+
+    if (patternSide > 0.5)
+    {
+        const double startX = -std::fmod(originX, patternSide);
+        const double startY = -std::fmod(originY, patternSide);
+
+        for (double y = startY; y < dirty.bottom() + patternSide; y += patternSide)
+        {
+            for (double x = startX; x < dirty.right() + patternSide; x += patternSide)
+            {
+                painter.drawPixmap(QRectF(x, y, patternSide, patternSide), *pattern,
+                                   QRectF(0, 0, pattern->width(), pattern->height()));
+            }
+        }
+    }
+
+    painter.restore();
 }
 
 const MapView::UnitSprite * MapView::unitSprite(std::uint16_t type, std::uint8_t owner,

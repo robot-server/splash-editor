@@ -35,7 +35,7 @@ int usage(const char * argv0)
         "      설치본을 조사한다. 아카이브를 열고 타일셋 데이터가 읽히는지 확인한다.\n\n"
         "  " << argv0 << " render <맵파일> <설치폴더> <출력.ppm> [--units] [--locations]\n"
         "      맵 지형을 이미지로 그린다. 타일셋 디코딩 검증용이다.\n"
-        "      --units / --locations 를 주면 유닛·로케이션도 겹쳐 그린다.\n\n"
+        "      --units / --locations / --creep 를 주면 함께 겹쳐 그린다.\n\n"
         "  " << argv0 << " units <맵파일> [개수]\n"
         "      맵에 놓인 유닛을 나열한다 (기본 20개).\n\n"
         "  " << argv0 << " unit-image <설치폴더> <유닛번호> <출력.ppm> [소유자] [타일셋]\n"
@@ -224,6 +224,94 @@ int cmdUnits(const std::string & mapPath, std::size_t limit)
     return 0;
 }
 
+int cmdTileSheet(const std::string & installPath, std::uint16_t tilesetId,
+                 std::uint16_t firstGroup, int groupCount, const std::string & outPath)
+{
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    // 그룹마다 16개 타일이 있다. 한 줄에 16개씩 놓아 그룹을 행으로 본다.
+    constexpr int kCols = 16;
+    const int rows = groupCount;
+    const int W = kCols * splash::io::kTilePixels;
+    const int H = rows * splash::io::kTilePixels;
+
+    std::vector<std::uint8_t> canvas(static_cast<std::size_t>(W) * H * 3, 20);
+    std::vector<std::uint8_t> tile(splash::io::kTileRgbaBytes);
+
+    for (int r = 0; r < rows; ++r)
+    {
+        for (int c = 0; c < kCols; ++c)
+        {
+            const std::uint16_t tileId =
+                static_cast<std::uint16_t>((firstGroup + r) * 16 + c);
+            if (!graphics.renderTile(tilesetId, tileId, tile.data()))
+                continue;
+
+            for (int y = 0; y < splash::io::kTilePixels; ++y)
+            {
+                for (int x = 0; x < splash::io::kTilePixels; ++x)
+                {
+                    const std::size_t src =
+                        (static_cast<std::size_t>(y) * splash::io::kTilePixels + x) * 4;
+                    const std::size_t dst =
+                        ((static_cast<std::size_t>(r) * splash::io::kTilePixels + y) * W +
+                         c * splash::io::kTilePixels + x) * 3;
+                    canvas[dst + 0] = tile[src + 0];
+                    canvas[dst + 1] = tile[src + 1];
+                    canvas[dst + 2] = tile[src + 2];
+                }
+            }
+        }
+    }
+
+    std::ofstream out(outPath, std::ios::binary | std::ios::trunc);
+    if (!out) { std::cerr << "출력 파일 열기 실패\n"; return 1; }
+    out << "P6\n" << W << " " << H << "\n255\n";
+    out.write(reinterpret_cast<const char *>(canvas.data()),
+              static_cast<std::streamsize>(canvas.size()));
+    std::cout << "  그룹 " << firstGroup << "~" << (firstGroup + rows - 1)
+              << " -> " << outPath << " (" << W << "x" << H << ")\n";
+    return 0;
+}
+
+int cmdTilesetInfo(const std::string & installPath, std::uint16_t tilesetId)
+{
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const auto info = graphics.describeTileset(tilesetId);
+    std::cout << "  타일셋 " << tilesetId << "\n"
+              << "  타일 그룹     : " << info.tileGroupCount << "\n"
+              << "  메가타일      : " << info.megaTileCount << "\n"
+              << "  Creep 그룹    : " << info.creepGroups.size() << "\n"
+              << "  TempCreep 그룹: " << info.tempCreepGroups.size() << "\n"
+              << "  Receding 그룹 : " << info.recedingGroups.size() << "\n";
+
+    const auto show = [](const char * label, const std::vector<std::uint16_t> & v) {
+        if (v.empty()) return;
+        std::cout << "    " << label << ": ";
+        for (std::size_t i = 0; i < v.size() && i < 30; ++i)
+            std::cout << v[i] << " ";
+        if (v.size() > 30) std::cout << "... (" << v.size() << "개)";
+        std::cout << "\n";
+    };
+    show("Creep", info.creepGroups);
+    show("TempCreep", info.tempCreepGroups);
+    show("Receding", info.recedingGroups);
+    return 0;
+}
+
 int cmdUnitImage(const std::string & installPath,
                  std::uint16_t unitType,
                  const std::string & outPath,
@@ -342,7 +430,8 @@ int cmdRender(const std::string & mapPath,
               const std::string & installPath,
               const std::string & outPath,
               bool drawUnits,
-              bool drawLocations)
+              bool drawLocations,
+              bool drawCreep)
 {
     splash::io::MapArchive archive;
     if (auto r = archive.open(mapPath); !r)
@@ -446,6 +535,77 @@ int cmdRender(const std::string & mapPath,
         image[at + 1] = static_cast<std::uint8_t>(g);
         image[at + 2] = static_cast<std::uint8_t>(b);
     };
+
+    // 크립은 지형 위, 유닛 아래.
+    if (drawCreep && tileset.hasUnitGraphics())
+    {
+        const auto creepTiles = tileset.creepTileIds(info.tilesetId);
+        if (!creepTiles.empty())
+        {
+            // 크립을 만드는 건물들의 영향 범위(타원 합집합)를 마스크로 만든다.
+            std::vector<bool> mask(
+                static_cast<std::size_t>(pixelsWide) * pixelsTall, false);
+            constexpr double kRadiusX = 6.0 * splash::io::kTilePixels;
+            constexpr double kRadiusY = 4.0 * splash::io::kTilePixels;
+            std::size_t creepBuildings = 0;
+
+            for (const auto & u : archiveUnits)
+            {
+                if (!tileset.isCreepBuilding(u.type))
+                    continue;
+                ++creepBuildings;
+
+                const long long x0 = std::max(0LL, static_cast<long long>(u.x - kRadiusX));
+                const long long x1 = std::min(pixelsWide - 1, static_cast<long long>(u.x + kRadiusX));
+                const long long y0 = std::max(0LL, static_cast<long long>(u.y - kRadiusY));
+                const long long y1 = std::min(pixelsTall - 1, static_cast<long long>(u.y + kRadiusY));
+
+                for (long long y = y0; y <= y1; ++y)
+                {
+                    for (long long x = x0; x <= x1; ++x)
+                    {
+                        const double dx = (x - static_cast<double>(u.x)) / kRadiusX;
+                        const double dy = (y - static_cast<double>(u.y)) / kRadiusY;
+                        if (dx * dx + dy * dy <= 1.0)
+                            mask[static_cast<std::size_t>(y) * pixelsWide + x] = true;
+                    }
+                }
+            }
+
+            // 마스크 안쪽을 크립 타일로 채운다(변형을 섞어 격자가 덜 보이게).
+            std::vector<std::vector<std::uint8_t>> creepPixels;
+            for (const auto id : creepTiles)
+            {
+                std::vector<std::uint8_t> buf(splash::io::kTileRgbaBytes);
+                if (tileset.renderTile(info.tilesetId, id, buf.data()))
+                    creepPixels.push_back(std::move(buf));
+            }
+
+            if (!creepPixels.empty())
+            {
+                for (long long y = 0; y < pixelsTall; ++y)
+                {
+                    for (long long x = 0; x < pixelsWide; ++x)
+                    {
+                        if (!mask[static_cast<std::size_t>(y) * pixelsWide + x])
+                            continue;
+                        // (x+y) 로 고르면 대각선 줄무늬가 생긴다. 좌표를 섞어 쓴다.
+                        const std::size_t tileX = static_cast<std::size_t>(x / splash::io::kTilePixels);
+                        const std::size_t tileY = static_cast<std::size_t>(y / splash::io::kTilePixels);
+                        const std::size_t variant =
+                            ((tileX * 73856093u) ^ (tileY * 19349663u)) % creepPixels.size();
+                        const auto & buf = creepPixels[variant];
+                        const std::size_t at =
+                            ((y % splash::io::kTilePixels) * splash::io::kTilePixels +
+                             (x % splash::io::kTilePixels)) * 4;
+                        putPixel(x, y, buf[at + 0], buf[at + 1], buf[at + 2]);
+                    }
+                }
+            }
+
+            std::cout << "  크립 건물  : " << creepBuildings << "\n";
+        }
+    }
 
     if (drawLocations)
     {
@@ -666,12 +826,30 @@ int main(int argc, char ** argv)
     {
         bool drawUnits = false;
         bool drawLocations = false;
+        bool drawCreep = false;
         for (std::size_t i = 4; i < args.size(); ++i)
         {
             if (args[i] == "--units") drawUnits = true;
             else if (args[i] == "--locations") drawLocations = true;
+            else if (args[i] == "--creep") drawCreep = true;
         }
-        return cmdRender(args[1], args[2], args[3], drawUnits, drawLocations);
+        return cmdRender(args[1], args[2], args[3], drawUnits, drawLocations, drawCreep);
+    }
+
+    if (command == "tile-sheet" && args.size() == 6)
+    {
+        try {
+            return cmdTileSheet(args[1],
+                static_cast<std::uint16_t>(std::stoul(args[2])),
+                static_cast<std::uint16_t>(std::stoul(args[3])),
+                std::stoi(args[4]), args[5]);
+        } catch (const std::exception &) { return usage(argv[0]); }
+    }
+
+    if (command == "tileset-info" && args.size() == 3)
+    {
+        try { return cmdTilesetInfo(args[1], static_cast<std::uint16_t>(std::stoul(args[2]))); }
+        catch (const std::exception &) { return usage(argv[0]); }
     }
 
     if (command == "unit-image" && args.size() >= 4)

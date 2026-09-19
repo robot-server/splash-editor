@@ -61,6 +61,23 @@ public:
     /// 않으면서도 호출부가 이상을 알 수 있게 한다.
     bool renderTile(std::uint16_t tilesetId, std::uint16_t tileId, std::uint8_t * rgbaOut) const;
 
+    /// 이 유닛이 크립을 만드는 저그 건물인지 (units.dat 의 CreepBuilding 특성).
+    bool isCreepBuilding(std::uint16_t unitType) const;
+
+    /// 크립 바닥으로 쓸 수 있는 타일 ID 들. 없으면 빈 벡터.
+    std::vector<std::uint16_t> creepTileIds(std::uint16_t tilesetId) const;
+
+    /// 타일셋 진단 정보. 크립 타일이 어디에 있는지 등을 조사하는 데 쓴다.
+    struct TilesetInfo
+    {
+        std::size_t tileGroupCount = 0;
+        std::size_t megaTileCount = 0;
+        std::vector<std::uint16_t> creepGroups;      ///< Creep 플래그가 선 그룹
+        std::vector<std::uint16_t> tempCreepGroups;  ///< TemporaryCreep 플래그
+        std::vector<std::uint16_t> recedingGroups;   ///< RecedingCreep 플래그
+    };
+    TilesetInfo describeTileset(std::uint16_t tilesetId) const;
+
     /// 유닛 스프라이트를 읽을 수 있는지. 지형만 읽혔을 수도 있다.
     bool hasUnitGraphics() const;
 
