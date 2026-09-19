@@ -77,6 +77,20 @@ public:
     /// 지금 편집기가 찾아낸 문제들.
     const std::vector<Diagnostic> & diagnostics() const { return diagnostics_; }
 
+    /// 글자를 찾는다. 찾으면 그 자리를 고르고 참을 준다.
+    bool findText(const QString & needle, bool forward, bool caseSensitive, bool wholeWords);
+
+    /// 찾은 것을 모두 바꾼다. 바꾼 수를 준다.
+    int replaceAll(const QString & needle, const QString & replacement,
+                   bool caseSensitive, bool wholeWords);
+
+    /// 고른 자리가 찾는 글자와 같으면 바꾸고 다음으로 넘어간다.
+    bool replaceCurrent(const QString & needle, const QString & replacement,
+                        bool caseSensitive, bool wholeWords);
+
+    /// 그 줄로 커서를 옮긴다 (0 부터).
+    void gotoLine(int line);
+
     int lineNumberAreaWidth() const;
     void lineNumberAreaPaintEvent(QPaintEvent * event);
 

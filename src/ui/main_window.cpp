@@ -5,6 +5,7 @@
 #include "ui/mini_map.h"
 #include "ui/sound_player.h"
 #include "ui/briefing_editor.h"
+#include "ui/code_editor_pane.h"
 #include "ui/settings_dialogs.h"
 #include "ui/trigger_editor.h"
 #include "ui/unit_palette.h"
@@ -1320,16 +1321,13 @@ void MainWindow::onShowTriggers()
 
     auto * dialog = new QDialog(this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
-    dialog->setWindowTitle(tr("트리거 — %1개").arg(document_.info().triggerCount));
-    dialog->resize(760, 560);
+    dialog->setWindowTitle(tr("트리거 텍스트 — %1개").arg(document_.info().triggerCount));
+    dialog->resize(1000, 720);
 
     auto * layout = new QVBoxLayout(dialog);
-    auto * editor = new QPlainTextEdit(dialog);
-    editor->setPlainText(QString::fromStdString(*text));
-
-    QFont mono(QStringLiteral("Menlo"));
-    mono.setStyleHint(QFont::Monospace);
-    editor->setFont(mono);
+    auto * editor = new CodeEditorPane(dialog);
+    editor->setVocabulary(document_.triggerVocabulary(tileset_));
+    editor->setText(QString::fromStdString(*text));
 
     auto * buttons = new QDialogButtonBox(
         QDialogButtonBox::Apply | QDialogButtonBox::Close, dialog);
@@ -1339,14 +1337,25 @@ void MainWindow::onShowTriggers()
            "적용 후에는 실행 취소 이력이 지워집니다."), dialog);
     hint->setWordWrap(true);
 
-    layout->addWidget(editor);
+    layout->addWidget(editor, 1);
     layout->addWidget(hint);
     layout->addWidget(buttons);
 
     connect(buttons, &QDialogButtonBox::rejected, dialog, &QDialog::close);
     connect(buttons->button(QDialogButtonBox::Apply), &QPushButton::clicked, this,
             [this, editor, dialog] {
-        const QString edited = editor->toPlainText();
+        // 문법 검사가 잡은 오류가 있으면 먼저 알린다 — 컴파일러는 실패
+        // 이유를 돌려주지 않아, 그냥 넘기면 무엇이 잘못됐는지 알 수 없다.
+        if (editor->hasErrors())
+        {
+            const auto answer = QMessageBox::question(dialog, tr("트리거 적용"),
+                tr("편집기가 문법 오류를 찾았습니다. 그래도 적용할까요?"),
+                QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+            if (answer != QMessageBox::Yes)
+                return;
+        }
+
+        const QString edited = editor->text();
 
         QApplication::setOverrideCursor(Qt::WaitCursor);
         const bool ok = document_.applyTriggerText(edited.toStdString(), tileset_);

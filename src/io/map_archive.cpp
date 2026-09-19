@@ -3234,10 +3234,20 @@ std::vector<std::uint16_t> MapArchive::terrainTiles() const
 
         // TILE(에디터용)을 우선 쓰고, 없으면 MTXM(게임용)으로 내려간다.
         // 보호된 맵은 TILE 을 비워 두거나 잘라 놓는 경우가 흔하다.
+        //
+        // TILE 이 아예 없는 맵에서도 MappingCore 는 자리만 0 으로 채워 둔다.
+        // 크기만 보고 고르면 지형이 통째로 검게 나오므로, 섹션이 실제로
+        // 들어 있는지와 내용이 비어 있지 않은지를 함께 본다.
         const auto & editorTiles = map.read.editorTiles;
         const auto & gameTiles   = map.read.tiles;
-        const auto & source =
-            (editorTiles.size() >= width * height) ? editorTiles : gameTiles;
+
+        const bool editorUsable =
+            map.hasSection(Chk::SectionName::TILE) &&
+            editorTiles.size() >= width * height &&
+            std::any_of(editorTiles.begin(), editorTiles.end(),
+                        [](std::uint16_t tile) { return tile != 0; });
+
+        const auto & source = editorUsable ? editorTiles : gameTiles;
 
         std::vector<std::uint16_t> out(width * height, 0);
         const std::size_t available = std::min(source.size(), out.size());

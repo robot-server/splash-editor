@@ -1,6 +1,6 @@
 #include "ui/trigger_editor.h"
 
-#include "ui/code_editor.h"
+#include "ui/code_editor_pane.h"
 #include "ui/trigger_argument_panel.h"
 
 #include "chk/map_document.h"
@@ -31,7 +31,7 @@ TriggerEditor::TriggerEditor(chk::MapDocument & document, io::GameGraphics & gra
     : QDialog(parent), document_(document), graphics_(graphics)
 {
     setWindowTitle(tr("트리거 편집기"));
-    resize(920, 620);
+    resize(1360, 760);
 
     // --- 왼쪽: 트리거 목록 ---
     list_ = new QListWidget(this);
@@ -242,8 +242,9 @@ TriggerEditor::TriggerEditor(chk::MapDocument & document, io::GameGraphics & gra
     connect(actionUp, &QPushButton::clicked, this, [moveAction] { moveAction(-1); });
     connect(actionDown, &QPushButton::clicked, this, [moveAction] { moveAction(1); });
 
-    // 텍스트 쪽은 코드 편집기다 — 줄 번호·구문 강조·자동 완성·문법 검사.
-    text_ = new CodeEditor(this);
+    // 텍스트 쪽은 코드 편집기다 — 줄 번호·구문 강조·자동 완성·문법 검사에
+    // 찾기·바꾸기와 문제 목록까지 붙은 판이다.
+    text_ = new CodeEditorPane(this);
     text_->setVocabulary(document_.triggerVocabulary(graphics_));
 
     auto * applyText = new QPushButton(tr("이 트리거에 적용"), this);
@@ -253,7 +254,7 @@ TriggerEditor::TriggerEditor(chk::MapDocument & document, io::GameGraphics & gra
             return;
 
         if (!document_.applyTriggerText(static_cast<std::size_t>(index),
-                                        text_->toPlainText().toStdString(), graphics_))
+                                        text_->text().toStdString(), graphics_))
         {
             QMessageBox::warning(this, tr("적용 실패"),
                                  QString::fromStdString(document_.lastError()));
@@ -263,29 +264,34 @@ TriggerEditor::TriggerEditor(chk::MapDocument & document, io::GameGraphics & gra
         reloadList(index);
     });
 
-    auto * textBox = new QGroupBox(tr("이 트리거의 텍스트 — 조건·동작의 인자는 여기서 고친다"), this);
+    auto * textBox = new QGroupBox(tr("이 트리거의 텍스트"), this);
     auto * textLayout = new QVBoxLayout(textBox);
-    textLayout->addWidget(text_);
+    textLayout->addWidget(text_, 1);
     textLayout->addWidget(applyText);
 
+    // 가운데 — 실행 플레이어와 조건·동작. 조건과 동작은 위아래로 나눠
+    // 각자 인자 판을 넉넉히 갖는다.
     auto * detailPanel = new QWidget(this);
     auto * detailLayout = new QVBoxLayout(detailPanel);
     detailLayout->setContentsMargins(0, 0, 0, 0);
     detailLayout->addWidget(ownerBox);
     detailLayout->addWidget(enabled_);
 
-    auto * listsRow = new QHBoxLayout();
-    listsRow->addWidget(conditionBox);
-    listsRow->addWidget(actionBox);
-    detailLayout->addLayout(listsRow);
-    detailLayout->addWidget(textBox, 1);
+    auto * elementSplitter = new QSplitter(Qt::Vertical, this);
+    elementSplitter->addWidget(conditionBox);
+    elementSplitter->addWidget(actionBox);
+    elementSplitter->setSizes({320, 320});
+    detailLayout->addWidget(elementSplitter, 1);
 
+    // 오른쪽 — 코드 편집기를 창 높이만큼 크게 둔다.
     auto * splitter = new QSplitter(Qt::Horizontal, this);
     splitter->addWidget(listPanel);
     splitter->addWidget(detailPanel);
+    splitter->addWidget(textBox);
     splitter->setStretchFactor(0, 0);
     splitter->setStretchFactor(1, 1);
-    splitter->setSizes({300, 620});
+    splitter->setStretchFactor(2, 2);
+    splitter->setSizes({260, 460, 560});
 
     auto * buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::close);
@@ -370,7 +376,7 @@ void TriggerEditor::reloadDetail()
 
     conditions_->clear();
     actions_->clear();
-    text_->clear();
+    text_->setText(QString());
     for (auto * box : owners_)
     {
         if (box != nullptr)
@@ -388,7 +394,7 @@ void TriggerEditor::reloadDetail()
 
             enabled_->setChecked((detail->flags & 0x08) == 0); // Disabled 비트가 꺼져 있으면 사용
 
-            text_->setPlainText(QString::fromStdString(detail->text));
+            text_->setText(QString::fromStdString(detail->text));
         }
     }
 

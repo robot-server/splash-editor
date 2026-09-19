@@ -1031,7 +1031,7 @@ int cmdUnitClasses(const std::string & installPath)
     {
         const auto wav = graphics.unitSound(t);
         std::cout << "  소리 " << t << " (" << splash::io::unitTypeName(t) << "): "
-                  << wav.size() << " 바이트\n";
+                  << wav.size() << " 바이트  " << graphics.unitSoundName(t) << "\n";
     }
     // 알려진 유닛으로 분류가 맞는지 확인한다.
     for (std::uint16_t type : {std::uint16_t(0), std::uint16_t(37), std::uint16_t(65),

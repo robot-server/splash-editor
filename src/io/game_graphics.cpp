@@ -333,6 +333,55 @@ std::vector<std::uint8_t> GameGraphics::renderMinimap(
     return out;
 }
 
+std::string GameGraphics::unitSoundName(std::uint16_t unitType) const
+{
+    if (!hasUnitGraphics())
+        return {};
+
+    const Sc::Unit & units = impl_->scData->units;
+    if (unitType >= units.numUnitTypes())
+        return {};
+
+    try
+    {
+        const auto & dat = units.getUnit(Sc::Unit::Type(unitType));
+        std::uint16_t soundIndex = dat.readySound;
+        if (soundIndex == 0)
+            soundIndex = dat.whatSoundStart;
+        if (soundIndex == 0)
+            return {};
+
+        auto sfxData = Sc::Data::GetAsset(*impl_->cluster, "arr\\sfxdata.dat", true);
+        if (!sfxData || sfxData->size() < 4)
+            return {};
+
+        // units.dat 의 소리 번호는 1 부터 센다(0 은 "소리 없음"). sfxdata.dat
+        // 의 배열은 0 부터라 한 칸 밀어 읽어야 같은 소리가 나온다 — 실제
+        // 파일 이름으로 확인했다(마린 275 -> TMaRdy00.WAV).
+        const std::size_t entries = std::min<std::size_t>(1144, sfxData->size() / 4);
+        const std::size_t entryIndex = static_cast<std::size_t>(soundIndex) + 1;
+        if (entryIndex >= entries)
+            return {};
+
+        std::uint32_t stringIndex = 0;
+        std::memcpy(&stringIndex, sfxData->data() + entryIndex * 4, sizeof(stringIndex));
+        if (stringIndex == 0)
+            return {};
+
+        Sc::TblFile sfxTbl;
+        if (!sfxTbl.load(*impl_->cluster, "arr\\sfxdata.tbl"))
+            return {};
+        if (stringIndex > sfxTbl.numStrings())
+            return {};
+
+        return sfxTbl.getString(stringIndex - 1);
+    }
+    catch (const std::exception &)
+    {
+    }
+    return {};
+}
+
 std::vector<std::uint8_t> GameGraphics::unitSound(std::uint16_t unitType) const
 {
     std::vector<std::uint8_t> out;
@@ -347,8 +396,12 @@ std::vector<std::uint8_t> GameGraphics::unitSound(std::uint16_t unitType) const
     {
         const auto & dat = units.getUnit(Sc::Unit::Type(unitType));
 
-        // "무엇" 소리는 여러 개가 묶여 있다. 첫 번째를 쓴다.
-        const std::uint16_t soundIndex = dat.whatSoundStart;
+        // 게임에서 유닛이 막 나왔을 때 나는 소리를 쓴다 ("생산 완료").
+        // 0~105 번 유닛만 이 소리를 갖는데, 건물·중립 물체처럼 없는 것은
+        // "무엇" 소리로 대신한다.
+        std::uint16_t soundIndex = dat.readySound;
+        if (soundIndex == 0)
+            soundIndex = dat.whatSoundStart;
         if (soundIndex == 0)
             return out;
 
@@ -362,11 +415,12 @@ std::vector<std::uint8_t> GameGraphics::unitSound(std::uint16_t unitType) const
         // 앞부분이 u32 배열(파일 이름 인덱스)이다. 항목 수는 알려진 값을 쓰되
         // 파일 크기를 넘지 않도록 자른다.
         const std::size_t entries = std::min<std::size_t>(1144, sfxData->size() / 4);
-        if (soundIndex >= entries)
+        const std::size_t entryIndex = static_cast<std::size_t>(soundIndex) + 1;
+        if (entryIndex >= entries)
             return out;
 
         std::uint32_t stringIndex = 0;
-        std::memcpy(&stringIndex, sfxData->data() + soundIndex * 4, sizeof(stringIndex));
+        std::memcpy(&stringIndex, sfxData->data() + entryIndex * 4, sizeof(stringIndex));
         if (stringIndex == 0)
             return out;
 

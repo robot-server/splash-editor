@@ -25,7 +25,7 @@ namespace splash::io  { class GameGraphics; }
 
 namespace splash::ui {
 
-class CodeEditor;
+class CodeEditorPane;
 class TriggerArgumentPanel;
 
 class TriggerEditor : public QDialog
@@ -69,7 +69,7 @@ private:
     std::vector<io::TriggerElement> actionElements_;
     std::vector<io::TriggerChoice> conditionTypes_;
     std::vector<io::TriggerChoice> actionTypes_;
-    CodeEditor * text_ = nullptr;
+    CodeEditorPane * text_ = nullptr;
     QLabel * summary_ = nullptr;
 
     bool loading_ = false; ///< 체크박스를 코드로 바꾸는 동안 신호를 무시한다

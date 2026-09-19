@@ -631,6 +631,103 @@ void CodeEditor::maybeComplete()
     completer_->complete(box);
 }
 
+namespace {
+
+QTextDocument::FindFlags findFlags(bool forward, bool caseSensitive, bool wholeWords)
+{
+    QTextDocument::FindFlags flags;
+    if (!forward)
+        flags |= QTextDocument::FindBackward;
+    if (caseSensitive)
+        flags |= QTextDocument::FindCaseSensitively;
+    if (wholeWords)
+        flags |= QTextDocument::FindWholeWords;
+    return flags;
+}
+
+} // namespace
+
+bool CodeEditor::findText(const QString & needle, bool forward,
+                          bool caseSensitive, bool wholeWords)
+{
+    if (needle.isEmpty())
+        return false;
+
+    const auto flags = findFlags(forward, caseSensitive, wholeWords);
+    if (find(needle, flags))
+        return true;
+
+    // 끝까지 갔으면 반대편에서 다시 찾는다.
+    QTextCursor cursor = textCursor();
+    QTextCursor wrapped = cursor;
+    wrapped.movePosition(forward ? QTextCursor::Start : QTextCursor::End);
+    setTextCursor(wrapped);
+
+    if (find(needle, flags))
+        return true;
+
+    setTextCursor(cursor);
+    return false;
+}
+
+bool CodeEditor::replaceCurrent(const QString & needle, const QString & replacement,
+                                bool caseSensitive, bool wholeWords)
+{
+    QTextCursor cursor = textCursor();
+    const Qt::CaseSensitivity sensitivity =
+        caseSensitive ? Qt::CaseSensitive : Qt::CaseInsensitive;
+
+    if (cursor.hasSelection() &&
+        cursor.selectedText().compare(needle, sensitivity) == 0)
+    {
+        cursor.insertText(replacement);
+    }
+
+    return findText(needle, true, caseSensitive, wholeWords);
+}
+
+int CodeEditor::replaceAll(const QString & needle, const QString & replacement,
+                           bool caseSensitive, bool wholeWords)
+{
+    if (needle.isEmpty())
+        return 0;
+
+    const auto flags = findFlags(true, caseSensitive, wholeWords);
+
+    // 한 번의 되돌리기로 묶는다 — 반쯤 바뀐 상태로 남으면 곤란하다.
+    QTextCursor cursor = textCursor();
+    cursor.beginEditBlock();
+
+    QTextCursor scan(document());
+    scan.movePosition(QTextCursor::Start);
+
+    int count = 0;
+    while (true)
+    {
+        scan = document()->find(needle, scan, flags);
+        if (scan.isNull())
+            break;
+
+        scan.insertText(replacement);
+        ++count;
+    }
+
+    cursor.endEditBlock();
+    return count;
+}
+
+void CodeEditor::gotoLine(int line)
+{
+    const QTextBlock block = document()->findBlockByNumber(std::max(0, line));
+    if (!block.isValid())
+        return;
+
+    QTextCursor cursor(block);
+    setTextCursor(cursor);
+    centerCursor();
+    setFocus();
+}
+
 void CodeEditor::keyPressEvent(QKeyEvent * event)
 {
     // 자동 완성 목록이 떠 있으면 그쪽이 먼저 키를 가져간다.

@@ -104,6 +104,9 @@ public:
     /// MappingCore 가 다루지 않아 sfxdata.dat/tbl 을 직접 읽는다.
     std::vector<std::uint8_t> unitSound(std::uint16_t unitType) const;
 
+    /// 그 소리의 파일 이름 (sfxdata.tbl 의 상대 경로). 확인용이다.
+    std::string unitSoundName(std::uint16_t unitType) const;
+
     /// 유닛을 팔레트에서 나누기 위한 분류.
     struct UnitClass
     {
