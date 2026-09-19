@@ -54,6 +54,18 @@ struct RawUnit
     std::uint32_t resourceAmount = 0; ///< 자원 유닛의 남은 양 (그래픽 단계를 가른다)
 };
 
+/// 맵에 배치된 스프라이트(THG2). 나무·바위 같은 장식이거나,
+/// 유닛처럼 보이지만 실제 유닛이 아닌 것들이다.
+struct RawSprite
+{
+    std::uint16_t type = 0;
+    std::uint16_t x = 0;
+    std::uint16_t y = 0;
+    std::uint8_t  owner = 0;
+    std::uint16_t flags = 0;
+    bool drawnAsSprite = false; ///< true 면 스프라이트 그래픽, false 면 유닛 그래픽
+};
+
 /// 로케이션 하나. 좌표는 픽셀 단위이며, 좌상단이 우하단보다 클 수 있다
 /// (사용자가 반대로 끌어 만든 경우 — 게임은 그대로 받아들인다).
 struct RawLocation
@@ -139,6 +151,9 @@ public:
 
     /// 맵에 놓인 유닛 전부.
     std::vector<RawUnit> units() const;
+
+    /// 맵에 배치된 스프라이트 전부.
+    std::vector<RawSprite> sprites() const;
 
     /// 로케이션 전부. 비어 있는 슬롯은 건너뛴다.
     std::vector<RawLocation> locations() const;

@@ -642,6 +642,43 @@ int cmdRender(const std::string & mapPath,
         const bool haveSprites = tileset.hasUnitGraphics();
         std::size_t drawn = 0;
 
+        // 맵 스프라이트(THG2)를 먼저 — 대개 배경 장식이다.
+        const auto archiveSprites = archive.sprites();
+        std::size_t spritesDrawn = 0;
+        if (haveSprites)
+        {
+            for (const auto & sp : archiveSprites)
+            {
+                const auto image = tileset.renderSprite(sp.type, sp.owner, info.tilesetId,
+                                                        sp.drawnAsSprite);
+                if (image.width <= 0 || image.height <= 0)
+                    continue;
+
+                const long long baseX = static_cast<long long>(sp.x) - image.anchorX;
+                const long long baseY = static_cast<long long>(sp.y) - image.anchorY;
+                for (int yy = 0; yy < image.height; ++yy)
+                {
+                    for (int xx = 0; xx < image.width; ++xx)
+                    {
+                        const std::size_t at =
+                            (static_cast<std::size_t>(yy) * image.width + xx) * 4;
+                        const std::uint8_t alpha = image.rgba[at + 3];
+                        if (alpha == 0)
+                            continue;
+                        blendPixel(baseX + xx, baseY + yy,
+                                   image.rgba[at + 0], image.rgba[at + 1],
+                                   image.rgba[at + 2], alpha);
+                    }
+                }
+                ++spritesDrawn;
+            }
+        }
+        if (!archiveSprites.empty())
+        {
+            std::cout << "  맵 스프라이트: " << spritesDrawn << " / "
+                      << archiveSprites.size() << "\n";
+        }
+
         for (const auto & u : archiveUnits)
         {
             if (haveSprites)

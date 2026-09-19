@@ -134,6 +134,7 @@ void MapDocument::close()
     info_ = MapInfo{};
     tiles_.clear();
     units_.clear();
+    sprites_.clear();
     locations_.clear();
     filePath_.clear();
     lastError_.clear();
@@ -187,6 +188,11 @@ const std::vector<MapUnit> & MapDocument::units() const
     return units_;
 }
 
+const std::vector<MapSprite> & MapDocument::sprites() const
+{
+    return sprites_;
+}
+
 const std::vector<MapLocation> & MapDocument::locations() const
 {
     return locations_;
@@ -207,6 +213,18 @@ void MapDocument::refreshInfo()
         unit.resourceAmount = raw.resourceAmount;
         unit.typeName = io::unitTypeName(raw.type);
         units_.push_back(std::move(unit));
+    }
+
+    sprites_.clear();
+    for (const io::RawSprite & raw : archive_.sprites())
+    {
+        MapSprite sprite;
+        sprite.x             = raw.x;
+        sprite.y             = raw.y;
+        sprite.type          = raw.type;
+        sprite.owner         = raw.owner;
+        sprite.drawnAsSprite = raw.drawnAsSprite;
+        sprites_.push_back(sprite);
     }
 
     locations_.clear();

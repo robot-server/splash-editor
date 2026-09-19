@@ -46,6 +46,7 @@ void MapView::setTileset(const io::GameGraphics * tileset)
     tileset_ = tileset;
     tileCache_.clear(); // 타일셋이 바뀌면 그림이 전부 달라진다
     unitCache_.clear();
+    spriteCache_.clear();
     refresh();
 }
 
@@ -53,6 +54,7 @@ void MapView::refresh()
 {
     tileCache_.clear();
     unitCache_.clear();
+    spriteCache_.clear();
     creepPattern_ = QPixmap();
     creepPatternReady_ = false;
     updateScrollRanges();
@@ -417,13 +419,64 @@ const MapView::UnitSprite * MapView::unitSprite(std::uint16_t type, std::uint8_t
     return inserted.value().pixmap.isNull() ? nullptr : &inserted.value();
 }
 
+const MapView::UnitSprite * MapView::mapSprite(std::uint16_t type, std::uint8_t owner,
+                                               bool drawnAsSprite)
+{
+    if (tileset_ == nullptr || !tileset_->hasUnitGraphics() || document_ == nullptr)
+        return nullptr;
+
+    const std::uint32_t key = (static_cast<std::uint32_t>(type) << 9) |
+                              (static_cast<std::uint32_t>(owner) << 1) |
+                              (drawnAsSprite ? 1u : 0u);
+
+    auto found = spriteCache_.find(key);
+    if (found != spriteCache_.end())
+        return found.value().pixmap.isNull() ? nullptr : &found.value();
+
+    const io::UnitImage image =
+        tileset_->renderSprite(type, owner, document_->info().tilesetId, drawnAsSprite);
+
+    UnitSprite sprite;
+    if (image.width > 0 && image.height > 0)
+    {
+        const QImage qimage(image.rgba.data(), image.width, image.height,
+                            image.width * 4, QImage::Format_RGBA8888);
+        sprite.pixmap = QPixmap::fromImage(qimage.copy());
+        sprite.anchorX = image.anchorX;
+        sprite.anchorY = image.anchorY;
+    }
+
+    auto inserted = spriteCache_.insert(key, sprite);
+    return inserted.value().pixmap.isNull() ? nullptr : &inserted.value();
+}
+
 void MapView::paintUnits(QPainter & painter, const QRect & dirty)
 {
     const auto & units = document_->units();
-    if (units.empty())
+    const auto & sprites = document_->sprites();
+    if (units.empty() && sprites.empty())
         return;
 
     painter.save();
+
+    // 맵 스프라이트(THG2)를 먼저 — 대개 나무·바위 같은 배경 장식이다.
+    for (const auto & sprite : sprites)
+    {
+        const UnitSprite * pixmap = mapSprite(sprite.type, sprite.owner, sprite.drawnAsSprite);
+        if (pixmap == nullptr)
+            continue;
+
+        const QPointF topLeft =
+            mapToScreen(sprite.x - pixmap->anchorX, sprite.y - pixmap->anchorY);
+        const QRectF bounds(topLeft.x(), topLeft.y(),
+                            pixmap->pixmap.width() * zoom_,
+                            pixmap->pixmap.height() * zoom_);
+        if (!dirty.intersects(bounds.toAlignedRect().adjusted(-1, -1, 1, 1)))
+            continue;
+
+        painter.drawPixmap(bounds, pixmap->pixmap,
+                           QRectF(0, 0, pixmap->pixmap.width(), pixmap->pixmap.height()));
+    }
 
     // 스프라이트가 없는 유닛(또는 그래픽 미로드)을 위한 대체 표시 크기.
     const double diameter = std::clamp(16.0 * zoom_, 3.0, 48.0);

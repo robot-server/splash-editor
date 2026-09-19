@@ -396,6 +396,40 @@ std::vector<RawUnit> MapArchive::units() const
     return out;
 }
 
+std::vector<RawSprite> MapArchive::sprites() const
+{
+    if (!impl_->isOpen())
+        return {};
+
+    const MapFile & map = *impl_->mapFile;
+    std::vector<RawSprite> out;
+
+    try
+    {
+        const std::size_t count = map.numSprites();
+        out.reserve(count);
+
+        for (std::size_t i = 0; i < count; ++i)
+        {
+            const Chk::Sprite & sprite = map.getSprite(i);
+            RawSprite raw;
+            raw.type          = static_cast<std::uint16_t>(sprite.type);
+            raw.x             = sprite.xc;
+            raw.y             = sprite.yc;
+            raw.owner         = sprite.owner;
+            raw.flags         = sprite.flags;
+            raw.drawnAsSprite = sprite.isDrawnAsSprite();
+            out.push_back(raw);
+        }
+    }
+    catch (const std::exception &)
+    {
+        return out;
+    }
+
+    return out;
+}
+
 std::vector<RawLocation> MapArchive::locations() const
 {
     if (!impl_->isOpen())

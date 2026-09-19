@@ -45,6 +45,16 @@ struct MapUnit
     std::string typeName;
 };
 
+/// 맵에 배치된 스프라이트 (표시용).
+struct MapSprite
+{
+    std::uint16_t x = 0;
+    std::uint16_t y = 0;
+    std::uint16_t type = 0;
+    std::uint8_t  owner = 0;
+    bool drawnAsSprite = false;
+};
+
 /// 로케이션 하나 (표시용). 좌표는 정규화되어 left<=right, top<=bottom 이다.
 struct MapLocation
 {
@@ -113,6 +123,9 @@ public:
     /// 맵에 놓인 유닛. 열 때 한 번 읽어 둔다.
     const std::vector<MapUnit> & units() const;
 
+    /// 맵에 배치된 스프라이트(THG2).
+    const std::vector<MapSprite> & sprites() const;
+
     /// 쓰이고 있는 로케이션.
     const std::vector<MapLocation> & locations() const;
 
@@ -128,6 +141,7 @@ private:
     MapInfo info_;
     std::vector<std::uint16_t> tiles_;
     std::vector<MapUnit> units_;
+    std::vector<MapSprite> sprites_;
     std::vector<MapLocation> locations_;
     std::string filePath_;
     std::string lastError_;

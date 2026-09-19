@@ -274,38 +274,236 @@ bool GameGraphics::hasUnitGraphics() const
     return impl_->loaded && impl_->unitsLoaded;
 }
 
+namespace {
+
+/// 초기화된 액터가 가리키는 이미지 레이어들을 하나의 RGBA 이미지로 합성한다.
+/// 유닛과 스프라이트가 같은 경로를 쓴다 — 차이는 액터를 어떻게 초기화하느냐뿐이다.
+UnitImage composeActor(Sc::Data & sc,
+                       AnimContext & anim,
+                       MapActor & actor,
+                       const Sc::Terrain::Tiles & tiles,
+                       std::uint8_t owner)
+{
+    UnitImage out;
+    // --- 팔레트 두 벌 ---
+    // 일반 이미지는 지형 팔레트를 쓰되 8-15 구간을 플레이어 색으로 바꾼다.
+    // 그림자는 dark.pcx 팔레트로 그린다(Chkdraft 도 shadowPalette 로 같은 것을 쓴다).
+    std::array<Sc::SystemColor, Sc::NumColors> palette = tiles.systemColorPalette;
+    const auto & ramp = sc.tunit.bgraPalette;
+    const std::size_t rampBase = static_cast<std::size_t>(owner) * 8;
+    for (std::size_t i = 0; i < 8; ++i)
+    {
+        if (rampBase + i < ramp.size())
+            palette[8 + i] = ramp[rampBase + i];
+    }
+    // 그림자는 색을 칠하는 것이 아니라 배경을 어둡게 하는 효과다.
+    // dark.pcx 는 "배경색 -> 어두운 색" 매핑표라 배경을 알아야 정확한데,
+    // 스프라이트를 따로 그리는 우리는 배경을 모른다. 반투명 검정으로 근사한다.
+    constexpr std::uint8_t kShadowAlpha = 110;
+
+
+
+    struct Layer
+    {
+        const Sc::Sprite::GrpFile * grp = nullptr;
+        std::size_t frame = 0;
+        int left = 0;   ///< 유닛 중심 기준
+        int top = 0;
+        bool flipped = false;
+        bool shadow = false;
+    };
+
+    std::vector<Layer> layers;
+    int minLeft = 0, minTop = 0, maxRight = 0, maxBottom = 0;
+    bool first = true;
+
+    for (std::size_t slot = 0; slot < MapActor::MaxSlots; ++slot)
+    {
+        const std::uint16_t imageIndex = actor.usedImages[slot];
+        if (imageIndex == 0 || imageIndex >= anim.images.size())
+            continue;
+        if (!anim.images[imageIndex].has_value())
+            continue;
+
+        const MapImage & image = *anim.images[imageIndex];
+        if (image.hidden || image.drawFunction == MapImage::DrawFunction::None)
+            continue;
+        if (image.imageId >= sc.sprites.numImages())
+            continue;
+
+        const std::size_t grpIndex = sc.sprites.getImage(image.imageId).grpFile;
+        const Sc::Sprite::GrpFile & grp = sc.sprites.getGrp(grpIndex).get();
+        if (grp.numFrames == 0)
+            continue;
+
+        const std::size_t frame =
+            image.frame < grp.numFrames ? image.frame : 0;
+        const Sc::Sprite::GrpFrameHeader & header = grp.frameHeaders[frame];
+        if (header.frameWidth == 0 || header.frameHeight == 0)
+            continue;
+
+        Layer layer;
+        layer.grp = &grp;
+        layer.frame = frame;
+        layer.flipped = image.flipped;
+        layer.shadow = (image.drawFunction == MapImage::DrawFunction::Shadow);
+
+        // GRP 프레임은 스프라이트 원점(그림 중앙) 기준 오프셋을 갖는다.
+        // 좌우 반전 시에는 프레임이 반대쪽에서 시작하므로 x 기준이 달라진다
+        // (Chkdraft 의 drawClassicImage 와 같은 계산이다).
+        layer.left = image.xc + image.xOffset +
+            (layer.flipped
+                 ? (grp.grpWidth / 2 - header.frameWidth - header.xOffset)
+                 : (-grp.grpWidth / 2 + header.xOffset));
+        layer.top  = image.yc + image.yOffset - grp.grpHeight / 2 + header.yOffset;
+
+        const int right = layer.left + header.frameWidth;
+        const int bottom = layer.top + header.frameHeight;
+
+        if (first)
+        {
+            minLeft = layer.left; minTop = layer.top;
+            maxRight = right; maxBottom = bottom;
+            first = false;
+        }
+        else
+        {
+            minLeft = std::min(minLeft, layer.left);
+            minTop = std::min(minTop, layer.top);
+            maxRight = std::max(maxRight, right);
+            maxBottom = std::max(maxBottom, bottom);
+        }
+
+        if (std::getenv("SPLASH_DEBUG_LAYERS") != nullptr)
+        {
+            std::cerr << "    layer slot=" << slot
+                      << " imageId=" << image.imageId
+                      << " grp=" << grpIndex
+                      << " frame=" << frame << "/" << grp.numFrames
+                      << " grpWH=" << grp.grpWidth << "x" << grp.grpHeight
+                      << " frameWH=" << int(header.frameWidth) << "x" << int(header.frameHeight)
+                      << " hdrOff=(" << int(header.xOffset) << "," << int(header.yOffset) << ")"
+                      << " imgOff=(" << int(image.xOffset) << "," << int(image.yOffset) << ")"
+                      << " xc,yc=(" << image.xc << "," << image.yc << ")"
+                      << " flip=" << image.flipped
+                      << " draw=" << int(image.drawFunction)
+                      << " -> left=" << layer.left << " top=" << layer.top << "\n";
+        }
+
+        layers.push_back(layer);
+    }
+
+    anim.clearActor(actor); // 다음 호출을 위해 이미지 슬롯을 돌려준다
+
+    if (layers.empty())
+        return out;
+
+    out.width = maxRight - minLeft;
+    out.height = maxBottom - minTop;
+    if (out.width <= 0 || out.height <= 0)
+        return out;
+
+    out.anchorX = -minLeft;
+    out.anchorY = -minTop;
+    out.rgba.assign(static_cast<std::size_t>(out.width) * out.height * 4, 0);
+
+    // --- 레이어를 순서대로 합성 (iscript 가 넣은 순서 = 아래에서 위) ---
+    for (const Layer & layer : layers)
+    {
+        const Sc::Sprite::GrpFile & grp = *layer.grp;
+        const Sc::Sprite::GrpFrameHeader & header = grp.frameHeaders[layer.frame];
+        const int frameWidth = header.frameWidth;
+        const int frameHeight = header.frameHeight;
+
+        const std::uint8_t * grpBytes = reinterpret_cast<const std::uint8_t *>(&grp);
+        const std::size_t frameOffset = header.frameOffset;
+        const Sc::Sprite::GrpFrame & frameData =
+            reinterpret_cast<const Sc::Sprite::GrpFrame &>(grpBytes[frameOffset]);
+
+        const int baseX = layer.left - minLeft;
+        const int baseY = layer.top - minTop;
+
+        for (int row = 0; row < frameHeight; ++row)
+        {
+            const std::size_t rowOffset = frameData.rowOffsets[row];
+            const std::uint8_t * lineBytes = &grpBytes[frameOffset + rowOffset];
+
+            int x = 0;
+            std::size_t lineOffset = 0;
+            while (x < frameWidth)
+            {
+                const Sc::Sprite::PixelLine & line =
+                    reinterpret_cast<const Sc::Sprite::PixelLine &>(lineBytes[lineOffset]);
+
+                int length = static_cast<int>(line.lineLength());
+                if (x + length > frameWidth)
+                    length = frameWidth - x;
+                if (length <= 0)
+                    break;
+
+                const bool transparent =
+                    !line.isSpeckled() && !line.isSolidLine();
+
+                if (!transparent)
+                {
+                    for (int i = 0; i < length; ++i)
+                    {
+                        const std::uint8_t index = line.isSpeckled()
+                            ? line.paletteIndex[i]
+                            : line.paletteIndex[0];
+
+                        // 좌우 반전은 프레임 안에서만 일어난다.
+                        const int srcX = layer.flipped ? (frameWidth - 1 - (x + i)) : (x + i);
+                        const int dstX = baseX + srcX;
+                        const int dstY = baseY + row;
+                        if (dstX < 0 || dstY < 0 || dstX >= out.width || dstY >= out.height)
+                            continue;
+
+                        const std::size_t at =
+                            (static_cast<std::size_t>(dstY) * out.width + dstX) * 4;
+
+                        if (layer.shadow)
+                        {
+                            // 이미 칠해진 픽셀(먼저 그린 본체)이 있으면 덮지 않는다.
+                            if (out.rgba[at + 3] != 0)
+                                continue;
+                            out.rgba[at + 0] = 0;
+                            out.rgba[at + 1] = 0;
+                            out.rgba[at + 2] = 0;
+                            out.rgba[at + 3] = kShadowAlpha;
+                        }
+                        else
+                        {
+                            const Sc::SystemColor & color = palette[index];
+                            out.rgba[at + 0] = color.red;
+                            out.rgba[at + 1] = color.green;
+                            out.rgba[at + 2] = color.blue;
+                            out.rgba[at + 3] = 255;
+                        }
+                    }
+                }
+
+                x += length;
+                lineOffset += line.sizeInBytes();
+            }
+        }
+    }
+
+    return out;
+}
+
+} // namespace
+
 UnitImage GameGraphics::renderUnit(std::uint16_t unitType,
                                    std::uint8_t owner,
                                    std::uint16_t tilesetId,
                                    std::uint32_t resourceAmount) const
 {
-    UnitImage out;
     if (!hasUnitGraphics())
-        return out;
-
-    Sc::Data & sc = *impl_->scData;
-    AnimContext & anim = *impl_->anim;
-    const Sc::Terrain::Tiles & tiles = impl_->tiles(tilesetId);
+        return UnitImage{};
 
     try
     {
-        // --- 팔레트 두 벌 ---
-        // 일반 이미지는 지형 팔레트를 쓰되 8-15 구간을 플레이어 색으로 바꾼다.
-        // 그림자는 dark.pcx 팔레트로 그린다(Chkdraft 도 shadowPalette 로 같은 것을 쓴다).
-        std::array<Sc::SystemColor, Sc::NumColors> palette = tiles.systemColorPalette;
-        const auto & ramp = sc.tunit.bgraPalette;
-        const std::size_t rampBase = static_cast<std::size_t>(owner) * 8;
-        for (std::size_t i = 0; i < 8; ++i)
-        {
-            if (rampBase + i < ramp.size())
-                palette[8 + i] = ramp[rampBase + i];
-        }
-        // 그림자는 색을 칠하는 것이 아니라 배경을 어둡게 하는 효과다.
-        // dark.pcx 는 "배경색 -> 어두운 색" 매핑표라 배경을 알아야 정확한데,
-        // 스프라이트를 따로 그리는 우리는 배경을 모른다. 반투명 검정으로 근사한다.
-        constexpr std::uint8_t kShadowAlpha = 110;
-
-        // --- iscript 를 돌려 이 유닛이 어떤 이미지들로 구성되는지 얻는다 ---
         Chk::Unit chkUnit {};
         chkUnit.type = Sc::Unit::Type(unitType);
         chkUnit.owner = owner;
@@ -315,200 +513,49 @@ UnitImage GameGraphics::renderUnit(std::uint16_t unitType,
         chkUnit.resourceAmount = resourceAmount;
 
         MapActor actor {};
-        anim.initializeUnitActor(actor, /*isClipboard*/ false, /*unitIndex*/ 0, chkUnit, 0, 0);
+        impl_->anim->initializeUnitActor(actor, /*isClipboard*/ false, /*unitIndex*/ 0,
+                                         chkUnit, 0, 0);
 
-        struct Layer
-        {
-            const Sc::Sprite::GrpFile * grp = nullptr;
-            std::size_t frame = 0;
-            int left = 0;   ///< 유닛 중심 기준
-            int top = 0;
-            bool flipped = false;
-            bool shadow = false;
-        };
-
-        std::vector<Layer> layers;
-        int minLeft = 0, minTop = 0, maxRight = 0, maxBottom = 0;
-        bool first = true;
-
-        for (std::size_t slot = 0; slot < MapActor::MaxSlots; ++slot)
-        {
-            const std::uint16_t imageIndex = actor.usedImages[slot];
-            if (imageIndex == 0 || imageIndex >= anim.images.size())
-                continue;
-            if (!anim.images[imageIndex].has_value())
-                continue;
-
-            const MapImage & image = *anim.images[imageIndex];
-            if (image.hidden || image.drawFunction == MapImage::DrawFunction::None)
-                continue;
-            if (image.imageId >= sc.sprites.numImages())
-                continue;
-
-            const std::size_t grpIndex = sc.sprites.getImage(image.imageId).grpFile;
-            const Sc::Sprite::GrpFile & grp = sc.sprites.getGrp(grpIndex).get();
-            if (grp.numFrames == 0)
-                continue;
-
-            const std::size_t frame =
-                image.frame < grp.numFrames ? image.frame : 0;
-            const Sc::Sprite::GrpFrameHeader & header = grp.frameHeaders[frame];
-            if (header.frameWidth == 0 || header.frameHeight == 0)
-                continue;
-
-            Layer layer;
-            layer.grp = &grp;
-            layer.frame = frame;
-            layer.flipped = image.flipped;
-            layer.shadow = (image.drawFunction == MapImage::DrawFunction::Shadow);
-
-            // GRP 프레임은 스프라이트 원점(그림 중앙) 기준 오프셋을 갖는다.
-            // 좌우 반전 시에는 프레임이 반대쪽에서 시작하므로 x 기준이 달라진다
-            // (Chkdraft 의 drawClassicImage 와 같은 계산이다).
-            layer.left = image.xc + image.xOffset +
-                (layer.flipped
-                     ? (grp.grpWidth / 2 - header.frameWidth - header.xOffset)
-                     : (-grp.grpWidth / 2 + header.xOffset));
-            layer.top  = image.yc + image.yOffset - grp.grpHeight / 2 + header.yOffset;
-
-            const int right = layer.left + header.frameWidth;
-            const int bottom = layer.top + header.frameHeight;
-
-            if (first)
-            {
-                minLeft = layer.left; minTop = layer.top;
-                maxRight = right; maxBottom = bottom;
-                first = false;
-            }
-            else
-            {
-                minLeft = std::min(minLeft, layer.left);
-                minTop = std::min(minTop, layer.top);
-                maxRight = std::max(maxRight, right);
-                maxBottom = std::max(maxBottom, bottom);
-            }
-
-            if (std::getenv("SPLASH_DEBUG_LAYERS") != nullptr)
-            {
-                std::cerr << "    layer slot=" << slot
-                          << " imageId=" << image.imageId
-                          << " grp=" << grpIndex
-                          << " frame=" << frame << "/" << grp.numFrames
-                          << " grpWH=" << grp.grpWidth << "x" << grp.grpHeight
-                          << " frameWH=" << int(header.frameWidth) << "x" << int(header.frameHeight)
-                          << " hdrOff=(" << int(header.xOffset) << "," << int(header.yOffset) << ")"
-                          << " imgOff=(" << int(image.xOffset) << "," << int(image.yOffset) << ")"
-                          << " xc,yc=(" << image.xc << "," << image.yc << ")"
-                          << " flip=" << image.flipped
-                          << " draw=" << int(image.drawFunction)
-                          << " -> left=" << layer.left << " top=" << layer.top << "\n";
-            }
-
-            layers.push_back(layer);
-        }
-
-        anim.clearActor(actor); // 다음 호출을 위해 이미지 슬롯을 돌려준다
-
-        if (layers.empty())
-            return out;
-
-        out.width = maxRight - minLeft;
-        out.height = maxBottom - minTop;
-        if (out.width <= 0 || out.height <= 0)
-            return out;
-
-        out.anchorX = -minLeft;
-        out.anchorY = -minTop;
-        out.rgba.assign(static_cast<std::size_t>(out.width) * out.height * 4, 0);
-
-        // --- 레이어를 순서대로 합성 (iscript 가 넣은 순서 = 아래에서 위) ---
-        for (const Layer & layer : layers)
-        {
-            const Sc::Sprite::GrpFile & grp = *layer.grp;
-            const Sc::Sprite::GrpFrameHeader & header = grp.frameHeaders[layer.frame];
-            const int frameWidth = header.frameWidth;
-            const int frameHeight = header.frameHeight;
-
-            const std::uint8_t * grpBytes = reinterpret_cast<const std::uint8_t *>(&grp);
-            const std::size_t frameOffset = header.frameOffset;
-            const Sc::Sprite::GrpFrame & frameData =
-                reinterpret_cast<const Sc::Sprite::GrpFrame &>(grpBytes[frameOffset]);
-
-            const int baseX = layer.left - minLeft;
-            const int baseY = layer.top - minTop;
-
-            for (int row = 0; row < frameHeight; ++row)
-            {
-                const std::size_t rowOffset = frameData.rowOffsets[row];
-                const std::uint8_t * lineBytes = &grpBytes[frameOffset + rowOffset];
-
-                int x = 0;
-                std::size_t lineOffset = 0;
-                while (x < frameWidth)
-                {
-                    const Sc::Sprite::PixelLine & line =
-                        reinterpret_cast<const Sc::Sprite::PixelLine &>(lineBytes[lineOffset]);
-
-                    int length = static_cast<int>(line.lineLength());
-                    if (x + length > frameWidth)
-                        length = frameWidth - x;
-                    if (length <= 0)
-                        break;
-
-                    const bool transparent =
-                        !line.isSpeckled() && !line.isSolidLine();
-
-                    if (!transparent)
-                    {
-                        for (int i = 0; i < length; ++i)
-                        {
-                            const std::uint8_t index = line.isSpeckled()
-                                ? line.paletteIndex[i]
-                                : line.paletteIndex[0];
-
-                            // 좌우 반전은 프레임 안에서만 일어난다.
-                            const int srcX = layer.flipped ? (frameWidth - 1 - (x + i)) : (x + i);
-                            const int dstX = baseX + srcX;
-                            const int dstY = baseY + row;
-                            if (dstX < 0 || dstY < 0 || dstX >= out.width || dstY >= out.height)
-                                continue;
-
-                            const std::size_t at =
-                                (static_cast<std::size_t>(dstY) * out.width + dstX) * 4;
-
-                            if (layer.shadow)
-                            {
-                                // 이미 칠해진 픽셀(먼저 그린 본체)이 있으면 덮지 않는다.
-                                if (out.rgba[at + 3] != 0)
-                                    continue;
-                                out.rgba[at + 0] = 0;
-                                out.rgba[at + 1] = 0;
-                                out.rgba[at + 2] = 0;
-                                out.rgba[at + 3] = kShadowAlpha;
-                            }
-                            else
-                            {
-                                const Sc::SystemColor & color = palette[index];
-                                out.rgba[at + 0] = color.red;
-                                out.rgba[at + 1] = color.green;
-                                out.rgba[at + 2] = color.blue;
-                                out.rgba[at + 3] = 255;
-                            }
-                        }
-                    }
-
-                    x += length;
-                    lineOffset += line.sizeInBytes();
-                }
-            }
-        }
+        return composeActor(*impl_->scData, *impl_->anim, actor,
+                            impl_->tiles(tilesetId), owner);
     }
     catch (const std::exception &)
     {
         return UnitImage{};
     }
+}
 
-    return out;
+UnitImage GameGraphics::renderSprite(std::uint16_t spriteType,
+                                     std::uint8_t owner,
+                                     std::uint16_t tilesetId,
+                                     bool drawnAsSprite) const
+{
+    if (!hasUnitGraphics())
+        return UnitImage{};
+
+    try
+    {
+        Chk::Sprite chkSprite {};
+        chkSprite.type = Sc::Sprite::Type(spriteType);
+        chkSprite.owner = owner;
+        chkSprite.xc = 0;
+        chkSprite.yc = 0;
+        // 스프라이트로 그릴지 유닛 그래픽으로 그릴지는 플래그가 정한다.
+        chkSprite.flags = drawnAsSprite
+            ? Chk::Sprite::toPureSpriteFlags(0)
+            : Chk::Sprite::toSpriteUnitFlags(0);
+
+        MapActor actor {};
+        impl_->anim->initializeSpriteActor(actor, /*isClipboard*/ false, /*spriteIndex*/ 0,
+                                           chkSprite, 0, 0);
+
+        return composeActor(*impl_->scData, *impl_->anim, actor,
+                            impl_->tiles(tilesetId), owner);
+    }
+    catch (const std::exception &)
+    {
+        return UnitImage{};
+    }
 }
 
 bool GameGraphics::renderTile(std::uint16_t tilesetId,

@@ -71,6 +71,9 @@ private:
     const UnitSprite * unitSprite(std::uint16_t type, std::uint8_t owner,
                                   std::uint32_t resourceAmount);
 
+    /// 맵 스프라이트(THG2). 유닛과 캐시를 나눠 쓴다.
+    const UnitSprite * mapSprite(std::uint16_t type, std::uint8_t owner, bool drawnAsSprite);
+
     /// 맵 픽셀 좌표를 화면 좌표로 옮긴다.
     QPointF mapToScreen(double mapX, double mapY) const;
 
@@ -94,6 +97,7 @@ private:
 
     QHash<std::uint16_t, QPixmap> tileCache_;
     QHash<std::uint32_t, UnitSprite> unitCache_;
+    QHash<std::uint32_t, UnitSprite> spriteCache_;
     double zoom_ = 1.0;
     QPixmap creepPattern_;
     bool creepPatternReady_ = false;

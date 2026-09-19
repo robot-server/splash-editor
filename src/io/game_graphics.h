@@ -61,6 +61,13 @@ public:
     /// 않으면서도 호출부가 이상을 알 수 있게 한다.
     bool renderTile(std::uint16_t tilesetId, std::uint16_t tileId, std::uint8_t * rgbaOut) const;
 
+    /// 맵에 배치된 스프라이트(THG2)를 그린다.
+    /// drawnAsSprite 가 false 면 유닛 그래픽으로 그려야 하는 항목이다.
+    UnitImage renderSprite(std::uint16_t spriteType,
+                           std::uint8_t owner,
+                           std::uint16_t tilesetId,
+                           bool drawnAsSprite) const;
+
     /// 이 유닛이 크립을 만드는 저그 건물인지 (units.dat 의 CreepBuilding 특성).
     bool isCreepBuilding(std::uint16_t unitType) const;
 
