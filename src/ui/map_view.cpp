@@ -313,6 +313,8 @@ void MapView::paintEvent(QPaintEvent * event)
         painter.restore();
     }
 
+    if (showFog_)
+        paintFog(painter, dirty);
     if (showLocations_)
         paintLocations(painter, dirty);
     if (showUnits_)
@@ -778,6 +780,143 @@ bool MapView::unitWouldOverlap(std::uint16_t unitType, int x, int y, int skipInd
     return false;
 }
 
+void MapView::setFogVisible(bool visible)
+{
+    showFog_ = visible;
+    viewport()->update();
+}
+
+void MapView::setFogPlayers(std::uint8_t players)
+{
+    fogPlayers_ = players;
+}
+
+void MapView::setFogErasing(bool erasing)
+{
+    fogErase_ = erasing;
+}
+
+void MapView::paintFog(QPainter & painter, const QRect & dirty)
+{
+    const auto & fog = document_->fogTiles();
+    if (fog.empty())
+        return;
+
+    const auto & info = document_->info();
+    const double tile = scaledTileSize();
+    if (tile <= 0)
+        return;
+
+    const int originX = horizontalScrollBar()->value();
+    const int originY = verticalScrollBar()->value();
+
+    const int firstX = std::max(0, static_cast<int>((originX + dirty.left()) / tile));
+    const int firstY = std::max(0, static_cast<int>((originY + dirty.top()) / tile));
+    const int lastX = std::min<int>(info.width - 1,
+                                    static_cast<int>((originX + dirty.right()) / tile));
+    const int lastY = std::min<int>(info.height - 1,
+                                    static_cast<int>((originY + dirty.bottom()) / tile));
+
+    painter.save();
+    for (int ty = firstY; ty <= lastY; ++ty)
+    {
+        for (int tx = firstX; tx <= lastX; ++tx)
+        {
+            const std::size_t index = static_cast<std::size_t>(ty) * info.width + tx;
+            if (index >= fog.size())
+                continue;
+
+            const std::uint8_t players = fog[index];
+            if (players == 0)
+                continue;
+
+            // 지금 고른 플레이어에게 가려진 칸은 진하게, 다른 플레이어만
+            // 가려진 칸은 옅게 — 누구의 가리개인지 구분할 수 있어야 한다.
+            const bool mine = (players & fogPlayers_) != 0;
+            const QColor shade = mine ? QColor(0, 0, 0, 130) : QColor(40, 60, 120, 70);
+
+            const QRectF cell(tx * tile - originX, ty * tile - originY, tile, tile);
+            painter.fillRect(cell, shade);
+        }
+    }
+    painter.restore();
+}
+
+void MapView::paintFogAt(const QPointF & screenPos)
+{
+    if (document_ == nullptr || !document_->isOpen())
+        return;
+
+    const QPointF mapPos = screenToMap(screenPos);
+    const int centreX = static_cast<int>(mapPos.x()) / io::kTilePixels;
+    const int centreY = static_cast<int>(mapPos.y()) / io::kTilePixels;
+
+    const auto & info = document_->info();
+    const auto & fog = document_->fogTiles();
+
+    // 지형 브러시와 같은 크기로 칠한다.
+    const int half = brushSize_ / 2;
+    std::vector<std::pair<int, int>> cells;
+    cells.reserve(static_cast<std::size_t>(brushSize_) * brushSize_);
+
+    std::uint8_t sample = 0;
+    bool haveSample = false;
+
+    for (int dy = 0; dy < brushSize_; ++dy)
+    {
+        for (int dx = 0; dx < brushSize_; ++dx)
+        {
+            const int tx = centreX - half + dx;
+            const int ty = centreY - half + dy;
+            if (tx < 0 || ty < 0 || tx >= info.width || ty >= info.height)
+                continue;
+
+            if (!haveSample)
+            {
+                const std::size_t index = static_cast<std::size_t>(ty) * info.width + tx;
+                sample = (index < fog.size()) ? fog[index] : std::uint8_t(0);
+                haveSample = true;
+            }
+            cells.emplace_back(tx, ty);
+        }
+    }
+
+    if (cells.empty())
+        return;
+
+    // 칠하기는 고른 플레이어의 비트만 건드린다. 다른 플레이어의 가리개는
+    // 그대로 둔다.
+    const std::uint8_t next = fogErase_ ? std::uint8_t(sample & ~fogPlayers_)
+                                        : std::uint8_t(sample | fogPlayers_);
+    if (next == sample && brushSize_ == 1)
+        return;
+
+    auto * doc = const_cast<chk::MapDocument *>(document_);
+
+    // 브러시가 여러 칸이면 칸마다 값이 다를 수 있으므로 한 칸씩 계산한다.
+    if (brushSize_ == 1)
+    {
+        if (!doc->setFogTiles(cells, next))
+            return;
+    }
+    else
+    {
+        for (const auto & cell : cells)
+        {
+            const std::size_t index =
+                static_cast<std::size_t>(cell.second) * info.width + cell.first;
+            const std::uint8_t before = (index < fog.size()) ? fog[index] : std::uint8_t(0);
+            const std::uint8_t value = fogErase_ ? std::uint8_t(before & ~fogPlayers_)
+                                                 : std::uint8_t(before | fogPlayers_);
+            if (value != before)
+                doc->setFogTiles({cell}, value);
+        }
+    }
+
+    viewport()->update();
+    emit documentEdited();
+}
+
 void MapView::setTerrainCheckEnabled(bool enabled)
 {
     checkTerrain_ = enabled;
@@ -1138,6 +1277,14 @@ void MapView::mousePressEvent(QMouseEvent * event)
         return;
     }
 
+    if (tool_ == Tool::Fog)
+    {
+        fogPainting_ = true;
+        paintFogAt(event->position());
+        event->accept();
+        return;
+    }
+
     if (tool_ == Tool::PlaceSprite || tool_ == Tool::PlaceUnit)
     {
         // 누른 채 끌면 이어서 놓는다. 같은 자리에 겹쳐 놓지 않도록
@@ -1288,6 +1435,13 @@ void MapView::mouseMoveEvent(QMouseEvent * event)
         return;
     }
 
+    if (fogPainting_ && (event->buttons() & Qt::LeftButton))
+    {
+        paintFogAt(event->position());
+        event->accept();
+        return;
+    }
+
     // 놓기 도구는 커서를 따라 미리보기를 보여 준다.
     if (tool_ == Tool::PlaceUnit || tool_ == Tool::PlaceSprite)
     {
@@ -1379,6 +1533,13 @@ void MapView::mouseReleaseEvent(QMouseEvent * event)
     if (!dragging_)
     {
         QAbstractScrollArea::mouseReleaseEvent(event);
+        return;
+    }
+
+    if (fogPainting_)
+    {
+        fogPainting_ = false;
+        event->accept();
         return;
     }
 

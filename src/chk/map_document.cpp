@@ -715,6 +715,18 @@ bool MapDocument::moveAction(std::size_t triggerIndex, std::size_t from, std::si
     return true;
 }
 
+bool MapDocument::setFogTiles(const std::vector<std::pair<int, int>> & tiles,
+                              std::uint8_t players)
+{
+    const io::Result result = archive_.setFogTiles(tiles, players);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
 std::vector<io::BriefingSummary> MapDocument::briefingSummaries(
     const io::GameGraphics & graphics) const
 {
@@ -911,6 +923,7 @@ const std::vector<MapLocation> & MapDocument::locations() const
 void MapDocument::refreshInfo()
 {
     tiles_ = archive_.terrainTiles();
+    fog_ = archive_.fogTiles();
 
     units_.clear();
     for (const io::RawUnit & raw : archive_.units())

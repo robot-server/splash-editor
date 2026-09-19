@@ -477,6 +477,18 @@ public:
     /// 어느 플레이어가 이 브리핑을 보는지.
     Result setBriefingOwners(std::size_t index, const std::array<bool, 27> & owners);
 
+    // --- 시야 가리개 (MASK) ---
+
+    /// 타일마다 어느 플레이어에게 가려져 있는지 (비트 0~7 = 플레이어 1~8).
+    /// 구역이 없으면 빈 벡터.
+    std::vector<std::uint8_t> fogTiles() const;
+
+    /// 타일 하나의 가리개를 바꾼다.
+    Result setFogTile(int tileX, int tileY, std::uint8_t players);
+
+    /// 여러 타일을 한 번에 바꾼다 (브러시로 칠할 때).
+    Result setFogTiles(const std::vector<std::pair<int, int>> & tiles, std::uint8_t players);
+
     /// 맵 문자열이 쓰는 코드 페이지. 열 때 가려낸 값이다.
     TextEncoding textEncoding() const;
 

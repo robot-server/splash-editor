@@ -32,10 +32,11 @@ public:
     /// 지금 마우스가 무슨 일을 하는지.
     enum class Tool
     {
-        Select,    ///< 유닛·로케이션 고르고 옮기기
-        Terrain,   ///< 지형 칠하기
-        PlaceUnit,  ///< 유닛 놓기
-        PlaceSprite ///< 맵 장식 스프라이트 놓기
+        Select,      ///< 유닛·로케이션 고르고 옮기기
+        Terrain,     ///< 지형 칠하기
+        PlaceUnit,   ///< 유닛 놓기
+        PlaceSprite, ///< 맵 장식 스프라이트 놓기
+        Fog          ///< 시야 가리개 칠하기
     };
 
     explicit MapView(QWidget * parent = nullptr);
@@ -173,6 +174,17 @@ public:
     bool locationsVisible() const { return showLocations_; }
     bool creepVisible() const { return showCreep_; }
 
+    /// 시야 가리개(MASK)를 겹쳐 보여 줄지.
+    bool fogVisible() const { return showFog_; }
+
+    /// 가리개 도구가 어느 플레이어를 칠할지 (비트 0~7).
+    std::uint8_t fogPlayers() const { return fogPlayers_; }
+    void setFogPlayers(std::uint8_t players);
+
+    /// 칠할 때 가릴지 걷을지.
+    bool fogErasing() const { return fogErase_; }
+    void setFogErasing(bool erasing);
+
     /// 타일 격자를 그릴지.
     bool gridVisible() const { return showGrid_; }
     void setGridVisible(bool visible);
@@ -181,6 +193,7 @@ public slots:
     void setUnitsVisible(bool visible);
     void setLocationsVisible(bool visible);
     void setCreepVisible(bool visible);
+    void setFogVisible(bool visible);
 
     void zoomIn();
     void zoomOut();
@@ -286,6 +299,12 @@ private:
     /// 지금 놓기 도구가 그 자리에 놓을 수 있는지.
     bool canPlaceAt(int x, int y) const;
 
+    /// 시야 가리개를 겹쳐 그린다.
+    void paintFog(QPainter & painter, const QRect & dirty);
+
+    /// 커서 자리의 타일에 가리개를 칠한다.
+    void paintFogAt(const QPointF & screenPos);
+
     /// 커서 자리에 미리보기를 그린다.
     void paintPlacementPreview(QPainter & painter);
 
@@ -299,6 +318,11 @@ private:
     UnitSnap unitSnap_ = UnitSnap::Tile;
     bool allowStack_ = false;
     bool checkTerrain_ = false;
+
+    bool showFog_ = false;
+    std::uint8_t fogPlayers_ = 0x01; ///< 기본은 플레이어 1
+    bool fogErase_ = false;
+    bool fogPainting_ = false;
 
     // 놓기 도구가 커서를 따라 보여 주는 미리보기.
     QPoint hoverPos_ {-1, -1};   ///< 맵 좌표로 옮긴 커서 자리

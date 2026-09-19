@@ -416,6 +416,48 @@ void MainWindow::buildMenus()
                      statusBar()->showMessage(
                          tr("지형 도구 — 팔레트에서 타일을 고르거나 Alt+클릭으로 집기"), 5000); });
 
+    QAction * fogTool = toolMenu->addAction(tr("시야 가리개(&F)"));
+    fogTool->setCheckable(true);
+    fogTool->setShortcut(QKeySequence(Qt::Key_F));
+    toolGroup->addAction(fogTool);
+    connect(fogTool, &QAction::triggered, this, [this] {
+        mapView_->setTool(MapView::Tool::Fog);
+        mapView_->setFogVisible(true);
+        statusBar()->showMessage(
+            tr("시야 가리개 — 끌어서 가리고, 걷기를 켜면 지웁니다"), 4000);
+    });
+
+    // 어느 플레이어의 가리개를 칠할지.
+    QMenu * fogMenu = toolMenu->addMenu(tr("가리개 플레이어"));
+    auto * fogGroup = new QActionGroup(this);
+    fogGroup->setExclusive(true);
+    for (int player = 0; player < 8; ++player)
+    {
+        QAction * action = fogMenu->addAction(tr("플레이어 %1").arg(player + 1));
+        action->setCheckable(true);
+        action->setChecked(player == 0);
+        fogGroup->addAction(action);
+        connect(action, &QAction::triggered, this, [this, player] {
+            mapView_->setFogPlayers(static_cast<std::uint8_t>(1u << player));
+            statusBar()->showMessage(tr("가리개: 플레이어 %1").arg(player + 1), 2000);
+        });
+    }
+    QAction * fogAll = fogMenu->addAction(tr("모든 플레이어"));
+    fogAll->setCheckable(true);
+    fogGroup->addAction(fogAll);
+    connect(fogAll, &QAction::triggered, this, [this] {
+        mapView_->setFogPlayers(0xFF);
+        statusBar()->showMessage(tr("가리개: 모든 플레이어"), 2000);
+    });
+
+    QAction * fogErase = toolMenu->addAction(tr("가리개 걷기"));
+    fogErase->setCheckable(true);
+    connect(fogErase, &QAction::toggled, this, [this](bool on) {
+        mapView_->setFogErasing(on);
+        statusBar()->showMessage(on ? tr("칠하면 가리개를 걷습니다")
+                                    : tr("칠하면 가립니다"), 2000);
+    });
+
     toolMenu->addSeparator();
 
     for (int size : {1, 2, 4, 8})
@@ -622,6 +664,12 @@ void MainWindow::buildMenus()
     showGrid->setCheckable(true);
     showGrid->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_G));
     connect(showGrid, &QAction::toggled, mapView_, &MapView::setGridVisible);
+
+    QAction * showFog = viewMenu->addAction(tr("시야 가리개 표시(&F)"));
+    showFog->setCheckable(true);
+    showFog->setChecked(mapView_->fogVisible());
+    showFog->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_4));
+    connect(showFog, &QAction::toggled, mapView_, &MapView::setFogVisible);
 
     QAction * showCreep = viewMenu->addAction(tr("크립 표시(&C)"));
     showCreep->setCheckable(true);

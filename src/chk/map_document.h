@@ -248,6 +248,13 @@ public:
     bool moveCondition(std::size_t triggerIndex, std::size_t from, std::size_t to);
     bool moveAction(std::size_t triggerIndex, std::size_t from, std::size_t to);
 
+    // --- 시야 가리개 (MASK) ---
+
+    /// 타일마다 어느 플레이어에게 가려져 있는지. 구역이 없으면 빈 벡터.
+    const std::vector<std::uint8_t> & fogTiles() const { return fog_; }
+
+    bool setFogTiles(const std::vector<std::pair<int, int>> & tiles, std::uint8_t players);
+
     // --- 미션 브리핑 ---
 
     std::vector<io::BriefingSummary> briefingSummaries(const io::GameGraphics & graphics) const;
@@ -310,6 +317,7 @@ private:
     io::MapArchive archive_;
     MapInfo info_;
     std::vector<std::uint16_t> tiles_;
+    std::vector<std::uint8_t> fog_;
     std::vector<MapUnit> units_;
     std::vector<MapSprite> sprites_;
     std::vector<MapLocation> locations_;

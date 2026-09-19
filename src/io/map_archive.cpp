@@ -398,6 +398,82 @@ Result MapArchive::open(const std::string & filePath)
     return Result::success();
 }
 
+std::vector<std::uint8_t> MapArchive::fogTiles() const
+{
+    if (!impl_->isOpen())
+        return {};
+
+    const MapFile & map = *impl_->mapFile;
+    try
+    {
+        const std::size_t width = map.getTileWidth();
+        const std::size_t height = map.getTileHeight();
+        if (width == 0 || height == 0)
+            return {};
+
+        if (!map.hasSection(Chk::SectionName::MASK))
+            return {};
+
+        std::vector<std::uint8_t> out(width * height, 0);
+        for (std::size_t y = 0; y < height; ++y)
+        {
+            for (std::size_t x = 0; x < width; ++x)
+                out[y * width + x] = map.getFog(x, y);
+        }
+        return out;
+    }
+    catch (const std::exception &)
+    {
+        return {};
+    }
+}
+
+Result MapArchive::setFogTile(int tileX, int tileY, std::uint8_t players)
+{
+    return setFogTiles({{tileX, tileY}}, players);
+}
+
+Result MapArchive::setFogTiles(const std::vector<std::pair<int, int>> & tiles,
+                               std::uint8_t players)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+    if (tiles.empty())
+        return Result::success();
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        const int width = static_cast<int>(map.getTileWidth());
+        const int height = static_cast<int>(map.getTileHeight());
+
+        // MASK 는 없을 수 있다. 칠하려면 먼저 만들어 둔다.
+        if (!map.hasSection(Chk::SectionName::MASK))
+            map.addSaveSection(Chk::SectionName::MASK);
+
+        int written = 0;
+        for (const auto & [x, y] : tiles)
+        {
+            if (x < 0 || y < 0 || x >= width || y >= height)
+                continue;
+
+            map.setFog(static_cast<std::size_t>(x), static_cast<std::size_t>(y), players);
+            ++written;
+        }
+
+        if (written > 0)
+        {
+            impl_->undoSteps.push_back(written);
+            impl_->redoSteps.clear();
+        }
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("시야 가리개를 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 TextEncoding MapArchive::textEncoding() const
 {
     return impl_->encoding;
