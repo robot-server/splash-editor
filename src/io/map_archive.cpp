@@ -1892,6 +1892,849 @@ std::optional<TriggerDetail> MapArchive::triggerDetail(std::size_t index,
     }
 }
 
+// ------------------------------------------- 트리거 조건·액션의 인자 다루기
+
+namespace {
+
+/// 조건 구조체에서 필드 하나를 읽는다.
+std::uint32_t readField(const Chk::Condition & condition, Chk::Condition::ArgField field)
+{
+    switch (field)
+    {
+        case Chk::Condition::ArgField::LocationId:    return condition.locationId;
+        case Chk::Condition::ArgField::Player:        return condition.player;
+        case Chk::Condition::ArgField::Amount:        return condition.amount;
+        case Chk::Condition::ArgField::UnitType:      return std::uint32_t(condition.unitType);
+        case Chk::Condition::ArgField::Comparison:    return std::uint32_t(condition.comparison);
+        case Chk::Condition::ArgField::ConditionType: return std::uint32_t(condition.conditionType);
+        case Chk::Condition::ArgField::TypeIndex:     return condition.typeIndex;
+        case Chk::Condition::ArgField::Flags:         return condition.flags;
+        case Chk::Condition::ArgField::MaskFlag:      return std::uint32_t(condition.maskFlag);
+        case Chk::Condition::ArgField::NoField:       break;
+    }
+    return 0;
+}
+
+/// 조건 구조체의 필드 하나에 값을 쓴다.
+void writeField(Chk::Condition & condition, Chk::Condition::ArgField field, std::uint32_t value)
+{
+    switch (field)
+    {
+        case Chk::Condition::ArgField::LocationId:    condition.locationId = value; break;
+        case Chk::Condition::ArgField::Player:        condition.player = value; break;
+        case Chk::Condition::ArgField::Amount:        condition.amount = value; break;
+        case Chk::Condition::ArgField::UnitType:
+            condition.unitType = Sc::Unit::Type(std::uint16_t(value)); break;
+        case Chk::Condition::ArgField::Comparison:
+            condition.comparison = Chk::Condition::Comparison(std::uint8_t(value)); break;
+        case Chk::Condition::ArgField::ConditionType:
+            condition.conditionType = Chk::Condition::Type(std::uint8_t(value)); break;
+        case Chk::Condition::ArgField::TypeIndex:
+            condition.typeIndex = std::uint8_t(value); break;
+        case Chk::Condition::ArgField::Flags:
+            condition.flags = std::uint8_t(value); break;
+        case Chk::Condition::ArgField::MaskFlag:
+            condition.maskFlag = Chk::Condition::MaskFlag(std::uint16_t(value)); break;
+        case Chk::Condition::ArgField::NoField: break;
+    }
+}
+
+std::uint32_t readField(const Chk::Action & action, Chk::Action::ArgField field)
+{
+    switch (field)
+    {
+        case Chk::Action::ArgField::LocationId:    return action.locationId;
+        case Chk::Action::ArgField::StringId:      return action.stringId;
+        case Chk::Action::ArgField::SoundStringId: return action.soundStringId;
+        case Chk::Action::ArgField::Time:          return action.time;
+        case Chk::Action::ArgField::Group:         return action.group;
+        case Chk::Action::ArgField::Number:        return action.number;
+        case Chk::Action::ArgField::Type:          return action.type;
+        case Chk::Action::ArgField::ActionType:    return std::uint32_t(action.actionType);
+        case Chk::Action::ArgField::Type2:         return action.type2;
+        case Chk::Action::ArgField::Flags:         return action.flags;
+        case Chk::Action::ArgField::Padding:       return action.padding;
+        case Chk::Action::ArgField::MaskFlag:      return std::uint32_t(action.maskFlag);
+        case Chk::Action::ArgField::NoField:       break;
+    }
+    return 0;
+}
+
+void writeField(Chk::Action & action, Chk::Action::ArgField field, std::uint32_t value)
+{
+    switch (field)
+    {
+        case Chk::Action::ArgField::LocationId:    action.locationId = value; break;
+        case Chk::Action::ArgField::StringId:      action.stringId = value; break;
+        case Chk::Action::ArgField::SoundStringId: action.soundStringId = value; break;
+        case Chk::Action::ArgField::Time:          action.time = value; break;
+        case Chk::Action::ArgField::Group:         action.group = value; break;
+        case Chk::Action::ArgField::Number:        action.number = value; break;
+        case Chk::Action::ArgField::Type:          action.type = std::uint16_t(value); break;
+        case Chk::Action::ArgField::ActionType:
+            action.actionType = Chk::Action::Type(std::uint8_t(value)); break;
+        case Chk::Action::ArgField::Type2:         action.type2 = std::uint8_t(value); break;
+        case Chk::Action::ArgField::Flags:         action.flags = std::uint8_t(value); break;
+        case Chk::Action::ArgField::Padding:       action.padding = std::uint8_t(value); break;
+        case Chk::Action::ArgField::MaskFlag:
+            action.maskFlag = Chk::Action::MaskFlag(std::uint16_t(value)); break;
+        case Chk::Action::ArgField::NoField: break;
+    }
+}
+
+/// 이름이 붙은 값만 선택지로 삼는다. 이름표가 없으면 생성기가 숫자를
+/// 그대로 돌려주므로 글자가 섞였는지로 가린다.
+bool namedValue(const std::string & text)
+{
+    return !text.empty() && text.find_first_not_of("0123456789") != std::string::npos;
+}
+
+} // namespace
+
+namespace {
+
+/// 조건 인자 한 자리를 편집기가 쓸 수 있는 꼴로 푼다.
+TriggerArg describeConditionArg(const TextTrigGenerator & generator,
+                                const Chk::Condition & condition,
+                                std::size_t argIndex,
+                                const Scenario & scenario,
+                                const Sc::Data & scData)
+{
+    using ArgType = Chk::Condition::ArgType;
+
+    const Chk::Condition::Argument & argument =
+        Chk::Condition::getTextArg(condition.conditionType, argIndex);
+
+    TriggerArg out;
+    if (argument.type == ArgType::NoType)
+        return out;
+
+    out.value = readField(condition, argument.field);
+    out.text = generator.getConditionArgument(condition, argIndex);
+
+    const auto addChoice = [&out](std::uint32_t value, std::string text) {
+        if (!namedValue(text))
+            return;
+        out.choices.push_back(TriggerChoice{value, std::move(text)});
+    };
+
+    switch (argument.type)
+    {
+        case ArgType::Unit:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "유닛";
+            for (int i = 0; i < int(Sc::Unit::TotalReferenceTypes); ++i)
+                addChoice(std::uint32_t(i), generator.getTrigUnit(Sc::Unit::Type(i)));
+            break;
+
+        case ArgType::Location:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "위치";
+            for (std::size_t i = 0; i <= scenario.numLocations(); ++i)
+                addChoice(std::uint32_t(i), generator.getTrigLocation(i));
+            break;
+
+        case ArgType::Player:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "플레이어";
+            for (std::size_t i = 0; i < 27; ++i)
+                addChoice(std::uint32_t(i), generator.getTrigPlayer(i));
+            break;
+
+        case ArgType::Amount:
+            out.kind = TriggerArgKind::Number;
+            out.label = "수량";
+            break;
+
+        case ArgType::NumericComparison:
+        case ArgType::Comparison:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "비교";
+            for (int i = 0; i < 16; ++i)
+                addChoice(std::uint32_t(i),
+                          generator.getTrigNumericComparison(Chk::Condition::Comparison(i)));
+            break;
+
+        case ArgType::SwitchState:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "스위치 상태";
+            for (int i = 0; i < 16; ++i)
+                addChoice(std::uint32_t(i),
+                          generator.getTrigSwitchState(Chk::Trigger::ValueModifier(i)));
+            break;
+
+        case ArgType::ResourceType:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "자원";
+            for (int i = 0; i < 4; ++i)
+                addChoice(std::uint32_t(i),
+                          generator.getTrigResourceType(Chk::Trigger::ResourceType(i)));
+            break;
+
+        case ArgType::ScoreType:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "점수 종류";
+            for (int i = 0; i < 12; ++i)
+                addChoice(std::uint32_t(i),
+                          generator.getTrigScoreType(Chk::Trigger::ScoreType(i)));
+            break;
+
+        case ArgType::Switch:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "스위치";
+            for (std::size_t i = 0; i < 256; ++i)
+                addChoice(std::uint32_t(i), generator.getTrigSwitch(i));
+            break;
+
+        case ArgType::TypeIndex:
+            out.kind = TriggerArgKind::Number;
+            out.label = "종류 번호";
+            out.maximum = 255;
+            break;
+
+        case ArgType::MemoryOffset:
+            out.kind = TriggerArgKind::Number;
+            out.label = "메모리 위치";
+            break;
+
+        default:
+            // ConditionType·Flags·MaskFlag 는 편집기가 따로 다루므로 숨긴다.
+            out.kind = TriggerArgKind::None;
+            break;
+    }
+
+    (void)scData;
+    return out;
+}
+
+/// 액션 인자 한 자리를 편집기가 쓸 수 있는 꼴로 푼다.
+TriggerArg describeActionArg(const TextTrigGenerator & generator,
+                             const Chk::Action & action,
+                             std::size_t argIndex,
+                             const Scenario & scenario,
+                             const Sc::Data & scData)
+{
+    using ArgType = Chk::Action::ArgType;
+
+    const Chk::Action::Argument & argument =
+        Chk::Action::getTextArg(action.actionType, argIndex);
+
+    TriggerArg out;
+    if (argument.type == ArgType::NoType)
+        return out;
+
+    out.value = readField(action, argument.field);
+    out.text = generator.getActionArgument(action, argIndex);
+
+    const auto addChoice = [&out](std::uint32_t value, std::string text) {
+        if (!namedValue(text))
+            return;
+        out.choices.push_back(TriggerChoice{value, std::move(text)});
+    };
+
+    switch (argument.type)
+    {
+        case ArgType::Location:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "위치";
+            for (std::size_t i = 0; i <= scenario.numLocations(); ++i)
+                addChoice(std::uint32_t(i), generator.getTrigLocation(i));
+            break;
+
+        case ArgType::String:
+            out.kind = TriggerArgKind::Text;
+            out.label = "문자열";
+            break;
+
+        case ArgType::Sound:
+            out.kind = TriggerArgKind::Sound;
+            out.label = "소리 파일";
+            break;
+
+        case ArgType::Player:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "플레이어";
+            for (std::size_t i = 0; i < 27; ++i)
+                addChoice(std::uint32_t(i), generator.getTrigPlayer(i));
+            break;
+
+        case ArgType::Unit:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "유닛";
+            for (int i = 0; i < int(Sc::Unit::TotalReferenceTypes); ++i)
+                addChoice(std::uint32_t(i), generator.getTrigUnit(Sc::Unit::Type(i)));
+            break;
+
+        case ArgType::NumUnits:
+            // 0 은 "All" 이고 나머지는 개수다. 숫자로 두되 0 의 뜻을 적어 준다.
+            out.kind = TriggerArgKind::Number;
+            out.label = "유닛 수 (0=모두)";
+            out.maximum = 255;
+            break;
+
+        case ArgType::CUWP:
+            out.kind = TriggerArgKind::Number;
+            out.label = "유닛 속성 번호";
+            out.maximum = 63;
+            break;
+
+        case ArgType::TextFlags:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "표시 방식";
+            for (int i = 0; i < 8; ++i)
+                addChoice(std::uint32_t(i), generator.getTrigTextFlags(Chk::Action::Flags(i)));
+            break;
+
+        case ArgType::Amount:
+        case ArgType::Number:
+            out.kind = TriggerArgKind::Number;
+            out.label = "값";
+            break;
+
+        case ArgType::Percent:
+            out.kind = TriggerArgKind::Number;
+            out.label = "퍼센트";
+            break;
+
+        case ArgType::Duration:
+            out.kind = TriggerArgKind::Number;
+            out.label = "시간 (밀리초)";
+            break;
+
+        case ArgType::ScoreType:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "점수 종류";
+            for (int i = 0; i < 12; ++i)
+                addChoice(std::uint32_t(i), generator.getTrigScoreType(Chk::Trigger::ScoreType(i)));
+            break;
+
+        case ArgType::ResourceType:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "자원";
+            for (int i = 0; i < 4; ++i)
+                addChoice(std::uint32_t(i),
+                          generator.getTrigResourceType(Chk::Trigger::ResourceType(i)));
+            break;
+
+        case ArgType::StateMod:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "상태";
+            for (int i = 0; i < 16; ++i)
+                addChoice(std::uint32_t(i),
+                          generator.getTrigStateModifier(Chk::Trigger::ValueModifier(i)));
+            break;
+
+        case ArgType::NumericMod:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "수정 방식";
+            for (int i = 0; i < 16; ++i)
+                addChoice(std::uint32_t(i),
+                          generator.getTrigNumericModifier(Chk::Trigger::ValueModifier(i)));
+            break;
+
+        case ArgType::SwitchMod:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "스위치 동작";
+            for (int i = 0; i < 16; ++i)
+                addChoice(std::uint32_t(i),
+                          generator.getTrigSwitchModifier(Chk::Trigger::ValueModifier(i)));
+            break;
+
+        case ArgType::Switch:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "스위치";
+            for (std::size_t i = 0; i < 256; ++i)
+                addChoice(std::uint32_t(i), generator.getTrigSwitch(i));
+            break;
+
+        case ArgType::Order:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "명령";
+            for (int i = 0; i < 4; ++i)
+                addChoice(std::uint32_t(i), generator.getTrigOrder(Chk::Action::Order(i)));
+            break;
+
+        case ArgType::AllyState:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "동맹 상태";
+            for (int i = 0; i < 4; ++i)
+                addChoice(std::uint32_t(i),
+                          generator.getTrigAllyState(Chk::Action::AllianceStatus(i)));
+            break;
+
+        case ArgType::Script:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "AI 스크립트";
+            for (std::size_t i = 0; i < scData.ai.numEntries(); ++i)
+            {
+                const std::uint32_t id = scData.ai.getEntry(i).identifier;
+                addChoice(id, generator.getTrigScript(Sc::Ai::ScriptId(id)));
+            }
+            break;
+
+        case ArgType::TypeIndex:
+        case ArgType::SecondaryTypeIndex:
+            out.kind = TriggerArgKind::Number;
+            out.label = "종류 번호";
+            out.maximum = 65535;
+            break;
+
+        case ArgType::MemoryOffset:
+            out.kind = TriggerArgKind::Number;
+            out.label = "메모리 위치";
+            break;
+
+        default:
+            out.kind = TriggerArgKind::None;
+            break;
+    }
+
+    return out;
+}
+
+} // namespace
+
+std::vector<TriggerElement> MapArchive::triggerConditions(std::size_t index,
+                                                          const GameGraphics & graphics) const
+{
+    std::vector<TriggerElement> out;
+    if (!impl_->isOpen())
+        return out;
+
+    const auto * scData = static_cast<const Sc::Data *>(graphics.internalScData());
+    if (scData == nullptr)
+        return out;
+
+    const MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (index >= map.numTriggers())
+            return out;
+
+        const Scenario & scenario = map;
+        TextTrigGenerator generator(false, 0);
+        if (!generator.loadScenario(scenario, *scData))
+            return out;
+
+        const Chk::Trigger & trigger = map.getTrigger(index);
+        for (std::size_t slot = 0; slot < Chk::Trigger::MaxConditions; ++slot)
+        {
+            const Chk::Condition & condition = trigger.conditions[slot];
+
+            TriggerElement element;
+            element.type = std::uint8_t(condition.conditionType);
+            element.disabled = condition.isDisabled();
+            element.name = impl_->decode(generator.getConditionName(condition.conditionType));
+
+            if (condition.conditionType != Chk::Condition::Type::NoCondition)
+            {
+                std::string text = element.name + "(";
+                bool first = true;
+                for (std::size_t i = 0; i < Chk::Condition::MaxArguments; ++i)
+                {
+                    TriggerArg arg = describeConditionArg(generator, condition, i,
+                                                          scenario, *scData);
+                    if (arg.kind == TriggerArgKind::None)
+                        continue;
+
+                    arg.text = impl_->decode(arg.text);
+                    arg.label = arg.label;
+                    for (auto & choice : arg.choices)
+                        choice.text = impl_->decode(choice.text);
+
+                    if (!first)
+                        text += ", ";
+                    text += arg.text;
+                    first = false;
+
+                    element.args.push_back(std::move(arg));
+                }
+                text += ")";
+                element.text = text;
+            }
+
+            out.push_back(std::move(element));
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+    return out;
+}
+
+std::vector<TriggerElement> MapArchive::triggerActions(std::size_t index,
+                                                       const GameGraphics & graphics) const
+{
+    std::vector<TriggerElement> out;
+    if (!impl_->isOpen())
+        return out;
+
+    const auto * scData = static_cast<const Sc::Data *>(graphics.internalScData());
+    if (scData == nullptr)
+        return out;
+
+    const MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (index >= map.numTriggers())
+            return out;
+
+        const Scenario & scenario = map;
+        TextTrigGenerator generator(false, 0);
+        if (!generator.loadScenario(scenario, *scData))
+            return out;
+
+        const Chk::Trigger & trigger = map.getTrigger(index);
+        for (std::size_t slot = 0; slot < Chk::Trigger::MaxActions; ++slot)
+        {
+            const Chk::Action & action = trigger.actions[slot];
+
+            TriggerElement element;
+            element.type = std::uint8_t(action.actionType);
+            element.disabled = action.isDisabled();
+            element.name = impl_->decode(generator.getActionName(action.actionType));
+
+            if (action.actionType != Chk::Action::Type::NoAction)
+            {
+                std::string text = element.name + "(";
+                bool first = true;
+                for (std::size_t i = 0; i < Chk::Action::MaxArguments; ++i)
+                {
+                    TriggerArg arg = describeActionArg(generator, action, i, scenario, *scData);
+                    if (arg.kind == TriggerArgKind::None)
+                        continue;
+
+                    arg.text = impl_->decode(arg.text);
+                    for (auto & choice : arg.choices)
+                        choice.text = impl_->decode(choice.text);
+
+                    if (!first)
+                        text += ", ";
+                    text += arg.text;
+                    first = false;
+
+                    element.args.push_back(std::move(arg));
+                }
+                text += ")";
+                element.text = text;
+            }
+
+            out.push_back(std::move(element));
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+    return out;
+}
+
+std::vector<TriggerChoice> MapArchive::conditionTypes(const GameGraphics & graphics) const
+{
+    std::vector<TriggerChoice> out;
+    const auto * scData = static_cast<const Sc::Data *>(graphics.internalScData());
+    if (!impl_->isOpen() || scData == nullptr)
+        return out;
+
+    try
+    {
+        const Scenario & scenario = *impl_->mapFile;
+        TextTrigGenerator generator(false, 0);
+        if (!generator.loadScenario(scenario, *scData))
+            return out;
+
+        for (std::size_t i = 0; i < Chk::Condition::NumConditionTypes; ++i)
+        {
+            std::string name = generator.getConditionName(Chk::Condition::Type(i));
+            if (namedValue(name))
+                out.push_back(TriggerChoice{std::uint32_t(i), impl_->decode(name)});
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+    return out;
+}
+
+std::vector<TriggerChoice> MapArchive::actionTypes(const GameGraphics & graphics) const
+{
+    std::vector<TriggerChoice> out;
+    const auto * scData = static_cast<const Sc::Data *>(graphics.internalScData());
+    if (!impl_->isOpen() || scData == nullptr)
+        return out;
+
+    try
+    {
+        const Scenario & scenario = *impl_->mapFile;
+        TextTrigGenerator generator(false, 0);
+        if (!generator.loadScenario(scenario, *scData))
+            return out;
+
+        for (std::size_t i = 0; i < Chk::Action::NumActionTypes; ++i)
+        {
+            std::string name = generator.getActionName(Chk::Action::Type(i));
+            if (namedValue(name))
+                out.push_back(TriggerChoice{std::uint32_t(i), impl_->decode(name)});
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+    return out;
+}
+
+namespace {
+
+/// 조건 하나를 고친 뒤 트리거를 다시 넣는다. MappingCore 는 트리거를
+/// 통째로 다루므로, 지우고 넣는 두 액션이 한 편집이 된다.
+template <typename Mutator>
+Result mutateTrigger(MapFile & map, std::vector<int> & undoSteps, std::vector<int> & redoSteps,
+                     std::size_t index, Mutator && mutate)
+{
+    if (index >= map.numTriggers())
+        return Result::failure("트리거 번호가 범위를 벗어났습니다.");
+
+    Chk::Trigger trigger = map.getTrigger(index);
+    if (!mutate(trigger))
+        return Result::failure("고칠 수 없는 자리입니다.");
+
+    map.deleteTrigger(index);
+    map.insertTrigger(index, trigger);
+    undoSteps.push_back(2);
+    redoSteps.clear();
+    return Result::success();
+}
+
+} // namespace
+
+Result MapArchive::setConditionType(std::size_t triggerIndex, std::size_t slot, std::uint8_t type)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    return mutateTrigger(*impl_->mapFile, impl_->undoSteps, impl_->redoSteps, triggerIndex,
+        [slot, type](Chk::Trigger & trigger) {
+            if (slot >= Chk::Trigger::MaxConditions)
+                return false;
+
+            // 종류가 바뀌면 인자 자리의 뜻도 바뀐다. 남은 값이 엉뚱하게
+            // 읽히지 않도록 비우고 기본 플래그를 새로 준다.
+            Chk::Condition fresh {};
+            fresh.conditionType = Chk::Condition::Type(type);
+            fresh.flags = Chk::Condition::getDefaultFlags(fresh.conditionType);
+            trigger.conditions[slot] = fresh;
+            return true;
+        });
+}
+
+Result MapArchive::setActionType(std::size_t triggerIndex, std::size_t slot, std::uint8_t type)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    return mutateTrigger(*impl_->mapFile, impl_->undoSteps, impl_->redoSteps, triggerIndex,
+        [slot, type](Chk::Trigger & trigger) {
+            if (slot >= Chk::Trigger::MaxActions)
+                return false;
+
+            Chk::Action fresh {};
+            fresh.actionType = Chk::Action::Type(type);
+            fresh.flags = Chk::Action::getDefaultFlags(fresh.actionType);
+            trigger.actions[slot] = fresh;
+            return true;
+        });
+}
+
+Result MapArchive::setConditionArg(std::size_t triggerIndex, std::size_t slot,
+                                   std::size_t argIndex, std::uint32_t value)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    return mutateTrigger(*impl_->mapFile, impl_->undoSteps, impl_->redoSteps, triggerIndex,
+        [slot, argIndex, value](Chk::Trigger & trigger) {
+            if (slot >= Chk::Trigger::MaxConditions)
+                return false;
+
+            Chk::Condition & condition = trigger.conditions[slot];
+
+            // 편집기가 세는 인자 번호는 "쓰이는 자리" 기준이다. 빈 자리를
+            // 건너뛰며 같은 번호를 찾는다.
+            std::size_t seen = 0;
+            for (std::size_t i = 0; i < Chk::Condition::MaxArguments; ++i)
+            {
+                const auto & argument = Chk::Condition::getTextArg(condition.conditionType, i);
+                if (argument.type == Chk::Condition::ArgType::NoType ||
+                    argument.field == Chk::Condition::ArgField::NoField)
+                    continue;
+
+                if (seen == argIndex)
+                {
+                    writeField(condition, argument.field, value);
+                    return true;
+                }
+                ++seen;
+            }
+            return false;
+        });
+}
+
+Result MapArchive::setActionArg(std::size_t triggerIndex, std::size_t slot,
+                                std::size_t argIndex, std::uint32_t value)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    return mutateTrigger(*impl_->mapFile, impl_->undoSteps, impl_->redoSteps, triggerIndex,
+        [slot, argIndex, value](Chk::Trigger & trigger) {
+            if (slot >= Chk::Trigger::MaxActions)
+                return false;
+
+            Chk::Action & action = trigger.actions[slot];
+
+            std::size_t seen = 0;
+            for (std::size_t i = 0; i < Chk::Action::MaxArguments; ++i)
+            {
+                const auto & argument = Chk::Action::getTextArg(action.actionType, i);
+                if (argument.type == Chk::Action::ArgType::NoType ||
+                    argument.field == Chk::Action::ArgField::NoField)
+                    continue;
+
+                if (seen == argIndex)
+                {
+                    writeField(action, argument.field, value);
+                    return true;
+                }
+                ++seen;
+            }
+            return false;
+        });
+}
+
+Result MapArchive::setActionArgText(std::size_t triggerIndex, std::size_t slot,
+                                    std::size_t argIndex, const std::string & text)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        // 글자를 맵 문자열 표에 넣고, 그 번호를 인자에 적는다. 같은 글자가
+        // 이미 있으면 그것을 다시 쓴다 — STR 이 쓸데없이 불어나지 않는다.
+        const std::string encoded = impl_->encode(text);
+        std::size_t stringId = map.findString(RawString(encoded));
+        if (stringId == 0 || stringId == std::size_t(-1))
+            stringId = map.addString(RawString(encoded));
+
+        if (stringId == 0 || stringId == std::size_t(-1))
+            return Result::failure("문자열을 넣지 못했습니다 (STR 이 가득 찼을 수 있습니다).");
+
+        return setActionArg(triggerIndex, slot, argIndex, std::uint32_t(stringId));
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("문자열을 넣지 못했습니다: ") + e.what());
+    }
+}
+
+Result MapArchive::setConditionDisabled(std::size_t triggerIndex, std::size_t slot, bool disabled)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    return mutateTrigger(*impl_->mapFile, impl_->undoSteps, impl_->redoSteps, triggerIndex,
+        [slot, disabled](Chk::Trigger & trigger) {
+            if (slot >= Chk::Trigger::MaxConditions)
+                return false;
+
+            Chk::Condition & condition = trigger.conditions[slot];
+            if (condition.isDisabled() != disabled)
+                condition.toggleDisabled();
+            return true;
+        });
+}
+
+Result MapArchive::setActionDisabled(std::size_t triggerIndex, std::size_t slot, bool disabled)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    return mutateTrigger(*impl_->mapFile, impl_->undoSteps, impl_->redoSteps, triggerIndex,
+        [slot, disabled](Chk::Trigger & trigger) {
+            if (slot >= Chk::Trigger::MaxActions)
+                return false;
+
+            Chk::Action & action = trigger.actions[slot];
+            if (action.isDisabled() != disabled)
+                action.toggleDisabled();
+            return true;
+        });
+}
+
+Result MapArchive::removeCondition(std::size_t triggerIndex, std::size_t slot)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    return mutateTrigger(*impl_->mapFile, impl_->undoSteps, impl_->redoSteps, triggerIndex,
+        [slot](Chk::Trigger & trigger) {
+            if (slot >= Chk::Trigger::MaxConditions)
+                return false;
+
+            for (std::size_t i = slot; i + 1 < Chk::Trigger::MaxConditions; ++i)
+                trigger.conditions[i] = trigger.conditions[i + 1];
+            trigger.conditions[Chk::Trigger::MaxConditions - 1] = Chk::Condition {};
+            return true;
+        });
+}
+
+Result MapArchive::removeAction(std::size_t triggerIndex, std::size_t slot)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    return mutateTrigger(*impl_->mapFile, impl_->undoSteps, impl_->redoSteps, triggerIndex,
+        [slot](Chk::Trigger & trigger) {
+            if (slot >= Chk::Trigger::MaxActions)
+                return false;
+
+            for (std::size_t i = slot; i + 1 < Chk::Trigger::MaxActions; ++i)
+                trigger.actions[i] = trigger.actions[i + 1];
+            trigger.actions[Chk::Trigger::MaxActions - 1] = Chk::Action {};
+            return true;
+        });
+}
+
+Result MapArchive::moveCondition(std::size_t triggerIndex, std::size_t from, std::size_t to)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    return mutateTrigger(*impl_->mapFile, impl_->undoSteps, impl_->redoSteps, triggerIndex,
+        [from, to](Chk::Trigger & trigger) {
+            if (from >= Chk::Trigger::MaxConditions || to >= Chk::Trigger::MaxConditions)
+                return false;
+
+            std::swap(trigger.conditions[from], trigger.conditions[to]);
+            return true;
+        });
+}
+
+Result MapArchive::moveAction(std::size_t triggerIndex, std::size_t from, std::size_t to)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    return mutateTrigger(*impl_->mapFile, impl_->undoSteps, impl_->redoSteps, triggerIndex,
+        [from, to](Chk::Trigger & trigger) {
+            if (from >= Chk::Trigger::MaxActions || to >= Chk::Trigger::MaxActions)
+                return false;
+
+            std::swap(trigger.actions[from], trigger.actions[to]);
+            return true;
+        });
+}
+
 // ------------------------------------------------------------ 미션 브리핑
 
 std::vector<BriefingSummary> MapArchive::briefingSummaries(const GameGraphics & graphics) const

@@ -1,5 +1,7 @@
 #include "ui/trigger_editor.h"
 
+#include "ui/trigger_argument_panel.h"
+
 #include "chk/map_document.h"
 #include "io/game_graphics.h"
 
@@ -80,14 +82,164 @@ TriggerEditor::TriggerEditor(chk::MapDocument & document, io::GameGraphics & gra
 
     conditions_ = new QListWidget(this);
     actions_ = new QListWidget(this);
+    conditionArgs_ = new TriggerArgumentPanel(TriggerArgumentPanel::Kind::Condition, this);
+    actionArgs_ = new TriggerArgumentPanel(TriggerArgumentPanel::Kind::Action, this);
 
+    // 조건 — 목록에서 한 줄을 고르면 아래에 그 줄의 인자가 뜬다.
     auto * conditionBox = new QGroupBox(tr("조건"), this);
     auto * conditionLayout = new QVBoxLayout(conditionBox);
-    conditionLayout->addWidget(conditions_);
+    conditionLayout->addWidget(conditions_, 1);
 
+    auto * conditionButtons = new QHBoxLayout();
+    auto * removeCondition = new QPushButton(tr("줄 지우기"), this);
+    auto * conditionUp = new QPushButton(tr("위로"), this);
+    auto * conditionDown = new QPushButton(tr("아래로"), this);
+    conditionButtons->addWidget(removeCondition);
+    conditionButtons->addWidget(conditionUp);
+    conditionButtons->addWidget(conditionDown);
+    conditionButtons->addStretch();
+    conditionLayout->addLayout(conditionButtons);
+    conditionLayout->addWidget(conditionArgs_, 1);
+
+    // 동작 — 같은 구성.
     auto * actionBox = new QGroupBox(tr("동작"), this);
     auto * actionLayout = new QVBoxLayout(actionBox);
-    actionLayout->addWidget(actions_);
+    actionLayout->addWidget(actions_, 1);
+
+    auto * actionButtons = new QHBoxLayout();
+    auto * removeAction = new QPushButton(tr("줄 지우기"), this);
+    auto * actionUp = new QPushButton(tr("위로"), this);
+    auto * actionDown = new QPushButton(tr("아래로"), this);
+    actionButtons->addWidget(removeAction);
+    actionButtons->addWidget(actionUp);
+    actionButtons->addWidget(actionDown);
+    actionButtons->addStretch();
+    actionLayout->addLayout(actionButtons);
+    actionLayout->addWidget(actionArgs_, 1);
+
+    connect(conditions_, &QListWidget::currentRowChanged, this,
+            [this](int row) { showConditionArgs(row); });
+    connect(actions_, &QListWidget::currentRowChanged, this,
+            [this](int row) { showActionArgs(row); });
+
+    // --- 인자 판에서 올라오는 편집 ---
+    const auto triggerIndex = [this] { return static_cast<std::size_t>(currentIndex()); };
+
+    connect(conditionArgs_, &TriggerArgumentPanel::typeChanged, this,
+            [this, triggerIndex](std::size_t slot, std::uint8_t type) {
+        if (currentIndex() < 0) return;
+        const int row = conditions_->currentRow();
+        if (document_.setConditionType(triggerIndex(), slot, type))
+        {
+            emit documentEdited();
+            reloadElements();
+            conditions_->setCurrentRow(row);
+        }
+    });
+    connect(conditionArgs_, &TriggerArgumentPanel::argChanged, this,
+            [this, triggerIndex](std::size_t slot, std::size_t argIndex, std::uint32_t value) {
+        if (currentIndex() < 0) return;
+        const int row = conditions_->currentRow();
+        if (document_.setConditionArg(triggerIndex(), slot, argIndex, value))
+        {
+            emit documentEdited();
+            reloadElements();
+            conditions_->setCurrentRow(row);
+        }
+    });
+
+    connect(actionArgs_, &TriggerArgumentPanel::typeChanged, this,
+            [this, triggerIndex](std::size_t slot, std::uint8_t type) {
+        if (currentIndex() < 0) return;
+        const int row = actions_->currentRow();
+        if (document_.setActionType(triggerIndex(), slot, type))
+        {
+            emit documentEdited();
+            reloadElements();
+            actions_->setCurrentRow(row);
+        }
+    });
+    connect(actionArgs_, &TriggerArgumentPanel::argChanged, this,
+            [this, triggerIndex](std::size_t slot, std::size_t argIndex, std::uint32_t value) {
+        if (currentIndex() < 0) return;
+        const int row = actions_->currentRow();
+        if (document_.setActionArg(triggerIndex(), slot, argIndex, value))
+        {
+            emit documentEdited();
+            reloadElements();
+            actions_->setCurrentRow(row);
+        }
+    });
+    connect(actionArgs_, &TriggerArgumentPanel::argTextChanged, this,
+            [this, triggerIndex](std::size_t slot, std::size_t argIndex, const QString & text) {
+        if (currentIndex() < 0) return;
+        const int row = actions_->currentRow();
+        if (document_.setActionArgText(triggerIndex(), slot, argIndex, text.toStdString()))
+        {
+            emit documentEdited();
+            reloadElements();
+            actions_->setCurrentRow(row);
+        }
+        else
+        {
+            QMessageBox::warning(this, tr("적용 실패"),
+                                 QString::fromStdString(document_.lastError()));
+        }
+    });
+
+    // --- 줄 지우기·순서 바꾸기 ---
+    connect(removeCondition, &QPushButton::clicked, this, [this, triggerIndex] {
+        const int row = conditions_->currentRow();
+        if (currentIndex() < 0 || row < 0) return;
+        if (document_.removeCondition(triggerIndex(), static_cast<std::size_t>(row)))
+        {
+            emit documentEdited();
+            reloadElements();
+            conditions_->setCurrentRow(row);
+        }
+    });
+    connect(removeAction, &QPushButton::clicked, this, [this, triggerIndex] {
+        const int row = actions_->currentRow();
+        if (currentIndex() < 0 || row < 0) return;
+        if (document_.removeAction(triggerIndex(), static_cast<std::size_t>(row)))
+        {
+            emit documentEdited();
+            reloadElements();
+            actions_->setCurrentRow(row);
+        }
+    });
+
+    const auto moveCondition = [this, triggerIndex](int delta) {
+        const int row = conditions_->currentRow();
+        const int target = row + delta;
+        if (currentIndex() < 0 || row < 0 || target < 0 || target >= conditions_->count())
+            return;
+        if (document_.moveCondition(triggerIndex(), static_cast<std::size_t>(row),
+                                    static_cast<std::size_t>(target)))
+        {
+            emit documentEdited();
+            reloadElements();
+            conditions_->setCurrentRow(target);
+        }
+    };
+    connect(conditionUp, &QPushButton::clicked, this, [moveCondition] { moveCondition(-1); });
+    connect(conditionDown, &QPushButton::clicked, this, [moveCondition] { moveCondition(1); });
+
+    const auto moveAction = [this, triggerIndex](int delta) {
+        const int row = actions_->currentRow();
+        const int target = row + delta;
+        if (currentIndex() < 0 || row < 0 || target < 0 || target >= actions_->count())
+            return;
+        if (document_.moveAction(triggerIndex(), static_cast<std::size_t>(row),
+                                 static_cast<std::size_t>(target)))
+        {
+            emit documentEdited();
+            reloadElements();
+            actions_->setCurrentRow(target);
+        }
+    };
+    connect(actionUp, &QPushButton::clicked, this, [moveAction] { moveAction(-1); });
+    connect(actionDown, &QPushButton::clicked, this, [moveAction] { moveAction(1); });
 
     text_ = new QPlainTextEdit(this);
     QFont mono(QStringLiteral("Menlo"));
@@ -236,16 +388,94 @@ void TriggerEditor::reloadDetail()
 
             enabled_->setChecked((detail->flags & 0x08) == 0); // Disabled 비트가 꺼져 있으면 사용
 
-            for (const auto & condition : detail->conditions)
-                conditions_->addItem(QString::fromStdString(condition));
-            for (const auto & action : detail->actions)
-                actions_->addItem(QString::fromStdString(action));
-
             text_->setPlainText(QString::fromStdString(detail->text));
         }
     }
 
     loading_ = false;
+
+    reloadElements();
+}
+
+/// 조건·액션 목록을 다시 읽어 채운다. 마지막 빈 줄 하나를 남겨 두어
+/// 거기서 종류를 고르면 새 줄이 된다 — StarEdit 과 같은 방식이다.
+void TriggerEditor::reloadElements()
+{
+    const int index = currentIndex();
+
+    const bool wasLoading = loading_;
+    loading_ = true;
+
+    conditions_->clear();
+    actions_->clear();
+    conditionElements_.clear();
+    actionElements_.clear();
+
+    if (index >= 0)
+    {
+        if (conditionTypes_.empty())
+            conditionTypes_ = document_.conditionTypes(graphics_);
+        if (actionTypes_.empty())
+            actionTypes_ = document_.actionTypes(graphics_);
+
+        conditionElements_ = document_.triggerConditions(static_cast<std::size_t>(index), graphics_);
+        actionElements_ = document_.triggerActions(static_cast<std::size_t>(index), graphics_);
+
+        const auto fill = [](QListWidget * list, const std::vector<io::TriggerElement> & elements) {
+            // 쓰인 줄까지만 보여 주고, 그 다음 한 줄을 빈 자리로 남긴다.
+            std::size_t used = 0;
+            for (std::size_t i = 0; i < elements.size(); ++i)
+            {
+                if (elements[i].type != 0)
+                    used = i + 1;
+            }
+
+            for (std::size_t i = 0; i < elements.size() && i <= used; ++i)
+            {
+                const auto & element = elements[i];
+                QString label = element.type == 0
+                    ? tr("(빈 자리 — 여기에 새로 넣습니다)")
+                    : QString::fromStdString(element.text);
+                if (element.disabled)
+                    label = tr("[꺼짐] ") + label;
+                list->addItem(label);
+            }
+        };
+
+        fill(conditions_, conditionElements_);
+        fill(actions_, actionElements_);
+    }
+
+    loading_ = wasLoading;
+
+    conditionArgs_->clear();
+    actionArgs_->clear();
+}
+
+void TriggerEditor::showConditionArgs(int row)
+{
+    const int index = currentIndex();
+    if (index < 0 || row < 0 || row >= static_cast<int>(conditionElements_.size()))
+    {
+        conditionArgs_->clear();
+        return;
+    }
+
+    conditionArgs_->setElement(static_cast<std::size_t>(index), static_cast<std::size_t>(row),
+                               conditionElements_[static_cast<std::size_t>(row)], conditionTypes_);
+}
+
+void TriggerEditor::showActionArgs(int row)
+{
+    const int index = currentIndex();
+    if (index < 0 || row < 0 || row >= static_cast<int>(actionElements_.size()))
+    {
+        actionArgs_->clear();
+        return;
+    }
+
+    actionArgs_->setElement(static_cast<std::size_t>(index), static_cast<std::size_t>(row),
+                            actionElements_[static_cast<std::size_t>(row)], actionTypes_);
 }
 
 void TriggerEditor::applyOwners()

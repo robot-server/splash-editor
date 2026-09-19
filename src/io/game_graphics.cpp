@@ -123,6 +123,21 @@ bool GameGraphics::load(const std::string & installPath, std::string * error)
             // renderTile 에서 타일셋 단위로 드러난다.
         }
 
+        // --- AI 스크립트 목록 ---
+        // 트리거의 "Run AI Script" 인자에 이름을 붙이는 데 쓴다. 실패해도
+        // 나머지는 그대로 쓸 수 있으므로 조용히 넘어간다.
+        try
+        {
+            auto statTxt = std::make_shared<Sc::TblFile>();
+            if (statTxt->load(*fresh->cluster, "rez\\stat_txt.tbl"))
+                fresh->scData->ai.load(*fresh->cluster, statTxt);
+            else
+                fresh->scData->ai.load(*fresh->cluster);
+        }
+        catch (const std::exception &)
+        {
+        }
+
         // --- 유닛 그래픽 ---
         // 지형만 있어도 맵은 볼 수 있으므로, 여기서 실패해도 전체를 실패로
         // 만들지 않는다. hasUnitGraphics() 로 구분한다.

@@ -571,6 +571,150 @@ bool MapDocument::setForceName(std::size_t force, const std::string & name)
     return true;
 }
 
+
+std::vector<io::TriggerElement> MapDocument::triggerConditions(
+    std::size_t index, const io::GameGraphics & graphics) const
+{
+    return archive_.triggerConditions(index, graphics);
+}
+
+std::vector<io::TriggerElement> MapDocument::triggerActions(
+    std::size_t index, const io::GameGraphics & graphics) const
+{
+    return archive_.triggerActions(index, graphics);
+}
+
+std::vector<io::TriggerChoice> MapDocument::conditionTypes(const io::GameGraphics & graphics) const
+{
+    return archive_.conditionTypes(graphics);
+}
+
+std::vector<io::TriggerChoice> MapDocument::actionTypes(const io::GameGraphics & graphics) const
+{
+    return archive_.actionTypes(graphics);
+}
+
+bool MapDocument::setConditionType(std::size_t triggerIndex, std::size_t slot, std::uint8_t type)
+{
+    const io::Result result = archive_.setConditionType(triggerIndex, slot, type);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setActionType(std::size_t triggerIndex, std::size_t slot, std::uint8_t type)
+{
+    const io::Result result = archive_.setActionType(triggerIndex, slot, type);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setConditionArg(std::size_t triggerIndex, std::size_t slot, std::size_t argIndex, std::uint32_t value)
+{
+    const io::Result result = archive_.setConditionArg(triggerIndex, slot, argIndex, value);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setActionArg(std::size_t triggerIndex, std::size_t slot, std::size_t argIndex, std::uint32_t value)
+{
+    const io::Result result = archive_.setActionArg(triggerIndex, slot, argIndex, value);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setActionArgText(std::size_t triggerIndex, std::size_t slot, std::size_t argIndex, const std::string & text)
+{
+    const io::Result result = archive_.setActionArgText(triggerIndex, slot, argIndex, text);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setConditionDisabled(std::size_t triggerIndex, std::size_t slot, bool disabled)
+{
+    const io::Result result = archive_.setConditionDisabled(triggerIndex, slot, disabled);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setActionDisabled(std::size_t triggerIndex, std::size_t slot, bool disabled)
+{
+    const io::Result result = archive_.setActionDisabled(triggerIndex, slot, disabled);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::removeCondition(std::size_t triggerIndex, std::size_t slot)
+{
+    const io::Result result = archive_.removeCondition(triggerIndex, slot);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::removeAction(std::size_t triggerIndex, std::size_t slot)
+{
+    const io::Result result = archive_.removeAction(triggerIndex, slot);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::moveCondition(std::size_t triggerIndex, std::size_t from, std::size_t to)
+{
+    const io::Result result = archive_.moveCondition(triggerIndex, from, to);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::moveAction(std::size_t triggerIndex, std::size_t from, std::size_t to)
+{
+    const io::Result result = archive_.moveAction(triggerIndex, from, to);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
 std::vector<io::BriefingSummary> MapDocument::briefingSummaries(
     const io::GameGraphics & graphics) const
 {

@@ -45,6 +45,10 @@ int usage(const char * argv0)
         "      ISOM 브러시로 지형을 놓는다 (절벽·경계가 자동으로 이어진다).\n\n"
         "  " << argv0 << " briefing <맵파일> <설치폴더> [출력.txt]\n"
         "      미션 브리핑을 텍스트로 옮긴다.\n\n"
+        "  " << argv0 << " trigger-args <맵파일> <설치폴더> <번호>\n"
+        "      트리거 하나의 조건·동작을 인자 단위로 풀어 보여 준다.\n\n"
+        "  " << argv0 << " set-trigger-arg <맵파일> <설치폴더> <condition|action> <트리거> <줄> <인자> <값> <출력맵>\n"
+        "      조건·동작의 인자 하나를 바꾼다. 값이 숫자가 아니면 문자열로 넣는다.\n\n"
         "  " << argv0 << " set-briefing <맵파일> <설치폴더> <텍스트파일> <출력맵>\n"
         "      텍스트 브리핑을 컴파일해 맵에 적용하고 저장한다.\n\n"
         "  " << argv0 << " trigger-list <맵파일> <설치폴더> [번호]\n"
@@ -507,6 +511,119 @@ int cmdSetBriefing(const std::string & mapPath, const std::string & installPath,
 
     std::cout << "  브리핑 " << archive.briefingSummaries(graphics).size() << "개 적용\n"
               << "  -> " << outPath << "\n";
+    return 0;
+}
+
+int cmdTriggerArgs(const std::string & mapPath, const std::string & installPath,
+                   std::size_t triggerIndex)
+{
+    splash::io::MapArchive archive;
+    if (auto r = archive.open(mapPath); !r)
+    {
+        std::cerr << "열기 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "게임 데이터 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const auto show = [](const char * title,
+                         const std::vector<splash::io::TriggerElement> & elements) {
+        std::cout << "  " << title << ":\n";
+        for (std::size_t slot = 0; slot < elements.size(); ++slot)
+        {
+            const auto & element = elements[slot];
+            if (element.type == 0)
+                continue;
+
+            std::cout << "    [" << slot << "] " << element.text << "\n";
+            for (std::size_t i = 0; i < element.args.size(); ++i)
+            {
+                const auto & arg = element.args[i];
+                const char * kind = "?";
+                switch (arg.kind)
+                {
+                    case splash::io::TriggerArgKind::Choice: kind = "고르기"; break;
+                    case splash::io::TriggerArgKind::Number: kind = "숫자"; break;
+                    case splash::io::TriggerArgKind::Text:   kind = "글자"; break;
+                    case splash::io::TriggerArgKind::Sound:  kind = "소리"; break;
+                    case splash::io::TriggerArgKind::None:   kind = "없음"; break;
+                }
+                std::cout << "         인자 " << i << " " << arg.label
+                          << " [" << kind << "] = " << arg.text
+                          << " (값 " << arg.value;
+                if (!arg.choices.empty())
+                    std::cout << ", 선택지 " << arg.choices.size() << "개";
+                std::cout << ")\n";
+            }
+        }
+    };
+
+    show("조건", archive.triggerConditions(triggerIndex, graphics));
+    show("동작", archive.triggerActions(triggerIndex, graphics));
+    return 0;
+}
+
+int cmdSetTriggerArg(const std::string & mapPath, const std::string & installPath,
+                     const std::string & which, std::size_t triggerIndex, std::size_t slot,
+                     std::size_t argIndex, const std::string & value, const std::string & outPath)
+{
+    splash::io::MapArchive archive;
+    if (auto r = archive.open(mapPath); !r)
+    {
+        std::cerr << "열기 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "게임 데이터 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const bool isCondition = (which == "condition" || which == "조건");
+
+    // 숫자면 원시 값으로, 아니면 문자열 인자로 본다.
+    splash::io::Result result = splash::io::Result::failure("알 수 없는 인자");
+    bool numeric = !value.empty() &&
+        value.find_first_not_of("0123456789") == std::string::npos;
+
+    if (numeric)
+    {
+        const auto raw = static_cast<std::uint32_t>(std::stoul(value));
+        result = isCondition ? archive.setConditionArg(triggerIndex, slot, argIndex, raw)
+                             : archive.setActionArg(triggerIndex, slot, argIndex, raw);
+    }
+    else if (!isCondition)
+    {
+        result = archive.setActionArgText(triggerIndex, slot, argIndex, value);
+    }
+    else
+    {
+        std::cerr << "조건 인자에는 숫자만 넣을 수 있습니다.\n";
+        return 1;
+    }
+
+    if (!result)
+    {
+        std::cerr << "인자를 바꾸지 못했습니다: " << result.message << "\n";
+        return 1;
+    }
+
+    if (auto r = archive.saveAs(outPath); !r)
+    {
+        std::cerr << "저장 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    std::cout << "  -> " << outPath << "\n";
     return 0;
 }
 
@@ -1597,6 +1714,25 @@ int main(int argc, char ** argv)
                 static_cast<std::size_t>(std::stoul(args[5])),
                 static_cast<std::size_t>(std::stoul(args[6])),
                 args[7]);
+        } catch (const std::exception &) { return usage(argv[0]); }
+    }
+
+    if (command == "set-trigger-arg" && args.size() == 9)
+    {
+        try {
+            return cmdSetTriggerArg(args[1], args[2], args[3],
+                static_cast<std::size_t>(std::stoul(args[4])),
+                static_cast<std::size_t>(std::stoul(args[5])),
+                static_cast<std::size_t>(std::stoul(args[6])),
+                args[7], args[8]);
+        } catch (const std::exception &) { return usage(argv[0]); }
+    }
+
+    if (command == "trigger-args" && args.size() == 4)
+    {
+        try {
+            return cmdTriggerArgs(args[1], args[2],
+                static_cast<std::size_t>(std::stoul(args[3])));
         } catch (const std::exception &) { return usage(argv[0]); }
     }
 

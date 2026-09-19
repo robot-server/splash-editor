@@ -224,6 +224,30 @@ public:
 
     // --- 트리거 ---
 
+    // --- 트리거 조건·액션 (GUI 편집용) ---
+
+    std::vector<io::TriggerElement> triggerConditions(std::size_t index,
+                                                      const io::GameGraphics & graphics) const;
+    std::vector<io::TriggerElement> triggerActions(std::size_t index,
+                                                   const io::GameGraphics & graphics) const;
+    std::vector<io::TriggerChoice> conditionTypes(const io::GameGraphics & graphics) const;
+    std::vector<io::TriggerChoice> actionTypes(const io::GameGraphics & graphics) const;
+
+    bool setConditionType(std::size_t triggerIndex, std::size_t slot, std::uint8_t type);
+    bool setActionType(std::size_t triggerIndex, std::size_t slot, std::uint8_t type);
+    bool setConditionArg(std::size_t triggerIndex, std::size_t slot,
+                         std::size_t argIndex, std::uint32_t value);
+    bool setActionArg(std::size_t triggerIndex, std::size_t slot,
+                      std::size_t argIndex, std::uint32_t value);
+    bool setActionArgText(std::size_t triggerIndex, std::size_t slot,
+                          std::size_t argIndex, const std::string & text);
+    bool setConditionDisabled(std::size_t triggerIndex, std::size_t slot, bool disabled);
+    bool setActionDisabled(std::size_t triggerIndex, std::size_t slot, bool disabled);
+    bool removeCondition(std::size_t triggerIndex, std::size_t slot);
+    bool removeAction(std::size_t triggerIndex, std::size_t slot);
+    bool moveCondition(std::size_t triggerIndex, std::size_t from, std::size_t to);
+    bool moveAction(std::size_t triggerIndex, std::size_t from, std::size_t to);
+
     // --- 미션 브리핑 ---
 
     std::vector<io::BriefingSummary> briefingSummaries(const io::GameGraphics & graphics) const;
