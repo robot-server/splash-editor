@@ -48,6 +48,11 @@ struct MapUnit
     std::uint8_t  owner = 0;    ///< 0-11
     std::uint32_t resourceAmount = 0; ///< 자원 유닛의 남은 양
     std::string typeName;
+
+    // 애드온·나이더스 연결. 이어져 있으면 상대의 classId 가 들어 있다.
+    std::uint32_t classId = 0;
+    std::uint16_t relationFlags = 0;
+    std::uint32_t relationClassId = 0;
 };
 
 /// 맵에 배치된 스프라이트 (표시용).
@@ -165,7 +170,23 @@ public:
                   std::uint16_t tileValue);
 
     /// 로케이션을 옮긴다(크기는 유지). 좌표는 픽셀.
+    /// 애드온·나이더스 연결을 잇고 끊는다.
+    bool linkUnits(std::size_t unitA, std::size_t unitB, bool addon);
+    bool unlinkUnit(std::size_t unitIndex);
+
     bool moveLocation(std::size_t locationIndex, std::int64_t dx, std::int64_t dy);
+
+    /// 로케이션의 네 모서리를 직접 정한다 (맵 픽셀 좌표).
+    bool setLocationBounds(std::size_t locationIndex, std::uint32_t left, std::uint32_t top,
+                           std::uint32_t right, std::uint32_t bottom);
+
+    /// 로케이션을 새로 만든다. 만들었으면 참.
+    bool addLocation(std::uint32_t left, std::uint32_t top,
+                     std::uint32_t right, std::uint32_t bottom, const std::string & name);
+
+    bool removeLocation(std::size_t locationIndex, bool force = false);
+    bool setLocationName(std::size_t locationIndex, const std::string & name);
+    bool setLocationElevationFlags(std::size_t locationIndex, std::uint16_t flags);
 
     /// 맵 이름·설명을 바꾼다.
     bool setScenarioName(const std::string & name);

@@ -114,6 +114,7 @@ public:
         Race race = Race::Neutral;
         bool building = false;
         bool flyer = false;      ///< 하늘을 나는 유닛 (땅을 따지지 않는다)
+        bool addon = false;      ///< 본체 건물에 붙는 부속 건물
         std::uint8_t groupFlags = 0; ///< units.dat 의 starEditGroupFlags 원시값
     };
     UnitClass unitClass(std::uint16_t unitType) const;

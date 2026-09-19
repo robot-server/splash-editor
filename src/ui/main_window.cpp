@@ -700,6 +700,13 @@ void MainWindow::buildMenus()
     showGrid->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_G));
     connect(showGrid, &QAction::toggled, mapView_, &MapView::setGridVisible);
 
+    QAction * showLinks = viewMenu->addAction(tr("유닛 연결 표시(&K)"));
+    showLinks->setCheckable(true);
+    showLinks->setChecked(mapView_->unitLinksVisible());
+    showLinks->setToolTip(
+        tr("애드온이 붙은 건물과 이어진 나이더스 굴을 선으로 잇습니다."));
+    connect(showLinks, &QAction::toggled, mapView_, &MapView::setUnitLinksVisible);
+
     QAction * showFog = viewMenu->addAction(tr("시야 가리개 표시(&F)"));
     showFog->setCheckable(true);
     showFog->setChecked(mapView_->fogVisible());

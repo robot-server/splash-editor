@@ -59,6 +59,10 @@ struct RawUnit
     std::uint8_t shieldPercent = 100;
     std::uint8_t energyPercent = 100;
     std::uint16_t hangarAmount = 0;
+
+    // 애드온·나이더스가 서로 이어져 있으면 상대의 classId 가 들어 있다.
+    std::uint16_t relationFlags = 0;   ///< Chk::Unit::RelationFlag
+    std::uint32_t relationClassId = 0; ///< 이어진 상대의 classId
 };
 
 /// 유닛 하나의 고칠 수 있는 값들. setUnitProperties 에 넘긴다.
@@ -423,6 +427,28 @@ public:
     Result setTile(std::size_t tileX, std::size_t tileY, std::uint16_t tileValue);
 
     /// 로케이션의 범위를 바꾼다. 좌표는 픽셀이며 left<=right, top<=bottom 이어야 한다.
+    /// 두 유닛을 잇는다 (애드온이 붙거나 나이더스 굴이 이어진 상태).
+    ///
+    /// 게임은 classId 로 짝을 찾으므로, 번호가 없는 유닛에는 새로 준다.
+    Result linkUnits(std::size_t unitA, std::size_t unitB, bool addon);
+
+    /// 유닛의 연결을 끊는다. 짝이 되는 유닛의 연결도 함께 끊는다.
+    Result unlinkUnit(std::size_t unitIndex);
+
+    /// 로케이션을 새로 만든다. 만든 번호를 돌려준다(실패하면 0).
+    std::size_t addLocation(std::uint32_t left, std::uint32_t top,
+                            std::uint32_t right, std::uint32_t bottom,
+                            const std::string & name);
+
+    /// 로케이션을 지운다. 트리거가 쓰고 있으면 force 를 켜야 지워진다.
+    Result removeLocation(std::size_t locationIndex, bool force = false);
+
+    /// 로케이션 이름을 바꾼다.
+    Result setLocationName(std::size_t locationIndex, const std::string & name);
+
+    /// 로케이션이 어느 높이를 잡을지 (Chk::Location::Elevation 비트).
+    Result setLocationElevationFlags(std::size_t locationIndex, std::uint16_t flags);
+
     Result setLocationBounds(std::size_t locationIndex,
                              std::uint32_t left, std::uint32_t top,
                              std::uint32_t right, std::uint32_t bottom);

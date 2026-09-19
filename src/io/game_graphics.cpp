@@ -502,6 +502,7 @@ GameGraphics::UnitClass GameGraphics::unitClass(std::uint16_t unitType) const
     // 건물·비행 여부는 units.dat 의 특성 플래그가 알려 준다.
     result.building = (dat.flags & Sc::Unit::Flags::Building) != 0;
     result.flyer = (dat.flags & Sc::Unit::Flags::Flyer) != 0;
+    result.addon = (dat.flags & Sc::Unit::Flags::Addon) != 0;
 
     // 종족은 StarEdit 그룹 플래그에 들어 있다. MappingCore 에 이름이 붙은
     // 열거형이 없어 비트를 직접 읽는다 — 값은 실제 데이터로 확인했다.

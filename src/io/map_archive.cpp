@@ -1279,6 +1279,236 @@ Result MapArchive::setTile(std::size_t tileX, std::size_t tileY, std::uint16_t t
     return Result::success();
 }
 
+Result MapArchive::linkUnits(std::size_t unitA, std::size_t unitB, bool addon)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+    if (unitA == unitB)
+        return Result::failure("같은 유닛끼리는 이을 수 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        const std::size_t count = map.numUnits();
+        if (unitA >= count || unitB >= count)
+            return Result::failure("유닛 번호가 범위를 벗어났습니다.");
+
+        Chk::Unit first = map.getUnit(unitA);
+        Chk::Unit second = map.getUnit(unitB);
+
+        // classId 는 맵 안에서 고유해야 한다. 없는 유닛에는 남는 번호를 준다.
+        std::uint32_t nextClassId = 0;
+        for (std::size_t i = 0; i < count; ++i)
+            nextClassId = std::max(nextClassId, map.getUnit(i).classId);
+        ++nextClassId;
+
+        if (first.classId == 0)
+            first.classId = nextClassId++;
+        if (second.classId == 0)
+            second.classId = nextClassId++;
+
+        const std::uint16_t flag = addon ? Chk::Unit::RelationFlag::AddonLink
+                                         : Chk::Unit::RelationFlag::NydusLink;
+
+        first.relationFlags = flag;
+        first.relationClassId = second.classId;
+        second.relationFlags = flag;
+        second.relationClassId = first.classId;
+
+        // 유닛을 통째로 갈아 끼운다 — 지우고 넣는 두 액션이 한 편집이다.
+        const std::size_t lower = std::min(unitA, unitB);
+        const std::size_t upper = std::max(unitA, unitB);
+        const Chk::Unit & lowerUnit = (lower == unitA) ? first : second;
+        const Chk::Unit & upperUnit = (upper == unitA) ? first : second;
+
+        map.deleteUnit(upper);
+        map.insertUnit(upper, upperUnit);
+        map.deleteUnit(lower);
+        map.insertUnit(lower, lowerUnit);
+
+        impl_->undoSteps.push_back(4);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("유닛을 잇지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::unlinkUnit(std::size_t unitIndex)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        const std::size_t count = map.numUnits();
+        if (unitIndex >= count)
+            return Result::failure("유닛 번호가 범위를 벗어났습니다.");
+
+        Chk::Unit unit = map.getUnit(unitIndex);
+        if (unit.relationFlags == 0)
+            return Result::success(); // 이어진 것이 없다
+
+        const std::uint32_t partnerClassId = unit.relationClassId;
+
+        unit.relationFlags = 0;
+        unit.relationClassId = 0;
+        map.deleteUnit(unitIndex);
+        map.insertUnit(unitIndex, unit);
+        int actions = 2;
+
+        // 짝도 함께 끊는다 — 한쪽만 끊으면 게임이 반쪽 연결을 본다.
+        for (std::size_t i = 0; i < count; ++i)
+        {
+            if (i == unitIndex)
+                continue;
+
+            Chk::Unit other = map.getUnit(i);
+            if (other.classId == 0 || other.classId != partnerClassId)
+                continue;
+
+            other.relationFlags = 0;
+            other.relationClassId = 0;
+            map.deleteUnit(i);
+            map.insertUnit(i, other);
+            actions += 2;
+            break;
+        }
+
+        impl_->undoSteps.push_back(actions);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("연결을 끊지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+std::size_t MapArchive::addLocation(std::uint32_t left, std::uint32_t top,
+                                    std::uint32_t right, std::uint32_t bottom,
+                                    const std::string & name)
+{
+    if (!impl_->isOpen())
+        return 0;
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        Chk::Location location {};
+        location.left = left;
+        location.top = top;
+        location.right = right;
+        location.bottom = bottom;
+
+        // 기본은 모든 높이를 잡는다 — 게임에서 가장 흔한 설정이다.
+        location.elevationFlags = 0;
+
+        const std::size_t index = map.addLocation(location);
+        if (index == 0)
+            return 0;
+
+        if (!name.empty())
+            map.setLocationName<RawString>(index, RawString(impl_->encode(name)));
+
+        // 자리와 이름을 함께 넣으므로 실행 취소 단위를 세기 어렵다.
+        impl_->undoSteps.clear();
+        impl_->redoSteps.clear();
+        return index;
+    }
+    catch (const std::exception &)
+    {
+    }
+    return 0;
+}
+
+Result MapArchive::removeLocation(std::size_t locationIndex, bool force)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (locationIndex >= map.numLocations())
+            return Result::failure("로케이션 번호가 범위를 벗어났습니다.");
+
+        // "Anywhere"(64번)는 트리거가 기본으로 쓰는 자리라 지우면 곤란하다.
+        if (locationIndex == Chk::LocationId::Anywhere)
+            return Result::failure("Anywhere 로케이션은 지울 수 없습니다.");
+
+        map.deleteLocation(locationIndex, /*deleteOnlyIfUnused*/ !force);
+
+        // 지워졌는지는 비어 있는지로 확인한다 — deleteLocation 은 쓰이는
+        // 중이면 조용히 넘어간다.
+        if (!map.isBlank(locationIndex))
+        {
+            return Result::failure(
+                "트리거가 쓰고 있는 로케이션입니다. 그래도 지우려면 '쓰는 중이어도 지우기'를 켜세요.");
+        }
+
+        impl_->undoSteps.clear();
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("로케이션을 지우지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::setLocationName(std::size_t locationIndex, const std::string & name)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (locationIndex >= map.numLocations())
+            return Result::failure("로케이션 번호가 범위를 벗어났습니다.");
+
+        map.setLocationName<RawString>(locationIndex, RawString(impl_->encode(name)));
+
+        // 문자열 표를 건드리므로 실행 취소 단위를 세기 어렵다.
+        impl_->undoSteps.clear();
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("로케이션 이름을 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::setLocationElevationFlags(std::size_t locationIndex, std::uint16_t flags)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (locationIndex >= map.numLocations())
+            return Result::failure("로케이션 번호가 범위를 벗어났습니다.");
+
+        Chk::Location location = map.getLocation(locationIndex);
+        location.elevationFlags = flags;
+
+        map.replaceLocation(locationIndex, location);
+        impl_->undoSteps.push_back(1);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("로케이션 높이를 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 Result MapArchive::setLocationBounds(std::size_t locationIndex,
                                      std::uint32_t left, std::uint32_t top,
                                      std::uint32_t right, std::uint32_t bottom)
@@ -1546,6 +1776,8 @@ std::vector<RawUnit> MapArchive::units() const
             raw.shieldPercent = unit.shieldPercent;
             raw.energyPercent = unit.energyPercent;
             raw.hangarAmount = unit.hangarAmount;
+            raw.relationFlags = unit.relationFlags;
+            raw.relationClassId = unit.relationClassId;
             out.push_back(raw);
         }
     }

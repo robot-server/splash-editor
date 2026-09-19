@@ -327,6 +327,129 @@ bool MapDocument::setTiles(const std::vector<std::pair<std::size_t, std::size_t>
     return true;
 }
 
+bool MapDocument::linkUnits(std::size_t unitA, std::size_t unitB, bool addon)
+{
+    const io::Result result = archive_.linkUnits(unitA, unitB, addon);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::unlinkUnit(std::size_t unitIndex)
+{
+    const io::Result result = archive_.unlinkUnit(unitIndex);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setLocationBounds(std::size_t locationIndex, std::uint32_t left,
+                                    std::uint32_t top, std::uint32_t right,
+                                    std::uint32_t bottom)
+{
+    if (locationIndex >= locations_.size())
+    {
+        lastError_ = "로케이션 번호가 범위를 벗어났습니다.";
+        return false;
+    }
+
+    // 모서리가 뒤집히면 게임이 빈 로케이션으로 본다. 정렬해 둔다.
+    if (left > right)
+        std::swap(left, right);
+    if (top > bottom)
+        std::swap(top, bottom);
+
+    const io::Result result = archive_.setLocationBounds(
+        locations_[locationIndex].index, left, top, right, bottom);
+    if (!result) { lastError_ = result.message; return false; }
+
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::addLocation(std::uint32_t left, std::uint32_t top,
+                              std::uint32_t right, std::uint32_t bottom,
+                              const std::string & name)
+{
+    if (left > right)
+        std::swap(left, right);
+    if (top > bottom)
+        std::swap(top, bottom);
+
+    if (archive_.addLocation(left, top, right, bottom, name) == 0)
+    {
+        lastError_ = "로케이션을 만들지 못했습니다 (자리가 가득 찼을 수 있습니다).";
+        return false;
+    }
+
+    modified_ = true;
+    undoDepth_ = 0; redoDepth_ = 0; savedDepth_ = -1;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::removeLocation(std::size_t locationIndex, bool force)
+{
+    if (locationIndex >= locations_.size())
+    {
+        lastError_ = "로케이션 번호가 범위를 벗어났습니다.";
+        return false;
+    }
+
+    const io::Result result = archive_.removeLocation(locations_[locationIndex].index, force);
+    if (!result) { lastError_ = result.message; return false; }
+
+    modified_ = true;
+    undoDepth_ = 0; redoDepth_ = 0; savedDepth_ = -1;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setLocationName(std::size_t locationIndex, const std::string & name)
+{
+    if (locationIndex >= locations_.size())
+    {
+        lastError_ = "로케이션 번호가 범위를 벗어났습니다.";
+        return false;
+    }
+
+    const io::Result result = archive_.setLocationName(locations_[locationIndex].index, name);
+    if (!result) { lastError_ = result.message; return false; }
+
+    modified_ = true;
+    undoDepth_ = 0; redoDepth_ = 0; savedDepth_ = -1;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setLocationElevationFlags(std::size_t locationIndex, std::uint16_t flags)
+{
+    if (locationIndex >= locations_.size())
+    {
+        lastError_ = "로케이션 번호가 범위를 벗어났습니다.";
+        return false;
+    }
+
+    const io::Result result =
+        archive_.setLocationElevationFlags(locations_[locationIndex].index, flags);
+    if (!result) { lastError_ = result.message; return false; }
+
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
 bool MapDocument::moveLocation(std::size_t locationIndex, std::int64_t dx, std::int64_t dy)
 {
     if (locationIndex >= locations_.size())
@@ -1040,6 +1163,9 @@ void MapDocument::refreshInfo()
         unit.owner    = raw.owner;
         unit.resourceAmount = raw.resourceAmount;
         unit.typeName = io::unitTypeName(raw.type);
+        unit.classId = raw.classId;
+        unit.relationFlags = raw.relationFlags;
+        unit.relationClassId = raw.relationClassId;
         units_.push_back(std::move(unit));
     }
 

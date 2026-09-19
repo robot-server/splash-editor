@@ -181,6 +181,9 @@ public:
     bool locationsVisible() const { return showLocations_; }
     bool creepVisible() const { return showCreep_; }
 
+    /// 이어진 유닛을 선으로 보여 줄지.
+    bool unitLinksVisible() const { return showLinks_; }
+
     /// 시야 가리개(MASK)를 겹쳐 보여 줄지.
     bool fogVisible() const { return showFog_; }
 
@@ -201,6 +204,7 @@ public slots:
     void setLocationsVisible(bool visible);
     void setCreepVisible(bool visible);
     void setFogVisible(bool visible);
+    void setUnitLinksVisible(bool visible);
 
     void zoomIn();
     void zoomOut();
@@ -288,7 +292,7 @@ private:
     std::vector<std::uint8_t> creepMask_;
     bool creepReady_ = false;
     bool showUnits_ = true;
-    bool showLocations_ = true;
+    bool showLocations_ = false; ///< 로케이션은 겹쳐 보이면 지형을 가려 기본은 꺼 둔다
     bool showCreep_ = true;
     bool showGrid_ = false;
 
@@ -305,6 +309,12 @@ private:
 
     /// 지금 놓기 도구가 그 자리에 놓을 수 있는지.
     bool canPlaceAt(int x, int y) const;
+
+    /// 방금 놓은 유닛을 이웃과 이어 준다 (애드온·나이더스).
+    void autoLinkPlaced(std::size_t placedIndex);
+
+    /// 애드온·나이더스로 이어진 유닛을 선으로 잇는다.
+    void paintUnitLinks(QPainter & painter);
 
     /// 시야 가리개를 겹쳐 그린다.
     void paintFog(QPainter & painter, const QRect & dirty);
@@ -338,6 +348,7 @@ private:
     bool checkGroundUnits_ = false;
 
     bool showFog_ = false;
+    bool showLinks_ = true;
     std::uint8_t fogPlayers_ = 0x01; ///< 기본은 플레이어 1
     bool fogErase_ = false;
     bool fogPainting_ = false;
@@ -349,6 +360,9 @@ private:
     bool placingDrag_ = false;   ///< 버튼을 누른 채 끌며 놓는 중
     QPoint lastPlaced_ {-1, -1}; ///< 끌며 놓을 때 같은 자리에 겹쳐 놓지 않도록
     bool dragSoundPlayed_ = false; ///< 한 번 끄는 동안 소리는 한 번만
+
+    /// 이어서 놓은 나이더스 굴을 잇기 위해 마지막 자리를 기억한다.
+    int lastNydusUnit_ = -1;
 
     std::uint16_t placeUnitType_ = 0;
     std::uint8_t placeUnitOwner_ = 0;

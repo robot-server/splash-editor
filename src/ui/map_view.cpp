@@ -330,7 +330,10 @@ void MapView::paintEvent(QPaintEvent * event)
     if (showLocations_)
         paintLocations(painter, dirty);
     if (showUnits_)
+    {
         paintUnits(painter, dirty);
+        paintUnitLinks(painter);
+    }
 
     paintPlacementPreview(painter);
     paintTerrainCursor(painter);
@@ -690,6 +693,7 @@ void MapView::setTool(Tool tool)
         hasHover_ = false;
         placingDrag_ = false;
         lastPlaced_ = QPoint(-1, -1);
+        lastNydusUnit_ = -1;
     }
 
     if (tool_ == tool)
@@ -798,6 +802,169 @@ bool MapView::unitWouldOverlap(std::uint16_t unitType, int x, int y, int skipInd
             return true;
     }
     return false;
+}
+
+void MapView::autoLinkPlaced(std::size_t placedIndex)
+{
+    if (document_ == nullptr || tileset_ == nullptr)
+        return;
+
+    const auto & units = document_->units();
+    if (placedIndex >= units.size())
+        return;
+
+    const auto & placed = units[placedIndex];
+    auto * doc = const_cast<chk::MapDocument *>(document_);
+
+    // --- 나이더스 굴: 이어서 놓은 둘을 잇는다 ---
+    constexpr std::uint16_t kNydusCanal = 134;
+    if (placed.type == kNydusCanal)
+    {
+        if (lastNydusUnit_ >= 0 && lastNydusUnit_ < static_cast<int>(units.size()) &&
+            static_cast<std::size_t>(lastNydusUnit_) != placedIndex &&
+            units[static_cast<std::size_t>(lastNydusUnit_)].type == kNydusCanal &&
+            units[static_cast<std::size_t>(lastNydusUnit_)].relationFlags == 0)
+        {
+            if (doc->linkUnits(static_cast<std::size_t>(lastNydusUnit_), placedIndex,
+                               /*addon*/ false))
+            {
+                // 굴은 둘씩 짝지으므로 짝이 찼으면 다음 굴을 기다린다.
+                lastNydusUnit_ = -1;
+                emit documentEdited();
+                return;
+            }
+        }
+
+        lastNydusUnit_ = static_cast<int>(placedIndex);
+        return;
+    }
+
+    // --- 애드온: 왼쪽에 닿는 본체 건물에 붙인다 ---
+    const auto placedClass = tileset_->unitClass(placed.type);
+    if (!placedClass.addon)
+        return;
+
+    const auto placedBounds = tileset_->unitBounds(placed.type);
+    const int placedLeft = static_cast<int>(placed.x) - placedBounds.left;
+    const int placedTop = static_cast<int>(placed.y) - placedBounds.up;
+    const int placedBottom = static_cast<int>(placed.y) + placedBounds.down;
+
+    int best = -1;
+    int bestGap = std::numeric_limits<int>::max();
+
+    for (std::size_t i = 0; i < units.size(); ++i)
+    {
+        if (i == placedIndex)
+            continue;
+
+        const auto & other = units[i];
+        const auto otherClass = tileset_->unitClass(other.type);
+        if (!otherClass.building || otherClass.addon || other.relationFlags != 0)
+            continue;
+
+        const auto otherBounds = tileset_->unitBounds(other.type);
+        const int otherRight = static_cast<int>(other.x) + otherBounds.right;
+        const int otherTop = static_cast<int>(other.y) - otherBounds.up;
+        const int otherBottom = static_cast<int>(other.y) + otherBounds.down;
+
+        // 애드온은 본체의 오른쪽에 붙는다. 세로로 겹치고 가로로 맞닿은
+        // 건물만 후보로 삼는다.
+        if (otherBottom < placedTop || otherTop > placedBottom)
+            continue;
+
+        const int gap = placedLeft - otherRight;
+        if (gap < -io::kTilePixels || gap > io::kTilePixels)
+            continue;
+
+        if (std::abs(gap) < bestGap)
+        {
+            bestGap = std::abs(gap);
+            best = static_cast<int>(i);
+        }
+    }
+
+    if (best >= 0 && doc->linkUnits(static_cast<std::size_t>(best), placedIndex, /*addon*/ true))
+        emit documentEdited();
+}
+
+void MapView::setUnitLinksVisible(bool visible)
+{
+    showLinks_ = visible;
+    viewport()->update();
+}
+
+void MapView::paintUnitLinks(QPainter & painter)
+{
+    if (!showLinks_ || document_ == nullptr)
+        return;
+
+    const auto & units = document_->units();
+    if (units.empty())
+        return;
+
+    const double tile = scaledTileSize();
+    if (tile <= 0)
+        return;
+
+    const double scale = tile / io::kTilePixels;
+    const int originX = horizontalScrollBar()->value();
+    const int originY = verticalScrollBar()->value();
+
+    // classId 로 상대를 찾는다. 맵마다 유닛이 수천이라 표를 한 번 만든다.
+    QHash<std::uint32_t, int> byClassId;
+    byClassId.reserve(static_cast<int>(units.size()));
+    for (int i = 0; i < static_cast<int>(units.size()); ++i)
+    {
+        const auto & unit = units[static_cast<std::size_t>(i)];
+        if (unit.classId != 0)
+            byClassId.insert(unit.classId, i);
+    }
+
+    constexpr std::uint16_t kNydusLink = 0x0200;
+    constexpr std::uint16_t kAddonLink = 0x0400;
+
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing, true);
+
+    for (int i = 0; i < static_cast<int>(units.size()); ++i)
+    {
+        const auto & unit = units[static_cast<std::size_t>(i)];
+        if (unit.relationFlags == 0 || unit.relationClassId == unit.classId)
+            continue;
+
+        const auto found = byClassId.find(unit.relationClassId);
+        if (found == byClassId.end())
+            continue;
+
+        // 짝을 한 번만 그린다.
+        if (found.value() < i)
+            continue;
+
+        const auto & other = units[static_cast<std::size_t>(found.value())];
+
+        const QPointF from(unit.x * scale - originX, unit.y * scale - originY);
+        const QPointF to(other.x * scale - originX, other.y * scale - originY);
+
+        // 애드온은 노랑, 나이더스는 보라로 구분한다.
+        const bool addon = (unit.relationFlags & kAddonLink) != 0;
+        const bool nydus = (unit.relationFlags & kNydusLink) != 0;
+        const QColor colour = addon ? QColor(255, 220, 90) : QColor(190, 130, 255);
+        if (!addon && !nydus)
+            continue;
+
+        QPen pen(colour, 1.5);
+        pen.setStyle(Qt::DashLine);
+        painter.setPen(pen);
+        painter.drawLine(from, to);
+
+        // 양 끝에 작은 표를 찍어 어느 유닛이 이어졌는지 분명히 한다.
+        painter.setBrush(colour);
+        painter.setPen(Qt::NoPen);
+        painter.drawEllipse(from, 3.0, 3.0);
+        painter.drawEllipse(to, 3.0, 3.0);
+    }
+
+    painter.restore();
 }
 
 void MapView::setFogVisible(bool visible)
@@ -1252,6 +1419,11 @@ bool MapView::placeAt(const QPointF & screenPos)
                      static_cast<std::uint16_t>(pos.y())))
     {
         lastPlaced_ = pos;
+
+        // 방금 놓은 유닛은 목록 끝에 붙는다.
+        if (!document_->units().empty())
+            autoLinkPlaced(document_->units().size() - 1);
+
         refreshUnits();
         emit documentEdited();
 
@@ -1423,6 +1595,7 @@ void MapView::mousePressEvent(QMouseEvent * event)
         isomPainting_ = false;
         hasHover_ = false;
         lastPlaced_ = QPoint(-1, -1);
+        lastNydusUnit_ = -1;
 
         if (wasPlacing)
         {
