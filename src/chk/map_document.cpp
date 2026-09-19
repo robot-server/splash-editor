@@ -459,6 +459,47 @@ bool MapDocument::setLocationName(std::size_t locationIndex, const std::string &
     return true;
 }
 
+bool MapDocument::locationInverted(std::size_t locationIndex) const
+{
+    if (locationIndex >= locations_.size())
+        return false;
+
+    // locations_ 는 보기 좋게 정규화해 두므로 원본을 다시 본다.
+    const auto raw = archive_.locations();
+    for (const auto & entry : raw)
+    {
+        if (entry.index == locations_[locationIndex].index)
+            return entry.left > entry.right || entry.top > entry.bottom;
+    }
+    return false;
+}
+
+bool MapDocument::setLocationInverted(std::size_t locationIndex, bool inverted)
+{
+    if (locationIndex >= locations_.size())
+    {
+        lastError_ = "로케이션 번호가 범위를 벗어났습니다.";
+        return false;
+    }
+
+    const auto & location = locations_[locationIndex];
+
+    // 정규화된 값을 기준으로, 뒤집을지 말지에 따라 모서리를 넣는다.
+    const std::uint32_t left = inverted ? location.right : location.left;
+    const std::uint32_t right = inverted ? location.left : location.right;
+
+    const io::Result result = archive_.setLocationBounds(
+        location.index, left, location.top, right, location.bottom);
+
+    if (!result) { lastError_ = result.message; return false; }
+
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
 bool MapDocument::setLocationElevationFlags(std::size_t locationIndex, std::uint16_t flags)
 {
     if (locationIndex >= locations_.size())

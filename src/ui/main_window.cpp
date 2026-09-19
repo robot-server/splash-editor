@@ -575,6 +575,25 @@ void MainWindow::buildMenus()
             statusBar()->showMessage(tr("복사할 유닛을 먼저 고르세요"), 2000);
     });
 
+    QAction * cutAction = editMenu->addAction(tr("잘라내기(&X)"));
+    cutAction->setShortcut(QKeySequence::Cut);
+    connect(cutAction, &QAction::triggered, this, [this] {
+        if (mapView_->tool() == MapView::Tool::SelectTerrain)
+        {
+            if (mapView_->cutTerrainSelection())
+                statusBar()->showMessage(tr("지형을 잘라냈습니다"), 3000);
+            else
+                statusBar()->showMessage(tr("잘라낼 지형을 먼저 고르세요"), 2000);
+            return;
+        }
+
+        // 유닛은 복사한 뒤 지운다.
+        if (mapView_->copySelection() && mapView_->deleteSelectedUnit())
+            statusBar()->showMessage(tr("유닛을 잘라냈습니다"), 2000);
+        else
+            statusBar()->showMessage(tr("잘라낼 것을 먼저 고르세요"), 2000);
+    });
+
     QAction * pasteAction = editMenu->addAction(tr("붙여넣기(&V)"));
     pasteAction->setShortcut(QKeySequence::Paste);
     connect(pasteAction, &QAction::triggered, this, [this] {

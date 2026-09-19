@@ -198,6 +198,15 @@ public:
     bool setLocationName(std::size_t locationIndex, const std::string & name);
     bool setLocationElevationFlags(std::size_t locationIndex, std::uint16_t flags);
 
+    /// 로케이션의 안팎을 뒤집는다.
+    ///
+    /// 게임은 왼쪽이 오른쪽보다 큰 로케이션을 "이 네모 바깥"으로 읽는다.
+    /// 트리거에서 "여기 말고 다른 곳" 을 가리킬 때 쓴다.
+    bool setLocationInverted(std::size_t locationIndex, bool inverted);
+
+    /// 그 로케이션이 뒤집혀 있는지.
+    bool locationInverted(std::size_t locationIndex) const;
+
     /// 맵 이름·설명을 바꾼다.
     bool setScenarioName(const std::string & name);
     bool setScenarioDescription(const std::string & description);

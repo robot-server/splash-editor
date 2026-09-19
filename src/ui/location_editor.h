@@ -50,6 +50,7 @@ private:
     QSpinBox * right_ = nullptr;
     QSpinBox * bottom_ = nullptr;
     QCheckBox * elevation_[6] {};
+    QCheckBox * inverted_ = nullptr;
     QCheckBox * removeIfUsed_ = nullptr;
     QLabel * status_ = nullptr;
 

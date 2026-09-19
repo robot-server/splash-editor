@@ -86,6 +86,11 @@ LocationEditor::LocationEditor(chk::MapDocument & document, QWidget * parent)
     }
     elevationLayout->addStretch();
 
+    inverted_ = new QCheckBox(tr("안팎 뒤집기 (이 네모 바깥)"), this);
+    inverted_->setToolTip(
+        tr("게임은 왼쪽이 오른쪽보다 큰 로케이션을 \"이 네모 바깥\" 으로 읽습니다. "
+           "트리거에서 \"여기 말고 다른 곳\" 을 가리킬 때 씁니다."));
+
     auto * applyButton = new QPushButton(tr("이 로케이션에 적용"), this);
     connect(applyButton, &QPushButton::clicked, this, [this] { applyCurrent(); });
 
@@ -106,6 +111,7 @@ LocationEditor::LocationEditor(chk::MapDocument & document, QWidget * parent)
     auto * right = new QVBoxLayout();
     right->addLayout(form);
     right->addWidget(elevationBox);
+    right->addWidget(inverted_);
     right->addWidget(applyButton);
     right->addStretch();
     right->addWidget(status_);
@@ -194,6 +200,8 @@ void LocationEditor::loadSelected()
 
     for (int i = 0; i < 6; ++i)
         elevation_[i]->setChecked((location.elevationFlags & kElevations[i].bit) != 0);
+
+    inverted_->setChecked(document_.locationInverted(static_cast<std::size_t>(row)));
     loading_ = false;
 
     status_->setText(tr("로케이션 %1번").arg(location.index));
@@ -234,6 +242,9 @@ void LocationEditor::applyCurrent()
     }
     if (flags != before.elevationFlags)
         changed |= document_.setLocationElevationFlags(index, flags);
+
+    if (inverted_->isChecked() != document_.locationInverted(index))
+        changed |= document_.setLocationInverted(index, inverted_->isChecked());
 
     if (!changed)
     {

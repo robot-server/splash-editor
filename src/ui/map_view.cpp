@@ -1816,6 +1816,37 @@ bool MapView::copyTerrainSelection()
     return true;
 }
 
+bool MapView::cutTerrainSelection()
+{
+    if (!copyTerrainSelection())
+        return false;
+
+    const auto & info = document_->info();
+    const QRect box = terrainSelection_.intersected(QRect(0, 0, info.width, info.height));
+    if (box.isEmpty())
+        return false;
+
+    std::vector<io::MapArchive::TileWrite> writes;
+    writes.reserve(static_cast<std::size_t>(box.width()) * box.height());
+
+    for (int y = box.top(); y <= box.bottom(); ++y)
+    {
+        for (int x = box.left(); x <= box.right(); ++x)
+        {
+            writes.push_back(io::MapArchive::TileWrite{
+                static_cast<std::size_t>(x), static_cast<std::size_t>(y), std::uint16_t(0)});
+        }
+    }
+
+    auto * doc = const_cast<chk::MapDocument *>(document_);
+    if (!doc->writeTiles(writes))
+        return false;
+
+    refresh();
+    emit documentEdited();
+    return true;
+}
+
 bool MapView::pasteTerrainAt(const QPointF & screenPos)
 {
     if (terrainClipboard_.empty() || document_ == nullptr || !document_->isOpen())

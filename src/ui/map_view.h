@@ -172,6 +172,11 @@ public:
     /// 고른 지형을 클립보드에 담는다. 담았으면 참.
     bool copyTerrainSelection();
 
+    /// 고른 지형을 담고 그 자리를 비운다 (잘라내기).
+    ///
+    /// 비운 자리는 타일 0 이 된다 — 게임에서 검게 보이는 빈 타일이다.
+    bool cutTerrainSelection();
+
     /// 담아 둔 지형을 커서 자리에 찍는다.
     bool pasteTerrainAt(const QPointF & screenPos);
 
