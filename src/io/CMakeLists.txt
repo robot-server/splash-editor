@@ -7,6 +7,8 @@ add_library(splash_io STATIC
   game_assets.h
   game_graphics.cpp
   game_graphics.h
+  text_colors.cpp
+  text_colors.h
   text_encoding.cpp
   text_encoding.h
 )

@@ -7,6 +7,7 @@
 #include "ui/briefing_editor.h"
 #include "ui/code_editor_pane.h"
 #include "ui/settings_dialogs.h"
+#include "ui/string_editor.h"
 #include "ui/trigger_editor.h"
 #include "ui/unit_palette.h"
 
@@ -986,83 +987,13 @@ void MainWindow::onStringEditor()
     if (!document_.isOpen())
         return;
 
-    const auto strings = document_.strings();
-
-    auto * dialog = new QDialog(this);
-    dialog->setAttribute(Qt::WA_DeleteOnClose);
-    dialog->setWindowTitle(tr("문자열 편집기 — %1개").arg(strings.size()));
-    dialog->resize(760, 560);
-
-    auto * table = new QTableWidget(static_cast<int>(strings.size()), 3, dialog);
-    table->setHorizontalHeaderLabels({tr("번호"), tr("쓰임"), tr("내용")});
-    table->horizontalHeader()->setStretchLastSection(true);
-    table->verticalHeader()->setVisible(false);
-
-    for (std::size_t row = 0; row < strings.size(); ++row)
-    {
-        const auto & entry = strings[row];
-        const int r = static_cast<int>(row);
-
-        auto * idItem = new QTableWidgetItem(QString::number(entry.id));
-        idItem->setFlags(idItem->flags() & ~Qt::ItemIsEditable);
-        table->setItem(r, 0, idItem);
-
-        auto * usedItem = new QTableWidgetItem(entry.used ? tr("예") : tr("아니오"));
-        usedItem->setFlags(usedItem->flags() & ~Qt::ItemIsEditable);
-        table->setItem(r, 1, usedItem);
-
-        // 줄바꿈이 든 문자열이 많다. 표에서는 한 줄로 보이게 바꿔 둔다.
-        QString shown = QString::fromStdString(entry.text);
-        shown.replace(QStringLiteral("\r\n"), QStringLiteral("\\n"));
-        shown.replace(QChar('\n'), QStringLiteral("\\n"));
-        auto * textItem = new QTableWidgetItem(shown);
-        textItem->setData(Qt::UserRole, static_cast<qulonglong>(entry.id));
-        table->setItem(r, 2, textItem);
-    }
-
-    auto * hint = new QLabel(
-        tr("내용을 고치고 적용을 누르세요. 줄바꿈은 \\n 으로 적습니다."), dialog);
-    hint->setWordWrap(true);
-
-    auto * buttons = new QDialogButtonBox(
-        QDialogButtonBox::Apply | QDialogButtonBox::Close, dialog);
-    connect(buttons, &QDialogButtonBox::rejected, dialog, &QDialog::close);
-    connect(buttons->button(QDialogButtonBox::Apply), &QPushButton::clicked, this,
-            [this, table, strings, dialog] {
-        int changed = 0;
-        for (int row = 0; row < table->rowCount(); ++row)
-        {
-            QTableWidgetItem * item = table->item(row, 2);
-            if (item == nullptr)
-                continue;
-
-            QString edited = item->text();
-            edited.replace(QStringLiteral("\\n"), QStringLiteral("\r\n"));
-
-            const auto id = static_cast<std::size_t>(item->data(Qt::UserRole).toULongLong());
-            const auto before = std::find_if(strings.begin(), strings.end(),
-                [id](const auto & e) { return e.id == id; });
-            if (before == strings.end() || before->text == edited.toStdString())
-                continue;
-
-            if (document_.setString(id, edited.toStdString()))
-                ++changed;
-        }
-
-        if (changed > 0)
-        {
-            mapView_->refresh();
-            refreshFromDocument();
-            statusBar()->showMessage(tr("문자열 %1개를 바꿨습니다").arg(changed), 3000);
-            dialog->close();
-        }
+    auto * editor = new StringEditor(document_, this);
+    editor->setAttribute(Qt::WA_DeleteOnClose);
+    connect(editor, &StringEditor::documentEdited, this, [this] {
+        mapView_->refresh();
+        refreshFromDocument();
     });
-
-    auto * layout = new QVBoxLayout(dialog);
-    layout->addWidget(table, 1);
-    layout->addWidget(hint);
-    layout->addWidget(buttons);
-    dialog->show();
+    editor->show();
 }
 
 void MainWindow::onPlayerSettings()

@@ -26,6 +26,8 @@ qt_add_executable(splash-editor
   briefing_editor.cpp
   briefing_editor.h
   settings_dialogs.cpp
+  string_editor.cpp
+  string_editor.h
   settings_dialogs.h
   trigger_argument_panel.cpp
   trigger_argument_panel.h
