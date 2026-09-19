@@ -41,6 +41,7 @@ struct MapUnit
     std::uint16_t y = 0;        ///< 중심 y (픽셀)
     std::uint16_t type = 0;
     std::uint8_t  owner = 0;    ///< 0-11
+    std::uint32_t resourceAmount = 0; ///< 자원 유닛의 남은 양
     std::string typeName;
 };
 

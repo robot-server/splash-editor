@@ -12,7 +12,9 @@
 #include <array>
 #include <cstring>
 #include <exception>
+#include <cstdlib>
 #include <filesystem>
+#include <iostream>
 #include <memory>
 #include <vector>
 
@@ -162,7 +164,8 @@ bool GameGraphics::hasUnitGraphics() const
 
 UnitImage GameGraphics::renderUnit(std::uint16_t unitType,
                                    std::uint8_t owner,
-                                   std::uint16_t tilesetId) const
+                                   std::uint16_t tilesetId,
+                                   std::uint32_t resourceAmount) const
 {
     UnitImage out;
     if (!hasUnitGraphics())
@@ -185,7 +188,10 @@ UnitImage GameGraphics::renderUnit(std::uint16_t unitType,
             if (rampBase + i < ramp.size())
                 palette[8 + i] = ramp[rampBase + i];
         }
-        const auto & shadowPalette = tiles.dark.bgraPalette;
+        // 그림자는 색을 칠하는 것이 아니라 배경을 어둡게 하는 효과다.
+        // dark.pcx 는 "배경색 -> 어두운 색" 매핑표라 배경을 알아야 정확한데,
+        // 스프라이트를 따로 그리는 우리는 배경을 모른다. 반투명 검정으로 근사한다.
+        constexpr std::uint8_t kShadowAlpha = 110;
 
         // --- iscript 를 돌려 이 유닛이 어떤 이미지들로 구성되는지 얻는다 ---
         Chk::Unit chkUnit {};
@@ -193,6 +199,8 @@ UnitImage GameGraphics::renderUnit(std::uint16_t unitType,
         chkUnit.owner = owner;
         chkUnit.xc = 0;
         chkUnit.yc = 0;
+        // 자원 유닛은 남은 양에 따라 그래픽이 달라진다(미네랄 3단계 등).
+        chkUnit.resourceAmount = resourceAmount;
 
         MapActor actor {};
         anim.initializeUnitActor(actor, /*isClipboard*/ false, /*unitIndex*/ 0, chkUnit, 0, 0);
@@ -243,7 +251,12 @@ UnitImage GameGraphics::renderUnit(std::uint16_t unitType,
             layer.shadow = (image.drawFunction == MapImage::DrawFunction::Shadow);
 
             // GRP 프레임은 스프라이트 원점(그림 중앙) 기준 오프셋을 갖는다.
-            layer.left = image.xc + image.xOffset - grp.grpWidth / 2 + header.xOffset;
+            // 좌우 반전 시에는 프레임이 반대쪽에서 시작하므로 x 기준이 달라진다
+            // (Chkdraft 의 drawClassicImage 와 같은 계산이다).
+            layer.left = image.xc + image.xOffset +
+                (layer.flipped
+                     ? (grp.grpWidth / 2 - header.frameWidth - header.xOffset)
+                     : (-grp.grpWidth / 2 + header.xOffset));
             layer.top  = image.yc + image.yOffset - grp.grpHeight / 2 + header.yOffset;
 
             const int right = layer.left + header.frameWidth;
@@ -261,6 +274,22 @@ UnitImage GameGraphics::renderUnit(std::uint16_t unitType,
                 minTop = std::min(minTop, layer.top);
                 maxRight = std::max(maxRight, right);
                 maxBottom = std::max(maxBottom, bottom);
+            }
+
+            if (std::getenv("SPLASH_DEBUG_LAYERS") != nullptr)
+            {
+                std::cerr << "    layer slot=" << slot
+                          << " imageId=" << image.imageId
+                          << " grp=" << grpIndex
+                          << " frame=" << frame << "/" << grp.numFrames
+                          << " grpWH=" << grp.grpWidth << "x" << grp.grpHeight
+                          << " frameWH=" << int(header.frameWidth) << "x" << int(header.frameHeight)
+                          << " hdrOff=(" << int(header.xOffset) << "," << int(header.yOffset) << ")"
+                          << " imgOff=(" << int(image.xOffset) << "," << int(image.yOffset) << ")"
+                          << " xc,yc=(" << image.xc << "," << image.yc << ")"
+                          << " flip=" << image.flipped
+                          << " draw=" << int(image.drawFunction)
+                          << " -> left=" << layer.left << " top=" << layer.top << "\n";
             }
 
             layers.push_back(layer);
@@ -332,25 +361,27 @@ UnitImage GameGraphics::renderUnit(std::uint16_t unitType,
                             if (dstX < 0 || dstY < 0 || dstX >= out.width || dstY >= out.height)
                                 continue;
 
-                            Sc::SystemColor color {};
+                            const std::size_t at =
+                                (static_cast<std::size_t>(dstY) * out.width + dstX) * 4;
+
                             if (layer.shadow)
                             {
-                                if (index < shadowPalette.size())
-                                    color = shadowPalette[index];
-                                else
+                                // 이미 칠해진 픽셀(먼저 그린 본체)이 있으면 덮지 않는다.
+                                if (out.rgba[at + 3] != 0)
                                     continue;
+                                out.rgba[at + 0] = 0;
+                                out.rgba[at + 1] = 0;
+                                out.rgba[at + 2] = 0;
+                                out.rgba[at + 3] = kShadowAlpha;
                             }
                             else
                             {
-                                color = palette[index];
+                                const Sc::SystemColor & color = palette[index];
+                                out.rgba[at + 0] = color.red;
+                                out.rgba[at + 1] = color.green;
+                                out.rgba[at + 2] = color.blue;
+                                out.rgba[at + 3] = 255;
                             }
-
-                            const std::size_t at =
-                                (static_cast<std::size_t>(dstY) * out.width + dstX) * 4;
-                            out.rgba[at + 0] = color.red;
-                            out.rgba[at + 1] = color.green;
-                            out.rgba[at + 2] = color.blue;
-                            out.rgba[at + 3] = 255;
                         }
                     }
 

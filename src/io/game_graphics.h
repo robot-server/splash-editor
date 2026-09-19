@@ -69,9 +69,12 @@ public:
     /// owner 는 플레이어 색 치환에 쓰인다(GRP 팔레트 인덱스 8-15 구간).
     /// tilesetId 는 나머지 색에 쓰일 팔레트를 고른다 — StarCraft 는 유닛도
     /// 지형 팔레트를 쓴다.
+    /// resourceAmount 는 자원 유닛(미네랄·베스핀)의 그래픽 단계를 가른다.
+    /// 0 이면 고갈된 모습이 되므로 실제 맵 값을 넘겨야 한다.
     UnitImage renderUnit(std::uint16_t unitType,
                          std::uint8_t owner,
-                         std::uint16_t tilesetId) const;
+                         std::uint16_t tilesetId,
+                         std::uint32_t resourceAmount = 0) const;
 
 private:
     struct Impl;

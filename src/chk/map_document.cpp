@@ -204,6 +204,7 @@ void MapDocument::refreshInfo()
         unit.y        = raw.y;
         unit.type     = raw.type;
         unit.owner    = raw.owner;
+        unit.resourceAmount = raw.resourceAmount;
         unit.typeName = io::unitTypeName(raw.type);
         units_.push_back(std::move(unit));
     }

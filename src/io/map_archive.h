@@ -51,6 +51,7 @@ struct RawUnit
     std::uint16_t type = 0;       ///< Sc::Unit::Type
     std::uint8_t  owner = 0;      ///< 0-11 (11 은 중립)
     std::uint16_t stateFlags = 0;
+    std::uint32_t resourceAmount = 0; ///< 자원 유닛의 남은 양 (그래픽 단계를 가른다)
 };
 
 /// 로케이션 하나. 좌표는 픽셀 단위이며, 좌상단이 우하단보다 클 수 있다

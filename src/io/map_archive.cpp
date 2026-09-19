@@ -384,6 +384,7 @@ std::vector<RawUnit> MapArchive::units() const
             raw.type       = static_cast<std::uint16_t>(unit.type);
             raw.owner      = unit.owner;
             raw.stateFlags = unit.stateFlags;
+            raw.resourceAmount = unit.resourceAmount;
             out.push_back(raw);
         }
     }

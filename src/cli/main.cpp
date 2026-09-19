@@ -37,7 +37,9 @@ int usage(const char * argv0)
         "      맵 지형을 이미지로 그린다. 타일셋 디코딩 검증용이다.\n"
         "      --units / --locations 를 주면 유닛·로케이션도 겹쳐 그린다.\n\n"
         "  " << argv0 << " units <맵파일> [개수]\n"
-        "      맵에 놓인 유닛을 나열한다 (기본 20개).\n";
+        "      맵에 놓인 유닛을 나열한다 (기본 20개).\n\n"
+        "  " << argv0 << " unit-image <설치폴더> <유닛번호> <출력.ppm> [소유자] [타일셋]\n"
+        "      유닛 하나를 격자 배경 위에 그린다. 스프라이트 검증용이다.\n";
     return 2;
 }
 
@@ -222,6 +224,120 @@ int cmdUnits(const std::string & mapPath, std::size_t limit)
     return 0;
 }
 
+int cmdUnitImage(const std::string & installPath,
+                 std::uint16_t unitType,
+                 const std::string & outPath,
+                 std::uint8_t owner,
+                 std::uint16_t tilesetId,
+                 std::uint32_t resourceAmount)
+{
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+    if (!graphics.hasUnitGraphics())
+    {
+        std::cerr << "유닛 그래픽을 읽지 못했습니다.\n";
+        return 1;
+    }
+
+    const auto image = graphics.renderUnit(unitType, owner, tilesetId, resourceAmount);
+    if (image.width <= 0 || image.height <= 0)
+    {
+        std::cerr << "유닛 " << unitType << " 을 그리지 못했습니다.\n";
+        return 1;
+    }
+
+    // 스프라이트가 잘렸는지 보이도록 여백과 격자를 깔고, 유닛 중심에 십자를 긋는다.
+    constexpr int kPad = 24;
+    const int W = image.width + kPad * 2;
+    const int H = image.height + kPad * 2;
+    std::vector<std::uint8_t> canvas(static_cast<std::size_t>(W) * H * 3, 0);
+
+    for (int y = 0; y < H; ++y)
+    {
+        for (int x = 0; x < W; ++x)
+        {
+            const bool grid = (x % 16 == 0) || (y % 16 == 0);
+            const std::uint8_t v = grid ? 70 : 40;
+            const std::size_t at = (static_cast<std::size_t>(y) * W + x) * 3;
+            canvas[at + 0] = v; canvas[at + 1] = v; canvas[at + 2] = v;
+        }
+    }
+
+    // 스프라이트 경계를 빨간 테두리로 표시
+    for (int x = 0; x < image.width; ++x)
+    {
+        for (int yy : {0, image.height - 1})
+        {
+            const std::size_t at = ((static_cast<std::size_t>(yy + kPad)) * W + x + kPad) * 3;
+            canvas[at + 0] = 200; canvas[at + 1] = 40; canvas[at + 2] = 40;
+        }
+    }
+    for (int y = 0; y < image.height; ++y)
+    {
+        for (int xx : {0, image.width - 1})
+        {
+            const std::size_t at = ((static_cast<std::size_t>(y + kPad)) * W + xx + kPad) * 3;
+            canvas[at + 0] = 200; canvas[at + 1] = 40; canvas[at + 2] = 40;
+        }
+    }
+
+    for (int y = 0; y < image.height; ++y)
+    {
+        for (int x = 0; x < image.width; ++x)
+        {
+            const std::size_t src = (static_cast<std::size_t>(y) * image.width + x) * 4;
+            const std::uint8_t alpha = image.rgba[src + 3];
+            if (alpha == 0)
+                continue;
+            const std::size_t at = ((static_cast<std::size_t>(y + kPad)) * W + x + kPad) * 3;
+            const auto mix = [alpha](std::uint8_t dst, std::uint8_t src2) {
+                return static_cast<std::uint8_t>((src2 * alpha + dst * (255 - alpha)) / 255);
+            };
+            canvas[at + 0] = mix(canvas[at + 0], image.rgba[src + 0]);
+            canvas[at + 1] = mix(canvas[at + 1], image.rgba[src + 1]);
+            canvas[at + 2] = mix(canvas[at + 2], image.rgba[src + 2]);
+        }
+    }
+
+    // 유닛 중심(anchor) 십자
+    const int ax = image.anchorX + kPad;
+    const int ay = image.anchorY + kPad;
+    for (int d = -6; d <= 6; ++d)
+    {
+        if (ax + d >= 0 && ax + d < W && ay >= 0 && ay < H)
+        {
+            const std::size_t at = (static_cast<std::size_t>(ay) * W + ax + d) * 3;
+            canvas[at + 0] = 90; canvas[at + 1] = 255; canvas[at + 2] = 90;
+        }
+        if (ay + d >= 0 && ay + d < H && ax >= 0 && ax < W)
+        {
+            const std::size_t at = (static_cast<std::size_t>(ay + d) * W + ax) * 3;
+            canvas[at + 0] = 90; canvas[at + 1] = 255; canvas[at + 2] = 90;
+        }
+    }
+
+    std::ofstream out(outPath, std::ios::binary | std::ios::trunc);
+    if (!out)
+    {
+        std::cerr << "출력 파일을 열지 못했습니다: " << outPath << "\n";
+        return 1;
+    }
+    out << "P6\n" << W << " " << H << "\n255\n";
+    out.write(reinterpret_cast<const char *>(canvas.data()),
+              static_cast<std::streamsize>(canvas.size()));
+
+    std::cout << "  유닛 " << unitType << " (" << splash::io::unitTypeName(unitType) << ")\n"
+              << "  스프라이트 크기 : " << image.width << " x " << image.height << "\n"
+              << "  중심(anchor)    : (" << image.anchorX << ", " << image.anchorY << ")\n"
+              << "  -> " << outPath << "\n";
+    return 0;
+}
+
 int cmdRender(const std::string & mapPath,
               const std::string & installPath,
               const std::string & outPath,
@@ -309,6 +425,19 @@ int cmdRender(const std::string & mapPath,
     }
 
     // --- 오버레이 ---
+    // 그림자는 반투명이라 배경과 섞어야 한다.
+    const auto blendPixel = [&](long long x, long long y, int r, int g, int b, int a) {
+        if (x < 0 || y < 0 || x >= pixelsWide || y >= pixelsTall)
+            return;
+        const std::size_t at = (static_cast<std::size_t>(y) * pixelsWide + x) * 3;
+        const auto mix = [a](std::uint8_t dst, int src) {
+            return static_cast<std::uint8_t>((src * a + dst * (255 - a)) / 255);
+        };
+        image[at + 0] = mix(image[at + 0], r);
+        image[at + 1] = mix(image[at + 1], g);
+        image[at + 2] = mix(image[at + 2], b);
+    };
+
     const auto putPixel = [&](long long x, long long y, int r, int g, int b) {
         if (x < 0 || y < 0 || x >= pixelsWide || y >= pixelsTall)
             return;
@@ -344,7 +473,8 @@ int cmdRender(const std::string & mapPath,
         {
             if (haveSprites)
             {
-                const auto image = tileset.renderUnit(u.type, u.owner, info.tilesetId);
+                const auto image =
+                    tileset.renderUnit(u.type, u.owner, info.tilesetId, u.resourceAmount);
                 if (image.width > 0 && image.height > 0)
                 {
                     const long long baseX = static_cast<long long>(u.x) - image.anchorX;
@@ -355,10 +485,12 @@ int cmdRender(const std::string & mapPath,
                         {
                             const std::size_t at =
                                 (static_cast<std::size_t>(yy) * image.width + xx) * 4;
-                            if (image.rgba[at + 3] == 0)
+                            const std::uint8_t alpha = image.rgba[at + 3];
+                            if (alpha == 0)
                                 continue; // 투명
-                            putPixel(baseX + xx, baseY + yy,
-                                     image.rgba[at + 0], image.rgba[at + 1], image.rgba[at + 2]);
+                            blendPixel(baseX + xx, baseY + yy,
+                                       image.rgba[at + 0], image.rgba[at + 1],
+                                       image.rgba[at + 2], alpha);
                         }
                     }
                     ++drawn;
@@ -540,6 +672,22 @@ int main(int argc, char ** argv)
             else if (args[i] == "--locations") drawLocations = true;
         }
         return cmdRender(args[1], args[2], args[3], drawUnits, drawLocations);
+    }
+
+    if (command == "unit-image" && args.size() >= 4)
+    {
+        try
+        {
+            const auto type = static_cast<std::uint16_t>(std::stoul(args[2]));
+            const std::uint8_t owner = args.size() > 4
+                ? static_cast<std::uint8_t>(std::stoul(args[4])) : 0;
+            const std::uint16_t tileset = args.size() > 5
+                ? static_cast<std::uint16_t>(std::stoul(args[5])) : 0;
+            const std::uint32_t resource = args.size() > 6
+                ? static_cast<std::uint32_t>(std::stoul(args[6])) : 1500u;
+            return cmdUnitImage(args[1], type, args[3], owner, tileset, resource);
+        }
+        catch (const std::exception &) { return usage(argv[0]); }
     }
 
     if (command == "units" && (args.size() == 2 || args.size() == 3))

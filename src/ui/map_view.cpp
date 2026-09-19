@@ -244,18 +244,26 @@ void MapView::paintEvent(QPaintEvent * event)
         paintUnits(painter, dirty);
 }
 
-const MapView::UnitSprite * MapView::unitSprite(std::uint16_t type, std::uint8_t owner)
+const MapView::UnitSprite * MapView::unitSprite(std::uint16_t type, std::uint8_t owner,
+                                               std::uint32_t resourceAmount)
 {
     if (tileset_ == nullptr || !tileset_->hasUnitGraphics() || document_ == nullptr)
         return nullptr;
 
-    const std::uint32_t key = (static_cast<std::uint32_t>(type) << 8) | owner;
+    // 자원 유닛은 남은 양에 따라 그래픽 단계가 달라지므로 캐시 키에 넣는다.
+    // 단계는 몇 개뿐이라 양 자체를 그대로 쓰면 캐시가 흩어진다 — 구간으로 묶는다.
+    const std::uint32_t resourceBucket = resourceAmount == 0 ? 0u
+        : (resourceAmount < 250 ? 1u : (resourceAmount < 500 ? 2u : 3u));
+    const std::uint32_t key =
+        (static_cast<std::uint32_t>(type) << 10) |
+        (static_cast<std::uint32_t>(owner) << 2) | resourceBucket;
+
     auto found = unitCache_.find(key);
     if (found != unitCache_.end())
         return found.value().pixmap.isNull() ? nullptr : &found.value();
 
     const io::UnitImage image =
-        tileset_->renderUnit(type, owner, document_->info().tilesetId);
+        tileset_->renderUnit(type, owner, document_->info().tilesetId, resourceAmount);
 
     UnitSprite sprite;
     if (image.width > 0 && image.height > 0)
@@ -285,7 +293,7 @@ void MapView::paintUnits(QPainter & painter, const QRect & dirty)
 
     for (const auto & unit : units)
     {
-        const UnitSprite * sprite = unitSprite(unit.type, unit.owner);
+        const UnitSprite * sprite = unitSprite(unit.type, unit.owner, unit.resourceAmount);
 
         if (sprite != nullptr)
         {

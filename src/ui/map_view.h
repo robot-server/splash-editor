@@ -66,7 +66,8 @@ private:
     /// 유닛 스프라이트. 타입과 소유자 조합으로 캐시한다(플레이어 색이 다르다).
     /// 스프라이트를 구하지 못하면 nullptr — 호출부가 원으로 대신 그린다.
     struct UnitSprite { QPixmap pixmap; int anchorX = 0; int anchorY = 0; };
-    const UnitSprite * unitSprite(std::uint16_t type, std::uint8_t owner);
+    const UnitSprite * unitSprite(std::uint16_t type, std::uint8_t owner,
+                                  std::uint32_t resourceAmount);
 
     /// 맵 픽셀 좌표를 화면 좌표로 옮긴다.
     QPointF mapToScreen(double mapX, double mapY) const;
