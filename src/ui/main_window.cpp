@@ -1489,7 +1489,7 @@ void MainWindow::onPlayerSettings()
 
     QDialog dialog(this);
     dialog.setWindowTitle(tr("플레이어 설정"));
-    dialog.resize(560, 560);
+    dialog.resize(720, 620);
 
     auto * grid = new QGridLayout();
     grid->addWidget(new QLabel(tr("플레이어"), &dialog), 0, 0);
@@ -1566,17 +1566,49 @@ void MainWindow::onPlayerSettings()
         colorBoxes[player] = colorBox;
     }
 
-    auto * forceGroup = new QGroupBox(tr("세력 이름"), &dialog);
-    auto * forceForm = new QFormLayout(forceGroup);
+    // 세력 — 이름과 함께 동맹·공유 시야 같은 규칙을 정한다.
+    const auto forceSettings = document().forceSettings();
+
+    auto * forceGroup = new QGroupBox(tr("세력"), &dialog);
+    auto * forceGrid = new QGridLayout(forceGroup);
+    forceGrid->addWidget(new QLabel(tr("이름"), forceGroup), 0, 1);
+    forceGrid->addWidget(new QLabel(tr("시작 위치 섞기"), forceGroup), 0, 2);
+    forceGrid->addWidget(new QLabel(tr("무작위 동맹"), forceGroup), 0, 3);
+    forceGrid->addWidget(new QLabel(tr("동맹 승리"), forceGroup), 0, 4);
+    forceGrid->addWidget(new QLabel(tr("시야 공유"), forceGroup), 0, 5);
+
     std::vector<QLineEdit *> forceEdits(4);
+    std::vector<std::array<QCheckBox *, 4>> forceFlags(4);
+
     for (int force = 0; force < 4; ++force)
     {
+        const int row = force + 1;
+        const auto index = static_cast<std::size_t>(force);
+
+        forceGrid->addWidget(new QLabel(tr("세력 %1").arg(force + 1), forceGroup), row, 0);
+
         auto * edit = new QLineEdit(
             force < static_cast<int>(forces.size())
-                ? QString::fromStdString(forces[static_cast<std::size_t>(force)]) : QString(),
+                ? QString::fromStdString(forces[index]) : QString(),
             forceGroup);
-        forceForm->addRow(tr("세력 %1").arg(force + 1), edit);
-        forceEdits[static_cast<std::size_t>(force)] = edit;
+        forceGrid->addWidget(edit, row, 1);
+        forceEdits[index] = edit;
+
+        const bool known = index < forceSettings.size();
+        const auto setting = known ? forceSettings[index] : splash::io::ForceSetting{};
+
+        const bool values[4] {
+            setting.randomizeStartLocation, setting.randomAllies,
+            setting.alliedVictory, setting.sharedVision
+        };
+
+        for (int flag = 0; flag < 4; ++flag)
+        {
+            auto * box = new QCheckBox(forceGroup);
+            box->setChecked(values[flag]);
+            forceGrid->addWidget(box, row, 2 + flag, Qt::AlignCenter);
+            forceFlags[index][static_cast<std::size_t>(flag)] = box;
+        }
     }
 
     auto * buttons = new QDialogButtonBox(
@@ -1619,11 +1651,30 @@ void MainWindow::onPlayerSettings()
 
     for (int force = 0; force < 4; ++force)
     {
-        const std::string name = forceEdits[static_cast<std::size_t>(force)]->text().toStdString();
+        const auto index = static_cast<std::size_t>(force);
+
+        const std::string name = forceEdits[index]->text().toStdString();
         const std::string before = force < static_cast<int>(forces.size())
-            ? forces[static_cast<std::size_t>(force)] : std::string();
+            ? forces[index] : std::string();
         if (name != before)
-            changed |= document().setForceName(static_cast<std::size_t>(force), name);
+            changed |= document().setForceName(index, name);
+
+        splash::io::ForceSetting setting;
+        setting.name = name;
+        setting.randomizeStartLocation = forceFlags[index][0]->isChecked();
+        setting.randomAllies = forceFlags[index][1]->isChecked();
+        setting.alliedVictory = forceFlags[index][2]->isChecked();
+        setting.sharedVision = forceFlags[index][3]->isChecked();
+
+        const bool known = index < forceSettings.size();
+        if (!known ||
+            setting.randomizeStartLocation != forceSettings[index].randomizeStartLocation ||
+            setting.randomAllies != forceSettings[index].randomAllies ||
+            setting.alliedVictory != forceSettings[index].alliedVictory ||
+            setting.sharedVision != forceSettings[index].sharedVision)
+        {
+            changed |= document().setForceFlags(index, setting);
+        }
     }
 
     if (changed)

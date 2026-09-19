@@ -251,6 +251,10 @@ public:
     std::vector<io::PlayerSetting> playerSettings() const;
     bool setPlayerSetting(std::size_t player, const io::PlayerSetting & setting);
     std::vector<std::string> forceNames() const;
+
+    /// 세력 넷의 이름과 플래그 (동맹·공유 시야 등).
+    std::vector<io::ForceSetting> forceSettings() const;
+    bool setForceFlags(std::size_t force, const io::ForceSetting & setting);
     bool setForceName(std::size_t force, const std::string & name);
 
     // --- 트리거 ---

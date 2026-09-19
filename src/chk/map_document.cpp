@@ -708,6 +708,22 @@ bool MapDocument::setPlayerSetting(std::size_t player, const io::PlayerSetting &
     return true;
 }
 
+std::vector<io::ForceSetting> MapDocument::forceSettings() const
+{
+    return archive_.forceSettings();
+}
+
+bool MapDocument::setForceFlags(std::size_t force, const io::ForceSetting & setting)
+{
+    const io::Result result = archive_.setForceFlags(force, setting);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
 std::vector<std::string> MapDocument::forceNames() const
 {
     return archive_.forceNames();

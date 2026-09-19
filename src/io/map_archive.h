@@ -193,6 +193,16 @@ struct PlayerSetting
     std::uint8_t customBlue = 0;
 };
 
+/// 세력 하나의 설정 (FORC 의 플래그).
+struct ForceSetting
+{
+    std::string name;
+    bool randomizeStartLocation = false; ///< 시작 위치를 섞는다
+    bool randomAllies = false;           ///< 무작위로 동맹을 맺는다
+    bool alliedVictory = false;          ///< 동맹 승리
+    bool sharedVision = false;           ///< 시야를 함께 본다
+};
+
 /// 색 번호의 이름과 화면에 보일 색.
 struct PlayerColorInfo
 {
@@ -747,6 +757,12 @@ public:
 
     /// 세력 이름 네 개.
     std::vector<std::string> forceNames() const;
+
+    /// 세력 넷의 이름과 플래그.
+    std::vector<ForceSetting> forceSettings() const;
+
+    /// 세력 하나의 플래그를 바꾼다 (이름은 setForceName 으로).
+    Result setForceFlags(std::size_t force, const ForceSetting & setting);
 
     /// 세력 이름을 바꾼다 (0~3).
     Result setForceName(std::size_t force, const std::string & name);

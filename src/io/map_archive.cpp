@@ -2917,6 +2917,67 @@ Result MapArchive::setPlayerSetting(std::size_t player, const PlayerSetting & se
     return Result::success();
 }
 
+std::vector<ForceSetting> MapArchive::forceSettings() const
+{
+    std::vector<ForceSetting> out;
+    if (!impl_->isOpen())
+        return out;
+
+    const MapFile & map = *impl_->mapFile;
+    try
+    {
+        using Flags = Chk::ForceFlags;
+
+        for (std::size_t force = 0; force < 4; ++force)
+        {
+            ForceSetting setting;
+
+            if (auto name = map.getForceName<RawString>(Chk::Force(force)))
+                setting.name = impl_->decode(*name);
+
+            const std::uint8_t flags = map.getForceFlags(Chk::Force(force));
+            setting.randomizeStartLocation = (flags & Flags::RandomizeStartLocation) != 0;
+            setting.randomAllies = (flags & Flags::RandomAllies) != 0;
+            setting.alliedVictory = (flags & Flags::AlliedVictory) != 0;
+            setting.sharedVision = (flags & Flags::SharedVision) != 0;
+
+            out.push_back(std::move(setting));
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+    return out;
+}
+
+Result MapArchive::setForceFlags(std::size_t force, const ForceSetting & setting)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+    if (force >= 4)
+        return Result::failure("세력 번호가 범위를 벗어났습니다.");
+
+    try
+    {
+        using Flags = Chk::ForceFlags;
+
+        std::uint8_t flags = 0;
+        if (setting.randomizeStartLocation) flags |= Flags::RandomizeStartLocation;
+        if (setting.randomAllies)           flags |= Flags::RandomAllies;
+        if (setting.alliedVictory)          flags |= Flags::AlliedVictory;
+        if (setting.sharedVision)           flags |= Flags::SharedVision;
+
+        impl_->mapFile->setForceFlags(Chk::Force(force), flags);
+        impl_->undoSteps.push_back(1);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("세력 설정을 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 std::vector<std::string> MapArchive::forceNames() const
 {
     std::vector<std::string> out;
