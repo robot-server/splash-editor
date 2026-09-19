@@ -1,7 +1,7 @@
 #include "ui/map_view.h"
 
 #include "chk/map_document.h"
-#include "io/tileset_source.h"
+#include "io/game_graphics.h"
 
 #include <QFontMetrics>
 #include <QImage>
@@ -40,16 +40,18 @@ void MapView::setDocument(const chk::MapDocument * document)
     refresh();
 }
 
-void MapView::setTileset(const io::TilesetSource * tileset)
+void MapView::setTileset(const io::GameGraphics * tileset)
 {
     tileset_ = tileset;
     tileCache_.clear(); // 타일셋이 바뀌면 그림이 전부 달라진다
+    unitCache_.clear();
     refresh();
 }
 
 void MapView::refresh()
 {
     tileCache_.clear();
+    unitCache_.clear();
     updateScrollRanges();
     viewport()->update();
 }
@@ -242,30 +244,74 @@ void MapView::paintEvent(QPaintEvent * event)
         paintUnits(painter, dirty);
 }
 
+const MapView::UnitSprite * MapView::unitSprite(std::uint16_t type, std::uint8_t owner)
+{
+    if (tileset_ == nullptr || !tileset_->hasUnitGraphics() || document_ == nullptr)
+        return nullptr;
+
+    const std::uint32_t key = (static_cast<std::uint32_t>(type) << 8) | owner;
+    auto found = unitCache_.find(key);
+    if (found != unitCache_.end())
+        return found.value().pixmap.isNull() ? nullptr : &found.value();
+
+    const io::UnitImage image =
+        tileset_->renderUnit(type, owner, document_->info().tilesetId);
+
+    UnitSprite sprite;
+    if (image.width > 0 && image.height > 0)
+    {
+        const QImage qimage(image.rgba.data(), image.width, image.height,
+                            image.width * 4, QImage::Format_RGBA8888);
+        sprite.pixmap = QPixmap::fromImage(qimage.copy());
+        sprite.anchorX = image.anchorX;
+        sprite.anchorY = image.anchorY;
+    }
+
+    auto inserted = unitCache_.insert(key, sprite);
+    return inserted.value().pixmap.isNull() ? nullptr : &inserted.value();
+}
+
 void MapView::paintUnits(QPainter & painter, const QRect & dirty)
 {
     const auto & units = document_->units();
     if (units.empty())
         return;
 
-    // 스프라이트는 아직 없다. 소유자 색 원으로 자리와 소속만 보여 준다.
-    // 지름은 줌에 따르되 너무 작아지거나 커지지 않게 묶는다.
+    painter.save();
+
+    // 스프라이트가 없는 유닛(또는 그래픽 미로드)을 위한 대체 표시 크기.
     const double diameter = std::clamp(16.0 * zoom_, 3.0, 48.0);
     const double radius = diameter / 2.0;
 
-    painter.save();
-    painter.setRenderHint(QPainter::Antialiasing, true);
-
     for (const auto & unit : units)
     {
+        const UnitSprite * sprite = unitSprite(unit.type, unit.owner);
+
+        if (sprite != nullptr)
+        {
+            // 스프라이트는 유닛 중심(anchor)을 기준으로 놓인다.
+            const QPointF topLeft =
+                mapToScreen(unit.x - sprite->anchorX, unit.y - sprite->anchorY);
+            const QRectF bounds(topLeft.x(), topLeft.y(),
+                                sprite->pixmap.width() * zoom_,
+                                sprite->pixmap.height() * zoom_);
+
+            // 화면 밖이면 건너뛴다 — 유닛이 수천 개인 맵이 흔하다.
+            if (!dirty.intersects(bounds.toAlignedRect().adjusted(-1, -1, 1, 1)))
+                continue;
+
+            painter.drawPixmap(bounds, sprite->pixmap,
+                               QRectF(0, 0, sprite->pixmap.width(), sprite->pixmap.height()));
+            continue;
+        }
+
         const QPointF center = mapToScreen(unit.x, unit.y);
         const QRectF bounds(center.x() - radius, center.y() - radius, diameter, diameter);
-
-        // 화면 밖이면 건너뛴다 — 유닛이 수천 개인 맵이 흔하다.
         if (!dirty.intersects(bounds.toAlignedRect().adjusted(-1, -1, 1, 1)))
             continue;
 
         const chk::PlayerColor color = chk::playerColor(unit.owner);
+        painter.setRenderHint(QPainter::Antialiasing, true);
         painter.setBrush(QColor(color.r, color.g, color.b));
         painter.setPen(QPen(QColor(0, 0, 0, 160), 1.0));
         painter.drawEllipse(bounds);

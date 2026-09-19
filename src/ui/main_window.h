@@ -5,7 +5,7 @@
 // UI 는 splash::chk::MapDocument 만 안다. MappingCore 타입은 여기 등장하지 않는다.
 
 #include "chk/map_document.h"
-#include "io/tileset_source.h"
+#include "io/game_graphics.h"
 
 #include <QMainWindow>
 
@@ -54,7 +54,7 @@ private:
     bool confirmDiscardChanges();
 
     chk::MapDocument document_;
-    io::TilesetSource tileset_;
+    io::GameGraphics tileset_;
     MapView * mapView_ = nullptr;
 
     QLabel * nameValue_ = nullptr;

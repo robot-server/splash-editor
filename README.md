@@ -19,7 +19,7 @@ StarCraft: Brood War / Remastered 맵 에디터. Windows · macOS · Linux.
 - 빈 맵 새로 만들기 (CLI)
 - **CHK 바이트를 보존하는 round-trip** — 편집하지 않은 섹션은 한 바이트도 바뀌지 않는다
 - **지형 보기** — 게임 설치본의 타일셋으로 실제 지형을 그린다. 스크롤 · 확대/축소
-- **유닛 · 로케이션 보기** — 소유자 색 표시, 로케이션 이름 표시 (토글 가능)
+- **유닛 · 로케이션 보기** — 실제 유닛 스프라이트(플레이어 색 적용), 로케이션 이름 (토글 가능)
 
 ## 아직 안 되는 것
 
@@ -225,7 +225,7 @@ tests/   round-trip 테스트
 cmake/   의존성 취득, MappingCore 빌드 정의
 ```
 
-### 지형 렌더링
+### 그래픽
 
 맵 캔버스는 **보이는 영역의 타일만** 그린다. 맵 전체를 한 장 이미지로 만들면
 256x256 맵이 8192x8192 픽셀, RGBA 로 268MB 가 되기 때문이다. 타일 그림은
@@ -236,6 +236,19 @@ cmake/   의존성 취득, MappingCore 빌드 정의
 ```
 tileId -> CV5 타일 그룹 -> VX4 메가타일 -> VR4 미니타일(8x8) -> WPE 팔레트
 ```
+
+유닛 스프라이트도 같은 방식으로 게임 데이터를 따라간다:
+
+```
+unitType -> units.dat(flingy) -> flingy.dat(sprite) -> sprites.dat(image)
+         -> images.dat(GRP) -> GRP 프레임 디코딩
+```
+
+GRP 의 행 압축 규약(투명/단색/얼룩 라인)은 MappingCore 의 `Sc::Sprite::PixelLine`
+이 캡슐화한 것을 그대로 쓴다. 플레이어 색은 팔레트 인덱스 8-15 구간을
+`tunit.pcx` 의 플레이어별 8색 그라데이션으로 바꿔 넣어 표현한다.
+
+스프라이트는 (유닛 타입, 소유자) 조합으로 캐시한다.
 
 **코어에는 Qt 타입이 없다.** `splash_io` 와 `splash_core` 는 Qt 를 링크하지
 않으며, 헤더에 표준 라이브러리 타입만 노출한다. UI 는 `MapDocument` 만 알고,

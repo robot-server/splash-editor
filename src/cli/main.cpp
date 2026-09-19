@@ -5,7 +5,7 @@
 
 #include "chk/map_document.h"
 #include "io/game_assets.h"
-#include "io/tileset_source.h"
+#include "io/game_graphics.h"
 #include "io/map_archive.h"
 
 #include <filesystem>
@@ -268,7 +268,7 @@ int cmdRender(const std::string & mapPath,
     const auto archiveUnits = archive.units();
     const auto archiveLocations = archive.locations();
 
-    splash::io::TilesetSource tileset;
+    splash::io::GameGraphics tileset;
     std::string error;
     if (!tileset.load(installPath, &error))
     {
@@ -337,10 +337,38 @@ int cmdRender(const std::string & mapPath,
 
     if (drawUnits)
     {
-        constexpr int kRadius = 7;
+        const bool haveSprites = tileset.hasUnitGraphics();
+        std::size_t drawn = 0;
+
         for (const auto & u : archiveUnits)
         {
+            if (haveSprites)
+            {
+                const auto image = tileset.renderUnit(u.type, u.owner, info.tilesetId);
+                if (image.width > 0 && image.height > 0)
+                {
+                    const long long baseX = static_cast<long long>(u.x) - image.anchorX;
+                    const long long baseY = static_cast<long long>(u.y) - image.anchorY;
+                    for (int yy = 0; yy < image.height; ++yy)
+                    {
+                        for (int xx = 0; xx < image.width; ++xx)
+                        {
+                            const std::size_t at =
+                                (static_cast<std::size_t>(yy) * image.width + xx) * 4;
+                            if (image.rgba[at + 3] == 0)
+                                continue; // 투명
+                            putPixel(baseX + xx, baseY + yy,
+                                     image.rgba[at + 0], image.rgba[at + 1], image.rgba[at + 2]);
+                        }
+                    }
+                    ++drawn;
+                    continue;
+                }
+            }
+
+            // 스프라이트를 못 구한 유닛은 소유자 색 원으로 대신한다.
             const auto color = splash::chk::playerColor(u.owner);
+            constexpr int kRadius = 7;
             for (int dy = -kRadius; dy <= kRadius; ++dy)
             {
                 for (int dx = -kRadius; dx <= kRadius; ++dx)
@@ -353,6 +381,9 @@ int cmdRender(const std::string & mapPath,
                 }
             }
         }
+
+        std::cout << "  스프라이트: " << drawn << " / " << archiveUnits.size()
+                  << (haveSprites ? "" : " (유닛 그래픽 없음)") << "\n";
     }
 
     std::ofstream out(outPath, std::ios::binary | std::ios::trunc);

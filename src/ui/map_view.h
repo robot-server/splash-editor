@@ -15,7 +15,7 @@
 #include <cstdint>
 
 namespace splash::chk { class MapDocument; }
-namespace splash::io  { class TilesetSource; }
+namespace splash::io  { class GameGraphics; }
 
 namespace splash::ui {
 
@@ -32,7 +32,7 @@ public:
     void setDocument(const chk::MapDocument * document);
 
     /// 타일셋 그래픽. nullptr 이거나 로드되지 않았으면 안내 문구를 보여 준다.
-    void setTileset(const io::TilesetSource * tileset);
+    void setTileset(const io::GameGraphics * tileset);
 
     /// 문서나 타일셋의 내용이 바뀌었을 때 호출한다. 캐시를 비우고 다시 그린다.
     void refresh();
@@ -63,6 +63,11 @@ private:
     /// 타일셋이 없으면 nullptr.
     const QPixmap * tilePixmap(std::uint16_t tileId);
 
+    /// 유닛 스프라이트. 타입과 소유자 조합으로 캐시한다(플레이어 색이 다르다).
+    /// 스프라이트를 구하지 못하면 nullptr — 호출부가 원으로 대신 그린다.
+    struct UnitSprite { QPixmap pixmap; int anchorX = 0; int anchorY = 0; };
+    const UnitSprite * unitSprite(std::uint16_t type, std::uint8_t owner);
+
     /// 맵 픽셀 좌표를 화면 좌표로 옮긴다.
     QPointF mapToScreen(double mapX, double mapY) const;
 
@@ -76,9 +81,10 @@ private:
     QSize contentSize() const;
 
     const chk::MapDocument * document_ = nullptr;
-    const io::TilesetSource * tileset_ = nullptr;
+    const io::GameGraphics * tileset_ = nullptr;
 
     QHash<std::uint16_t, QPixmap> tileCache_;
+    QHash<std::uint32_t, UnitSprite> unitCache_;
     double zoom_ = 1.0;
     bool showUnits_ = true;
     bool showLocations_ = true;
