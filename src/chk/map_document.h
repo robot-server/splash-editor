@@ -188,8 +188,11 @@ public:
                            std::uint32_t right, std::uint32_t bottom);
 
     /// 로케이션을 새로 만든다. 만들었으면 참.
+    /// 로케이션을 새로 만든다. outIndex 에 목록에서의 자리를 돌려준다 —
+    /// 새 로케이션이 목록 끝에 오지는 않는다 (빈 번호를 찾아 넣는다).
     bool addLocation(std::uint32_t left, std::uint32_t top,
-                     std::uint32_t right, std::uint32_t bottom, const std::string & name);
+                     std::uint32_t right, std::uint32_t bottom, const std::string & name,
+                     std::size_t * outIndex = nullptr);
 
     bool removeLocation(std::size_t locationIndex, bool force = false);
     bool setLocationName(std::size_t locationIndex, const std::string & name);

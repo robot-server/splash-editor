@@ -620,6 +620,20 @@ void MainWindow::buildMenus()
         statusBar()->showMessage(tr("유닛 놓기 — 팔레트에서 유닛을 고르세요"), 4000);
     });
 
+    QAction * locationTool = toolMenu->addAction(tr("로케이션(&L)"));
+    locationTool->setCheckable(true);
+    locationTool->setShortcut(QKeySequence(Qt::Key_L));
+    locationTool->setToolTip(
+        tr("빈 곳을 끌면 로케이션을 새로 그리고, 모서리를 잡으면 크기를 "
+           "바꿉니다. 안쪽을 잡으면 옮깁니다."));
+    toolGroup->addAction(locationTool);
+    connect(locationTool, &QAction::triggered, this, [this] {
+        mapView_->setTool(MapView::Tool::Location);
+        mapView_->setLocationsVisible(true);
+        statusBar()->showMessage(
+            tr("로케이션 — 끌어서 그리고, 모서리를 잡아 크기를 바꿉니다"), 5000);
+    });
+
     QAction * terrainSelectTool = toolMenu->addAction(tr("지형 고르기(&E)"));
     terrainSelectTool->setCheckable(true);
     terrainSelectTool->setShortcut(QKeySequence(Qt::Key_E));

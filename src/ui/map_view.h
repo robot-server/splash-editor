@@ -38,6 +38,7 @@ public:
         PlaceSprite, ///< 맵 장식 스프라이트 놓기
         PlaceDoodad,   ///< 두들(지형 장식) 놓기
         SelectTerrain, ///< 지형을 네모로 고르기 (복사·붙여넣기)
+        Location,      ///< 로케이션 그리기·크기 조절
         Fog          ///< 시야 가리개 칠하기
     };
 
@@ -390,6 +391,9 @@ public:
     /// 픽셀 좌표판. ISOM 처럼 픽셀로 다루는 것에 쓴다.
     std::vector<QPoint> mirrorPixels(int pixelX, int pixelY) const;
 
+    /// 커서가 로케이션의 어느 모서리에 닿았는지 (Edge 비트, 없으면 0).
+    int locationEdgeAt(const QPointF & screenPos, int locationIndex) const;
+
     /// 고른 지형과 붙여넣기 미리보기를 그린다.
     void paintTerrainSelection(QPainter & painter);
 
@@ -452,6 +456,14 @@ public:
     bool boxSelecting_ = false;
     QPointF boxStart_;   ///< 맵 좌표
     QPointF boxEnd_;
+
+    // 로케이션 그리기·모서리 조절.
+    bool drawingLocation_ = false;   ///< 빈 곳을 끌어 새로 그리는 중
+    int resizingLocation_ = -1;      ///< 모서리를 잡아 늘이는 중인 로케이션
+    int resizeEdges_ = 0;            ///< 잡은 모서리 (아래 Edge 비트)
+    QRect locationStart_;            ///< 늘이기 전 자리 (맵 픽셀)
+
+    enum Edge { EdgeLeft = 1, EdgeTop = 2, EdgeRight = 4, EdgeBottom = 8 };
 
     // 지형 고르기·클립보드.
     bool terrainSelecting_ = false;

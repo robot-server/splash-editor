@@ -1926,7 +1926,7 @@ void MapView::paintTerrainSelection(QPainter & painter)
 
 void MapView::paintSelectionBox(QPainter & painter)
 {
-    if (!boxSelecting_)
+    if (!boxSelecting_ && !drawingLocation_)
         return;
 
     const double tile = scaledTileSize();
@@ -1946,6 +1946,45 @@ void MapView::paintSelectionBox(QPainter & painter)
     painter.setPen(QPen(QColor(120, 200, 255, 220), 1, Qt::DashLine));
     painter.drawRect(onScreen);
     painter.restore();
+}
+
+int MapView::locationEdgeAt(const QPointF & screenPos, int locationIndex) const
+{
+    if (document_ == nullptr || locationIndex < 0)
+        return 0;
+
+    const auto & locations = document_->locations();
+    if (locationIndex >= static_cast<int>(locations.size()))
+        return 0;
+
+    const auto & location = locations[static_cast<std::size_t>(locationIndex)];
+    const QPointF mapPos = screenToMap(screenPos);
+
+    // 잡기 쉬우라고 화면에서 일정한 굵기가 되도록 배율을 되돌린다.
+    const double grab = std::max(3.0, 6.0 / std::max(0.1, zoom_));
+
+    int edges = 0;
+    if (std::abs(mapPos.x() - static_cast<double>(location.left)) <= grab)
+        edges |= EdgeLeft;
+    if (std::abs(mapPos.x() - static_cast<double>(location.right)) <= grab)
+        edges |= EdgeRight;
+    if (std::abs(mapPos.y() - static_cast<double>(location.top)) <= grab)
+        edges |= EdgeTop;
+    if (std::abs(mapPos.y() - static_cast<double>(location.bottom)) <= grab)
+        edges |= EdgeBottom;
+
+    // 사각형 밖이면 모서리를 잡은 것이 아니다.
+    if (edges != 0)
+    {
+        const bool insideX = mapPos.x() >= location.left - grab &&
+                             mapPos.x() <= location.right + grab;
+        const bool insideY = mapPos.y() >= location.top - grab &&
+                             mapPos.y() <= location.bottom + grab;
+        if (!insideX || !insideY)
+            edges = 0;
+    }
+
+    return edges;
 }
 
 int MapView::locationAt(const QPointF & screenPos) const
@@ -2091,6 +2130,57 @@ void MapView::mousePressEvent(QMouseEvent * event)
     {
         fogPainting_ = true;
         paintFogAt(event->position());
+        event->accept();
+        return;
+    }
+
+    if (tool_ == Tool::Location)
+    {
+        const int hit = locationAt(event->position());
+
+        // 고른 로케이션의 모서리를 잡으면 늘인다.
+        const int edges = locationEdgeAt(event->position(), hit);
+        if (hit >= 0 && edges != 0)
+        {
+            const auto & location = document_->locations()[static_cast<std::size_t>(hit)];
+            resizingLocation_ = hit;
+            resizeEdges_ = edges;
+            locationStart_ = QRect(QPoint(static_cast<int>(location.left),
+                                          static_cast<int>(location.top)),
+                                   QPoint(static_cast<int>(location.right),
+                                          static_cast<int>(location.bottom)));
+
+            selectedLocation_ = hit;
+            selectedUnit_ = -1;
+            selectedUnits_.clear();
+            emit selectionChanged(-1);
+            event->accept();
+            return;
+        }
+
+        if (hit >= 0)
+        {
+            // 안쪽을 잡으면 옮긴다.
+            selectedLocation_ = hit;
+            selectedUnit_ = -1;
+            selectedUnits_.clear();
+            emit selectionChanged(-1);
+
+            dragging_ = true;
+            dragStartMap_ = screenToMap(event->position());
+            const auto & location = document_->locations()[static_cast<std::size_t>(hit)];
+            dragStartUnitPos_ = QPoint(static_cast<int>(location.left),
+                                       static_cast<int>(location.top));
+            viewport()->update();
+            event->accept();
+            return;
+        }
+
+        // 빈 곳을 끌면 새로 그린다.
+        drawingLocation_ = true;
+        boxStart_ = screenToMap(event->position());
+        boxEnd_ = boxStart_;
+        viewport()->update();
         event->accept();
         return;
     }
@@ -2350,6 +2440,40 @@ void MapView::mouseMoveEvent(QMouseEvent * event)
         return;
     }
 
+    if (resizingLocation_ >= 0 && (event->buttons() & Qt::LeftButton))
+    {
+        const QPointF mapPos = screenToMap(event->position());
+
+        int left = locationStart_.left();
+        int top = locationStart_.top();
+        int right = locationStart_.right();
+        int bottom = locationStart_.bottom();
+
+        if (resizeEdges_ & EdgeLeft)   left = static_cast<int>(std::max(0.0, mapPos.x()));
+        if (resizeEdges_ & EdgeRight)  right = static_cast<int>(std::max(0.0, mapPos.x()));
+        if (resizeEdges_ & EdgeTop)    top = static_cast<int>(std::max(0.0, mapPos.y()));
+        if (resizeEdges_ & EdgeBottom) bottom = static_cast<int>(std::max(0.0, mapPos.y()));
+
+        auto * doc = const_cast<chk::MapDocument *>(document_);
+        doc->setLocationBounds(static_cast<std::size_t>(resizingLocation_),
+                               static_cast<std::uint32_t>(std::min(left, right)),
+                               static_cast<std::uint32_t>(std::min(top, bottom)),
+                               static_cast<std::uint32_t>(std::max(left, right)),
+                               static_cast<std::uint32_t>(std::max(top, bottom)));
+
+        viewport()->update();
+        event->accept();
+        return;
+    }
+
+    if (drawingLocation_ && (event->buttons() & Qt::LeftButton))
+    {
+        boxEnd_ = screenToMap(event->position());
+        viewport()->update();
+        event->accept();
+        return;
+    }
+
     if (terrainSelecting_ && (event->buttons() & Qt::LeftButton))
     {
         const QPointF mapPos = screenToMap(event->position());
@@ -2494,6 +2618,51 @@ void MapView::mouseReleaseEvent(QMouseEvent * event)
             }
         }
         strokeTiles_.clear();
+        event->accept();
+        return;
+    }
+
+    if (resizingLocation_ >= 0)
+    {
+        resizingLocation_ = -1;
+        resizeEdges_ = 0;
+        emit documentEdited();
+        viewport()->update();
+        event->accept();
+        return;
+    }
+
+    if (drawingLocation_)
+    {
+        drawingLocation_ = false;
+
+        const QRectF box = QRectF(boxStart_, boxEnd_).normalized();
+
+        // 너무 작으면 잘못 누른 것으로 본다.
+        if (box.width() >= 8 && box.height() >= 8 && document_ != nullptr)
+        {
+            auto * doc = const_cast<chk::MapDocument *>(document_);
+            std::size_t created = 0;
+            if (doc->addLocation(static_cast<std::uint32_t>(std::max(0.0, box.left())),
+                                 static_cast<std::uint32_t>(std::max(0.0, box.top())),
+                                 static_cast<std::uint32_t>(std::max(0.0, box.right())),
+                                 static_cast<std::uint32_t>(std::max(0.0, box.bottom())),
+                                 tr("새 로케이션").toStdString(), &created))
+            {
+                // 그리자마자 고른 상태로 둔다 — 바로 모서리를 잡을 수 있다.
+                selectedLocation_ = static_cast<int>(created);
+                selectedUnit_ = -1;
+                selectedUnits_.clear();
+                emit selectionChanged(-1);
+                emit documentEdited();
+            }
+            else
+            {
+                emit placementRejected(QString::fromStdString(document_->lastError()));
+            }
+        }
+
+        viewport()->update();
         event->accept();
         return;
     }

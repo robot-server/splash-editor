@@ -1936,10 +1936,9 @@ Result MapArchive::setLocationElevationFlags(std::size_t locationIndex, std::uin
         if (locationIndex >= map.numLocations())
             return Result::failure("로케이션 번호가 범위를 벗어났습니다.");
 
-        Chk::Location location = map.getLocation(locationIndex);
-        location.elevationFlags = flags;
+        auto edit = map.create_action(ActionDescriptor::UpdateLocationRawFlags);
+        edit->locations[locationIndex].elevationFlags = flags;
 
-        map.replaceLocation(locationIndex, location);
         impl_->undoSteps.push_back(1);
         impl_->redoSteps.clear();
     }
@@ -1963,15 +1962,18 @@ Result MapArchive::setLocationBounds(std::size_t locationIndex,
         if (locationIndex >= map.numLocations())
             return Result::failure("로케이션 번호가 범위를 벗어났습니다.");
 
-        Chk::Location location = map.getLocation(locationIndex);
-        location.left = left;
-        location.top = top;
-        location.right = right;
-        location.bottom = bottom;
+        // Scenario::replaceLocation 은 이름과 달리 "빈 자리에 채우기"라
+        // 이미 쓰이는 로케이션은 바꾸지 않는다. 좌표만 고치는 public API 가
+        // 따로 없어, 변경 추적기에 직접 적는다 — MappingCore 가 안에서 하는
+        // 일과 같다.
+        auto edit = map.create_action(ActionDescriptor::MoveLocation);
+        edit->locations[locationIndex].left = left;
+        edit->locations[locationIndex].top = top;
+        edit->locations[locationIndex].right = right;
+        edit->locations[locationIndex].bottom = bottom;
 
-        // replaceLocation 은 한 번의 변경으로 기록된다.
-        map.replaceLocation(locationIndex, location);
-        impl_->undoSteps.push_back(1);
+        // 네 값을 각각 적으므로 액션도 그만큼 생긴다.
+        impl_->undoSteps.push_back(4);
         impl_->redoSteps.clear();
     }
     catch (const std::exception & e)

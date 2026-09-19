@@ -390,14 +390,16 @@ bool MapDocument::setLocationBounds(std::size_t locationIndex, std::uint32_t lef
 
 bool MapDocument::addLocation(std::uint32_t left, std::uint32_t top,
                               std::uint32_t right, std::uint32_t bottom,
-                              const std::string & name)
+                              const std::string & name,
+                              std::size_t * outIndex)
 {
     if (left > right)
         std::swap(left, right);
     if (top > bottom)
         std::swap(top, bottom);
 
-    if (archive_.addLocation(left, top, right, bottom, name) == 0)
+    const std::size_t created = archive_.addLocation(left, top, right, bottom, name);
+    if (created == 0)
     {
         lastError_ = "로케이션을 만들지 못했습니다 (자리가 가득 찼을 수 있습니다).";
         return false;
@@ -406,6 +408,20 @@ bool MapDocument::addLocation(std::uint32_t left, std::uint32_t top,
     modified_ = true;
     undoDepth_ = 0; redoDepth_ = 0; savedDepth_ = -1;
     refreshInfo();
+
+    // MRGN 번호를 목록에서의 자리로 옮긴다 — 새 로케이션이 끝에 오지 않는다.
+    if (outIndex != nullptr)
+    {
+        *outIndex = locations_.size();
+        for (std::size_t i = 0; i < locations_.size(); ++i)
+        {
+            if (locations_[i].index == created)
+            {
+                *outIndex = i;
+                break;
+            }
+        }
+    }
     return true;
 }
 
