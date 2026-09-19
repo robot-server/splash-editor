@@ -645,6 +645,28 @@ void MainWindow::buildMenus()
         });
     }
 
+    // 대칭 맵을 만들 때 한쪽만 그리면 되도록.
+    QMenu * symmetryMenu = toolMenu->addMenu(tr("지형 대칭"));
+    auto * symmetryGroup = new QActionGroup(this);
+    symmetryGroup->setExclusive(true);
+    const struct { MapView::Symmetry value; const char * label; } kSymmetries[] {
+        { MapView::Symmetry::None,       QT_TR_NOOP("없음") },
+        { MapView::Symmetry::Horizontal, QT_TR_NOOP("좌우") },
+        { MapView::Symmetry::Vertical,   QT_TR_NOOP("위아래") },
+        { MapView::Symmetry::Both,       QT_TR_NOOP("네 곳") },
+    };
+    for (const auto & choice : kSymmetries)
+    {
+        QAction * action = symmetryMenu->addAction(tr(choice.label));
+        action->setCheckable(true);
+        action->setChecked(choice.value == mapView_->terrainSymmetry());
+        symmetryGroup->addAction(action);
+        connect(action, &QAction::triggered, this, [this, choice] {
+            mapView_->setTerrainSymmetry(choice.value);
+            statusBar()->showMessage(tr("지형 대칭: %1").arg(tr(choice.label)), 2500);
+        });
+    }
+
     QAction * terrainCheckAction = toolMenu->addAction(tr("건물 지형 검사"));
     terrainCheckAction->setCheckable(true);
     terrainCheckAction->setChecked(mapView_->terrainCheckEnabled());

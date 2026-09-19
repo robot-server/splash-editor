@@ -135,6 +135,20 @@ public:
     TerrainMode terrainMode() const { return terrainMode_; }
     void setTerrainMode(TerrainMode mode);
 
+    /// 지형을 칠할 때 맞은편에도 함께 칠할지.
+    ///
+    /// 맵 한가운데를 기준으로 좌우·위아래를 뒤집은 자리에 같은 것을
+    /// 놓는다. 대칭 맵을 만들 때 한쪽만 그리면 된다.
+    enum class Symmetry
+    {
+        None,       ///< 대칭 없음
+        Horizontal, ///< 좌우 (세로축 기준)
+        Vertical,   ///< 위아래 (가로축 기준)
+        Both        ///< 네 곳
+    };
+    Symmetry terrainSymmetry() const { return symmetry_; }
+    void setTerrainSymmetry(Symmetry symmetry);
+
     /// ISOM 모드가 놓을 지형 종류(GameGraphics::terrainTypes 의 brushIndex).
     void setIsomTerrainType(std::size_t brushIndex);
 
@@ -343,6 +357,14 @@ private:
     /// 방향이 정해지지 않은 유닛이 매번 다른 쪽을 보게 된다.
     void refreshUnits();
 
+    /// 대칭이 켜져 있을 때 함께 칠할 자리들 (자기 자신을 포함한다).
+    ///
+    /// 타일 좌표를 받아 타일 좌표를 돌려준다. 겹치는 자리는 한 번만 담는다.
+    std::vector<QPoint> mirrorTiles(int tileX, int tileY) const;
+
+    /// 픽셀 좌표판. ISOM 처럼 픽셀로 다루는 것에 쓴다.
+    std::vector<QPoint> mirrorPixels(int pixelX, int pixelY) const;
+
     /// 지형 브러시가 덮을 자리를 커서 둘레에 그린다.
     void paintTerrainCursor(QPainter & painter);
 
@@ -357,6 +379,7 @@ private:
     bool allowStack_ = false;
     bool checkTerrain_ = false;
     bool checkGroundUnits_ = false;
+    Symmetry symmetry_ = Symmetry::None;
 
     bool showFog_ = false;
     bool showLinks_ = true;

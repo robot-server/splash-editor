@@ -1339,6 +1339,80 @@ void MapView::paintPlacementPreview(QPainter & painter)
     painter.restore();
 }
 
+void MapView::setTerrainSymmetry(Symmetry symmetry)
+{
+    symmetry_ = symmetry;
+    viewport()->update();
+}
+
+std::vector<QPoint> MapView::mirrorTiles(int tileX, int tileY) const
+{
+    std::vector<QPoint> out;
+    out.emplace_back(tileX, tileY);
+
+    if (symmetry_ == Symmetry::None || document_ == nullptr)
+        return out;
+
+    const auto & info = document_->info();
+    const int lastX = info.width - 1;
+    const int lastY = info.height - 1;
+
+    const auto add = [&out](int x, int y) {
+        for (const QPoint & existing : out)
+        {
+            if (existing.x() == x && existing.y() == y)
+                return;
+        }
+        out.emplace_back(x, y);
+    };
+
+    const bool horizontal = symmetry_ == Symmetry::Horizontal || symmetry_ == Symmetry::Both;
+    const bool vertical = symmetry_ == Symmetry::Vertical || symmetry_ == Symmetry::Both;
+
+    if (horizontal)
+        add(lastX - tileX, tileY);
+    if (vertical)
+        add(tileX, lastY - tileY);
+    if (horizontal && vertical)
+        add(lastX - tileX, lastY - tileY);
+
+    return out;
+}
+
+std::vector<QPoint> MapView::mirrorPixels(int pixelX, int pixelY) const
+{
+    std::vector<QPoint> out;
+    out.emplace_back(pixelX, pixelY);
+
+    if (symmetry_ == Symmetry::None || document_ == nullptr)
+        return out;
+
+    const auto & info = document_->info();
+    const int width = info.width * io::kTilePixels;
+    const int height = info.height * io::kTilePixels;
+
+    const auto add = [&out](int x, int y) {
+        for (const QPoint & existing : out)
+        {
+            if (existing.x() == x && existing.y() == y)
+                return;
+        }
+        out.emplace_back(x, y);
+    };
+
+    const bool horizontal = symmetry_ == Symmetry::Horizontal || symmetry_ == Symmetry::Both;
+    const bool vertical = symmetry_ == Symmetry::Vertical || symmetry_ == Symmetry::Both;
+
+    if (horizontal)
+        add(width - pixelX, pixelY);
+    if (vertical)
+        add(pixelX, height - pixelY);
+    if (horizontal && vertical)
+        add(width - pixelX, height - pixelY);
+
+    return out;
+}
+
 void MapView::paintTerrainCursor(QPainter & painter)
 {
     if (!hasHover_ || document_ == nullptr)
@@ -1424,6 +1498,20 @@ void MapView::paintTerrainCursor(QPainter & painter)
 
         const int centreX = static_cast<int>(hoverPos_.x()) / io::kTilePixels;
         const int centreY = static_cast<int>(hoverPos_.y()) / io::kTilePixels;
+
+        // 대칭이 켜져 있으면 맞은편 자리도 함께 보여 준다.
+        for (const QPoint & spot : mirrorTiles(centreX, centreY))
+        {
+            if (spot.x() == centreX && spot.y() == centreY)
+                continue;
+
+            const QRectF mirrored((spot.x() - half) * tile - originX,
+                                  (spot.y() - half) * tile - originY,
+                                  tile * extent, tile * extent);
+            painter.fillRect(mirrored, QColor(255, 236, 120, 24));
+            painter.setPen(QPen(QColor(255, 236, 120, 120), 1, Qt::DashLine));
+            painter.drawRect(mirrored);
+        }
 
         const QRectF box((centreX - half) * tile - originX,
                          (centreY - half) * tile - originY,
@@ -1565,14 +1653,20 @@ void MapView::paintTerrainAt(const QPointF & screenPos)
         {
             const int tx = centerX - half + dx;
             const int ty = centerY - half + dy;
-            if (tx < 0 || ty < 0 || tx >= info.width || ty >= info.height)
-                continue;
 
-            // 같은 획에서 같은 자리를 여러 번 칠하지 않는다.
-            const std::pair<std::size_t, std::size_t> at{
-                static_cast<std::size_t>(tx), static_cast<std::size_t>(ty)};
-            if (std::find(strokeTiles_.begin(), strokeTiles_.end(), at) == strokeTiles_.end())
-                strokeTiles_.push_back(at);
+            // 대칭이 켜져 있으면 맞은편에도 같이 칠한다.
+            for (const QPoint & spot : mirrorTiles(tx, ty))
+            {
+                if (spot.x() < 0 || spot.y() < 0 ||
+                    spot.x() >= info.width || spot.y() >= info.height)
+                    continue;
+
+                // 같은 획에서 같은 자리를 여러 번 칠하지 않는다.
+                const std::pair<std::size_t, std::size_t> at{
+                    static_cast<std::size_t>(spot.x()), static_cast<std::size_t>(spot.y())};
+                if (std::find(strokeTiles_.begin(), strokeTiles_.end(), at) == strokeTiles_.end())
+                    strokeTiles_.push_back(at);
+            }
         }
     }
 
@@ -1871,11 +1965,25 @@ void MapView::applyIsomAt(const QPointF & screenPos)
 
     auto * doc = const_cast<chk::MapDocument *>(document_);
     auto * graphics = const_cast<io::GameGraphics *>(tileset_);
-    if (doc->placeIsomTerrain(*graphics,
-                              static_cast<std::size_t>(mapPos.x()),
-                              static_cast<std::size_t>(mapPos.y()),
-                              isomTerrainType_,
-                              static_cast<std::size_t>(brushSize_)))
+
+    bool placed = false;
+    for (const QPoint & spot : mirrorPixels(static_cast<int>(mapPos.x()),
+                                            static_cast<int>(mapPos.y())))
+    {
+        if (spot.x() < 0 || spot.y() < 0)
+            continue;
+
+        if (doc->placeIsomTerrain(*graphics,
+                                  static_cast<std::size_t>(spot.x()),
+                                  static_cast<std::size_t>(spot.y()),
+                                  isomTerrainType_,
+                                  static_cast<std::size_t>(brushSize_)))
+        {
+            placed = true;
+        }
+    }
+
+    if (placed)
     {
         refresh();
         emit documentEdited();
