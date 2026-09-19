@@ -343,6 +343,7 @@ private:
     bool hasHover_ = false;
     bool placingDrag_ = false;   ///< 버튼을 누른 채 끌며 놓는 중
     QPoint lastPlaced_ {-1, -1}; ///< 끌며 놓을 때 같은 자리에 겹쳐 놓지 않도록
+    bool dragSoundPlayed_ = false; ///< 한 번 끄는 동안 소리는 한 번만
 
     std::uint16_t placeUnitType_ = 0;
     std::uint8_t placeUnitOwner_ = 0;

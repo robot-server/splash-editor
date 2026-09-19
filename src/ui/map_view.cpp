@@ -1216,7 +1216,14 @@ bool MapView::placeAt(const QPointF & screenPos)
         lastPlaced_ = pos;
         refreshUnits();
         emit documentEdited();
-        emit unitPlaced(placeUnitType_);
+
+        // 끌며 여럿을 놓을 때 소리가 겹치면 시끄럽다. 한 번 끄는 동안
+        // 처음 놓을 때만 낸다.
+        if (!dragSoundPlayed_)
+        {
+            dragSoundPlayed_ = true;
+            emit unitPlaced(placeUnitType_);
+        }
         return true;
     }
     return false;
@@ -1414,6 +1421,7 @@ void MapView::mousePressEvent(QMouseEvent * event)
         // 마지막으로 놓은 자리를 기억한다.
         lastPlaced_ = QPoint(-1, -1);
         placingDrag_ = true;
+        dragSoundPlayed_ = false;
         placeAt(event->position());
         event->accept();
         return;
@@ -1699,6 +1707,7 @@ void MapView::mouseReleaseEvent(QMouseEvent * event)
     if (placingDrag_)
     {
         placingDrag_ = false;
+        dragSoundPlayed_ = false;
         lastPlaced_ = QPoint(-1, -1);
         event->accept();
         return;
