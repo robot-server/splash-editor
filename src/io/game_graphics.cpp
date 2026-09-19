@@ -5,7 +5,10 @@
 #include "mapping_core/archive_cluster.h"
 #include "mapping_core/mpq_file.h"
 #include "mapping_core/sc.h"
+#include "mapping_core/chk.h"
+#include "mapping_core/render/map_animations.h"
 
+#include <algorithm>
 #include <array>
 #include <cstring>
 #include <exception>
@@ -18,12 +21,24 @@ namespace splash::io {
 struct GameGraphics::Impl
 {
     std::shared_ptr<ArchiveCluster> cluster;
-    std::unique_ptr<Sc::Terrain> terrain;
-    std::unique_ptr<Sc::Unit> units;     ///< units.dat + flingy.dat
-    std::unique_ptr<Sc::Sprite> sprites; ///< sprites.dat + images.dat + GRP
-    std::unique_ptr<Sc::Pcx> tunit;      ///< 플레이어 색 치환 팔레트
+
+    // Sc::Data 는 load() 대신 필요한 부분만 직접 채운다. 그쪽 load() 는
+    // 파일 브라우저를 요구하고 우리가 이미 연 아카이브를 쓰지 않는다.
+    std::unique_ptr<Sc::Data> scData;
+
+    // iscript 실행기. 유닛 하나가 어떤 이미지들로 구성되는지(본체·그림자·부가)
+    // 는 iscript 가 정하므로, 그것을 돌려야 그림자와 방향이 맞는다.
+    std::unique_ptr<GameClock> clock;
+    std::unique_ptr<AnimContext> anim;
+
     bool loaded = false;
     bool unitsLoaded = false;
+
+    const Sc::Terrain::Tiles & tiles(std::uint16_t tilesetId) const
+    {
+        return scData->terrain.get(
+            Sc::Terrain::Tileset(tilesetId % Sc::Terrain::NumTilesets));
+    }
 };
 
 GameGraphics::GameGraphics() : impl_(std::make_unique<Impl>()) {}
@@ -88,11 +103,11 @@ bool GameGraphics::load(const std::string & installPath, std::string * error)
         }
 
         fresh->cluster = std::make_shared<ArchiveCluster>(std::move(sources));
-        fresh->terrain = std::make_unique<Sc::Terrain>();
+        fresh->scData = std::make_unique<Sc::Data>();
 
         // statTxt 는 생략한다(기본값 nullptr). 두들 이름 표시에만 쓰이며
         // 지형 픽셀을 그리는 데는 필요 없다.
-        if (!fresh->terrain->load(*fresh->cluster, nullptr))
+        if (!fresh->scData->terrain.load(*fresh->cluster, nullptr))
         {
             // 일부 타일셋만 실패해도 false 가 나올 수 있다.
             // 하나라도 쓸 수 있으면 계속 진행하는 편이 낫다 — 실패 판정은
@@ -104,25 +119,21 @@ bool GameGraphics::load(const std::string & installPath, std::string * error)
         // 만들지 않는다. hasUnitGraphics() 로 구분한다.
         try
         {
-            auto units = std::make_unique<Sc::Unit>();
-            auto sprites = std::make_unique<Sc::Sprite>();
-
             // images.tbl 은 GRP 파일 이름표다. 이것이 없으면 스프라이트를
             // 파일과 이어 붙일 수 없다.
             auto imagesTbl = std::make_shared<Sc::TblFile>();
             const bool tblOk = imagesTbl->load(*fresh->cluster, "arr\\images.tbl");
 
-            if (tblOk && units->load(*fresh->cluster) &&
-                sprites->load(*fresh->cluster, imagesTbl))
+            if (tblOk &&
+                fresh->scData->units.load(*fresh->cluster) &&
+                fresh->scData->sprites.load(*fresh->cluster, imagesTbl))
             {
-                fresh->units = std::move(units);
-                fresh->sprites = std::move(sprites);
-                fresh->unitsLoaded = true;
+                // 플레이어 색 치환표. 없으면 지형 팔레트 색이 그대로 남는다.
+                fresh->scData->tunit.load(*fresh->cluster, "game\\tunit.pcx");
 
-                // 플레이어 색 치환표. 없으면 근사 색으로 대신한다.
-                auto tunit = std::make_unique<Sc::Pcx>();
-                if (tunit->load(*fresh->cluster, "game\\tunit.pcx"))
-                    fresh->tunit = std::move(tunit);
+                fresh->clock = std::make_unique<GameClock>();
+                fresh->anim = std::make_unique<AnimContext>(*fresh->scData, *fresh->clock);
+                fresh->unitsLoaded = true;
             }
         }
         catch (const std::exception &)
@@ -157,119 +168,195 @@ UnitImage GameGraphics::renderUnit(std::uint16_t unitType,
     if (!hasUnitGraphics())
         return out;
 
-    const Sc::Unit & units = *impl_->units;
-    const Sc::Sprite & sprites = *impl_->sprites;
+    Sc::Data & sc = *impl_->scData;
+    AnimContext & anim = *impl_->anim;
+    const Sc::Terrain::Tiles & tiles = impl_->tiles(tilesetId);
 
     try
     {
-        // unitType -> flingy -> sprite -> image -> GRP
-        // (MapGraphics::getImageId 와 같은 경로다)
-        const std::size_t safeType = unitType < units.numUnitTypes() ? unitType : 0;
-        const std::uint32_t flingyId = units.getUnit(Sc::Unit::Type(safeType)).graphics;
-        const std::size_t safeFlingy = flingyId < units.numFlingies() ? flingyId : 0;
-        const std::uint32_t spriteId = units.getFlingy(safeFlingy).sprite;
-        const std::size_t safeSprite = spriteId < sprites.numSprites() ? spriteId : 0;
-        const std::size_t imageId = sprites.getSprite(safeSprite).imageFile;
-        if (imageId >= sprites.numImages())
-            return out;
-
-        const std::size_t grpIndex = sprites.getImage(imageId).grpFile;
-        const Sc::Sprite::GrpFile & grp =
-            const_cast<Sc::Sprite &>(sprites).getGrp(grpIndex).get();
-
-        if (grp.numFrames == 0)
-            return out;
-
-        // 프레임 0 = 정면 기본 자세. 애니메이션은 M3 범위 밖이다.
-        const Sc::Sprite::GrpFrameHeader & header = grp.frameHeaders[0];
-        const int frameWidth = header.frameWidth;
-        const int frameHeight = header.frameHeight;
-        if (frameWidth <= 0 || frameHeight <= 0)
-            return out;
-
-        // 팔레트: 지형 팔레트를 쓰되 8-15 구간은 플레이어 색으로 바꾼다.
-        const Sc::Terrain::Tiles & tiles =
-            impl_->terrain->get(Sc::Terrain::Tileset(tilesetId % Sc::Terrain::NumTilesets));
+        // --- 팔레트 두 벌 ---
+        // 일반 이미지는 지형 팔레트를 쓰되 8-15 구간을 플레이어 색으로 바꾼다.
+        // 그림자는 dark.pcx 팔레트로 그린다(Chkdraft 도 shadowPalette 로 같은 것을 쓴다).
         std::array<Sc::SystemColor, Sc::NumColors> palette = tiles.systemColorPalette;
-
-        if (impl_->tunit)
+        const auto & ramp = sc.tunit.bgraPalette;
+        const std::size_t rampBase = static_cast<std::size_t>(owner) * 8;
+        for (std::size_t i = 0; i < 8; ++i)
         {
-            // tunit.pcx 는 플레이어당 8색 그라데이션을 순서대로 담는다
-            // (Chkdraft 도 rgbaPalette[8*player] 로 같은 규약을 쓴다).
-            const auto & ramp = impl_->tunit->bgraPalette;
-            const std::size_t base = static_cast<std::size_t>(owner) * 8;
-            for (std::size_t i = 0; i < 8; ++i)
+            if (rampBase + i < ramp.size())
+                palette[8 + i] = ramp[rampBase + i];
+        }
+        const auto & shadowPalette = tiles.dark.bgraPalette;
+
+        // --- iscript 를 돌려 이 유닛이 어떤 이미지들로 구성되는지 얻는다 ---
+        Chk::Unit chkUnit {};
+        chkUnit.type = Sc::Unit::Type(unitType);
+        chkUnit.owner = owner;
+        chkUnit.xc = 0;
+        chkUnit.yc = 0;
+
+        MapActor actor {};
+        anim.initializeUnitActor(actor, /*isClipboard*/ false, /*unitIndex*/ 0, chkUnit, 0, 0);
+
+        struct Layer
+        {
+            const Sc::Sprite::GrpFile * grp = nullptr;
+            std::size_t frame = 0;
+            int left = 0;   ///< 유닛 중심 기준
+            int top = 0;
+            bool flipped = false;
+            bool shadow = false;
+        };
+
+        std::vector<Layer> layers;
+        int minLeft = 0, minTop = 0, maxRight = 0, maxBottom = 0;
+        bool first = true;
+
+        for (std::size_t slot = 0; slot < MapActor::MaxSlots; ++slot)
+        {
+            const std::uint16_t imageIndex = actor.usedImages[slot];
+            if (imageIndex == 0 || imageIndex >= anim.images.size())
+                continue;
+            if (!anim.images[imageIndex].has_value())
+                continue;
+
+            const MapImage & image = *anim.images[imageIndex];
+            if (image.hidden || image.drawFunction == MapImage::DrawFunction::None)
+                continue;
+            if (image.imageId >= sc.sprites.numImages())
+                continue;
+
+            const std::size_t grpIndex = sc.sprites.getImage(image.imageId).grpFile;
+            const Sc::Sprite::GrpFile & grp = sc.sprites.getGrp(grpIndex).get();
+            if (grp.numFrames == 0)
+                continue;
+
+            const std::size_t frame =
+                image.frame < grp.numFrames ? image.frame : 0;
+            const Sc::Sprite::GrpFrameHeader & header = grp.frameHeaders[frame];
+            if (header.frameWidth == 0 || header.frameHeight == 0)
+                continue;
+
+            Layer layer;
+            layer.grp = &grp;
+            layer.frame = frame;
+            layer.flipped = image.flipped;
+            layer.shadow = (image.drawFunction == MapImage::DrawFunction::Shadow);
+
+            // GRP 프레임은 스프라이트 원점(그림 중앙) 기준 오프셋을 갖는다.
+            layer.left = image.xc + image.xOffset - grp.grpWidth / 2 + header.xOffset;
+            layer.top  = image.yc + image.yOffset - grp.grpHeight / 2 + header.yOffset;
+
+            const int right = layer.left + header.frameWidth;
+            const int bottom = layer.top + header.frameHeight;
+
+            if (first)
             {
-                const std::size_t at = base + i;
-                if (at < ramp.size())
-                    palette[8 + i] = ramp[at];
+                minLeft = layer.left; minTop = layer.top;
+                maxRight = right; maxBottom = bottom;
+                first = false;
             }
+            else
+            {
+                minLeft = std::min(minLeft, layer.left);
+                minTop = std::min(minTop, layer.top);
+                maxRight = std::max(maxRight, right);
+                maxBottom = std::max(maxBottom, bottom);
+            }
+
+            layers.push_back(layer);
         }
 
-        out.width = frameWidth;
-        out.height = frameHeight;
-        // GRP 프레임은 스프라이트 원점 기준 오프셋을 갖는다.
-        // 유닛 중심은 GRP 전체 크기의 절반에서 프레임 오프셋을 뺀 자리다.
-        out.anchorX = grp.grpWidth / 2 - header.xOffset;
-        out.anchorY = grp.grpHeight / 2 - header.yOffset;
-        out.rgba.assign(static_cast<std::size_t>(frameWidth) * frameHeight * 4, 0);
+        anim.clearActor(actor); // 다음 호출을 위해 이미지 슬롯을 돌려준다
 
-        // --- GRP 프레임 디코딩 ---
-        // 행마다 PixelLine 이 이어진다. 규약은 MappingCore 의 PixelLine 이
-        // 캡슐화하고 있다(투명/단색/얼룩 라인).
-        const std::uint8_t * grpBytes = reinterpret_cast<const std::uint8_t *>(&grp);
-        const std::size_t frameOffset = header.frameOffset;
-        const Sc::Sprite::GrpFrame & frame =
-            reinterpret_cast<const Sc::Sprite::GrpFrame &>(grpBytes[frameOffset]);
+        if (layers.empty())
+            return out;
 
-        for (int row = 0; row < frameHeight; ++row)
+        out.width = maxRight - minLeft;
+        out.height = maxBottom - minTop;
+        if (out.width <= 0 || out.height <= 0)
+            return out;
+
+        out.anchorX = -minLeft;
+        out.anchorY = -minTop;
+        out.rgba.assign(static_cast<std::size_t>(out.width) * out.height * 4, 0);
+
+        // --- 레이어를 순서대로 합성 (iscript 가 넣은 순서 = 아래에서 위) ---
+        for (const Layer & layer : layers)
         {
-            const std::size_t rowOffset = frame.rowOffsets[row];
-            const std::uint8_t * lineBytes = &grpBytes[frameOffset + rowOffset];
+            const Sc::Sprite::GrpFile & grp = *layer.grp;
+            const Sc::Sprite::GrpFrameHeader & header = grp.frameHeaders[layer.frame];
+            const int frameWidth = header.frameWidth;
+            const int frameHeight = header.frameHeight;
 
-            int x = 0;
-            std::size_t lineOffset = 0;
-            while (x < frameWidth)
+            const std::uint8_t * grpBytes = reinterpret_cast<const std::uint8_t *>(&grp);
+            const std::size_t frameOffset = header.frameOffset;
+            const Sc::Sprite::GrpFrame & frameData =
+                reinterpret_cast<const Sc::Sprite::GrpFrame &>(grpBytes[frameOffset]);
+
+            const int baseX = layer.left - minLeft;
+            const int baseY = layer.top - minTop;
+
+            for (int row = 0; row < frameHeight; ++row)
             {
-                const Sc::Sprite::PixelLine & line =
-                    reinterpret_cast<const Sc::Sprite::PixelLine &>(lineBytes[lineOffset]);
+                const std::size_t rowOffset = frameData.rowOffsets[row];
+                const std::uint8_t * lineBytes = &grpBytes[frameOffset + rowOffset];
 
-                int length = static_cast<int>(line.lineLength());
-                if (x + length > frameWidth)
-                    length = frameWidth - x;
-                if (length <= 0)
-                    break;
-
-                if (line.isSpeckled())
+                int x = 0;
+                std::size_t lineOffset = 0;
+                while (x < frameWidth)
                 {
-                    for (int i = 0; i < length; ++i)
-                    {
-                        const Sc::SystemColor & c = palette[line.paletteIndex[i]];
-                        const std::size_t at =
-                            (static_cast<std::size_t>(row) * frameWidth + x + i) * 4;
-                        out.rgba[at + 0] = c.red;
-                        out.rgba[at + 1] = c.green;
-                        out.rgba[at + 2] = c.blue;
-                        out.rgba[at + 3] = 255;
-                    }
-                }
-                else if (line.isSolidLine())
-                {
-                    const Sc::SystemColor & c = palette[line.paletteIndex[0]];
-                    for (int i = 0; i < length; ++i)
-                    {
-                        const std::size_t at =
-                            (static_cast<std::size_t>(row) * frameWidth + x + i) * 4;
-                        out.rgba[at + 0] = c.red;
-                        out.rgba[at + 1] = c.green;
-                        out.rgba[at + 2] = c.blue;
-                        out.rgba[at + 3] = 255;
-                    }
-                }
-                // 투명 라인은 알파 0 그대로 둔다
+                    const Sc::Sprite::PixelLine & line =
+                        reinterpret_cast<const Sc::Sprite::PixelLine &>(lineBytes[lineOffset]);
 
-                x += length;
-                lineOffset += line.sizeInBytes();
+                    int length = static_cast<int>(line.lineLength());
+                    if (x + length > frameWidth)
+                        length = frameWidth - x;
+                    if (length <= 0)
+                        break;
+
+                    const bool transparent =
+                        !line.isSpeckled() && !line.isSolidLine();
+
+                    if (!transparent)
+                    {
+                        for (int i = 0; i < length; ++i)
+                        {
+                            const std::uint8_t index = line.isSpeckled()
+                                ? line.paletteIndex[i]
+                                : line.paletteIndex[0];
+
+                            // 좌우 반전은 프레임 안에서만 일어난다.
+                            const int srcX = layer.flipped ? (frameWidth - 1 - (x + i)) : (x + i);
+                            const int dstX = baseX + srcX;
+                            const int dstY = baseY + row;
+                            if (dstX < 0 || dstY < 0 || dstX >= out.width || dstY >= out.height)
+                                continue;
+
+                            Sc::SystemColor color {};
+                            if (layer.shadow)
+                            {
+                                if (index < shadowPalette.size())
+                                    color = shadowPalette[index];
+                                else
+                                    continue;
+                            }
+                            else
+                            {
+                                color = palette[index];
+                            }
+
+                            const std::size_t at =
+                                (static_cast<std::size_t>(dstY) * out.width + dstX) * 4;
+                            out.rgba[at + 0] = color.red;
+                            out.rgba[at + 1] = color.green;
+                            out.rgba[at + 2] = color.blue;
+                            out.rgba[at + 3] = 255;
+                        }
+                    }
+
+                    x += length;
+                    lineOffset += line.sizeInBytes();
+                }
             }
         }
     }
@@ -304,8 +391,7 @@ bool GameGraphics::renderTile(std::uint16_t tilesetId,
         return false;
     }
 
-    const Sc::Terrain::Tiles & tiles =
-        impl_->terrain->get(Sc::Terrain::Tileset(tilesetId % Sc::Terrain::NumTilesets));
+    const Sc::Terrain::Tiles & tiles = impl_->tiles(tilesetId);
 
     // tileId 상위 12비트가 타일 그룹, 하위 4비트가 그룹 내 위치다.
     const std::size_t groupIndex = static_cast<std::size_t>(tileId) / 16;

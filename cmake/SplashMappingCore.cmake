@@ -47,6 +47,13 @@ add_library(splash_mappingcore STATIC
   # 않는 한 링크되지 않는다 — M1 에 CascLib 은 필요 없다.
   "${MC_DIR}/sc.cpp"
 
+  # --- 유닛 애니메이션 (iscript) ---
+  # 유닛 하나는 여러 이미지 오버레이로 구성된다(본체 + 그림자 + 부가).
+  # 그 조립은 iscript 가 정한다. 이 계층은 OpenGL 에 의존하지 않는다.
+  "${MC_DIR}/render/map_image.cpp"
+  "${MC_DIR}/render/map_actor.cpp"
+  "${MC_DIR}/render/map_animations.cpp"
+
   # --- CHK / 시나리오 계층 ---
   "${MC_DIR}/chk.cpp"
   "${MC_DIR}/scenario.cpp"
