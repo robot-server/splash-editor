@@ -1053,6 +1053,11 @@ UnitImage composeActor(Sc::Data & sc,
         int top = 0;
         bool flipped = false;
         bool shadow = false;
+
+        // 은폐·환영은 게임에서 왜곡·색 입힘으로 그린다. 그 효과를 그대로
+        // 흉내 낼 수는 없어, 눈에 띄게 다르되 모습은 남도록 옮긴다.
+        bool cloaked = false;
+        bool hallucinated = false;
     };
 
     std::vector<Layer> layers;
@@ -1089,6 +1094,10 @@ UnitImage composeActor(Sc::Data & sc,
         layer.frame = frame;
         layer.flipped = image.flipped;
         layer.shadow = (image.drawFunction == MapImage::DrawFunction::Shadow);
+        layer.cloaked = (image.drawFunction == MapImage::DrawFunction::Cloaked ||
+                         image.drawFunction == MapImage::DrawFunction::Cloak ||
+                         image.drawFunction == MapImage::DrawFunction::Decloak);
+        layer.hallucinated = (image.drawFunction == MapImage::DrawFunction::Hallucination);
 
         // GRP 프레임은 스프라이트 원점(그림 중앙) 기준 오프셋을 갖는다.
         // 좌우 반전 시에는 프레임이 반대쪽에서 시작하므로 x 기준이 달라진다
@@ -1217,10 +1226,34 @@ UnitImage composeActor(Sc::Data & sc,
                         else
                         {
                             const Sc::SystemColor & color = palette[index];
-                            out.rgba[at + 0] = color.red;
-                            out.rgba[at + 1] = color.green;
-                            out.rgba[at + 2] = color.blue;
-                            out.rgba[at + 3] = 255;
+
+                            if (layer.hallucinated)
+                            {
+                                // 환영은 게임에서 푸르게 물든다. 밝기는 두고
+                                // 색만 파랑 쪽으로 끌어당긴다.
+                                const int grey = (color.red + color.green + color.blue) / 3;
+                                out.rgba[at + 0] = static_cast<std::uint8_t>(grey / 3);
+                                out.rgba[at + 1] = static_cast<std::uint8_t>(grey / 2);
+                                out.rgba[at + 2] = static_cast<std::uint8_t>(
+                                    std::min(255, grey + 80));
+                                out.rgba[at + 3] = 220;
+                            }
+                            else if (layer.cloaked)
+                            {
+                                // 은폐는 반투명하게 — 게임의 왜곡 효과를
+                                // 그대로 낼 수는 없지만 숨은 상태는 드러난다.
+                                out.rgba[at + 0] = color.red;
+                                out.rgba[at + 1] = color.green;
+                                out.rgba[at + 2] = color.blue;
+                                out.rgba[at + 3] = 110;
+                            }
+                            else
+                            {
+                                out.rgba[at + 0] = color.red;
+                                out.rgba[at + 1] = color.green;
+                                out.rgba[at + 2] = color.blue;
+                                out.rgba[at + 3] = 255;
+                            }
                         }
                     }
                 }
@@ -1530,6 +1563,22 @@ UnitImage GameGraphics::renderUnit(std::uint16_t unitType,
         MapActor actor {};
         impl_->anim->initializeUnitActor(actor, /*isClipboard*/ false, /*unitIndex*/ 0,
                                          chkUnit, 0, 0);
+
+        // 버로우·이륙은 "움직이는 동작"이라 첫 프레임은 아직 서 있는
+        // 모습이다. iscript 를 몇 틱 돌려 자세가 자리를 잡게 한다. 건물이
+        // 뜰 때 그림자가 아래로 밀리는 것도 이 틱 동안 일어난다.
+        const bool settles =
+            (stateFlags & (0x02 /*버로우*/ | 0x04 /*떠 있음*/)) != 0 ||
+            (relationFlags & 0x0400 /*애드온 붙음*/) != 0;
+
+        if (settles)
+        {
+            // 한 동작이 끝나기에 넉넉한 만큼 돌린다. 동작이 끝나면 그 자리에
+            // 머무르므로 더 돌려도 모습은 그대로다.
+            std::uint64_t tick = impl_->clock->currentTick();
+            for (int step = 0; step < 150; ++step)
+                actor.animate(++tick, /*isUnit*/ true, *impl_->anim);
+        }
 
         return composeActor(*impl_->scData, *impl_->anim, actor,
                             impl_->tiles(tilesetId), owner);

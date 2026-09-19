@@ -769,20 +769,40 @@ QPoint MapView::snapUnitPos(std::uint16_t unitType, int x, int y) const
     }
 
     // 게임은 유닛 좌표를 중심으로 다루지만, 건물이 타일에 딱 맞아 보이는
-    // 것은 왼쪽·위 모서리가 타일 경계에 붙기 때문이다. 그래서 모서리를
-    // 격자에 맞춘 뒤 다시 중심으로 되돌린다.
-    io::GameGraphics::UnitBounds bounds;
-    if (tileset_ != nullptr)
-        bounds = tileset_->unitBounds(unitType);
+    // 것은 배치 상자의 왼쪽·위 모서리가 타일 경계에 붙기 때문이다.
+    //
+    // 기준은 그래픽 경계(unitBounds)가 아니라 배치 상자(units.dat 의
+    // StarEdit placement box)다. 그래픽은 건물마다 삐죽 튀어나온 부분이
+    // 달라 그것으로 맞추면 게임과 어긋난다 — 커맨드 센터는 배치 상자가
+    // 128x96 인데 그래픽 경계는 왼쪽 58 픽셀이라 14 픽셀이 밀린다.
+    int halfWidth = 0;
+    int halfHeight = 0;
 
-    const int left = x - bounds.left;
-    const int top = y - bounds.up;
+    if (tileset_ != nullptr)
+    {
+        const auto box = tileset_->placementBox(unitType);
+        if (box.width > 0 && box.height > 0)
+        {
+            halfWidth = box.width / 2;
+            halfHeight = box.height / 2;
+        }
+        else
+        {
+            // 배치 상자가 없는 것(건물이 아닌 유닛)은 그래픽 경계로 맞춘다.
+            const auto bounds = tileset_->unitBounds(unitType);
+            halfWidth = bounds.left;
+            halfHeight = bounds.up;
+        }
+    }
+
+    const int left = x - halfWidth;
+    const int top = y - halfHeight;
 
     const int snappedLeft = static_cast<int>(std::lround(double(left) / step)) * step;
     const int snappedTop = static_cast<int>(std::lround(double(top) / step)) * step;
 
-    return QPoint(std::max(0, snappedLeft + bounds.left),
-                  std::max(0, snappedTop + bounds.up));
+    return QPoint(std::max(0, snappedLeft + halfWidth),
+                  std::max(0, snappedTop + halfHeight));
 }
 
 bool MapView::unitWouldOverlap(std::uint16_t unitType, int x, int y, int skipIndex) const
