@@ -142,6 +142,19 @@ void MainWindow::buildCentralWidget()
     auto * unitLayout = new QVBoxLayout(unitPanel);
     unitLayout->setContentsMargins(4, 4, 4, 4);
 
+    auto * categoryBox = new QComboBox(unitPanel);
+    for (auto category : {UnitPalette::Category::All,
+                          UnitPalette::Category::TerranUnits,
+                          UnitPalette::Category::TerranBuildings,
+                          UnitPalette::Category::ZergUnits,
+                          UnitPalette::Category::ZergBuildings,
+                          UnitPalette::Category::ProtossUnits,
+                          UnitPalette::Category::ProtossBuildings,
+                          UnitPalette::Category::Neutral})
+    {
+        categoryBox->addItem(UnitPalette::categoryName(category), static_cast<int>(category));
+    }
+
     auto * ownerBox = new QComboBox(unitPanel);
     for (int player = 1; player <= 12; ++player)
         ownerBox->addItem(tr("플레이어 %1").arg(player), player - 1);
@@ -150,8 +163,14 @@ void MainWindow::buildCentralWidget()
     unitPalette_ = new UnitPalette(unitPanel);
     unitPalette_->setTileset(&tileset_);
 
+    unitLayout->addWidget(categoryBox);
     unitLayout->addWidget(ownerBox);
     unitLayout->addWidget(unitPalette_, 1);
+
+    connect(categoryBox, &QComboBox::currentIndexChanged, this, [this, categoryBox](int) {
+        unitPalette_->setCategory(
+            static_cast<UnitPalette::Category>(categoryBox->currentData().toInt()));
+    });
 
     unitDock_ = new QDockWidget(tr("유닛 팔레트"), this);
     unitDock_->setWidget(unitPanel);

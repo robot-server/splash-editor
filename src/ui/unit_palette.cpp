@@ -7,6 +7,7 @@
 #include <QMouseEvent>
 #include <QPaintEvent>
 #include <QPainter>
+#include <QColor>
 #include <QScrollBar>
 #include <QToolTip>
 
@@ -17,6 +18,12 @@ namespace {
 
 constexpr int kCell = 52;
 constexpr int kMaxCached = 512;
+
+// 팔레트는 늘 어둡게 둔다. 시스템 테마를 따르면 밝은 테마에서 배경이
+// 하얘지는데, 유닛 스프라이트는 밝은 색이 많아 형체가 묻힌다.
+const QColor kBackground(38, 38, 42);
+const QColor kCellFill(52, 52, 58);
+const QColor kCellLine(70, 70, 78);
 
 /// StarCraft 의 실제 유닛 종류 수. 그 뒤는 트리거 전용 가상 항목이다.
 constexpr std::uint16_t kRealUnitTypes = 228;
@@ -37,7 +44,32 @@ void UnitPalette::setTileset(const io::GameGraphics * tileset)
 {
     tileset_ = tileset;
     cache_.clear();
-    viewport()->update();
+    rebuild(); // 분류는 게임 데이터가 있어야 알 수 있다
+}
+
+void UnitPalette::setCategory(Category category)
+{
+    if (category_ == category)
+        return;
+    category_ = category;
+    rebuild();
+    verticalScrollBar()->setValue(0);
+}
+
+QString UnitPalette::categoryName(Category category)
+{
+    switch (category)
+    {
+        case Category::All:              return tr("전체");
+        case Category::TerranUnits:      return tr("테란 유닛");
+        case Category::TerranBuildings:  return tr("테란 건물");
+        case Category::ZergUnits:        return tr("저그 유닛");
+        case Category::ZergBuildings:    return tr("저그 건물");
+        case Category::ProtossUnits:     return tr("프로토스 유닛");
+        case Category::ProtossBuildings: return tr("프로토스 건물");
+        case Category::Neutral:          return tr("중립 · 자원");
+    }
+    return {};
 }
 
 void UnitPalette::setTilesetId(std::uint16_t tilesetId)
@@ -62,8 +94,40 @@ void UnitPalette::rebuild()
 {
     units_.clear();
     units_.reserve(kRealUnitTypes);
+
+    using Race = io::GameGraphics::UnitClass::Race;
+
     for (std::uint16_t type = 0; type < kRealUnitTypes; ++type)
-        units_.push_back(type);
+    {
+        if (category_ == Category::All)
+        {
+            units_.push_back(type);
+            continue;
+        }
+
+        // 분류는 게임 데이터(units.dat)가 알려 준다. 없으면 전부 보여 준다.
+        if (tileset_ == nullptr || !tileset_->hasUnitGraphics())
+        {
+            units_.push_back(type);
+            continue;
+        }
+
+        const auto info = tileset_->unitClass(type);
+        bool keep = false;
+        switch (category_)
+        {
+            case Category::TerranUnits:      keep = info.race == Race::Terran  && !info.building; break;
+            case Category::TerranBuildings:  keep = info.race == Race::Terran  &&  info.building; break;
+            case Category::ZergUnits:        keep = info.race == Race::Zerg    && !info.building; break;
+            case Category::ZergBuildings:    keep = info.race == Race::Zerg    &&  info.building; break;
+            case Category::ProtossUnits:     keep = info.race == Race::Protoss && !info.building; break;
+            case Category::ProtossBuildings: keep = info.race == Race::Protoss &&  info.building; break;
+            case Category::Neutral:          keep = info.race == Race::Neutral; break;
+            case Category::All:              keep = true; break;
+        }
+        if (keep)
+            units_.push_back(type);
+    }
 
     updateScrollRange();
     viewport()->update();
@@ -132,11 +196,11 @@ const QPixmap * UnitPalette::unitPixmap(std::uint16_t unitType)
 void UnitPalette::paintEvent(QPaintEvent * event)
 {
     QPainter painter(viewport());
-    painter.fillRect(event->rect(), palette().dark());
+    painter.fillRect(event->rect(), kBackground);
 
     if (tileset_ == nullptr || !tileset_->hasUnitGraphics())
     {
-        painter.setPen(palette().color(QPalette::BrightText));
+        painter.setPen(QColor(200, 200, 205));
         painter.drawText(viewport()->rect(), Qt::AlignCenter,
                          tr("유닛을 보려면\nStarCraft 설치 폴더가 필요합니다."));
         return;
@@ -158,12 +222,11 @@ void UnitPalette::paintEvent(QPaintEvent * event)
             const std::uint16_t unitType = units_[index];
             const QRect cell(col * kCell, row * kCell - origin, kCell, kCell);
 
-            if (unitType == selectedUnit_)
-            {
-                painter.setPen(Qt::NoPen);
-                painter.setBrush(QColor(90, 255, 120, 50));
-                painter.drawRect(cell.adjusted(1, 1, -1, -1));
-            }
+            // 칸을 눈에 보이게 채운다. 스프라이트는 투명 배경이라 칸이
+            // 없으면 어디서 어디까지가 한 칸인지 알 수 없다.
+            painter.setPen(QPen(kCellLine, 1.0));
+            painter.setBrush(unitType == selectedUnit_ ? QColor(58, 84, 62) : kCellFill);
+            painter.drawRect(cell.adjusted(0, 0, -1, -1));
 
             const QPixmap * pixmap = unitPixmap(unitType);
             if (pixmap != nullptr)

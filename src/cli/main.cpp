@@ -693,6 +693,32 @@ int cmdTilesetInfo(const std::string & installPath, std::uint16_t tilesetId)
     return 0;
 }
 
+int cmdUnitClasses(const std::string & installPath)
+{
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const char * raceName[] = {"Zerg", "Terran", "Protoss", "Neutral"};
+    // 알려진 유닛으로 분류가 맞는지 확인한다.
+    for (std::uint16_t type : {std::uint16_t(0), std::uint16_t(37), std::uint16_t(65),
+                               std::uint16_t(106), std::uint16_t(131), std::uint16_t(154),
+                               std::uint16_t(176), std::uint16_t(188)})
+    {
+        const auto info = graphics.unitClass(type);
+        std::cout << "  " << type << "  "
+                  << raceName[static_cast<int>(info.race)]
+                  << (info.building ? " 건물" : " 유닛")
+                  << "  flags=0x" << std::hex << int(info.groupFlags) << std::dec
+                  << "  " << splash::io::unitTypeName(type) << "\n";
+    }
+    return 0;
+}
+
 int cmdUnitImage(const std::string & installPath,
                  std::uint16_t unitType,
                  const std::string & outPath,
@@ -1311,6 +1337,9 @@ int main(int argc, char ** argv)
         try { return cmdTilesetInfo(args[1], static_cast<std::uint16_t>(std::stoul(args[2]))); }
         catch (const std::exception &) { return usage(argv[0]); }
     }
+
+    if (command == "unit-classes" && args.size() == 2)
+        return cmdUnitClasses(args[1]);
 
     if (command == "unit-image" && args.size() >= 4)
     {

@@ -157,6 +157,40 @@ bool GameGraphics::load(const std::string & installPath, std::string * error)
     return true;
 }
 
+GameGraphics::UnitClass GameGraphics::unitClass(std::uint16_t unitType) const
+{
+    UnitClass result;
+    if (!hasUnitGraphics())
+        return result;
+
+    const Sc::Unit & units = impl_->scData->units;
+    if (unitType >= units.numUnitTypes())
+        return result;
+
+    const auto & dat = units.getUnit(Sc::Unit::Type(unitType));
+
+    // 건물 여부는 units.dat 의 특성 플래그가 알려 준다.
+    result.building = (dat.flags & Sc::Unit::Flags::Building) != 0;
+
+    // 종족은 StarEdit 그룹 플래그에 들어 있다. MappingCore 에 이름이 붙은
+    // 열거형이 없어 비트를 직접 읽는다 — 값은 실제 데이터로 확인했다.
+    result.groupFlags = dat.starEditGroupFlags;
+    constexpr std::uint8_t kZerg = 0x01;
+    constexpr std::uint8_t kTerran = 0x02;
+    constexpr std::uint8_t kProtoss = 0x04;
+
+    if (dat.starEditGroupFlags & kZerg)
+        result.race = UnitClass::Race::Zerg;
+    else if (dat.starEditGroupFlags & kTerran)
+        result.race = UnitClass::Race::Terran;
+    else if (dat.starEditGroupFlags & kProtoss)
+        result.race = UnitClass::Race::Protoss;
+    else
+        result.race = UnitClass::Race::Neutral;
+
+    return result;
+}
+
 bool GameGraphics::isCreepBuilding(std::uint16_t unitType) const
 {
     if (!hasUnitGraphics())

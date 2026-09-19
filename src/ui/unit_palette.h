@@ -6,6 +6,7 @@
 // 228종을 한 번에 그리면 느리므로 보이는 것만 만들고 캐시한다.
 
 #include <QAbstractScrollArea>
+#include <QString>
 #include <QHash>
 #include <QPixmap>
 
@@ -28,6 +29,21 @@ public:
 
     /// 미리보기에 쓸 타일셋(팔레트 색이 지형을 따른다).
     void setTilesetId(std::uint16_t tilesetId);
+
+    /// 팔레트에 무엇을 늘어놓을지.
+    enum class Category
+    {
+        All,
+        TerranUnits, TerranBuildings,
+        ZergUnits,   ZergBuildings,
+        ProtossUnits, ProtossBuildings,
+        Neutral
+    };
+    void setCategory(Category category);
+    Category category() const { return category_; }
+
+    /// 카테고리 이름 (콤보를 채울 때 쓴다).
+    static QString categoryName(Category category);
 
     std::uint16_t selectedUnit() const { return selectedUnit_; }
     std::uint8_t owner() const { return owner_; }
@@ -52,6 +68,7 @@ private:
     std::uint16_t selectedUnit_ = 0;
     std::uint8_t owner_ = 0;
 
+    Category category_ = Category::All;
     std::vector<std::uint16_t> units_;
     QHash<std::uint32_t, QPixmap> cache_; ///< (타입<<8 | 소유자)
 };

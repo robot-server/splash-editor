@@ -70,6 +70,16 @@ public:
                            std::uint16_t tilesetId,
                            bool drawnAsSprite) const;
 
+    /// 유닛을 팔레트에서 나누기 위한 분류.
+    struct UnitClass
+    {
+        enum class Race { Zerg, Terran, Protoss, Neutral };
+        Race race = Race::Neutral;
+        bool building = false;
+        std::uint8_t groupFlags = 0; ///< units.dat 의 starEditGroupFlags 원시값
+    };
+    UnitClass unitClass(std::uint16_t unitType) const;
+
     /// 이 유닛이 크립을 만드는 저그 건물인지 (units.dat 의 CreepBuilding 특성).
     bool isCreepBuilding(std::uint16_t unitType) const;
 

@@ -6,6 +6,7 @@
 #include <QMouseEvent>
 #include <QPaintEvent>
 #include <QPainter>
+#include <QColor>
 #include <QScrollBar>
 
 #include <algorithm>
@@ -18,6 +19,10 @@ constexpr int kCell = 36;
 
 /// 캐시 상한. 한 칸이 32x32 RGBA(4KB)이므로 2048개면 약 8MB 다.
 constexpr int kMaxCached = 2048;
+
+// 시스템 테마를 따르면 밝은 테마에서 배경이 하얘진다. 타일 사이 틈이
+// 눈에 띄어 고르기 나쁘므로 늘 어둡게 둔다.
+const QColor kBackground(38, 38, 42);
 
 } // namespace
 
@@ -110,11 +115,11 @@ const QPixmap * TilePalette::tilePixmap(std::uint16_t tileId)
 void TilePalette::paintEvent(QPaintEvent * event)
 {
     QPainter painter(viewport());
-    painter.fillRect(event->rect(), palette().dark());
+    painter.fillRect(event->rect(), kBackground);
 
     if (tiles_.empty())
     {
-        painter.setPen(palette().color(QPalette::BrightText));
+        painter.setPen(QColor(200, 200, 205));
         painter.drawText(viewport()->rect(), Qt::AlignCenter,
                          tr("타일을 보려면\nStarCraft 설치 폴더가 필요합니다."));
         return;
