@@ -19,6 +19,8 @@ qt_add_executable(splash-editor
   unit_palette.h
   mini_map.cpp
   mini_map.h
+  code_editor.cpp
+  code_editor.h
   briefing_editor.cpp
   briefing_editor.h
   settings_dialogs.cpp

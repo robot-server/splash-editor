@@ -11,13 +11,15 @@
 
 class QCheckBox;
 class QListWidget;
-class QPlainTextEdit;
+
 class QLabel;
 
 namespace splash::chk { class MapDocument; }
 namespace splash::io  { class GameGraphics; }
 
 namespace splash::ui {
+
+class CodeEditor;
 
 class BriefingEditor : public QDialog
 {
@@ -44,7 +46,7 @@ private:
     QListWidget * list_ = nullptr;
     QCheckBox * owners_[9] {};   ///< 플레이어 1~8 + 모든 플레이어
     QListWidget * actions_ = nullptr;
-    QPlainTextEdit * text_ = nullptr;
+    CodeEditor * text_ = nullptr;
     QLabel * summary_ = nullptr;
     QLabel * hint_ = nullptr;
 

@@ -1,6 +1,7 @@
 #include "ui/briefing_editor.h"
 
 #include "chk/map_document.h"
+#include "ui/code_editor.h"
 #include "io/game_graphics.h"
 
 #include <QCheckBox>
@@ -86,10 +87,11 @@ BriefingEditor::BriefingEditor(chk::MapDocument & document, io::GameGraphics & g
     auto * actionLayout = new QVBoxLayout(actionBox);
     actionLayout->addWidget(actions_);
 
-    text_ = new QPlainTextEdit(this);
+    text_ = new CodeEditor(this);
+    text_->setVocabulary(document_.triggerVocabulary(graphics_));
+
     QFont mono(QStringLiteral("Menlo"));
     mono.setStyleHint(QFont::Monospace);
-    text_->setFont(mono);
 
     hint_ = new QLabel(this);
     hint_->setText(tr("쓸 수 있는 동작:\n%1").arg(QString::fromUtf8(kBriefingActions)));

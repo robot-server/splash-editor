@@ -1,5 +1,6 @@
 #include "ui/trigger_editor.h"
 
+#include "ui/code_editor.h"
 #include "ui/trigger_argument_panel.h"
 
 #include "chk/map_document.h"
@@ -241,10 +242,9 @@ TriggerEditor::TriggerEditor(chk::MapDocument & document, io::GameGraphics & gra
     connect(actionUp, &QPushButton::clicked, this, [moveAction] { moveAction(-1); });
     connect(actionDown, &QPushButton::clicked, this, [moveAction] { moveAction(1); });
 
-    text_ = new QPlainTextEdit(this);
-    QFont mono(QStringLiteral("Menlo"));
-    mono.setStyleHint(QFont::Monospace);
-    text_->setFont(mono);
+    // 텍스트 쪽은 코드 편집기다 — 줄 번호·구문 강조·자동 완성·문법 검사.
+    text_ = new CodeEditor(this);
+    text_->setVocabulary(document_.triggerVocabulary(graphics_));
 
     auto * applyText = new QPushButton(tr("이 트리거에 적용"), this);
     connect(applyText, &QPushButton::clicked, this, [this] {

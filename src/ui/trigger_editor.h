@@ -15,7 +15,7 @@
 
 class QCheckBox;
 class QListWidget;
-class QPlainTextEdit;
+
 class QPushButton;
 class QLabel;
 class QToolButton;
@@ -25,6 +25,7 @@ namespace splash::io  { class GameGraphics; }
 
 namespace splash::ui {
 
+class CodeEditor;
 class TriggerArgumentPanel;
 
 class TriggerEditor : public QDialog
@@ -68,7 +69,7 @@ private:
     std::vector<io::TriggerElement> actionElements_;
     std::vector<io::TriggerChoice> conditionTypes_;
     std::vector<io::TriggerChoice> actionTypes_;
-    QPlainTextEdit * text_ = nullptr;
+    CodeEditor * text_ = nullptr;
     QLabel * summary_ = nullptr;
 
     bool loading_ = false; ///< 체크박스를 코드로 바꾸는 동안 신호를 무시한다
