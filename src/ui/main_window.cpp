@@ -4,6 +4,7 @@
 #include "ui/tile_palette.h"
 #include "ui/mini_map.h"
 #include "ui/sound_player.h"
+#include "ui/briefing_editor.h"
 #include "ui/settings_dialogs.h"
 #include "ui/trigger_editor.h"
 #include "ui/unit_palette.h"
@@ -503,6 +504,24 @@ void MainWindow::buildMenus()
         TechSettingsDialog dialog(document_, this);
         connect(&dialog, &TechSettingsDialog::documentEdited, this, [this] { onDocumentEdited(); });
         dialog.exec();
+    });
+
+    QAction * briefingAction = scenarioMenu->addAction(tr("미션 브리핑(&B)…"));
+    connect(briefingAction, &QAction::triggered, this, [this] {
+        if (!document_.isOpen())
+        {
+            statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
+            return;
+        }
+        if (!tileset_.isLoaded())
+        {
+            statusBar()->showMessage(tr("브리핑을 읽으려면 StarCraft 설치 폴더가 필요합니다"), 4000);
+            return;
+        }
+        auto * editor = new BriefingEditor(document_, tileset_, this);
+        editor->setAttribute(Qt::WA_DeleteOnClose);
+        connect(editor, &BriefingEditor::documentEdited, this, [this] { onDocumentEdited(); });
+        editor->show();
     });
 
     QMenu * triggerMenu = menuBar()->addMenu(tr("트리거(&R)"));

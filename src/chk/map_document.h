@@ -224,6 +224,19 @@ public:
 
     // --- 트리거 ---
 
+    // --- 미션 브리핑 ---
+
+    std::vector<io::BriefingSummary> briefingSummaries(const io::GameGraphics & graphics) const;
+    std::optional<io::BriefingDetail> briefingDetail(std::size_t index,
+                                                     const io::GameGraphics & graphics) const;
+    std::optional<std::string> briefingText(const io::GameGraphics & graphics) const;
+    bool setBriefingText(std::size_t index, const std::string & text, io::GameGraphics & graphics);
+    bool setBriefingText(const std::string & text, io::GameGraphics & graphics);
+    bool addBriefing();
+    bool removeBriefing(std::size_t index);
+    bool moveBriefing(std::size_t from, std::size_t to);
+    bool setBriefingOwners(std::size_t index, const std::array<bool, 27> & owners);
+
     /// 트리거 편집기의 자동 완성·문법 검사에 쓸 낱말 목록.
     io::TriggerVocabulary triggerVocabulary(const io::GameGraphics & graphics) const;
 

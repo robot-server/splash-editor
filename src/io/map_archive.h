@@ -200,6 +200,23 @@ struct TriggerDetail
     std::string text;                 ///< 이 트리거만의 텍스트 트리거
 };
 
+/// 미션 브리핑 한 줄(브리핑 트리거) 요약.
+struct BriefingSummary
+{
+    std::size_t index = 0;
+    std::string players;      ///< 이 브리핑을 보는 플레이어
+    std::size_t actions = 0;
+    std::string firstAction;  ///< 무엇을 하는지 한 줄
+};
+
+/// 브리핑 트리거 하나의 속내.
+struct BriefingDetail
+{
+    std::array<bool, 27> owners {};
+    std::vector<std::string> actions; ///< 사람이 읽는 형태
+    std::string text;                 ///< 이 브리핑만의 텍스트 트리거
+};
+
 /// 조건·액션 인자의 종류. 편집기가 어떤 위젯을 띄울지 고른다.
 enum class TriggerArgKind
 {
@@ -410,6 +427,32 @@ public:
     /// 유닛·업그레이드 이름표가 필요해서 게임 데이터(GameGraphics)를 받는다.
     /// 그것이 준비되지 않았으면 빈 값을 돌려준다.
     std::optional<std::string> triggerText(const GameGraphics & graphics) const;
+
+    // --- 미션 브리핑 (MBRF) ---
+
+    /// 브리핑 목록.
+    std::vector<BriefingSummary> briefingSummaries(const GameGraphics & graphics) const;
+
+    /// 브리핑 하나의 속내.
+    std::optional<BriefingDetail> briefingDetail(std::size_t index,
+                                                 const GameGraphics & graphics) const;
+
+    /// 브리핑 전체를 텍스트로.
+    std::optional<std::string> briefingText(const GameGraphics & graphics) const;
+
+    /// 브리핑 하나를 텍스트로 고친다.
+    Result setBriefingText(std::size_t index, const std::string & text, GameGraphics & graphics);
+
+    /// 브리핑 전체를 텍스트로 갈아 끼운다.
+    Result setBriefingText(const std::string & text, GameGraphics & graphics);
+
+    /// 브리핑을 더하거나 지우거나 옮긴다.
+    Result addBriefing();
+    Result removeBriefing(std::size_t index);
+    Result moveBriefing(std::size_t from, std::size_t to);
+
+    /// 어느 플레이어가 이 브리핑을 보는지.
+    Result setBriefingOwners(std::size_t index, const std::array<bool, 27> & owners);
 
     /// 맵 문자열이 쓰는 코드 페이지. 열 때 가려낸 값이다.
     TextEncoding textEncoding() const;

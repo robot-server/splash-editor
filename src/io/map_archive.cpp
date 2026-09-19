@@ -1892,6 +1892,316 @@ std::optional<TriggerDetail> MapArchive::triggerDetail(std::size_t index,
     }
 }
 
+// ------------------------------------------------------------ 미션 브리핑
+
+std::vector<BriefingSummary> MapArchive::briefingSummaries(const GameGraphics & graphics) const
+{
+    std::vector<BriefingSummary> out;
+    if (!impl_->isOpen())
+        return out;
+
+    const auto * scData = static_cast<const Sc::Data *>(graphics.internalScData());
+    const MapFile & map = *impl_->mapFile;
+
+    try
+    {
+        BriefingTextTrigGenerator generator;
+        const std::size_t count = map.numBriefingTriggers();
+        out.reserve(count);
+
+        for (std::size_t i = 0; i < count; ++i)
+        {
+            const Chk::Trigger & trigger = map.getBriefingTrigger(i);
+
+            BriefingSummary summary;
+            summary.index = i;
+            summary.players = describeOwners(trigger);
+
+            for (const auto & action : trigger.actions)
+            {
+                if (action.actionType != Chk::Action::Type::BriefingNoAction)
+                    ++summary.actions;
+            }
+
+            // 첫 동작 한 줄은 텍스트 생성기에서 가져온다 — 이름표가 붙어야
+            // "Display Speaking Portrait" 처럼 읽히기 때문이다.
+            if (scData != nullptr && summary.actions > 0)
+            {
+                std::string text;
+                const Scenario & scenario = map;
+                if (generator.generateBriefingTextTrigs(scenario, i, text, *scData))
+                {
+                    const std::size_t bodyAt = text.find('{');
+                    if (bodyAt != std::string::npos)
+                    {
+                        const std::size_t lineStart = text.find_first_not_of(" \t\r\n", bodyAt + 1);
+                        if (lineStart != std::string::npos)
+                        {
+                            std::size_t lineEnd = text.find_first_of(";\n", lineStart);
+                            if (lineEnd == std::string::npos)
+                                lineEnd = text.size();
+                            summary.firstAction =
+                                impl_->decode(text.substr(lineStart, lineEnd - lineStart));
+                        }
+                    }
+                }
+            }
+
+            out.push_back(std::move(summary));
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+
+    return out;
+}
+
+std::optional<BriefingDetail> MapArchive::briefingDetail(std::size_t index,
+                                                        const GameGraphics & graphics) const
+{
+    if (!impl_->isOpen())
+        return std::nullopt;
+
+    const auto * scData = static_cast<const Sc::Data *>(graphics.internalScData());
+    if (scData == nullptr)
+        return std::nullopt;
+
+    const MapFile & map = *impl_->mapFile;
+
+    try
+    {
+        if (index >= map.numBriefingTriggers())
+            return std::nullopt;
+
+        const Chk::Trigger & trigger = map.getBriefingTrigger(index);
+
+        BriefingDetail detail;
+        for (std::size_t i = 0; i < 27 && i < Chk::Trigger::MaxOwners; ++i)
+            detail.owners[i] = (trigger.owners[i] == Chk::Trigger::Owned::Yes);
+
+        BriefingTextTrigGenerator generator;
+        std::string text;
+        const Scenario & scenario = map;
+        if (generator.generateBriefingTextTrigs(scenario, index, text, *scData))
+            detail.text = impl_->decode(text);
+
+        // 본문의 들여쓴 줄이 동작 하나씩이다.
+        const std::size_t bodyAt = detail.text.find('{');
+        if (bodyAt != std::string::npos)
+        {
+            std::size_t start = bodyAt + 1;
+            while (start < detail.text.size())
+            {
+                std::size_t end = detail.text.find('\n', start);
+                if (end == std::string::npos)
+                    end = detail.text.size();
+
+                std::string line = detail.text.substr(start, end - start);
+                start = end + 1;
+
+                const auto first = line.find_first_not_of(" \t\r");
+                if (first == std::string::npos)
+                    continue;
+                line = line.substr(first);
+                while (!line.empty() && (line.back() == '\r' || line.back() == ' '))
+                    line.pop_back();
+
+                if (line.empty() || line == "}" || line.rfind("//", 0) == 0)
+                    continue;
+
+                detail.actions.push_back(std::move(line));
+            }
+        }
+
+        return detail;
+    }
+    catch (const std::exception &)
+    {
+        return std::nullopt;
+    }
+}
+
+std::optional<std::string> MapArchive::briefingText(const GameGraphics & graphics) const
+{
+    if (!impl_->isOpen())
+        return std::nullopt;
+
+    const auto * scData = static_cast<const Sc::Data *>(graphics.internalScData());
+    if (scData == nullptr)
+        return std::nullopt;
+
+    try
+    {
+        BriefingTextTrigGenerator generator;
+        std::string text;
+        const Scenario & scenario = *impl_->mapFile;
+        if (!generator.generateBriefingTextTrigs(scenario, text, *scData))
+            return std::nullopt;
+
+        return impl_->decode(text);
+    }
+    catch (const std::exception &)
+    {
+        return std::nullopt;
+    }
+}
+
+Result MapArchive::setBriefingText(std::size_t index, const std::string & text,
+                                   GameGraphics & graphics)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    auto * scData = static_cast<Sc::Data *>(graphics.internalScData());
+    if (scData == nullptr)
+        return Result::failure("게임 데이터가 준비되지 않았습니다.");
+
+    try
+    {
+        if (index >= impl_->mapFile->numBriefingTriggers())
+            return Result::failure("브리핑 번호가 범위를 벗어났습니다.");
+
+        BriefingTextTrigCompiler compiler;
+        std::string working = impl_->encode(text);
+        Scenario & scenario = *impl_->mapFile;
+
+        if (!compiler.compileBriefingTrigger(working, scenario, *scData, index))
+            return Result::failure("브리핑 문법에 오류가 있습니다.");
+
+        impl_->undoSteps.clear();
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("브리핑을 컴파일하지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::setBriefingText(const std::string & text, GameGraphics & graphics)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    auto * scData = static_cast<Sc::Data *>(graphics.internalScData());
+    if (scData == nullptr)
+        return Result::failure("게임 데이터가 준비되지 않았습니다.");
+
+    try
+    {
+        BriefingTextTrigCompiler compiler;
+        std::string working = impl_->encode(text);
+        Scenario & scenario = *impl_->mapFile;
+
+        const std::size_t count = scenario.numBriefingTriggers();
+        if (!compiler.compileBriefingTriggers(working, scenario, *scData, 0, count))
+            return Result::failure("브리핑 문법에 오류가 있습니다.");
+
+        impl_->undoSteps.clear();
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("브리핑을 컴파일하지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::addBriefing()
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    try
+    {
+        // 빈 브리핑 한 줄. 아무도 보지 않는 상태로 시작하고, 플레이어는
+        // 편집기에서 고른다.
+        Chk::Trigger briefing {};
+        impl_->mapFile->addBriefingTrigger(briefing);
+        impl_->undoSteps.push_back(1);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("브리핑을 더하지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::removeBriefing(std::size_t index)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    try
+    {
+        if (index >= impl_->mapFile->numBriefingTriggers())
+            return Result::failure("브리핑 번호가 범위를 벗어났습니다.");
+
+        impl_->mapFile->deleteBriefingTrigger(index);
+        impl_->undoSteps.push_back(1);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("브리핑을 지우지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::moveBriefing(std::size_t from, std::size_t to)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    try
+    {
+        const std::size_t count = impl_->mapFile->numBriefingTriggers();
+        if (from >= count || to >= count)
+            return Result::failure("브리핑 번호가 범위를 벗어났습니다.");
+
+        impl_->mapFile->moveBriefingTrigger(from, to);
+        impl_->undoSteps.push_back(1);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("브리핑 순서를 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::setBriefingOwners(std::size_t index, const std::array<bool, 27> & owners)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (index >= map.numBriefingTriggers())
+            return Result::failure("브리핑 번호가 범위를 벗어났습니다.");
+
+        Chk::Trigger briefing = map.getBriefingTrigger(index);
+        for (std::size_t i = 0; i < 27 && i < Chk::Trigger::MaxOwners; ++i)
+        {
+            briefing.owners[i] = owners[i] ? Chk::Trigger::Owned::Yes
+                                           : Chk::Trigger::Owned::No;
+        }
+
+        map.deleteBriefingTrigger(index);
+        map.insertBriefingTrigger(index, briefing);
+        impl_->undoSteps.push_back(2);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("브리핑 플레이어를 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 Result MapArchive::setTriggerOwners(std::size_t index, const std::array<bool, 27> & owners)
 {
     if (!impl_->isOpen())

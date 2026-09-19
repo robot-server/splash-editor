@@ -43,6 +43,10 @@ int usage(const char * argv0)
         "      텍스트 트리거를 컴파일해 맵에 적용하고 저장한다.\n\n"
         "  " << argv0 << " place-isom <맵파일> <설치폴더> <픽셀x> <픽셀y> <지형brush> <브러시> <출력맵>\n"
         "      ISOM 브러시로 지형을 놓는다 (절벽·경계가 자동으로 이어진다).\n\n"
+        "  " << argv0 << " briefing <맵파일> <설치폴더> [출력.txt]\n"
+        "      미션 브리핑을 텍스트로 옮긴다.\n\n"
+        "  " << argv0 << " set-briefing <맵파일> <설치폴더> <텍스트파일> <출력맵>\n"
+        "      텍스트 브리핑을 컴파일해 맵에 적용하고 저장한다.\n\n"
         "  " << argv0 << " trigger-list <맵파일> <설치폴더> [번호]\n"
         "      트리거 목록과, 번호를 주면 그 트리거의 조건·동작을 보여 준다.\n\n"
         "  " << argv0 << " units <맵파일> [개수]\n"
@@ -411,6 +415,98 @@ int cmdPlaceIsom(const std::string & mapPath, const std::string & installPath,
         return 1;
     }
     std::cout << "  -> " << outPath << "\n";
+    return 0;
+}
+
+int cmdBriefing(const std::string & mapPath, const std::string & installPath,
+                const std::string & outPath)
+{
+    splash::io::MapArchive archive;
+    if (auto r = archive.open(mapPath); !r)
+    {
+        std::cerr << "열기 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "게임 데이터 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const auto summaries = archive.briefingSummaries(graphics);
+    std::cout << "  브리핑 " << summaries.size() << "개\n";
+    for (const auto & s : summaries)
+    {
+        std::cout << "    #" << s.index << "  " << s.players << "  동작 " << s.actions;
+        if (!s.firstAction.empty())
+            std::cout << "  — " << s.firstAction;
+        std::cout << "\n";
+    }
+
+    const auto text = archive.briefingText(graphics);
+    if (!text)
+    {
+        std::cerr << "브리핑 텍스트를 만들지 못했습니다.\n";
+        return 1;
+    }
+
+    if (outPath.empty())
+    {
+        std::cout << "\n" << *text << "\n";
+    }
+    else
+    {
+        std::ofstream out(outPath, std::ios::binary);
+        out << *text;
+        std::cout << "  -> " << outPath << "\n";
+    }
+    return 0;
+}
+
+int cmdSetBriefing(const std::string & mapPath, const std::string & installPath,
+                   const std::string & textPath, const std::string & outPath)
+{
+    splash::io::MapArchive archive;
+    if (auto r = archive.open(mapPath); !r)
+    {
+        std::cerr << "열기 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "게임 데이터 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    std::ifstream in(textPath, std::ios::binary);
+    if (!in)
+    {
+        std::cerr << "텍스트 파일을 열지 못했습니다: " << textPath << "\n";
+        return 1;
+    }
+    const std::string text((std::istreambuf_iterator<char>(in)),
+                            std::istreambuf_iterator<char>());
+
+    if (auto r = archive.setBriefingText(text, graphics); !r)
+    {
+        std::cerr << "컴파일 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    if (auto r = archive.saveAs(outPath); !r)
+    {
+        std::cerr << "저장 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    std::cout << "  브리핑 " << archive.briefingSummaries(graphics).size() << "개 적용\n"
+              << "  -> " << outPath << "\n";
     return 0;
 }
 
@@ -1503,6 +1599,12 @@ int main(int argc, char ** argv)
                 args[7]);
         } catch (const std::exception &) { return usage(argv[0]); }
     }
+
+    if (command == "set-briefing" && args.size() == 5)
+        return cmdSetBriefing(args[1], args[2], args[3], args[4]);
+
+    if (command == "briefing" && (args.size() == 3 || args.size() == 4))
+        return cmdBriefing(args[1], args[2], args.size() == 4 ? args[3] : std::string());
 
     if (command == "trigger-list" && (args.size() == 3 || args.size() == 4))
     {

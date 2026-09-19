@@ -571,6 +571,88 @@ bool MapDocument::setForceName(std::size_t force, const std::string & name)
     return true;
 }
 
+std::vector<io::BriefingSummary> MapDocument::briefingSummaries(
+    const io::GameGraphics & graphics) const
+{
+    return archive_.briefingSummaries(graphics);
+}
+
+std::optional<io::BriefingDetail> MapDocument::briefingDetail(
+    std::size_t index, const io::GameGraphics & graphics) const
+{
+    return archive_.briefingDetail(index, graphics);
+}
+
+std::optional<std::string> MapDocument::briefingText(const io::GameGraphics & graphics) const
+{
+    return archive_.briefingText(graphics);
+}
+
+bool MapDocument::setBriefingText(std::size_t index, const std::string & text,
+                                  io::GameGraphics & graphics)
+{
+    const io::Result result = archive_.setBriefingText(index, text, graphics);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    undoDepth_ = 0; redoDepth_ = 0; savedDepth_ = -1;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setBriefingText(const std::string & text, io::GameGraphics & graphics)
+{
+    const io::Result result = archive_.setBriefingText(text, graphics);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    undoDepth_ = 0; redoDepth_ = 0; savedDepth_ = -1;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::addBriefing()
+{
+    const io::Result result = archive_.addBriefing();
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::removeBriefing(std::size_t index)
+{
+    const io::Result result = archive_.removeBriefing(index);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::moveBriefing(std::size_t from, std::size_t to)
+{
+    const io::Result result = archive_.moveBriefing(from, to);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setBriefingOwners(std::size_t index, const std::array<bool, 27> & owners)
+{
+    const io::Result result = archive_.setBriefingOwners(index, owners);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
 io::TriggerVocabulary MapDocument::triggerVocabulary(const io::GameGraphics & graphics) const
 {
     return archive_.triggerVocabulary(graphics);
