@@ -107,6 +107,11 @@ public:
     /// 열 때 사용한 경로. 열려 있지 않으면 빈 문자열.
     const std::string & sourcePath() const;
 
+    /// 지형 타일 값을 행 우선(row-major)으로 복사한다. 길이는 width*height.
+    /// 에디터가 보는 값(TILE 섹션)을 쓴다 — 게임이 보는 MTXM 과 다를 수 있고,
+    /// 편집기는 관례상 에디터 쪽을 표시한다.
+    std::vector<std::uint16_t> terrainTiles() const;
+
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;

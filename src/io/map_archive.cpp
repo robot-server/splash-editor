@@ -4,6 +4,7 @@
 #include "cross_cut/logger.h"
 #include "mapping_core/map_file.h"
 
+#include <algorithm>
 #include <cctype>
 #include <cstring>
 #include <exception>
@@ -348,6 +349,40 @@ void MapArchive::close()
 const std::string & MapArchive::sourcePath() const
 {
     return impl_->sourcePath;
+}
+
+std::vector<std::uint16_t> MapArchive::terrainTiles() const
+{
+    if (!impl_->isOpen())
+        return {};
+
+    const MapFile & map = *impl_->mapFile;
+
+    try
+    {
+        const std::size_t width  = map.getTileWidth();
+        const std::size_t height = map.getTileHeight();
+        if (width == 0 || height == 0)
+            return {};
+
+        // TILE(에디터용)을 우선 쓰고, 없으면 MTXM(게임용)으로 내려간다.
+        // 보호된 맵은 TILE 을 비워 두거나 잘라 놓는 경우가 흔하다.
+        const auto & editorTiles = map.read.editorTiles;
+        const auto & gameTiles   = map.read.tiles;
+        const auto & source =
+            (editorTiles.size() >= width * height) ? editorTiles : gameTiles;
+
+        std::vector<std::uint16_t> out(width * height, 0);
+        const std::size_t available = std::min(source.size(), out.size());
+        for (std::size_t i = 0; i < available; ++i)
+            out[i] = source[i];
+
+        return out;
+    }
+    catch (const std::exception &)
+    {
+        return {};
+    }
 }
 
 RawMapInfo MapArchive::info() const

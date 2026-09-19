@@ -5,6 +5,7 @@
 
 #include "chk/map_document.h"
 #include "io/game_assets.h"
+#include "io/tileset_source.h"
 #include "io/map_archive.h"
 
 #include <filesystem>
@@ -31,7 +32,9 @@ int usage(const char * argv0)
         "      빈 맵을 만든다. 확장자로 포맷을 고른다(.scm=하이브리드, .scx=브루드워).\n"
         "      기본값: 64 64 4(Jungle)\n\n"
         "  " << argv0 << " assets <StarCraft 설치폴더>\n"
-        "      설치본을 조사한다. 아카이브를 열고 타일셋 데이터가 읽히는지 확인한다.\n";
+        "      설치본을 조사한다. 아카이브를 열고 타일셋 데이터가 읽히는지 확인한다.\n\n"
+        "  " << argv0 << " render <맵파일> <설치폴더> <출력.ppm>\n"
+        "      맵 지형을 이미지로 그린다. 타일셋 디코딩 검증용이다.\n";
     return 2;
 }
 
@@ -177,6 +180,105 @@ int cmdAssets(const std::string & installPath)
     return info.ok() ? 0 : 1;
 }
 
+int cmdRender(const std::string & mapPath,
+              const std::string & installPath,
+              const std::string & outPath)
+{
+    splash::io::MapArchive archive;
+    if (auto r = archive.open(mapPath); !r)
+    {
+        std::cerr << "열기 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    const auto info = archive.info();
+    const int width  = info.tileWidth;
+    const int height = info.tileHeight;
+    if (width <= 0 || height <= 0)
+    {
+        std::cerr << "맵 크기를 읽지 못했습니다.\n";
+        return 1;
+    }
+
+    const long long pixelsWide = static_cast<long long>(width) * splash::io::kTilePixels;
+    const long long pixelsTall = static_cast<long long>(height) * splash::io::kTilePixels;
+
+    // 전체 이미지를 메모리에 올리므로 상한을 둔다.
+    // 256x256 맵이면 8192x8192 = 201MB(RGB) 다. 검증용 도구에는 과하다.
+    constexpr long long kMaxPixels = 4096LL * 4096LL;
+    if (pixelsWide * pixelsTall > kMaxPixels)
+    {
+        std::cerr << "맵이 너무 큽니다: " << pixelsWide << "x" << pixelsTall
+                  << " 픽셀. 이 명령은 " << 4096 << "x" << 4096
+                  << " 이하만 그립니다(검증용).\n";
+        return 1;
+    }
+
+    const auto tiles = archive.terrainTiles();
+    if (tiles.size() != static_cast<std::size_t>(width) * static_cast<std::size_t>(height))
+    {
+        std::cerr << "지형 타일 수가 맵 크기와 맞지 않습니다.\n";
+        return 1;
+    }
+
+    splash::io::TilesetSource tileset;
+    std::string error;
+    if (!tileset.load(installPath, &error))
+    {
+        std::cerr << "타일셋 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    // RGB 로 모아 PPM(P6)으로 쓴다. 외부 이미지 라이브러리를 끌어오지 않기 위해서다.
+    std::vector<std::uint8_t> image(
+        static_cast<std::size_t>(pixelsWide) * static_cast<std::size_t>(pixelsTall) * 3, 0);
+
+    std::vector<std::uint8_t> tileRgba(splash::io::kTileRgbaBytes);
+    std::size_t unknownTiles = 0;
+
+    for (int ty = 0; ty < height; ++ty)
+    {
+        for (int tx = 0; tx < width; ++tx)
+        {
+            const std::uint16_t tileId = tiles[static_cast<std::size_t>(ty) * width + tx];
+            if (!tileset.renderTile(info.tilesetId, tileId, tileRgba.data()))
+                ++unknownTiles;
+
+            for (int py = 0; py < splash::io::kTilePixels; ++py)
+            {
+                for (int px = 0; px < splash::io::kTilePixels; ++px)
+                {
+                    const std::size_t src = (static_cast<std::size_t>(py) * splash::io::kTilePixels + px) * 4;
+                    const std::size_t dstX = static_cast<std::size_t>(tx) * splash::io::kTilePixels + px;
+                    const std::size_t dstY = static_cast<std::size_t>(ty) * splash::io::kTilePixels + py;
+                    const std::size_t dst = (dstY * static_cast<std::size_t>(pixelsWide) + dstX) * 3;
+
+                    image[dst + 0] = tileRgba[src + 0];
+                    image[dst + 1] = tileRgba[src + 1];
+                    image[dst + 2] = tileRgba[src + 2];
+                }
+            }
+        }
+    }
+
+    std::ofstream out(outPath, std::ios::binary | std::ios::trunc);
+    if (!out)
+    {
+        std::cerr << "출력 파일을 열지 못했습니다: " << outPath << "\n";
+        return 1;
+    }
+    out << "P6\n" << pixelsWide << " " << pixelsTall << "\n255\n";
+    out.write(reinterpret_cast<const char *>(image.data()),
+              static_cast<std::streamsize>(image.size()));
+
+    std::cout << "  맵        : " << width << " x " << height << " 타일\n"
+              << "  타일셋    : " << info.tilesetId << "\n"
+              << "  이미지    : " << pixelsWide << " x " << pixelsTall << " 픽셀\n"
+              << "  알수없는타일: " << unknownTiles << " / " << tiles.size() << "\n"
+              << "  -> " << outPath << "\n";
+    return 0;
+}
+
 int cmdRoundtrip(const std::string & mapPath, const std::string & requestedOut)
 {
     std::cout << "== round-trip: " << mapPath << " ==\n";
@@ -298,6 +400,9 @@ int main(int argc, char ** argv)
 
     if (command == "assets" && args.size() == 2)
         return cmdAssets(args[1]);
+
+    if (command == "render" && args.size() == 4)
+        return cmdRender(args[1], args[2], args[3]);
 
     return usage(argv[0]);
 }
