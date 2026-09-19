@@ -656,9 +656,16 @@ void MapView::paintUnits(QPainter & painter, const QRect & dirty)
                       static_cast<int>(index)) != selectedUnits_.end() ||
             static_cast<int>(index) == selectedUnit_;
 
-        // 드래그 중인 유닛은 손을 따라 움직이는 위치에 그린다.
-        const int drawX = (isSelected && hasPreview_) ? previewPos_.x() : unit.x;
-        const int drawY = (isSelected && hasPreview_) ? previewPos_.y() : unit.y;
+        // 드래그 중인 유닛은 손을 따라 움직이는 위치에 그린다. 여럿을
+        // 골랐으면 각자 자기 자리에서 같은 거리만큼 옮겨 보여 준다 —
+        // 미리보기 좌표를 그대로 쓰면 모두 한 점에 겹친다.
+        const int previewDx = hasPreview_ ? previewPos_.x() - dragStartUnitPos_.x() : 0;
+        const int previewDy = hasPreview_ ? previewPos_.y() - dragStartUnitPos_.y() : 0;
+
+        const int drawX = (isSelected && hasPreview_)
+            ? std::max(0, static_cast<int>(unit.x) + previewDx) : unit.x;
+        const int drawY = (isSelected && hasPreview_)
+            ? std::max(0, static_cast<int>(unit.y) + previewDy) : unit.y;
 
         const UnitSprite * sprite = unitSprite(unit.type, unit.owner, unit.resourceAmount,
                                               unit.stateFlags, unit.relationFlags);
@@ -2398,34 +2405,72 @@ void MapView::mouseReleaseEvent(QMouseEvent * event)
 
 bool MapView::copySelection()
 {
-    if (selectedUnit_ < 0 || document_ == nullptr || !document_->isOpen())
+    if (document_ == nullptr || !document_->isOpen())
+        return false;
+
+    std::vector<int> targets = selectedUnits_;
+    if (targets.empty() && selectedUnit_ >= 0)
+        targets.push_back(selectedUnit_);
+    if (targets.empty())
         return false;
 
     const auto & units = document_->units();
-    if (static_cast<std::size_t>(selectedUnit_) >= units.size())
+
+    // 첫 유닛을 기준으로 삼아 나머지의 자리 관계를 담는다.
+    const auto first = units[static_cast<std::size_t>(targets.front())];
+
+    clipboard_.clear();
+    for (int index : targets)
+    {
+        if (index < 0 || index >= static_cast<int>(units.size()))
+            continue;
+
+        const auto & unit = units[static_cast<std::size_t>(index)];
+        clipboard_.push_back(ClipboardUnit{
+            unit.type, unit.owner, unit.resourceAmount,
+            static_cast<int>(unit.x) - static_cast<int>(first.x),
+            static_cast<int>(unit.y) - static_cast<int>(first.y)});
+    }
+
+    if (clipboard_.empty())
         return false;
 
-    const auto & unit = units[static_cast<std::size_t>(selectedUnit_)];
-    clipboardType_ = unit.type;
-    clipboardOwner_ = unit.owner;
-    clipboardResource_ = unit.resourceAmount;
+    // 붙여넣기 하나짜리 경로가 쓰는 값도 맞춰 둔다.
+    clipboardType_ = first.type;
+    clipboardOwner_ = first.owner;
+    clipboardResource_ = first.resourceAmount;
     clipboardValid_ = true;
     return true;
 }
 
 bool MapView::pasteAt(const QPointF & screenPos)
 {
-    if (!clipboardValid_ || document_ == nullptr || !document_->isOpen())
-        return false;
-
-    const QPointF mapPos = screenToMap(screenPos);
-    auto * doc = const_cast<chk::MapDocument *>(document_);
-    if (!doc->addUnit(clipboardType_, clipboardOwner_,
-                      static_cast<std::uint16_t>(std::max(0.0, mapPos.x())),
-                      static_cast<std::uint16_t>(std::max(0.0, mapPos.y()))))
+    if (!clipboardValid_ || clipboard_.empty() ||
+        document_ == nullptr || !document_->isOpen())
     {
         return false;
     }
+
+    const QPointF mapPos = screenToMap(screenPos);
+    auto * doc = const_cast<chk::MapDocument *>(document_);
+
+    // 담아 둔 자리 관계를 그대로 두고 통째로 옮겨 놓는다.
+    int placed = 0;
+    for (const ClipboardUnit & entry : clipboard_)
+    {
+        const int x = static_cast<int>(mapPos.x()) + entry.dx;
+        const int y = static_cast<int>(mapPos.y()) + entry.dy;
+
+        if (doc->addUnit(entry.type, entry.owner,
+                         static_cast<std::uint16_t>(std::max(0, x)),
+                         static_cast<std::uint16_t>(std::max(0, y))))
+        {
+            ++placed;
+        }
+    }
+
+    if (placed == 0)
+        return false;
 
     refreshUnits();
     emit documentEdited();

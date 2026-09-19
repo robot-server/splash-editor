@@ -1588,8 +1588,15 @@ void MainWindow::onUnitProperties()
     const auto & units = document().units();
     const auto & unit = units[static_cast<std::size_t>(index)];
 
+    // 여럿을 골랐으면 모두에 같은 값을 적용한다.
+    std::vector<int> targets = mapView_->selectedUnits();
+    if (targets.empty())
+        targets.push_back(index);
+
     QDialog dialog(this);
-    dialog.setWindowTitle(tr("유닛 속성 — %1").arg(QString::fromStdString(unit.typeName)));
+    dialog.setWindowTitle(targets.size() > 1
+        ? tr("유닛 속성 — %1개").arg(targets.size())
+        : tr("유닛 속성 — %1").arg(QString::fromStdString(unit.typeName)));
 
     auto * form = new QFormLayout();
 
@@ -1668,7 +1675,17 @@ void MainWindow::onUnitProperties()
         (hallucinatedBox->isChecked() ? 0x08 : 0) |
         (invincibleBox->isChecked() ? 0x10 : 0));
 
-    if (!document().setUnitProperties(static_cast<std::size_t>(index), next))
+    int changed = 0;
+    for (int target : targets)
+    {
+        if (target < 0 || target >= static_cast<int>(document().units().size()))
+            continue;
+
+        if (document().setUnitProperties(static_cast<std::size_t>(target), next))
+            ++changed;
+    }
+
+    if (changed == 0)
     {
         QMessageBox::warning(this, tr("유닛 속성 실패"),
                              QString::fromStdString(document().lastError()));
@@ -1677,7 +1694,7 @@ void MainWindow::onUnitProperties()
 
     mapView_->refresh();
     refreshFromDocument();
-    statusBar()->showMessage(tr("유닛 속성을 바꿨습니다"), 3000);
+    statusBar()->showMessage(tr("유닛 속성을 바꿨습니다 — %1개").arg(changed), 3000);
 }
 
 void MainWindow::onShowTriggers()

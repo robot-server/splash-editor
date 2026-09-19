@@ -440,6 +440,18 @@ public:
     std::uint16_t clipboardType_ = 0;
     std::uint8_t clipboardOwner_ = 0;
     std::uint32_t clipboardResource_ = 0;
+
+    /// 여럿을 복사하면 서로의 자리 관계를 지켜야 한다. 첫 유닛을 기준으로
+    /// 나머지의 상대 좌표를 담아 둔다.
+    struct ClipboardUnit
+    {
+        std::uint16_t type = 0;
+        std::uint8_t owner = 0;
+        std::uint32_t resourceAmount = 0;
+        int dx = 0;
+        int dy = 0;
+    };
+    std::vector<ClipboardUnit> clipboard_;
     bool dragging_ = false;
     QPointF dragStartMap_;      ///< 드래그 시작 시 맵 좌표
     QPoint dragStartUnitPos_;   ///< 드래그 시작 시 유닛 좌표
