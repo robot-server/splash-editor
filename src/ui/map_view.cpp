@@ -376,62 +376,57 @@ const QPixmap * MapView::creepLayer()
         }
     }
 
-    // 2) 가장자리를 흐린다.
+    // 2) 크립이 실제로 덮는 모양대로 알파를 깎는다.
     //
-    // 크립 타일에는 가장자리 전이 변형이 없어서(이 타일셋 기준 전부 가득 찬
-    // 질감이다) 마스크 경계가 그대로 드러나면 네모나게 보인다. 알파만 흐려
-    // 서서히 사라지게 만든다. 색은 건드리지 않는다.
-    const int blur = std::max(1, 10 / scale);
-    std::vector<std::uint16_t> alpha(
+    // 경계는 건물마다의 타원을 그대로 쓴다. 타일 격자에 맞추면 네모나게
+    // 보이고, 흐리면 뿌옇게 보인다. 대신 크립이 넘어가면 안 되는 지형은
+    // 이미 마스크가 막고 있다(1단계에서 그 타일은 비어 있다).
+    std::vector<std::uint8_t> shape(
         static_cast<std::size_t>(layerW) * layerH, 0);
-    for (int y = 0; y < layerH; ++y)
-    {
-        const uchar * line = layer.constScanLine(y);
-        for (int x = 0; x < layerW; ++x)
-            alpha[static_cast<std::size_t>(y) * layerW + x] = line[x * 4 + 3];
-    }
 
-    std::vector<std::uint16_t> tmp(alpha.size(), 0);
-    const int window = 2 * blur + 1;
-    for (int y = 0; y < layerH; ++y)
+    for (const auto & unit : document_->units())
     {
-        int sum = 0;
-        const std::size_t row = static_cast<std::size_t>(y) * layerW;
-        for (int x = -blur; x < layerW; ++x)
+        const auto range = tileset_->creepRange(unit.type);
+        if (range.radiusX <= 0.0 || range.radiusY <= 0.0)
+            continue;
+
+        const double cx = static_cast<double>(unit.x) / scale;
+        const double cy = static_cast<double>(unit.y) / scale;
+        const double rx = range.radiusX / scale;
+        const double ry = range.radiusY / scale;
+
+        const int x0 = std::max(0, static_cast<int>(cx - rx));
+        const int x1 = std::min(layerW - 1, static_cast<int>(cx + rx) + 1);
+        const int y0 = std::max(0, static_cast<int>(cy - ry));
+        const int y1 = std::min(layerH - 1, static_cast<int>(cy + ry) + 1);
+
+        for (int y = y0; y <= y1; ++y)
         {
-            if (x + blur < layerW) sum += alpha[row + x + blur];
-            if (x - blur - 1 >= 0)  sum -= alpha[row + x - blur - 1];
-            if (x >= 0) tmp[row + x] = static_cast<std::uint16_t>(sum / window);
+            for (int x = x0; x <= x1; ++x)
+            {
+                const double dx = (x - cx) / rx;
+                const double dy = (y - cy) / ry;
+                const double d2 = dx * dx + dy * dy;
+                if (d2 > 1.0)
+                    continue;
+
+                // 가장자리 한 겹만 부드럽게 — 타원 테두리에서 서서히 사라진다.
+                const double edge = (d2 > 0.82) ? (1.0 - d2) / 0.18 : 1.0;
+                const int alpha = static_cast<int>(255 * edge);
+                std::uint8_t & slot = shape[static_cast<std::size_t>(y) * layerW + x];
+                slot = static_cast<std::uint8_t>(std::max<int>(slot, alpha));
+            }
         }
     }
-    for (int x = 0; x < layerW; ++x)
-    {
-        int sum = 0;
-        for (int y = -blur; y < layerH; ++y)
-        {
-            if (y + blur < layerH) sum += tmp[static_cast<std::size_t>(y + blur) * layerW + x];
-            if (y - blur - 1 >= 0)  sum -= tmp[static_cast<std::size_t>(y - blur - 1) * layerW + x];
-            if (y >= 0)
-                alpha[static_cast<std::size_t>(y) * layerW + x] =
-                    static_cast<std::uint16_t>(sum / window);
-        }
-    }
 
-    // 블러 결과를 그대로 알파로 쓰면 크립 전체가 흐리멍덩해진다.
-    // 안쪽은 불투명하게 되돌리고 경계만 좁게 남긴다.
-    constexpr int kSolidAt = 170; // 이 이상이면 완전 불투명
-    constexpr int kClearAt = 60;  // 이 이하면 완전 투명
     for (int y = 0; y < layerH; ++y)
     {
         uchar * line = layer.scanLine(y);
         for (int x = 0; x < layerW; ++x)
         {
-            const int v = alpha[static_cast<std::size_t>(y) * layerW + x];
-            uchar a = 0;
-            if (v >= kSolidAt)      a = 255;
-            else if (v <= kClearAt) a = 0;
-            else a = static_cast<uchar>(255 * (v - kClearAt) / (kSolidAt - kClearAt));
-            line[x * 4 + 3] = a;
+            const int existing = line[x * 4 + 3]; // 크립 타일이 깔린 자리인지
+            const int wanted = shape[static_cast<std::size_t>(y) * layerW + x];
+            line[x * 4 + 3] = static_cast<uchar>(existing == 0 ? 0 : wanted);
         }
     }
 

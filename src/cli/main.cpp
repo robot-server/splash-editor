@@ -707,117 +707,70 @@ int cmdRender(const std::string & mapPath,
                     creepPixels.push_back(std::move(buf));
             }
 
-            std::size_t creepTileCount = 0;
+            std::size_t creepBuildings = 0;
             if (!creepPixels.empty())
             {
-                // 크립 타일에는 가장자리 전이 변형이 없다. 타일 마스크를 그대로
-                // 쓰면 경계가 직각으로 뚝 끊긴다. 마스크를 픽셀 해상도로 펼친 뒤
-                // 흐려서 가장자리를 부드럽게 만든다.
-                const long long mw = pixelsWide;
-                const long long mh = pixelsTall;
-                std::vector<std::uint8_t> alpha(
-                    static_cast<std::size_t>(mw) * mh, 0);
-
-                for (int ty = 0; ty < height; ++ty)
+                // 경계는 건물마다의 타원을 그대로 쓴다. 타일 격자에 맞추면
+                // 네모나게 보이고, 흐리면 뿌옇게 보인다. 대신 크립이 넘어가면
+                // 안 되는 지형(절벽·물·다른 고도)은 타일 마스크로 막는다.
+                for (const auto & u : archiveUnits)
                 {
-                    for (int tx = 0; tx < width; ++tx)
+                    const auto range = tileset.creepRange(u.type);
+                    if (range.radiusX <= 0.0 || range.radiusY <= 0.0)
+                        continue;
+                    ++creepBuildings;
+
+                    const long long x0 = std::max(0LL, static_cast<long long>(u.x - range.radiusX));
+                    const long long x1 = std::min(pixelsWide - 1,
+                                                  static_cast<long long>(u.x + range.radiusX));
+                    const long long y0 = std::max(0LL, static_cast<long long>(u.y - range.radiusY));
+                    const long long y1 = std::min(pixelsTall - 1,
+                                                  static_cast<long long>(u.y + range.radiusY));
+
+                    for (long long y = y0; y <= y1; ++y)
                     {
-                        if (mask[static_cast<std::size_t>(ty) * width + tx] == 0)
-                            continue;
-                        for (int y = 0; y < splash::io::kTilePixels; ++y)
+                        const int ty = static_cast<int>(y / splash::io::kTilePixels);
+                        for (long long x = x0; x <= x1; ++x)
                         {
-                            const long long py =
-                                static_cast<long long>(ty) * splash::io::kTilePixels + y;
-                            std::fill_n(
-                                alpha.begin() + static_cast<std::size_t>(py) * mw +
-                                    static_cast<long long>(tx) * splash::io::kTilePixels,
-                                splash::io::kTilePixels, std::uint8_t(255));
-                        }
-                    }
-                }
+                            const int tx = static_cast<int>(x / splash::io::kTilePixels);
+                            if (tx < 0 || ty < 0 || tx >= width || ty >= height)
+                                continue;
+                            if (mask[static_cast<std::size_t>(ty) * width + tx] == 0)
+                                continue; // 크립이 못 가는 지형
 
-                // 분리 가능한 박스 블러 두 번 — 가로/세로로 나눠 돌린다.
-                constexpr int kBlur = 10;
-                std::vector<std::uint8_t> tmp(alpha.size(), 0);
-                for (long long y = 0; y < mh; ++y)
-                {
-                    int sum = 0;
-                    const std::size_t row = static_cast<std::size_t>(y) * mw;
-                    for (long long x = -kBlur; x < mw; ++x)
-                    {
-                        if (x + kBlur < mw) sum += alpha[row + x + kBlur];
-                        if (x - kBlur - 1 >= 0) sum -= alpha[row + x - kBlur - 1];
-                        if (x >= 0) tmp[row + x] = static_cast<std::uint8_t>(sum / (2 * kBlur + 1));
-                    }
-                }
-                for (long long x = 0; x < mw; ++x)
-                {
-                    int sum = 0;
-                    for (long long y = -kBlur; y < mh; ++y)
-                    {
-                        if (y + kBlur < mh) sum += tmp[static_cast<std::size_t>(y + kBlur) * mw + x];
-                        if (y - kBlur - 1 >= 0) sum -= tmp[static_cast<std::size_t>(y - kBlur - 1) * mw + x];
-                        if (y >= 0)
-                            alpha[static_cast<std::size_t>(y) * mw + x] =
-                                static_cast<std::uint8_t>(sum / (2 * kBlur + 1));
-                    }
-                }
+                            const double dx = (x - static_cast<double>(u.x)) / range.radiusX;
+                            const double dy = (y - static_cast<double>(u.y)) / range.radiusY;
+                            const double d2 = dx * dx + dy * dy;
+                            if (d2 > 1.0)
+                                continue;
 
-                // 블러 결과를 그대로 알파로 쓰면 크립 전체가 흐리멍덩해진다.
-                // 안쪽은 불투명하게 되돌리고 경계만 좁게 남긴다.
-                constexpr int kSolidAt = 170; // 이 이상이면 완전 불투명
-                constexpr int kClearAt = 60;  // 이 이하면 완전 투명
-                for (auto & a : alpha)
-                {
-                    const int v = a;
-                    if (v >= kSolidAt)      a = 255;
-                    else if (v <= kClearAt) a = 0;
-                    else
-                        a = static_cast<std::uint8_t>(
-                            255 * (v - kClearAt) / (kSolidAt - kClearAt));
-                }
+                            // 가장자리 한 겹만 부드럽게 — 타원 테두리에서 서서히 사라진다.
+                            const double edge = (d2 > 0.82) ? (1.0 - d2) / 0.18 : 1.0;
+                            const int alpha = static_cast<int>(255 * edge);
+                            if (alpha <= 0)
+                                continue;
 
-                for (int ty = 0; ty < height; ++ty)
-                {
-                    for (int tx = 0; tx < width; ++tx)
-                    {
-                        ++creepTileCount;
+                            const std::size_t hash =
+                                (static_cast<std::size_t>(tx) * 73856093u) ^
+                                (static_cast<std::size_t>(ty) * 19349663u);
+                            const std::size_t plainCount =
+                                std::max<std::size_t>(1, creepPixels.size() / 3);
+                            const bool useDecor =
+                                (hash % 11 == 0) && creepPixels.size() > plainCount;
+                            const std::size_t variant = useDecor
+                                ? plainCount + (hash / 11) % (creepPixels.size() - plainCount)
+                                : hash % plainCount;
 
-                        // 좌표를 섞어 변형을 고른다. 앞쪽이 평범한 질감,
-                        // 뒤쪽이 구멍·촉수 장식이라 장식은 드물게만 섞는다.
-                        const std::size_t hash =
-                            (static_cast<std::size_t>(tx) * 73856093u) ^
-                            (static_cast<std::size_t>(ty) * 19349663u);
-                        const std::size_t plainCount =
-                            std::max<std::size_t>(1, creepPixels.size() / 3);
-                        const bool useDecor =
-                            (hash % 11 == 0) && creepPixels.size() > plainCount;
-                        const std::size_t variant = useDecor
-                            ? plainCount + (hash / 11) % (creepPixels.size() - plainCount)
-                            : hash % plainCount;
-
-                        const auto & buf = creepPixels[variant];
-                        for (int y = 0; y < splash::io::kTilePixels; ++y)
-                        {
-                            for (int x = 0; x < splash::io::kTilePixels; ++x)
-                            {
-                                const long long px =
-                                    static_cast<long long>(tx) * splash::io::kTilePixels + x;
-                                const long long py =
-                                    static_cast<long long>(ty) * splash::io::kTilePixels + y;
-                                const std::uint8_t a =
-                                    alpha[static_cast<std::size_t>(py) * mw + px];
-                                if (a == 0)
-                                    continue;
-                                const std::size_t at =
-                                    (static_cast<std::size_t>(y) * splash::io::kTilePixels + x) * 4;
-                                blendPixel(px, py, buf[at + 0], buf[at + 1], buf[at + 2], a);
-                            }
+                            const auto & buf = creepPixels[variant];
+                            const std::size_t at =
+                                ((y % splash::io::kTilePixels) * splash::io::kTilePixels +
+                                 (x % splash::io::kTilePixels)) * 4;
+                            blendPixel(x, y, buf[at + 0], buf[at + 1], buf[at + 2], alpha);
                         }
                     }
                 }
             }
-            std::cout << "  크립 타일  : " << creepTileCount << "\n";
+            std::cout << "  크립 건물  : " << creepBuildings << "\n";
         }
     }
 
