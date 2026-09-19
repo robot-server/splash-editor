@@ -1816,6 +1816,39 @@ bool MapView::copyTerrainSelection()
     return true;
 }
 
+MapView::TerrainBrush MapView::terrainClipboardBrush() const
+{
+    TerrainBrush brush;
+    if (terrainClipboard_.empty())
+        return brush;
+
+    brush.width = clipboardWidth_;
+    brush.height = clipboardHeight_;
+    brush.tiles = terrainClipboard_;
+    brush.tilesetId = (document_ != nullptr) ? document_->info().tilesetId : 0;
+    return brush;
+}
+
+void MapView::useTerrainBrush(const TerrainBrush & brush)
+{
+    if (brush.width <= 0 || brush.height <= 0 || brush.tiles.empty())
+        return;
+
+    clipboardWidth_ = brush.width;
+    clipboardHeight_ = brush.height;
+    terrainClipboard_ = brush.tiles;
+
+    // 곧바로 찍을 수 있게 브러시를 켜고 지형 도구로 옮긴다.
+    pastingTerrain_ = true;
+    if (tool_ != Tool::SelectTerrain)
+    {
+        tool_ = Tool::SelectTerrain;
+        emit toolChanged(tool_);
+    }
+
+    viewport()->update();
+}
+
 bool MapView::cutTerrainSelection()
 {
     if (!copyTerrainSelection())

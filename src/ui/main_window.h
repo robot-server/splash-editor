@@ -22,6 +22,7 @@ namespace splash::ui {
 
 class MapView;
 class TilePalette;
+class BrushPalette;
 class UnitPalette;
 class MiniMap;
 class SoundPlayer;
@@ -98,6 +99,7 @@ private:
     io::GameGraphics tileset_;
     MapView * mapView_ = nullptr;
     TilePalette * tilePalette_ = nullptr;
+    BrushPalette * brushPalette_ = nullptr;
     QMenu * recentMenu_ = nullptr;
     QDockWidget * paletteDock_ = nullptr;
     UnitPalette * unitPalette_ = nullptr;

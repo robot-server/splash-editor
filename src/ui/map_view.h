@@ -177,6 +177,22 @@ public:
     /// 비운 자리는 타일 0 이 된다 — 게임에서 검게 보이는 빈 타일이다.
     bool cutTerrainSelection();
 
+    /// 담아 둔 지형 덩어리. 브러시 팔레트가 주고받는다.
+    struct TerrainBrush
+    {
+        QString name;
+        int width = 0;
+        int height = 0;
+        std::vector<std::uint16_t> tiles;
+        std::uint16_t tilesetId = 0;
+    };
+
+    /// 지금 담아 둔 지형을 브러시로 꺼낸다. 비어 있으면 이름이 빈 값.
+    TerrainBrush terrainClipboardBrush() const;
+
+    /// 브러시를 클립보드에 올려 곧바로 찍을 수 있게 한다.
+    void useTerrainBrush(const TerrainBrush & brush);
+
     /// 담아 둔 지형을 커서 자리에 찍는다.
     bool pasteTerrainAt(const QPointF & screenPos);
 

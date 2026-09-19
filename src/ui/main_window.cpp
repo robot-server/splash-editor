@@ -5,6 +5,7 @@
 #include "ui/mini_map.h"
 #include "ui/sound_player.h"
 #include "ui/briefing_editor.h"
+#include "ui/brush_palette.h"
 #include "ui/code_editor_pane.h"
 #include "ui/location_editor.h"
 #include "ui/preset_editor.h"
@@ -326,6 +327,23 @@ void MainWindow::buildCentralWidget()
         mapView_->setTool(MapView::Tool::Terrain);
         statusBar()->showMessage(tr("ISOM 지형을 골랐습니다 — 맵을 클릭하세요"), 3000);
     });
+
+    // 브러시 팔레트 — 담아 둔 지형 덩어리를 이름 붙여 두고 다시 꺼내 쓴다.
+    brushPalette_ = new BrushPalette(this);
+
+    auto * brushCapture = new QPushButton(tr("복사한 지형을 브러시로 담기"), terrainPanel);
+    connect(brushCapture, &QPushButton::clicked, this, [this] {
+        brushPalette_->addFromClipboard(mapView_->terrainClipboardBrush());
+    });
+
+    connect(brushPalette_, &BrushPalette::brushChosen, this,
+            [this](const MapView::TerrainBrush & brush) {
+        mapView_->useTerrainBrush(brush);
+        statusBar()->showMessage(tr("브러시를 골랐습니다 — 맵을 누르면 찍힙니다"), 4000);
+    });
+
+    terrainLayout->addWidget(brushCapture);
+    terrainLayout->addWidget(brushPalette_, 1);
 
     paletteDock_ = new QDockWidget(tr("지형 팔레트"), this);
     paletteDock_->setWidget(terrainPanel);
