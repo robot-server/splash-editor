@@ -201,6 +201,12 @@ public:
     /// 그것이 준비되지 않았으면 빈 값을 돌려준다.
     std::optional<std::string> triggerText(const GameGraphics & graphics) const;
 
+    /// 텍스트 트리거를 컴파일해 TRIG 섹션을 통째로 교체한다.
+    ///
+    /// 성공하면 트리거 전체가 새 내용으로 바뀐다 — 일부만 고치는 것이 아니다.
+    /// 실패하면 맵은 건드리지 않는다.
+    Result setTriggerText(const std::string & text, GameGraphics & graphics);
+
     /// 지형 타일 값을 행 우선(row-major)으로 복사한다. 길이는 width*height.
     /// 에디터가 보는 값(TILE 섹션)을 쓴다 — 게임이 보는 MTXM 과 다를 수 있고,
     /// 편집기는 관례상 에디터 쪽을 표시한다.

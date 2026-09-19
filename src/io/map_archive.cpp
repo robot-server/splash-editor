@@ -6,6 +6,7 @@
 #include "cross_cut/logger.h"
 #include "mapping_core/map_file.h"
 #include "mapping_core/sc.h"
+#include "mapping_core/text_trig_compiler.h"
 #include "mapping_core/text_trig_generator.h"
 
 #include <algorithm>
@@ -709,6 +710,41 @@ std::optional<std::string> MapArchive::triggerText(const GameGraphics & graphics
     {
         return std::nullopt;
     }
+}
+
+Result MapArchive::setTriggerText(const std::string & text, GameGraphics & graphics)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    auto * scData = static_cast<Sc::Data *>(graphics.internalScData());
+    if (scData == nullptr)
+        return Result::failure("게임 데이터가 준비되지 않았습니다.");
+
+    try
+    {
+        TextTrigCompiler compiler(false, 0);
+
+        // 컴파일러는 문자열을 다듬으며 읽으므로 사본을 넘긴다.
+        std::string working = text;
+        Scenario & scenario = *impl_->mapFile;
+
+        // 트리거 전체를 교체한다. 범위를 0~현재개수로 주면 그 구간이 새 내용이 된다.
+        const std::size_t count = scenario.numTriggers();
+        if (!compiler.compileTriggers(working, scenario, *scData, 0, count))
+            return Result::failure("트리거 문법에 오류가 있습니다.");
+
+        // 컴파일은 TRIG 과 STR 을 한꺼번에 바꾼다. 몇 액션이 생기는지 알 수
+        // 없으므로, 실행 취소 단위로 묶지 않고 이력을 비운다 — 잘못 묶어
+        // 엉뚱한 곳까지 되돌리는 것보다 안전하다.
+        impl_->undoSteps.clear();
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("트리거를 컴파일하지 못했습니다: ") + e.what());
+    }
+    return Result::success();
 }
 
 std::vector<std::uint16_t> MapArchive::terrainTiles() const

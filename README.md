@@ -25,7 +25,7 @@ StarCraft: Brood War / Remastered 맵 에디터. Windows · macOS · Linux.
 - **유닛 편집** — 클릭 선택, 드래그 이동, 삭제, 실행 취소/다시 실행
 - **로케이션 편집** — 클릭 선택, 드래그 이동
 - **지형 편집** — 타일 브러시(1~8칸), Alt+클릭으로 타일 집기
-- **트리거 보기** — SCMDraft 형식의 텍스트 트리거
+- **트리거 보기 · 편집** — SCMDraft 형식의 텍스트 트리거를 고쳐 적용
 
 ## 아직 안 되는 것
 
@@ -175,6 +175,9 @@ CLI 는 GUI 없이 코어를 두드리는 도구이자 테스트 하네스다.
 
 # 트리거를 텍스트로 (SCMDraft 형식)
 ./build/src/cli/splash-cli triggers map.scx "/경로/StarCraft" triggers.txt
+
+# 고친 텍스트를 다시 맵에 적용
+./build/src/cli/splash-cli set-triggers map.scx "/경로/StarCraft" triggers.txt out.scx
 ```
 
 ---
@@ -439,7 +442,7 @@ Splash Editor 는 Qt 6 을 **LGPLv3** 조건으로 사용하며, 그 의무를 �
 | **M2** | 읽기 전용 뷰 (지형 렌더링) | ✅ 완료 |
 | **M3** | 유닛 / 로케이션 편집 | ✅ 완료 |
 | **M4** | 지형 편집 | ✅ 타일 브러시 완료 |
-| **M5** | 트리거 → 이후 SCMDraft 2 패리티 | 🔨 진행 중 |
+| **M5** | 트리거 → 이후 SCMDraft 2 패리티 | ✅ 보기·편집 완료 |
 
 ---
 

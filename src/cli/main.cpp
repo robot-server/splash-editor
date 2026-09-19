@@ -39,6 +39,8 @@ int usage(const char * argv0)
         "      --units / --locations / --creep 를 주면 함께 겹쳐 그린다.\n\n"
         "  " << argv0 << " triggers <맵파일> <설치폴더> [출력.txt]\n"
         "      트리거를 사람이 읽는 텍스트로 옮긴다.\n\n"
+        "  " << argv0 << " set-triggers <맵파일> <설치폴더> <텍스트파일> <출력맵>\n"
+        "      텍스트 트리거를 컴파일해 맵에 적용하고 저장한다.\n\n"
         "  " << argv0 << " units <맵파일> [개수]\n"
         "      맵에 놓인 유닛을 나열한다 (기본 20개).\n\n"
         "  " << argv0 << " unit-image <설치폴더> <유닛번호> <출력.ppm> [소유자] [타일셋]\n"
@@ -303,6 +305,61 @@ int cmdTriggers(const std::string & mapPath, const std::string & installPath,
         out << *text;
         std::cout << "  -> " << outPath << "\n";
     }
+    return 0;
+}
+
+int cmdSetTriggers(const std::string & mapPath, const std::string & installPath,
+                   const std::string & textPath, const std::string & outPath)
+{
+    splash::io::MapArchive archive;
+    if (auto r = archive.open(mapPath); !r)
+    {
+        std::cerr << "열기 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "게임 데이터 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    std::ifstream in(textPath);
+    if (!in)
+    {
+        std::cerr << "텍스트 파일을 열지 못했습니다: " << textPath << "\n";
+        return 1;
+    }
+    const std::string text((std::istreambuf_iterator<char>(in)),
+                            std::istreambuf_iterator<char>());
+
+    const std::size_t before = archive.info().triggerCount;
+    std::cout << "  이전 트리거 : " << before << "개\n";
+
+    if (auto r = archive.setTriggerText(text, graphics); !r)
+    {
+        std::cerr << "컴파일 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    std::cout << "  이후 트리거 : " << archive.info().triggerCount << "개\n";
+
+    if (auto r = archive.saveAs(outPath); !r)
+    {
+        std::cerr << "저장 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    splash::io::MapArchive reopened;
+    if (auto r = reopened.open(outPath); !r)
+    {
+        std::cerr << "재열기 실패: " << r.message << "\n";
+        return 1;
+    }
+    std::cout << "  저장본      : " << reopened.info().triggerCount << "개\n";
+    std::cout << "  -> " << outPath << "\n";
     return 0;
 }
 
@@ -1285,6 +1342,9 @@ int main(int argc, char ** argv)
 
     if (command == "triggers" && (args.size() == 3 || args.size() == 4))
         return cmdTriggers(args[1], args[2], args.size() == 4 ? args[3] : std::string{});
+
+    if (command == "set-triggers" && args.size() == 5)
+        return cmdSetTriggers(args[1], args[2], args[3], args[4]);
 
     if (command == "units" && (args.size() == 2 || args.size() == 3))
     {

@@ -153,6 +153,12 @@ public:
     /// 트리거를 사람이 읽는 텍스트로 옮긴다. 게임 데이터가 필요하다.
     std::optional<std::string> triggerText(const io::GameGraphics & graphics) const;
 
+    /// 텍스트 트리거를 컴파일해 적용한다. 트리거 전체가 교체된다.
+    ///
+    /// 성공하면 실행 취소 이력이 지워진다 — 컴파일이 TRIG 과 STR 을 한꺼번에
+    /// 바꾸기 때문에 부분적으로 되돌리면 맵이 어긋난다.
+    bool applyTriggerText(const std::string & text, io::GameGraphics & graphics);
+
     /// 마지막 실패 사유. 성공했다면 빈 문자열.
     const std::string & lastError() const;
 

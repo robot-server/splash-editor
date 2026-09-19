@@ -124,6 +124,9 @@ public:
     /// 않으려고 불투명 포인터로 넘긴다 — io 계층 안에서만 쓴다.
     const void * internalScData() const;
 
+    /// 내부용(쓰기). 트리거 컴파일은 Sc::Data 를 비-const 로 요구한다.
+    void * internalScData();
+
     /// images.tbl 에 든 GRP 파일 이름들. 게임 데이터에 어떤 그래픽이 있는지
     /// 직접 확인할 때 쓴다(추측 대신 데이터를 보기 위한 통로).
     std::vector<std::string> imageFileNames() const;

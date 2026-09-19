@@ -64,6 +64,7 @@ add_library(splash_mappingcore STATIC
 
   # --- 트리거를 사람이 읽는 텍스트로 (M5) ---
   "${MC_DIR}/text_trig_generator.cpp"
+  "${MC_DIR}/text_trig_compiler.cpp"
 )
 
 target_include_directories(splash_mappingcore SYSTEM PUBLIC

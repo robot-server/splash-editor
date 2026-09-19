@@ -15,6 +15,8 @@
 #include <QLabel>
 #include <QMenuBar>
 #include <QDialog>
+#include <QDialogButtonBox>
+#include <QPushButton>
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QStatusBar>
@@ -355,14 +357,47 @@ void MainWindow::onShowTriggers()
 
     auto * layout = new QVBoxLayout(dialog);
     auto * editor = new QPlainTextEdit(dialog);
-    editor->setReadOnly(true); // 편집은 아직 — 보기부터
     editor->setPlainText(QString::fromStdString(*text));
 
     QFont mono(QStringLiteral("Menlo"));
     mono.setStyleHint(QFont::Monospace);
     editor->setFont(mono);
 
+    auto * buttons = new QDialogButtonBox(
+        QDialogButtonBox::Apply | QDialogButtonBox::Close, dialog);
+
+    auto * hint = new QLabel(
+        tr("고친 뒤 적용하면 트리거 전체가 새 내용으로 바뀝니다. "
+           "적용 후에는 실행 취소 이력이 지워집니다."), dialog);
+    hint->setWordWrap(true);
+
     layout->addWidget(editor);
+    layout->addWidget(hint);
+    layout->addWidget(buttons);
+
+    connect(buttons, &QDialogButtonBox::rejected, dialog, &QDialog::close);
+    connect(buttons->button(QDialogButtonBox::Apply), &QPushButton::clicked, this,
+            [this, editor, dialog] {
+        const QString edited = editor->toPlainText();
+
+        QApplication::setOverrideCursor(Qt::WaitCursor);
+        const bool ok = document_.applyTriggerText(edited.toStdString(), tileset_);
+        QApplication::restoreOverrideCursor();
+
+        if (!ok)
+        {
+            QMessageBox::warning(dialog, tr("트리거 적용 실패"),
+                                 QString::fromStdString(document_.lastError()));
+            return;
+        }
+
+        mapView_->refresh();
+        refreshFromDocument();
+        statusBar()->showMessage(
+            tr("트리거를 적용했습니다 — %1개").arg(document_.info().triggerCount), 4000);
+        dialog->close();
+    });
+
     dialog->show();
 }
 

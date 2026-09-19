@@ -420,6 +420,11 @@ const void * GameGraphics::internalScData() const
     return impl_->scData.get();
 }
 
+void * GameGraphics::internalScData()
+{
+    return impl_->scData.get();
+}
+
 std::vector<std::string> GameGraphics::imageFileNames() const
 {
     std::vector<std::string> out;

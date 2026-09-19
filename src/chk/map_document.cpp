@@ -349,6 +349,23 @@ std::optional<std::string> MapDocument::triggerText(const io::GameGraphics & gra
     return archive_.triggerText(graphics);
 }
 
+bool MapDocument::applyTriggerText(const std::string & text, io::GameGraphics & graphics)
+{
+    const io::Result result = archive_.setTriggerText(text, graphics);
+    if (!result)
+    {
+        lastError_ = result.message;
+        return false;
+    }
+
+    modified_ = true;
+    undoDepth_ = 0;
+    redoDepth_ = 0;
+    savedDepth_ = -1; // 저장 전까지는 변경된 상태
+    refreshInfo();
+    return true;
+}
+
 const std::string & MapDocument::lastError() const
 {
     return lastError_;
