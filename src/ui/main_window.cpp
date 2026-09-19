@@ -9,6 +9,7 @@
 #include <QAction>
 #include <QActionGroup>
 #include <QApplication>
+#include <QGridLayout>
 #include <QGroupBox>
 #include <QSettings>
 #include <QSplitter>
@@ -275,6 +276,10 @@ void MainWindow::buildMenus()
     connect(closeAction_, &QAction::triggered, this, &MainWindow::onClose);
 
     fileMenu->addSeparator();
+
+    QAction * playersAction = fileMenu->addAction(tr("플레이어 설정(&L)…"));
+    playersAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_P));
+    connect(playersAction, &QAction::triggered, this, &MainWindow::onPlayerSettings);
 
     QAction * propertiesAction = fileMenu->addAction(tr("맵 속성(&P)…"));
     propertiesAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_I));
@@ -741,6 +746,137 @@ void MainWindow::onMapProperties()
         mapView_->refresh();
         refreshFromDocument();
         statusBar()->showMessage(tr("맵 속성을 바꿨습니다"), 3000);
+    }
+}
+
+void MainWindow::onPlayerSettings()
+{
+    if (!document_.isOpen())
+        return;
+
+    const auto settings = document_.playerSettings();
+    const auto forces = document_.forceNames();
+    if (settings.empty())
+        return;
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("플레이어 설정"));
+    dialog.resize(560, 560);
+
+    auto * grid = new QGridLayout();
+    grid->addWidget(new QLabel(tr("플레이어"), &dialog), 0, 0);
+    grid->addWidget(new QLabel(tr("종족"), &dialog), 0, 1);
+    grid->addWidget(new QLabel(tr("슬롯"), &dialog), 0, 2);
+    grid->addWidget(new QLabel(tr("세력"), &dialog), 0, 3);
+
+    // Chk::Race 와 Sc::Player::SlotType 의 값들.
+    const std::vector<std::pair<QString, int>> races {
+        {tr("저그"), 0}, {tr("테란"), 1}, {tr("프로토스"), 2},
+        {tr("독립"), 3}, {tr("중립"), 4}, {tr("선택 가능"), 5},
+        {tr("무작위"), 6}, {tr("사용 안 함"), 7},
+    };
+    // 이름을 slots 로 두면 Qt 의 slots 매크로와 부딪힌다.
+    const std::vector<std::pair<QString, int>> slotChoices {
+        {tr("사용 안 함"), 0}, {tr("컴퓨터(게임)"), 1}, {tr("사람(게임)"), 2},
+        {tr("구조 대상"), 3}, {tr("컴퓨터"), 5}, {tr("열림"), 6},
+        {tr("중립"), 7}, {tr("닫힘"), 8},
+    };
+
+    std::vector<QComboBox *> raceBoxes(settings.size());
+    std::vector<QComboBox *> slotBoxes(settings.size());
+    std::vector<QComboBox *> forceBoxes(settings.size());
+
+    for (std::size_t player = 0; player < settings.size(); ++player)
+    {
+        const int row = static_cast<int>(player) + 1;
+        grid->addWidget(new QLabel(tr("%1").arg(player + 1), &dialog), row, 0);
+
+        auto * raceBox = new QComboBox(&dialog);
+        for (const auto & [name, value] : races)
+            raceBox->addItem(name, value);
+        raceBox->setCurrentIndex(
+            static_cast<int>(std::distance(races.begin(),
+                std::find_if(races.begin(), races.end(),
+                    [&](const auto & e) { return e.second == settings[player].race; }))) %
+            static_cast<int>(races.size()));
+        grid->addWidget(raceBox, row, 1);
+        raceBoxes[player] = raceBox;
+
+        auto * slotBox = new QComboBox(&dialog);
+        for (const auto & [name, value] : slotChoices)
+            slotBox->addItem(name, value);
+        const auto slotIt = std::find_if(slotChoices.begin(), slotChoices.end(),
+            [&](const auto & e) { return e.second == settings[player].slotType; });
+        if (slotIt != slotChoices.end())
+            slotBox->setCurrentIndex(static_cast<int>(std::distance(slotChoices.begin(), slotIt)));
+        grid->addWidget(slotBox, row, 2);
+        slotBoxes[player] = slotBox;
+
+        auto * forceBox = new QComboBox(&dialog);
+        for (int force = 0; force < 4; ++force)
+            forceBox->addItem(tr("세력 %1").arg(force + 1), force);
+        forceBox->setCurrentIndex(std::min<int>(settings[player].force, 3));
+        // 9~12번은 세력에 속하지 않는다(중립·구조물 자리).
+        forceBox->setEnabled(player < 8);
+        grid->addWidget(forceBox, row, 3);
+        forceBoxes[player] = forceBox;
+    }
+
+    auto * forceGroup = new QGroupBox(tr("세력 이름"), &dialog);
+    auto * forceForm = new QFormLayout(forceGroup);
+    std::vector<QLineEdit *> forceEdits(4);
+    for (int force = 0; force < 4; ++force)
+    {
+        auto * edit = new QLineEdit(
+            force < static_cast<int>(forces.size())
+                ? QString::fromStdString(forces[static_cast<std::size_t>(force)]) : QString(),
+            forceGroup);
+        forceForm->addRow(tr("세력 %1").arg(force + 1), edit);
+        forceEdits[static_cast<std::size_t>(force)] = edit;
+    }
+
+    auto * buttons = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    auto * layout = new QVBoxLayout(&dialog);
+    layout->addLayout(grid);
+    layout->addWidget(forceGroup);
+    layout->addWidget(buttons);
+
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    bool changed = false;
+    for (std::size_t player = 0; player < settings.size(); ++player)
+    {
+        splash::io::PlayerSetting next;
+        next.race = static_cast<std::uint8_t>(raceBoxes[player]->currentData().toInt());
+        next.slotType = static_cast<std::uint8_t>(slotBoxes[player]->currentData().toInt());
+        next.force = static_cast<std::uint8_t>(forceBoxes[player]->currentData().toInt());
+
+        if (next.race != settings[player].race ||
+            next.slotType != settings[player].slotType ||
+            (player < 8 && next.force != settings[player].force))
+        {
+            changed |= document_.setPlayerSetting(player, next);
+        }
+    }
+
+    for (int force = 0; force < 4; ++force)
+    {
+        const std::string name = forceEdits[static_cast<std::size_t>(force)]->text().toStdString();
+        const std::string before = force < static_cast<int>(forces.size())
+            ? forces[static_cast<std::size_t>(force)] : std::string();
+        if (name != before)
+            changed |= document_.setForceName(static_cast<std::size_t>(force), name);
+    }
+
+    if (changed)
+    {
+        refreshFromDocument();
+        statusBar()->showMessage(tr("플레이어 설정을 바꿨습니다"), 3000);
     }
 }
 

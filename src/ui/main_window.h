@@ -51,6 +51,7 @@ private slots:
     void onNewMap();
     void onMapProperties();
     void onUnitProperties();
+    void onPlayerSettings();
 
 private:
     void buildMenus();
