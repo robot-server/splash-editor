@@ -1088,6 +1088,29 @@ int cmdUnitClasses(const std::string & installPath)
     return 0;
 }
 
+int cmdIconHistogram(const std::string & installPath, std::uint16_t iconIndex)
+{
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const auto histogram = graphics.iconPaletteHistogram(iconIndex);
+    std::cout << "  아이콘 " << iconIndex << " 이 쓰는 팔레트 인덱스 ("
+              << histogram.size() << "가지)\n";
+    std::size_t shown = 0;
+    for (const auto & [index, count] : histogram)
+    {
+        std::cout << "    " << int(index) << " : " << count << "\n";
+        if (++shown >= 20)
+            break;
+    }
+    return 0;
+}
+
 int cmdHasAsset(const std::string & installPath, const std::string & assetPath)
 {
     splash::io::GameGraphics graphics;
@@ -1817,6 +1840,12 @@ int main(int argc, char ** argv)
                 static_cast<std::size_t>(std::stoul(args[6])),
                 args[7], args[8]);
         } catch (const std::exception &) { return usage(argv[0]); }
+    }
+
+    if (command == "icon-histogram" && args.size() == 3)
+    {
+        try { return cmdIconHistogram(args[1], static_cast<std::uint16_t>(std::stoul(args[2]))); }
+        catch (const std::exception &) { return usage(argv[0]); }
     }
 
     if (command == "has-asset" && args.size() == 3)

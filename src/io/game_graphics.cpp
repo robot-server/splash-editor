@@ -1106,6 +1106,67 @@ UnitImage composeActor(Sc::Data & sc,
 
 } // namespace
 
+std::vector<std::pair<std::uint8_t, std::size_t>>
+GameGraphics::iconPaletteHistogram(std::uint16_t iconIndex) const
+{
+    std::map<std::uint8_t, std::size_t> counts;
+    const UnitImage image = renderIcon(iconIndex, 4);
+    (void)image; // 그리는 김에 아이콘 묶음이 준비된다
+
+    if (!impl_->icons)
+        return {};
+
+    try
+    {
+        const Sc::Sprite::GrpFile & grp = impl_->icons->get();
+        if (iconIndex >= grp.numFrames)
+            return {};
+
+        const Sc::Sprite::GrpFrameHeader & header = grp.frameHeaders[iconIndex];
+        const auto * frameStart = reinterpret_cast<const std::uint8_t *>(&grp) + header.frameOffset;
+        const auto * rowOffsets = reinterpret_cast<const std::uint16_t *>(frameStart);
+
+        for (int row = 0; row < header.frameHeight; ++row)
+        {
+            const std::uint8_t * lineBytes = frameStart + rowOffsets[row];
+            int x = 0;
+            std::size_t lineOffset = 0;
+            while (x < header.frameWidth)
+            {
+                const Sc::Sprite::PixelLine & line =
+                    reinterpret_cast<const Sc::Sprite::PixelLine &>(lineBytes[lineOffset]);
+
+                int length = static_cast<int>(line.lineLength());
+                if (x + length > header.frameWidth)
+                    length = header.frameWidth - x;
+                if (length <= 0)
+                    break;
+
+                if (line.isSpeckled() || line.isSolidLine())
+                {
+                    for (int i = 0; i < length; ++i)
+                    {
+                        const std::uint8_t index = line.isSpeckled()
+                            ? line.paletteIndex[i] : line.paletteIndex[0];
+                        ++counts[index];
+                    }
+                }
+
+                x += length;
+                lineOffset += line.sizeInBytes();
+            }
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+
+    std::vector<std::pair<std::uint8_t, std::size_t>> out(counts.begin(), counts.end());
+    std::sort(out.begin(), out.end(),
+              [](const auto & a, const auto & b) { return a.second > b.second; });
+    return out;
+}
+
 std::size_t GameGraphics::assetSize(const std::string & archivePath) const
 {
     if (!isLoaded())
@@ -1176,12 +1237,24 @@ UnitImage GameGraphics::renderIcon(std::uint16_t iconIndex, std::uint16_t tilese
         // 아이콘 색은 콘솔 팔레트에서 온다. 지형 팔레트로 그리면 보라빛이
         // 도는 엉뚱한 색이 되므로, 콘솔 팔레트를 먼저 찾아보고 없을 때만
         // 지형 팔레트로 물러선다.
-        // 아이콘도 다른 그래픽과 같은 256색 팔레트를 쓴다. 게임은 그
-        // 팔레트를 타일셋에서 가져오므로, 열린 맵의 타일셋을 넘겨야
-        // 게임 화면과 같은 색이 된다.
-        const Sc::Terrain::Tiles & tiles =
-            impl_->scData->terrain.get(Sc::Terrain::Tileset(tilesetId & 7));
-        const auto & palette = tiles.systemColorPalette;
+        // 명령 카드 아이콘은 팔레트 앞쪽 16칸만 쓴다 — 그림 자료를 세어
+        // 확인했다(아이콘 0 은 인덱스 1~15 만 사용). 게임 콘솔 팔레트의
+        // 그 구간은 검정에서 밝은 회색으로 가는 램프인데, 지형·유닛
+        // 팔레트의 같은 구간은 플레이어 색이라 그대로 쓰면 자홍빛이 된다.
+        //
+        // 콘솔 팔레트 파일은 리마스터 설치본에서 찾지 못했으므로 램프를
+        // 직접 만들어 쓴다. 게임처럼 아주 옅은 푸른빛을 준다.
+        std::array<Sc::SystemColor, 16> ramp {};
+        for (std::size_t i = 0; i < ramp.size(); ++i)
+        {
+            const double t = double(i) / double(ramp.size() - 1);
+            ramp[i] = Sc::SystemColor(
+                static_cast<std::uint8_t>(t * 224.0),
+                static_cast<std::uint8_t>(t * 228.0),
+                static_cast<std::uint8_t>(t * 244.0));
+        }
+
+        (void)tilesetId;
 
         const Sc::Sprite::GrpFrameHeader & header = grp.frameHeaders[iconIndex];
         out.width = header.frameWidth;
@@ -1226,7 +1299,8 @@ UnitImage GameGraphics::renderIcon(std::uint16_t iconIndex, std::uint16_t tilese
                         const std::size_t at =
                             (static_cast<std::size_t>(row) * out.width + (x + i)) * 4;
 
-                        const Sc::SystemColor & color = palette[index];
+                        // 아이콘이 16칸 밖을 가리키면 램프 끝으로 자른다.
+                        const Sc::SystemColor & color = ramp[std::min<std::size_t>(index, 15)];
                         out.rgba[at + 0] = color.red;
                         out.rgba[at + 1] = color.green;
                         out.rgba[at + 2] = color.blue;

@@ -229,6 +229,11 @@ public:
     /// 지형 팔레트를 쓴다.
     /// resourceAmount 는 자원 유닛(미네랄·베스핀)의 그래픽 단계를 가른다.
     /// 0 이면 고갈된 모습이 되므로 실제 맵 값을 넘겨야 한다.
+    /// 아이콘 하나가 쓰는 팔레트 인덱스의 분포. 어떤 팔레트를 써야
+    /// 하는지 가리기 위한 진단용이다.
+    std::vector<std::pair<std::uint8_t, std::size_t>> iconPaletteHistogram(
+        std::uint16_t iconIndex) const;
+
     /// 아카이브에 그 파일이 있는지, 있으면 크기. 진단용이다.
     std::size_t assetSize(const std::string & archivePath) const;
 
