@@ -9,11 +9,13 @@
 
 #include <QMainWindow>
 
+class QDockWidget;
 class QLabel;
 
 namespace splash::ui {
 
 class MapView;
+class TilePalette;
 
 class MainWindow : public QMainWindow
 {
@@ -62,6 +64,8 @@ private:
     chk::MapDocument document_;
     io::GameGraphics tileset_;
     MapView * mapView_ = nullptr;
+    TilePalette * tilePalette_ = nullptr;
+    QDockWidget * paletteDock_ = nullptr;
 
     QLabel * nameValue_ = nullptr;
     QLabel * sizeValue_ = nullptr;

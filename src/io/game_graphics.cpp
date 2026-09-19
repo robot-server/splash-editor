@@ -286,6 +286,43 @@ GameGraphics::CreepRange GameGraphics::creepRange(std::uint16_t unitType) const
     return range;
 }
 
+std::vector<std::uint16_t> GameGraphics::paletteTileIds(std::uint16_t tilesetId) const
+{
+    std::vector<std::uint16_t> out;
+    if (!impl_->loaded)
+        return out;
+
+    const Sc::Terrain::Tiles & tiles = impl_->tiles(tilesetId);
+
+    // 타일 ID 는 16비트이므로 그룹은 4096개까지만 표현된다.
+    const std::size_t groupLimit = std::min<std::size_t>(tiles.tileGroups.size(), 4096);
+
+    std::vector<std::uint32_t> seenMegaTiles;
+    seenMegaTiles.reserve(groupLimit);
+
+    for (std::size_t group = 0; group < groupLimit; ++group)
+    {
+        const auto & tileGroup = tiles.tileGroups[group];
+        for (std::size_t sub = 0; sub < 16; ++sub)
+        {
+            const std::uint16_t megaTileIndex = tileGroup.megaTileIndex[sub];
+            if (megaTileIndex == 0 || megaTileIndex >= tiles.tileGraphics.size())
+                continue;
+
+            // 같은 그림을 여러 칸이 가리키면 한 번만 싣는다.
+            if (std::find(seenMegaTiles.begin(), seenMegaTiles.end(), megaTileIndex)
+                != seenMegaTiles.end())
+            {
+                continue;
+            }
+            seenMegaTiles.push_back(megaTileIndex);
+            out.push_back(static_cast<std::uint16_t>(group * 16 + sub));
+        }
+    }
+
+    return out;
+}
+
 std::vector<std::uint16_t> GameGraphics::creepTileIds(std::uint16_t tilesetId) const
 {
     std::vector<std::uint16_t> out;

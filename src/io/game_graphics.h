@@ -86,6 +86,13 @@ public:
     struct CreepRange { double radiusX = 0.0; double radiusY = 0.0; };
     CreepRange creepRange(std::uint16_t unitType) const;
 
+    /// 팔레트에 늘어놓을 타일 ID 목록.
+    ///
+    /// 타일 그룹의 칸 중 실제 메가타일이 배정된 것만 고른다 — 빈 칸을 그대로
+    /// 늘어놓으면 검은 칸이 잔뜩 끼어 고르기 어렵다. 같은 그림을 가리키는
+    /// 중복 칸도 뺀다.
+    std::vector<std::uint16_t> paletteTileIds(std::uint16_t tilesetId) const;
+
     /// 크립 바닥으로 쓸 수 있는 타일 ID 들. 없으면 빈 벡터.
     std::vector<std::uint16_t> creepTileIds(std::uint16_t tilesetId) const;
 

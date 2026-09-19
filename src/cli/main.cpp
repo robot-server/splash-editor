@@ -671,6 +671,7 @@ int cmdTilesetInfo(const std::string & installPath, std::uint16_t tilesetId)
     }
 
     const auto info = graphics.describeTileset(tilesetId);
+    std::cout << "  팔레트 타일   : " << graphics.paletteTileIds(tilesetId).size() << "\n";
     std::cout << "  타일셋 " << tilesetId << "\n"
               << "  타일 그룹     : " << info.tileGroupCount << "\n"
               << "  메가타일      : " << info.megaTileCount << "\n"

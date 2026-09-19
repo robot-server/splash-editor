@@ -1,6 +1,7 @@
 #include "ui/main_window.h"
 
 #include "ui/map_view.h"
+#include "ui/tile_palette.h"
 
 #include <QAction>
 #include <QActionGroup>
@@ -15,6 +16,7 @@
 #include <QLabel>
 #include <QMenuBar>
 #include <QDialog>
+#include <QDockWidget>
 #include <QDialogButtonBox>
 #include <QPushButton>
 #include <QMessageBox>
@@ -71,6 +73,9 @@ void MainWindow::buildCentralWidget()
     connect(mapView_, &MapView::documentEdited, this, &MainWindow::onDocumentEdited);
     connect(mapView_, &MapView::selectionChanged, this, &MainWindow::onSelectionChanged);
     connect(mapView_, &MapView::brushTileChanged, this, [this](std::uint16_t tileId) {
+        // 맵에서 스포이드로 집으면 팔레트 선택도 따라간다.
+        if (tilePalette_ != nullptr)
+            tilePalette_->setSelectedTile(tileId);
         statusBar()->showMessage(tr("브러시 타일: %1").arg(tileId), 3000);
     });
 
@@ -112,6 +117,24 @@ void MainWindow::buildCentralWidget()
     splitter->setSizes({640, 280});
 
     setCentralWidget(splitter);
+
+    // 지형 타일 팔레트는 도크로 둔다 — 지형 작업을 할 때만 열어 두면 된다.
+    tilePalette_ = new TilePalette(this);
+    tilePalette_->setTileset(&tileset_);
+
+    paletteDock_ = new QDockWidget(tr("타일 팔레트"), this);
+    paletteDock_->setWidget(tilePalette_);
+    paletteDock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    addDockWidget(Qt::LeftDockWidgetArea, paletteDock_);
+    paletteDock_->hide(); // 지형 도구를 고를 때 열린다
+
+    // 팔레트에서 타일을 고르면 브러시가 되고, 지형 도구로 넘어간다.
+    connect(tilePalette_, &TilePalette::tileSelected, this, [this](std::uint16_t tileId) {
+        mapView_->setBrushTile(tileId);
+        mapView_->setTool(MapView::Tool::Terrain);
+        statusBar()->showMessage(tr("브러시 타일: %1").arg(tileId), 2000);
+    });
+
     statusBar();
 }
 
@@ -184,8 +207,10 @@ void MainWindow::buildMenus()
     toolGroup->addAction(terrainTool);
     connect(terrainTool, &QAction::triggered, this,
             [this] { mapView_->setTool(MapView::Tool::Terrain);
+                     if (paletteDock_ != nullptr)
+                         paletteDock_->show(); // 칠하려면 타일을 골라야 한다
                      statusBar()->showMessage(
-                         tr("지형 도구 — Alt+클릭으로 타일 집기"), 4000); });
+                         tr("지형 도구 — 팔레트에서 타일을 고르거나 Alt+클릭으로 집기"), 5000); });
 
     toolMenu->addSeparator();
 
@@ -210,6 +235,15 @@ void MainWindow::buildMenus()
     QAction * showTriggers = triggerMenu->addAction(tr("트리거 보기(&V)…"));
     showTriggers->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_T));
     connect(showTriggers, &QAction::triggered, this, &MainWindow::onShowTriggers);
+
+    toolMenu->addSeparator();
+    QAction * showPalette = toolMenu->addAction(tr("타일 팔레트(&P)"));
+    showPalette->setCheckable(true);
+    connect(showPalette, &QAction::toggled, this, [this](bool on) {
+        if (paletteDock_ != nullptr)
+            paletteDock_->setVisible(on);
+    });
+    connect(paletteDock_, &QDockWidget::visibilityChanged, showPalette, &QAction::setChecked);
 
     QMenu * viewMenu = menuBar()->addMenu(tr("보기(&V)"));
 
@@ -441,6 +475,8 @@ void MainWindow::loadTilesetFrom(const QString & installPath, bool announce)
 
     QSettings().setValue(kInstallPathKey, installPath);
     mapView_->refresh();
+    if (tilePalette_ != nullptr)
+        tilePalette_->setTileset(&tileset_);
 
     if (announce)
         statusBar()->showMessage(tr("타일셋을 읽었습니다: %1").arg(installPath), 4000);
@@ -458,6 +494,9 @@ void MainWindow::openPath(const QString & path)
         refreshFromDocument();
         return;
     }
+
+    if (tilePalette_ != nullptr)
+        tilePalette_->setTilesetId(document_.info().tilesetId);
 
     refreshFromDocument();
     statusBar()->showMessage(tr("열었습니다: %1").arg(path), 4000);
