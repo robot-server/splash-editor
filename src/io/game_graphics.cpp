@@ -170,6 +170,102 @@ bool GameGraphics::isCreepBuilding(std::uint16_t unitType) const
     return (dat.flags & Sc::Unit::Flags::CreepBuilding) != 0;
 }
 
+GameGraphics::TileTerrain GameGraphics::tileTerrain(std::uint16_t tilesetId,
+                                                   std::uint16_t tileId) const
+{
+    TileTerrain terrain;
+    if (!impl_->loaded)
+        return terrain;
+
+    const Sc::Terrain::Tiles & tiles = impl_->tiles(tilesetId);
+    const std::size_t groupIndex = static_cast<std::size_t>(tileId) / 16;
+    if (groupIndex >= tiles.tileGroups.size())
+        return terrain;
+
+    const std::uint16_t flags = tiles.tileGroups[groupIndex].flags;
+
+    using Flags = Sc::Terrain::TileGroup::Flags;
+    terrain.buildable = (flags & Flags::Unbuildable) == 0;
+
+    if (flags & Flags::HighGround)
+        terrain.elevation = 2;
+    else if (flags & Flags::MidGround)
+        terrain.elevation = 1;
+    else
+        terrain.elevation = 0;
+
+    return terrain;
+}
+
+std::vector<std::uint8_t> GameGraphics::computeCreepMask(
+    const std::vector<RawUnit> & units,
+    const std::vector<std::uint16_t> & tiles,
+    int tileWidth,
+    int tileHeight,
+    std::uint16_t tilesetId) const
+{
+    std::vector<std::uint8_t> mask;
+    if (!hasUnitGraphics() || tileWidth <= 0 || tileHeight <= 0)
+        return mask;
+    if (tiles.size() < static_cast<std::size_t>(tileWidth) * tileHeight)
+        return mask;
+
+    mask.assign(static_cast<std::size_t>(tileWidth) * tileHeight, 0);
+
+    for (const RawUnit & unit : units)
+    {
+        const CreepRange range = creepRange(unit.type);
+        if (range.radiusX <= 0.0 || range.radiusY <= 0.0)
+            continue;
+
+        // 건물이 선 자리의 높이를 기준으로 삼는다. 크립은 같은 높이로만 퍼진다.
+        const int centerTileX = unit.x / kTilePixels;
+        const int centerTileY = unit.y / kTilePixels;
+        if (centerTileX < 0 || centerTileY < 0 ||
+            centerTileX >= tileWidth || centerTileY >= tileHeight)
+        {
+            continue;
+        }
+
+        const std::size_t centerIndex =
+            static_cast<std::size_t>(centerTileY) * tileWidth + centerTileX;
+        const int baseElevation = tileTerrain(tilesetId, tiles[centerIndex]).elevation;
+
+        const int minX = std::max(0, static_cast<int>((unit.x - range.radiusX) / kTilePixels));
+        const int maxX = std::min(tileWidth - 1,
+                                  static_cast<int>((unit.x + range.radiusX) / kTilePixels));
+        const int minY = std::max(0, static_cast<int>((unit.y - range.radiusY) / kTilePixels));
+        const int maxY = std::min(tileHeight - 1,
+                                  static_cast<int>((unit.y + range.radiusY) / kTilePixels));
+
+        for (int ty = minY; ty <= maxY; ++ty)
+        {
+            for (int tx = minX; tx <= maxX; ++tx)
+            {
+                // 타일 중심이 범위 안에 드는지로 판정한다.
+                const double px = tx * kTilePixels + kTilePixels / 2.0;
+                const double py = ty * kTilePixels + kTilePixels / 2.0;
+                const double dx = (px - unit.x) / range.radiusX;
+                const double dy = (py - unit.y) / range.radiusY;
+                if (dx * dx + dy * dy > 1.0)
+                    continue;
+
+                const std::size_t index =
+                    static_cast<std::size_t>(ty) * tileWidth + tx;
+                const TileTerrain terrain = tileTerrain(tilesetId, tiles[index]);
+
+                // 평지가 아니거나 높이가 다르면 크립이 넘어가지 않는다.
+                if (!terrain.buildable || terrain.elevation != baseElevation)
+                    continue;
+
+                mask[index] = 1;
+            }
+        }
+    }
+
+    return mask;
+}
+
 GameGraphics::CreepRange GameGraphics::creepRange(std::uint16_t unitType) const
 {
     CreepRange range;

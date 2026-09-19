@@ -2,6 +2,7 @@
 
 #include "chk/map_document.h"
 #include "io/game_graphics.h"
+#include "io/map_archive.h"
 
 #include <QFontMetrics>
 #include <QImage>
@@ -55,8 +56,9 @@ void MapView::refresh()
     tileCache_.clear();
     unitCache_.clear();
     spriteCache_.clear();
-    creepPattern_ = QPixmap();
-    creepPatternReady_ = false;
+    creepTiles_.clear();
+    creepMask_.clear();
+    creepReady_ = false;
     updateScrollRanges();
     viewport()->update();
 }
@@ -260,124 +262,127 @@ void MapView::paintEvent(QPaintEvent * event)
         paintUnits(painter, dirty);
 }
 
-const QPixmap * MapView::creepPattern()
+const QVector<QPixmap> & MapView::creepTiles()
 {
-    if (creepPatternReady_)
-        return creepPattern_.isNull() ? nullptr : &creepPattern_;
+    if (!creepReady_)
+        creepMask(); // 둘을 함께 준비한다
+    return creepTiles_;
+}
 
-    creepPatternReady_ = true;
-    if (tileset_ == nullptr || !tileset_->isLoaded() || document_ == nullptr)
-        return nullptr;
+const std::vector<std::uint8_t> & MapView::creepMask()
+{
+    if (creepReady_)
+        return creepMask_;
 
-    const std::uint16_t tilesetId = document_->info().tilesetId;
-    const std::vector<std::uint16_t> creepTiles = tileset_->creepTileIds(tilesetId);
-    if (creepTiles.empty())
-        return nullptr;
+    creepReady_ = true;
+    creepTiles_.clear();
+    creepMask_.clear();
 
-    // 같은 타일만 반복하면 격자가 눈에 띈다. 변형을 섞어 한 장으로 만든다.
-    constexpr int kPatternTiles = 8; // 반복이 덜 보이도록 넓게 만든다
-    const int side = kPatternTiles * io::kTilePixels;
-    QImage pattern(side, side, QImage::Format_RGBA8888);
-    pattern.fill(Qt::transparent);
+    if (tileset_ == nullptr || !tileset_->hasUnitGraphics() || document_ == nullptr)
+        return creepMask_;
 
+    const auto & info = document_->info();
+    const std::uint16_t tilesetId = info.tilesetId;
+
+    // 크립 바닥 타일 그림
     std::vector<std::uint8_t> rgba(io::kTileRgbaBytes);
-    for (int ty = 0; ty < kPatternTiles; ++ty)
+    for (const std::uint16_t id : tileset_->creepTileIds(tilesetId))
     {
-        for (int tx = 0; tx < kPatternTiles; ++tx)
-        {
-            // 좌표를 섞어 고른다 — 순서대로 깔면 줄무늬가 눈에 띈다.
-            const std::size_t hash = (static_cast<std::size_t>(tx) * 73856093u) ^
-                                     (static_cast<std::size_t>(ty) * 19349663u);
+        if (!tileset_->renderTile(tilesetId, id, rgba.data()))
+            continue;
+        const QImage image(rgba.data(), io::kTilePixels, io::kTilePixels,
+                           io::kTilePixels * 4, QImage::Format_RGBA8888);
+        creepTiles_.push_back(QPixmap::fromImage(image.copy()));
+    }
+    if (creepTiles_.isEmpty())
+        return creepMask_;
 
-            // 크립 타일은 앞쪽이 평범한 질감, 뒤쪽이 구멍·촉수 같은 장식이다.
-            // 균등하게 깔면 장식이 과해진다 — 드물게만 섞는다.
-            const std::size_t plainCount =
-                std::max<std::size_t>(1, creepTiles.size() / 3);
-            const bool useDecor = (hash % 11 == 0) && creepTiles.size() > plainCount;
-            const std::size_t pick = useDecor
-                ? plainCount + (hash / 11) % (creepTiles.size() - plainCount)
-                : hash % plainCount;
-            if (!tileset_->renderTile(tilesetId, creepTiles[pick], rgba.data()))
-                continue;
-
-            for (int y = 0; y < io::kTilePixels; ++y)
-            {
-                for (int x = 0; x < io::kTilePixels; ++x)
-                {
-                    const std::size_t at =
-                        (static_cast<std::size_t>(y) * io::kTilePixels + x) * 4;
-                    pattern.setPixelColor(tx * io::kTilePixels + x,
-                                          ty * io::kTilePixels + y,
-                                          QColor(rgba[at + 0], rgba[at + 1], rgba[at + 2]));
-                }
-            }
-        }
+    // 크립이 깔릴 타일. 코어가 지형(평지·높이)까지 따져서 계산해 준다.
+    std::vector<io::RawUnit> units;
+    units.reserve(document_->units().size());
+    for (const auto & unit : document_->units())
+    {
+        io::RawUnit raw;
+        raw.type = unit.type;
+        raw.x = unit.x;
+        raw.y = unit.y;
+        raw.owner = unit.owner;
+        units.push_back(raw);
     }
 
-    creepPattern_ = QPixmap::fromImage(pattern);
-    return creepPattern_.isNull() ? nullptr : &creepPattern_;
+    creepMask_ = tileset_->computeCreepMask(units, document_->tiles(),
+                                            info.width, info.height, tilesetId);
+    return creepMask_;
 }
 
 void MapView::paintCreep(QPainter & painter, const QRect & dirty)
 {
-    if (tileset_ == nullptr || !tileset_->hasUnitGraphics())
+    const auto & tiles = creepTiles();
+    const auto & mask = creepMask();
+    if (tiles.isEmpty() || mask.empty())
         return;
 
-    const auto & units = document_->units();
-    if (units.empty())
+    const auto & info = document_->info();
+    const double tile = scaledTileSize();
+    if (tile <= 0)
         return;
 
-    const QPixmap * pattern = creepPattern();
-    if (pattern == nullptr)
-        return;
+    const int originX = horizontalScrollBar()->value();
+    const int originY = verticalScrollBar()->value();
 
-    // 크립을 만드는 건물들의 영향 범위를 타원 합집합으로 모은다.
-    //
-    // 게임은 건물마다 다른 반경으로 크립을 퍼뜨리고 타일 단위로 가장자리를
-    // 다듬지만, 그 규칙은 게임 데이터에 드러나 있지 않다. 여기서는 건물
-    // 주변 타원으로 근사한다 — 위치와 대략적인 범위를 보여 주는 것이 목적이다.
-    QPainterPath area;
-    bool any = false;
-
-    for (const auto & unit : units)
-    {
-        if (!tileset_->isCreepBuilding(unit.type))
-            continue;
-
-        const auto range = tileset_->creepRange(unit.type);
-        if (range.radiusX <= 0.0 || range.radiusY <= 0.0)
-            continue;
-
-        const QPointF center = mapToScreen(unit.x, unit.y);
-        QPainterPath ellipse;
-        ellipse.addEllipse(center, range.radiusX * zoom_, range.radiusY * zoom_);
-        area = area.united(ellipse);
-        any = true;
-    }
-
-    if (!any)
-        return;
+    const int firstX = std::max(0, static_cast<int>((originX + dirty.left()) / tile));
+    const int firstY = std::max(0, static_cast<int>((originY + dirty.top()) / tile));
+    const int lastX = std::min<int>(info.width - 1,
+                                    static_cast<int>((originX + dirty.right()) / tile));
+    const int lastY = std::min<int>(info.height - 1,
+                                    static_cast<int>((originY + dirty.bottom()) / tile));
 
     painter.save();
-    painter.setClipPath(area, Qt::IntersectClip);
+    painter.setRenderHint(QPainter::SmoothPixmapTransform, zoom_ < 1.0);
 
-    // 패턴은 맵 좌표에 고정되어야 스크롤할 때 미끄러지지 않는다.
-    const double originX = horizontalScrollBar()->value();
-    const double originY = verticalScrollBar()->value();
-    const double patternSide = pattern->width() * zoom_;
+    const auto at = [&](int x, int y) -> bool {
+        if (x < 0 || y < 0 || x >= info.width || y >= info.height)
+            return false;
+        return mask[static_cast<std::size_t>(y) * info.width + x] != 0;
+    };
 
-    if (patternSide > 0.5)
+    for (int ty = firstY; ty <= lastY; ++ty)
     {
-        const double startX = -std::fmod(originX, patternSide);
-        const double startY = -std::fmod(originY, patternSide);
-
-        for (double y = startY; y < dirty.bottom() + patternSide; y += patternSide)
+        for (int tx = firstX; tx <= lastX; ++tx)
         {
-            for (double x = startX; x < dirty.right() + patternSide; x += patternSide)
+            if (!at(tx, ty))
+                continue;
+
+            // 크립 타일에는 가장자리 전이 변형이 없다. 경계가 뚝 끊겨 보이지
+            // 않도록, 이웃이 빈 쪽일수록 옅게 그린다.
+            int neighbours = 0;
+            for (int dy = -1; dy <= 1; ++dy)
             {
-                painter.drawPixmap(QRectF(x, y, patternSide, patternSide), *pattern,
-                                   QRectF(0, 0, pattern->width(), pattern->height()));
+                for (int dx = -1; dx <= 1; ++dx)
+                {
+                    if (dx == 0 && dy == 0)
+                        continue;
+                    if (at(tx + dx, ty + dy))
+                        ++neighbours;
+                }
             }
+            const double opacity = 0.35 + 0.65 * (neighbours / 8.0);
+
+            // 좌표를 섞어 변형을 고른다. 앞쪽이 평범한 질감, 뒤쪽이 장식이다.
+            const std::size_t hash = (static_cast<std::size_t>(tx) * 73856093u) ^
+                                     (static_cast<std::size_t>(ty) * 19349663u);
+            const std::size_t plainCount =
+                std::max<std::size_t>(1, static_cast<std::size_t>(tiles.size()) / 3);
+            const bool useDecor =
+                (hash % 11 == 0) && static_cast<std::size_t>(tiles.size()) > plainCount;
+            const std::size_t pick = useDecor
+                ? plainCount + (hash / 11) % (static_cast<std::size_t>(tiles.size()) - plainCount)
+                : hash % plainCount;
+
+            painter.setOpacity(opacity);
+            const QRectF target(tx * tile - originX, ty * tile - originY, tile, tile);
+            painter.drawPixmap(target, tiles[static_cast<int>(pick)],
+                               QRectF(0, 0, io::kTilePixels, io::kTilePixels));
         }
     }
 

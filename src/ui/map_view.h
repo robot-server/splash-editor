@@ -10,9 +10,11 @@
 
 #include <QAbstractScrollArea>
 #include <QHash>
+#include <QVector>
 #include <QPixmap>
 
 #include <cstdint>
+#include <vector>
 
 namespace splash::chk { class MapDocument; }
 namespace splash::io  { class GameGraphics; }
@@ -83,8 +85,11 @@ private:
     /// 저그 건물 주변의 크립. 지형 위, 유닛 아래에 그린다.
     void paintCreep(QPainter & painter, const QRect & dirty);
 
-    /// 크립 바닥 패턴. 타일 변형을 섞어 한 장으로 만들어 둔다.
-    const QPixmap * creepPattern();
+    /// 크립 바닥 타일 그림(변형별). 비어 있으면 크립을 그릴 수 없다.
+    const QVector<QPixmap> & creepTiles();
+
+    /// 크립 타일 마스크. 문서나 타일셋이 바뀌면 다시 만든다.
+    const std::vector<std::uint8_t> & creepMask();
 
     /// 현재 줌에서 타일 한 변의 화면 픽셀 수.
     double scaledTileSize() const;
@@ -99,8 +104,9 @@ private:
     QHash<std::uint32_t, UnitSprite> unitCache_;
     QHash<std::uint32_t, UnitSprite> spriteCache_;
     double zoom_ = 1.0;
-    QPixmap creepPattern_;
-    bool creepPatternReady_ = false;
+    QVector<QPixmap> creepTiles_;
+    std::vector<std::uint8_t> creepMask_;
+    bool creepReady_ = false;
     bool showUnits_ = true;
     bool showLocations_ = true;
     bool showCreep_ = true;

@@ -8,6 +8,8 @@
 // 변환 경로(전부 MappingCore 가 파싱한 자료를 쓴다):
 //   tileId -> CV5 타일 그룹 -> VX4 메가타일 -> VR4 미니타일 픽셀 -> WPE 팔레트
 
+#include "io/map_archive.h"
+
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -71,6 +73,14 @@ public:
     /// 이 유닛이 크립을 만드는 저그 건물인지 (units.dat 의 CreepBuilding 특성).
     bool isCreepBuilding(std::uint16_t unitType) const;
 
+    /// 한 타일의 지형 성질. 크립이 퍼질 수 있는지 판단하는 데 쓴다.
+    struct TileTerrain
+    {
+        bool buildable = false; ///< 건물을 놓을 수 있는 평지인지
+        int elevation = 0;      ///< 0 저지대, 1 중지대, 2 고지대
+    };
+    TileTerrain tileTerrain(std::uint16_t tilesetId, std::uint16_t tileId) const;
+
     /// 크립이 퍼지는 대략적인 범위(픽셀 반지름). 건물 크기에 따라 달라진다.
     /// 게임의 정확한 확산 규칙은 데이터에 드러나 있지 않아 근사값이다.
     struct CreepRange { double radiusX = 0.0; double radiusY = 0.0; };
@@ -78,6 +88,17 @@ public:
 
     /// 크립 바닥으로 쓸 수 있는 타일 ID 들. 없으면 빈 벡터.
     std::vector<std::uint16_t> creepTileIds(std::uint16_t tilesetId) const;
+
+    /// 크립이 깔릴 타일을 계산한다. 결과는 width*height 크기의 행 우선 마스크다.
+    ///
+    /// 게임에서 크립은 건물과 같은 높이의 평지에만 퍼진다 — 물·절벽·다른
+    /// 고도로는 넘어가지 않는다. 타일 단위로 판정하므로 경계도 타일에 맞는다.
+    std::vector<std::uint8_t> computeCreepMask(
+        const std::vector<RawUnit> & units,
+        const std::vector<std::uint16_t> & tiles,
+        int tileWidth,
+        int tileHeight,
+        std::uint16_t tilesetId) const;
 
     /// 타일셋 진단 정보. 크립 타일이 어디에 있는지 등을 조사하는 데 쓴다.
     struct TilesetInfo
