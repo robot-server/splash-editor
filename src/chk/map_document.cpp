@@ -472,6 +472,32 @@ std::string MapDocument::fileName() const
     return std::filesystem::path(filePath_).filename().string();
 }
 
+io::TextEncoding MapDocument::textEncoding() const
+{
+    return archive_.textEncoding();
+}
+
+void MapDocument::setTextEncoding(io::TextEncoding encoding)
+{
+    archive_.setTextEncoding(encoding);
+    refreshInfo();
+}
+
+std::optional<io::UnitStats> MapDocument::unitStats(std::uint16_t unitType) const
+{
+    return archive_.unitStats(unitType);
+}
+
+bool MapDocument::setUnitStats(std::uint16_t unitType, const io::UnitStats & stats)
+{
+    const io::Result result = archive_.setUnitStats(unitType, stats);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    undoDepth_ = 0; redoDepth_ = 0; savedDepth_ = -1;
+    refreshInfo();
+    return true;
+}
+
 std::vector<io::MapString> MapDocument::strings() const
 {
     return archive_.strings();
@@ -512,6 +538,11 @@ bool MapDocument::setForceName(std::size_t force, const std::string & name)
     modified_ = true; ++undoDepth_; redoDepth_ = 0;
     refreshInfo();
     return true;
+}
+
+io::TriggerVocabulary MapDocument::triggerVocabulary(const io::GameGraphics & graphics) const
+{
+    return archive_.triggerVocabulary(graphics);
 }
 
 std::vector<io::TriggerSummary> MapDocument::triggerSummaries(

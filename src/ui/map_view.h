@@ -130,6 +130,28 @@ public:
     /// 스프라이트 놓기 도구가 놓을 스프라이트.
     void setPlacementSprite(std::uint16_t spriteType, std::uint8_t owner);
 
+    /// 유닛·스프라이트를 놓을 때 좌표를 격자에 맞출지.
+    ///
+    /// 게임은 건물 좌표를 타일 경계에 맞춰 두므로, 맞춰 놓으면 실제
+    /// 게임에서 보는 자리와 같아진다. 자유 배치는 SCMDraft 처럼 픽셀
+    /// 단위로 어디든 놓는다.
+    enum class UnitSnap
+    {
+        Free,      ///< 픽셀 단위 자유 배치
+        Quarter,   ///< 1/4 타일 (8px)
+        HalfTile,  ///< 반 타일 (16px)
+        Tile       ///< 한 타일 (32px)
+    };
+    UnitSnap unitSnap() const { return unitSnap_; }
+    void setUnitSnap(UnitSnap snap);
+
+    /// 이미 유닛이 있는 자리에 겹쳐 놓을 수 있는지.
+    ///
+    /// 끄면 유닛의 차지 범위(units.dat 크기)가 겹치는 자리에는 놓지도,
+    /// 끌어다 옮기지도 못한다.
+    bool unitStackingAllowed() const { return allowStack_; }
+    void setUnitStackingAllowed(bool allowed);
+
     /// 브러시 한 변의 타일 수 (1, 2, 4 …).
     int brushSize() const { return brushSize_; }
     void setBrushSize(int size);
@@ -238,10 +260,20 @@ private:
     bool showGrid_ = false;
 
     // 선택과 드래그
+    /// 격자에 맞춘 좌표. 유닛의 왼쪽·위 모서리를 격자에 붙인다.
+    QPoint snapUnitPos(std::uint16_t unitType, int x, int y) const;
+
+    /// 그 자리에 놓으면 다른 유닛과 겹치는지. skipIndex 는 검사에서 뺀다.
+    bool unitWouldOverlap(std::uint16_t unitType, int x, int y,
+                          int skipIndex = -1) const;
+
     Tool tool_ = Tool::Select;
     std::uint16_t brushTile_ = 0;
     TerrainMode terrainMode_ = TerrainMode::Rectangular;
     std::size_t isomTerrainType_ = 0;
+    UnitSnap unitSnap_ = UnitSnap::Tile;
+    bool allowStack_ = false;
+
     std::uint16_t placeUnitType_ = 0;
     std::uint8_t placeUnitOwner_ = 0;
     std::uint16_t placeSpriteType_ = 0;

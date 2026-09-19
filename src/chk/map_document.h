@@ -191,6 +191,17 @@ public:
     /// 창 제목 등에 쓸 이름. 열려 있지 않으면 빈 문자열.
     std::string fileName() const;
 
+    /// 맵 문자열의 코드 페이지. 열 때 가려낸 값이다.
+    io::TextEncoding textEncoding() const;
+
+    /// 코드 페이지를 손으로 바꾼다.
+    void setTextEncoding(io::TextEncoding encoding);
+
+    // --- 유닛 능력치 (맵이 정하는 값) ---
+
+    std::optional<io::UnitStats> unitStats(std::uint16_t unitType) const;
+    bool setUnitStats(std::uint16_t unitType, const io::UnitStats & stats);
+
     // --- 문자열 ---
 
     std::vector<io::MapString> strings() const;
@@ -204,6 +215,9 @@ public:
     bool setForceName(std::size_t force, const std::string & name);
 
     // --- 트리거 ---
+
+    /// 트리거 편집기의 자동 완성·문법 검사에 쓸 낱말 목록.
+    io::TriggerVocabulary triggerVocabulary(const io::GameGraphics & graphics) const;
 
     std::vector<io::TriggerSummary> triggerSummaries(const io::GameGraphics & graphics) const;
     std::optional<io::TriggerDetail> triggerDetail(std::size_t index,

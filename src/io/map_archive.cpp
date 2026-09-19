@@ -180,6 +180,16 @@ struct MapArchive::Impl
     std::vector<int> undoSteps;
     std::vector<int> redoSteps;
 
+    // 맵 문자열이 쓰는 코드 페이지. 열 때 가려내고, 저장할 때 그대로
+    // 되돌린다 — 다른 인코딩으로 쓰면 게임에서 글자가 깨진다.
+    TextEncoding encoding = TextEncoding::Ascii;
+
+    /// 맵에서 꺼낸 바이트를 UTF-8 로.
+    std::string decode(const std::string & raw) const { return decodeText(raw, encoding); }
+
+    /// UTF-8 을 맵에 넣을 바이트로.
+    std::string encode(const std::string & utf8) const { return encodeText(utf8, encoding); }
+
     bool isOpen() const { return mapFile != nullptr; }
 };
 
@@ -218,8 +228,53 @@ Result MapArchive::open(const std::string & filePath)
     }
 
     fresh->sourcePath = filePath;
+
+    // 맵에 든 문자열을 모아 어떤 코드 페이지인지 가려낸다. CHK 는
+    // 인코딩을 적어 두지 않으므로 글자 모양으로 판단할 수밖에 없다.
+    try
+    {
+        std::vector<std::string> samples;
+        const MapFile & map = *fresh->mapFile;
+
+        // 맵 이름·설명은 늘 있으므로 먼저 넣는다.
+        if (auto name = map.getScenarioName<RawString>())
+            samples.push_back(*name);
+        if (auto desc = map.getScenarioDescription<RawString>())
+            samples.push_back(*desc);
+
+        // 나머지 문자열도 모은다. 글자가 많을수록 판정이 정확해지지만,
+        // 앞쪽 몇 백 개면 충분하고 보호된 맵에서는 읽다 실패할 수도 있다.
+        const std::size_t capacity = std::min<std::size_t>(map.getCapacity(Chk::Scope::Either), 2048);
+        for (std::size_t id = 1; id <= capacity; ++id)
+        {
+            try
+            {
+                if (auto text = map.getString<RawString>(id))
+                    samples.push_back(*text);
+            }
+            catch (const std::exception &)
+            {
+                break;
+            }
+        }
+        fresh->encoding = detectEncoding(samples);
+    }
+    catch (const std::exception &)
+    {
+    }
+
     impl_ = std::move(fresh);
     return Result::success();
+}
+
+TextEncoding MapArchive::textEncoding() const
+{
+    return impl_->encoding;
+}
+
+void MapArchive::setTextEncoding(TextEncoding encoding)
+{
+    impl_->encoding = encoding;
 }
 
 Result MapArchive::createNew(MapFormat format,
@@ -698,7 +753,7 @@ Result MapArchive::setScenarioName(const std::string & name)
         return Result::failure("열린 맵이 없습니다.");
     try
     {
-        impl_->mapFile->setScenarioName(RawString(name));
+        impl_->mapFile->setScenarioName(RawString(impl_->encode(name)));
         impl_->undoSteps.push_back(1);
         impl_->redoSteps.clear();
     }
@@ -715,7 +770,7 @@ Result MapArchive::setScenarioDescription(const std::string & description)
         return Result::failure("열린 맵이 없습니다.");
     try
     {
-        impl_->mapFile->setScenarioDescription(RawString(description));
+        impl_->mapFile->setScenarioDescription(RawString(impl_->encode(description)));
         impl_->undoSteps.push_back(1);
         impl_->redoSteps.clear();
     }
@@ -1005,7 +1060,7 @@ std::vector<RawLocation> MapArchive::locations() const
             raw.index          = i;
 
             if (auto name = map.getLocationName<RawString>(i))
-                raw.name = *name;
+                raw.name = impl_->decode(*name);
 
             out.push_back(raw);
         }
@@ -1040,7 +1095,7 @@ std::optional<std::string> MapArchive::triggerText(const GameGraphics & graphics
         if (!generator.generateTextTrigs(scenario, text, *scData))
             return std::nullopt;
 
-        return text;
+        return impl_->decode(text);
     }
     catch (const std::exception &)
     {
@@ -1073,6 +1128,152 @@ std::string describeOwners(const Chk::Trigger & trigger)
 
 } // namespace
 
+TriggerVocabulary MapArchive::triggerVocabulary(const GameGraphics & graphics) const
+{
+    TriggerVocabulary out;
+    if (!impl_->isOpen())
+        return out;
+
+    const auto * scData = static_cast<const Sc::Data *>(graphics.internalScData());
+    if (scData == nullptr)
+        return out;
+
+    try
+    {
+        const MapFile & map = *impl_->mapFile;
+        const Scenario & scenario = map;
+
+        TextTrigGenerator generator(false, 0);
+        if (!generator.loadScenario(scenario, *scData))
+            return out;
+
+        // 이름표가 붙은 타입만 거둔다. 알 수 없는 번호는 생성기가 숫자를
+        // 그대로 돌려주므로 글자가 섞였는지로 가린다.
+        const auto named = [](const std::string & name) {
+            return !name.empty() &&
+                name.find_first_not_of("0123456789") != std::string::npos;
+        };
+
+        for (int i = 0; i < 256; ++i)
+        {
+            std::string name = generator.getConditionName(Chk::Condition::Type(i));
+            if (named(name))
+                out.conditions.push_back(std::move(name));
+        }
+        for (int i = 0; i < 256; ++i)
+        {
+            std::string name = generator.getActionName(Chk::Action::Type(i));
+            if (named(name))
+                out.actions.push_back(std::move(name));
+        }
+
+        const auto push = [&named](std::vector<std::string> & into, std::string name) {
+            if (!named(name))
+                return;
+            if (std::find(into.begin(), into.end(), name) == into.end())
+                into.push_back(std::move(name));
+        };
+
+        for (int i = 0; i < 12; ++i)
+            push(out.constants, generator.getTrigNumericComparison(Chk::Condition::Comparison(i)));
+        for (int i = 0; i < 12; ++i)
+            push(out.constants, generator.getTrigNumericModifier(Chk::Trigger::ValueModifier(i)));
+        for (int i = 0; i < 12; ++i)
+            push(out.constants, generator.getTrigSwitchState(Chk::Trigger::ValueModifier(i)));
+        for (int i = 0; i < 12; ++i)
+            push(out.constants, generator.getTrigSwitchModifier(Chk::Trigger::ValueModifier(i)));
+        for (int i = 0; i < 8; ++i)
+            push(out.constants, generator.getTrigAllyState(Chk::Action::AllianceStatus(i)));
+        for (int i = 0; i < 8; ++i)
+            push(out.constants, generator.getTrigOrder(Chk::Action::Order(i)));
+        for (int i = 0; i < 12; ++i)
+            push(out.constants, generator.getTrigScoreType(Chk::Trigger::ScoreType(i)));
+        for (int i = 0; i < 4; ++i)
+            push(out.constants, generator.getTrigResourceType(Chk::Trigger::ResourceType(i)));
+        for (int i = 0; i < 8; ++i)
+            push(out.constants, generator.getTrigTextFlags(Chk::Action::Flags(i)));
+        push(out.constants, generator.getTrigNumUnits(Chk::Action::NumUnits(0)));
+
+        for (std::size_t i = 1; i <= map.numLocations(); ++i)
+        {
+            std::string name = impl_->decode(generator.getTrigLocation(i));
+            if (!name.empty() && name != "No Location")
+                push(out.locations, std::move(name));
+        }
+        for (std::size_t i = 0; i < 256; ++i)
+            push(out.switches, impl_->decode(generator.getTrigSwitch(i)));
+        for (int i = 0; i < int(Sc::Unit::TotalReferenceTypes); ++i)
+            push(out.units, impl_->decode(generator.getTrigUnit(Sc::Unit::Type(i))));
+        for (std::size_t i = 0; i < 27; ++i)
+            push(out.players, impl_->decode(generator.getTrigPlayer(i)));
+        for (std::size_t i = 0; i < scData->ai.numEntries(); ++i)
+            push(out.scripts, generator.getTrigScript(Sc::Ai::ScriptId(scData->ai.getEntry(i).identifier)));
+    }
+    catch (const std::exception &)
+    {
+    }
+
+    return out;
+}
+
+std::optional<UnitStats> MapArchive::unitStats(std::uint16_t unitType) const
+{
+    if (!impl_->isOpen())
+        return std::nullopt;
+
+    const MapFile & map = *impl_->mapFile;
+    try
+    {
+        const auto type = Sc::Unit::Type(unitType);
+        UnitStats stats;
+        stats.useDefault = map.unitUsesDefaultSettings(type);
+        stats.hitpoints = map.getUnitHitpoints(type);
+        stats.shields = map.getUnitShieldPoints(type);
+        stats.armor = map.getUnitArmorLevel(type);
+        stats.buildTime = map.getUnitBuildTime(type);
+        stats.mineralCost = map.getUnitMineralCost(type);
+        stats.gasCost = map.getUnitGasCost(type);
+        return stats;
+    }
+    catch (const std::exception &)
+    {
+        return std::nullopt;
+    }
+}
+
+Result MapArchive::setUnitStats(std::uint16_t unitType, const UnitStats & stats)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        const auto type = Sc::Unit::Type(unitType);
+
+        map.setUnitUsesDefaultSettings(type, stats.useDefault);
+        if (!stats.useDefault)
+        {
+            map.setUnitHitpoints(type, stats.hitpoints);
+            map.setUnitShieldPoints(type, stats.shields);
+            map.setUnitArmorLevel(type, stats.armor);
+            map.setUnitBuildTime(type, stats.buildTime);
+            map.setUnitMineralCost(type, stats.mineralCost);
+            map.setUnitGasCost(type, stats.gasCost);
+        }
+
+        // 여러 필드를 각각 기록한다. 몇 액션이 생기는지 세기 어려워 이력을
+        // 비운다 — 절반만 되돌리면 능력치가 뒤섞인다.
+        impl_->undoSteps.clear();
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("유닛 능력치를 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 std::vector<MapString> MapArchive::strings() const
 {
     std::vector<MapString> out;
@@ -1094,7 +1295,7 @@ std::vector<MapString> MapArchive::strings() const
 
             MapString entry;
             entry.id = id;
-            entry.text = *text;
+            entry.text = impl_->decode(*text);
             entry.used = map.stringUsed(id);
             out.push_back(std::move(entry));
         }
@@ -1112,7 +1313,7 @@ Result MapArchive::setString(std::size_t stringId, const std::string & text)
 
     try
     {
-        impl_->mapFile->replaceString(stringId, RawString(text));
+        impl_->mapFile->replaceString(stringId, RawString(impl_->encode(text)));
         impl_->undoSteps.push_back(1);
         impl_->redoSteps.clear();
     }
@@ -1187,7 +1388,7 @@ std::vector<std::string> MapArchive::forceNames() const
         for (std::size_t force = 0; force < 4; ++force)
         {
             if (auto name = map.getForceName<RawString>(Chk::Force(force)))
-                out.push_back(*name);
+                out.push_back(impl_->decode(*name));
             else
                 out.push_back(std::string());
         }
@@ -1207,7 +1408,7 @@ Result MapArchive::setForceName(std::size_t force, const std::string & name)
 
     try
     {
-        impl_->mapFile->setForceName(Chk::Force(force), RawString(name));
+        impl_->mapFile->setForceName(Chk::Force(force), RawString(impl_->encode(name)));
         impl_->undoSteps.push_back(1);
         impl_->redoSteps.clear();
     }
@@ -1271,7 +1472,8 @@ std::vector<TriggerSummary> MapArchive::triggerSummaries(const GameGraphics & gr
                             std::size_t lineEnd = text.find_first_of(";\n", lineStart);
                             if (lineEnd == std::string::npos)
                                 lineEnd = text.size();
-                            summary.firstAction = text.substr(lineStart, lineEnd - lineStart);
+                            summary.firstAction =
+                                impl_->decode(text.substr(lineStart, lineEnd - lineStart));
                         }
                     }
                 }
@@ -1319,7 +1521,7 @@ std::optional<TriggerDetail> MapArchive::triggerDetail(std::size_t index,
         std::string text;
         const Scenario & scenario = map;
         if (generator.generateTextTrigs(scenario, index, text, *scData))
-            detail.text = text;
+            detail.text = impl_->decode(text);
 
         // 텍스트는 다음 모양이다:
         //   Trigger("...")\n{\nConditions:\n\t...;\n\nActions:\n\t...;\n}
@@ -1500,7 +1702,9 @@ Result MapArchive::setTriggerText(std::size_t index, const std::string & text,
             return Result::failure("트리거 번호가 범위를 벗어났습니다.");
 
         TextTrigCompiler compiler(false, 0);
-        std::string working = text;
+        // 편집기는 UTF-8 로 넘겨 준다. 맵이 쓰는 코드 페이지로 되돌려야
+        // 게임이 같은 글자로 읽는다.
+        std::string working = impl_->encode(text);
         Scenario & scenario = *impl_->mapFile;
 
         if (!compiler.compileTrigger(working, scenario, *scData, index))
@@ -1531,8 +1735,9 @@ Result MapArchive::setTriggerText(const std::string & text, GameGraphics & graph
     {
         TextTrigCompiler compiler(false, 0);
 
-        // 컴파일러는 문자열을 다듬으며 읽으므로 사본을 넘긴다.
-        std::string working = text;
+        // 컴파일러는 문자열을 다듬으며 읽으므로 사본을 넘긴다. 맵이 쓰는
+        // 코드 페이지로 되돌려 넘긴다.
+        std::string working = impl_->encode(text);
         Scenario & scenario = *impl_->mapFile;
 
         // 트리거 전체를 교체한다. 범위를 0~현재개수로 주면 그 구간이 새 내용이 된다.
@@ -1598,9 +1803,9 @@ RawMapInfo MapArchive::info() const
     try
     {
         if (auto name = map.getScenarioName<RawString>())
-            out.scenarioName = *name;
+            out.scenarioName = impl_->decode(*name);
         if (auto desc = map.getScenarioDescription<RawString>())
-            out.scenarioDescription = *desc;
+            out.scenarioDescription = impl_->decode(*desc);
 
         out.tileWidth  = static_cast<std::uint16_t>(map.getTileWidth());
         out.tileHeight = static_cast<std::uint16_t>(map.getTileHeight());

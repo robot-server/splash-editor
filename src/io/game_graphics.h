@@ -114,6 +114,20 @@ public:
     };
     UnitClass unitClass(std::uint16_t unitType) const;
 
+    /// 유닛이 차지하는 자리. 유닛 좌표에서 각 방향으로 몇 픽셀인지다
+    /// (units.dat 의 unitSize*). 겹침 검사와 격자 맞춤에 쓴다.
+    struct UnitBounds
+    {
+        int left = 0;
+        int up = 0;
+        int right = 0;
+        int down = 0;
+
+        int width() const { return left + right + 1; }
+        int height() const { return up + down + 1; }
+    };
+    UnitBounds unitBounds(std::uint16_t unitType) const;
+
     /// 이 유닛이 크립을 만드는 저그 건물인지 (units.dat 의 CreepBuilding 특성).
     bool isCreepBuilding(std::uint16_t unitType) const;
 

@@ -11,6 +11,8 @@
 #include <memory>
 #include <optional>
 #include <string>
+
+#include "io/text_encoding.h"
 #include <vector>
 
 namespace splash::io {
@@ -97,6 +99,32 @@ struct RawLocation
     std::size_t index = 0;        ///< MRGN 인덱스 (1-based 로 쓰이는 번호)
 };
 
+/// 트리거 텍스트를 쓸 때 등장할 수 있는 낱말들. 편집기의 자동 완성과
+/// 문법 검사에 쓴다.
+struct TriggerVocabulary
+{
+    std::vector<std::string> conditions;  ///< 조건 이름
+    std::vector<std::string> actions;     ///< 액션 이름
+    std::vector<std::string> constants;   ///< 비교·수정자 등 열거값
+    std::vector<std::string> locations;   ///< 맵의 위치 이름
+    std::vector<std::string> switches;    ///< 스위치 이름
+    std::vector<std::string> units;       ///< 유닛 이름
+    std::vector<std::string> players;     ///< 플레이어·그룹 이름
+    std::vector<std::string> scripts;     ///< AI 스크립트 이름
+};
+
+/// 맵이 정하는 유닛 능력치. 기본값을 쓰면 useDefault 가 참이다.
+struct UnitStats
+{
+    bool useDefault = true;
+    std::uint32_t hitpoints = 0;   ///< 게임 내부 단위(표시 체력 x 256)
+    std::uint16_t shields = 0;
+    std::uint8_t armor = 0;
+    std::uint16_t buildTime = 0;   ///< 1/15 초 단위
+    std::uint16_t mineralCost = 0;
+    std::uint16_t gasCost = 0;
+};
+
 /// 맵에 든 문자열 하나.
 struct MapString
 {
@@ -132,6 +160,44 @@ struct TriggerDetail
     std::vector<std::string> actions;
     std::uint32_t flags = 0;
     std::string text;                 ///< 이 트리거만의 텍스트 트리거
+};
+
+/// 조건·액션 인자의 종류. 편집기가 어떤 위젯을 띄울지 고른다.
+enum class TriggerArgKind
+{
+    None,       ///< 쓰이지 않는 자리
+    Choice,     ///< 정해진 값 중 고른다 (choices 참고)
+    Number,     ///< 자유로운 수
+    Text,       ///< 문자열 (맵 문자열로 들어간다)
+    Sound,      ///< 사운드 파일 경로
+};
+
+/// 고를 수 있는 값 하나.
+struct TriggerChoice
+{
+    std::uint32_t value = 0;
+    std::string text;
+};
+
+/// 조건이나 액션의 인자 하나.
+struct TriggerArg
+{
+    TriggerArgKind kind = TriggerArgKind::None;
+    std::string label;                   ///< "플레이어", "유닛" 처럼 무슨 자리인지
+    std::string text;                    ///< 지금 값을 사람이 읽는 형태
+    std::uint32_t value = 0;             ///< 지금 값의 원시 형태
+    std::vector<TriggerChoice> choices;  ///< kind == Choice 일 때 고를 수 있는 값
+    std::uint32_t maximum = 0xFFFFFFFFu; ///< kind == Number 일 때 최댓값
+};
+
+/// 트리거에 든 조건 또는 액션 하나.
+struct TriggerElement
+{
+    std::uint8_t type = 0;      ///< Chk::Condition::Type / Chk::Action::Type
+    std::string name;           ///< "Bring", "Set Resources" 처럼 이름만
+    std::string text;           ///< 인자까지 붙인 한 줄
+    bool disabled = false;
+    std::vector<TriggerArg> args;
 };
 
 /// 성공/실패와 사람이 읽을 메시지를 함께 나르는 결과 타입.
@@ -300,6 +366,62 @@ public:
     /// 유닛·업그레이드 이름표가 필요해서 게임 데이터(GameGraphics)를 받는다.
     /// 그것이 준비되지 않았으면 빈 값을 돌려준다.
     std::optional<std::string> triggerText(const GameGraphics & graphics) const;
+
+    /// 맵 문자열이 쓰는 코드 페이지. 열 때 가려낸 값이다.
+    TextEncoding textEncoding() const;
+
+    /// 코드 페이지를 손으로 바꾼다. 가려낸 값이 틀렸을 때 쓴다.
+    ///
+    /// 바꾼 뒤 저장하면 그 인코딩으로 다시 쓰이므로, 맵을 만든 나라와
+    /// 다른 값을 고르면 게임에서 글자가 깨진다.
+    void setTextEncoding(TextEncoding encoding);
+
+    /// 트리거 하나의 조건 목록을 인자까지 풀어서 돌려준다.
+    std::vector<TriggerElement> triggerConditions(std::size_t index,
+                                                  const GameGraphics & graphics) const;
+
+    /// 트리거 하나의 액션 목록을 인자까지 풀어서 돌려준다.
+    std::vector<TriggerElement> triggerActions(std::size_t index,
+                                               const GameGraphics & graphics) const;
+
+    /// 고를 수 있는 조건·액션 종류 (번호와 이름).
+    std::vector<TriggerChoice> conditionTypes(const GameGraphics & graphics) const;
+    std::vector<TriggerChoice> actionTypes(const GameGraphics & graphics) const;
+
+    /// 조건·액션의 종류를 바꾼다. 인자는 기본값으로 되돌아간다.
+    Result setConditionType(std::size_t triggerIndex, std::size_t slot, std::uint8_t type);
+    Result setActionType(std::size_t triggerIndex, std::size_t slot, std::uint8_t type);
+
+    /// 인자 하나의 값을 바꾼다. 문자열 인자는 setConditionArgText 를 쓴다.
+    Result setConditionArg(std::size_t triggerIndex, std::size_t slot,
+                           std::size_t argIndex, std::uint32_t value);
+    Result setActionArg(std::size_t triggerIndex, std::size_t slot,
+                        std::size_t argIndex, std::uint32_t value);
+
+    /// 문자열·사운드 인자를 글자로 바꾼다. 맵 문자열 표에 새로 넣는다.
+    Result setActionArgText(std::size_t triggerIndex, std::size_t slot,
+                            std::size_t argIndex, const std::string & text);
+
+    /// 조건·액션 한 줄을 켜고 끈다.
+    Result setConditionDisabled(std::size_t triggerIndex, std::size_t slot, bool disabled);
+    Result setActionDisabled(std::size_t triggerIndex, std::size_t slot, bool disabled);
+
+    /// 조건·액션 한 줄을 지운다. 뒤의 줄이 앞으로 당겨진다.
+    Result removeCondition(std::size_t triggerIndex, std::size_t slot);
+    Result removeAction(std::size_t triggerIndex, std::size_t slot);
+
+    /// 조건·액션 순서를 바꾼다.
+    Result moveCondition(std::size_t triggerIndex, std::size_t from, std::size_t to);
+    Result moveAction(std::size_t triggerIndex, std::size_t from, std::size_t to);
+
+    /// 트리거 편집기에 줄 낱말 목록.
+    TriggerVocabulary triggerVocabulary(const GameGraphics & graphics) const;
+
+    /// 유닛 하나의 능력치.
+    std::optional<UnitStats> unitStats(std::uint16_t unitType) const;
+
+    /// 유닛 능력치를 바꾼다.
+    Result setUnitStats(std::uint16_t unitType, const UnitStats & stats);
 
     /// 맵의 문자열 목록. 비어 있는 자리는 건너뛴다.
     std::vector<MapString> strings() const;

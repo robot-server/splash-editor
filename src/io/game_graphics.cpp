@@ -377,6 +377,24 @@ std::vector<std::uint8_t> GameGraphics::unitSound(std::uint16_t unitType) const
     return out;
 }
 
+GameGraphics::UnitBounds GameGraphics::unitBounds(std::uint16_t unitType) const
+{
+    UnitBounds bounds;
+    if (!hasUnitGraphics())
+        return bounds;
+
+    const Sc::Unit & units = impl_->scData->units;
+    if (unitType >= units.numUnitTypes())
+        return bounds;
+
+    const auto & dat = units.getUnit(Sc::Unit::Type(unitType));
+    bounds.left = dat.unitSizeLeft;
+    bounds.up = dat.unitSizeUp;
+    bounds.right = dat.unitSizeRight;
+    bounds.down = dat.unitSizeDown;
+    return bounds;
+}
+
 GameGraphics::UnitClass GameGraphics::unitClass(std::uint16_t unitType) const
 {
     UnitClass result;

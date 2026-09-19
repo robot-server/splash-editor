@@ -65,7 +65,8 @@ void printInfo(const splash::chk::MapDocument & doc)
         << "  로케이션  : " << info.locationCount << "\n"
         << "  트리거    : " << info.triggerCount << "\n"
         << "  문자열    : " << info.stringCount << "\n"
-        << "  보호      : " << (info.isProtected ? "예" : "아니오") << "\n";
+        << "  보호      : " << (info.isProtected ? "예" : "아니오") << "\n"
+        << "  글자      : " << splash::io::encodingName(doc.textEncoding()) << "\n";
     if (!info.description.empty())
         std::cout << "  설명      : " << info.description << "\n";
 }
