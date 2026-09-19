@@ -1,0 +1,11 @@
+build/
+build-*/
+.cache/
+.DS_Store
+compile_commands.json
+CMakeUserPresets.json
+
+# 테스트 맵은 저작권 자료이므로 커밋하지 않는다 (tests/maps/README.md 참고)
+tests/maps/*.scm
+tests/maps/*.scx
+tests/maps/*.chk

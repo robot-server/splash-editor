@@ -1,0 +1,92 @@
+#pragma once
+
+// 열린 맵 하나를 나타내는 코어 파사드.
+//
+// 코어 경계 규칙: 이 헤더에는 Qt 타입도 MappingCore 타입도 등장하지 않는다.
+// UI 는 이 클래스만 알면 되고, 이 클래스는 UI 를 전혀 모른다.
+
+#include "io/map_archive.h"
+
+#include <cstdint>
+#include <string>
+
+namespace splash::chk {
+
+/// 표시 가능한 형태로 해석된 맵 메타데이터.
+struct MapInfo
+{
+    std::string name;            ///< 시나리오 이름. 없으면 빈 문자열.
+    std::string description;     ///< 시나리오 설명. 없으면 빈 문자열.
+    std::uint16_t width = 0;     ///< 가로 (타일)
+    std::uint16_t height = 0;    ///< 세로 (타일)
+    std::uint16_t tilesetId = 0; ///< ERA 원시값
+    std::string tilesetName;     ///< "Jungle" 등 표시용 이름
+    std::uint16_t versionId = 0; ///< VER 원시값
+    std::string versionName;     ///< "Brood War" 등 표시용 이름
+    std::size_t unitCount = 0;
+    std::size_t locationCount = 0;
+    std::size_t triggerCount = 0;
+    std::size_t stringCount = 0;
+};
+
+/// 타일셋 원시값 -> 표시 이름. 알 수 없는 값도 문자열로 돌려준다.
+std::string tilesetDisplayName(std::uint16_t tilesetId);
+
+/// 버전 원시값 -> 표시 이름. 알 수 없는 값도 문자열로 돌려준다.
+std::string versionDisplayName(std::uint16_t versionId);
+
+/// 열린 맵 + 더티 플래그 + save(). M1 코어 경계의 전부다.
+///
+/// 복사 불가, 이동 가능. 스레드 안전하지 않다.
+class MapDocument
+{
+public:
+    MapDocument();
+    ~MapDocument();
+
+    MapDocument(const MapDocument &) = delete;
+    MapDocument & operator=(const MapDocument &) = delete;
+    MapDocument(MapDocument &&) noexcept;
+    MapDocument & operator=(MapDocument &&) noexcept;
+
+    /// 맵을 연다. 실패하면 문서는 이전 상태를 잃고 닫힌 상태가 된다.
+    /// 실패 사유는 lastError() 로 확인한다.
+    bool open(const std::string & filePath);
+
+    /// 현재 경로에 다시 쓴다. 성공하면 더티 플래그가 내려간다.
+    bool save();
+
+    /// 새 경로에 쓴다. 성공하면 그 경로가 현재 경로가 되고 더티 플래그가 내려간다.
+    bool saveAs(const std::string & filePath);
+
+    void close();
+
+    bool isOpen() const;
+
+    /// 마지막으로 저장한 이후 편집이 있었는지.
+    /// M1 에는 편집 기능이 없으므로 항상 false 지만, 경계는 지금 만들어 둔다.
+    bool isModified() const;
+    void markModified();
+
+    const MapInfo & info() const;
+
+    /// 현재 파일 경로. 열려 있지 않으면 빈 문자열.
+    const std::string & filePath() const;
+
+    /// 창 제목 등에 쓸 이름. 열려 있지 않으면 빈 문자열.
+    std::string fileName() const;
+
+    /// 마지막 실패 사유. 성공했다면 빈 문자열.
+    const std::string & lastError() const;
+
+private:
+    void refreshInfo();
+
+    io::MapArchive archive_;
+    MapInfo info_;
+    std::string filePath_;
+    std::string lastError_;
+    bool modified_ = false;
+};
+
+} // namespace splash::chk
