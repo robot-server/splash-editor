@@ -311,6 +311,13 @@ private:
     /// 커서 자리에 미리보기를 그린다.
     void paintPlacementPreview(QPainter & painter);
 
+    /// 유닛·스프라이트만 바뀌었을 때 다시 그린다.
+    ///
+    /// 타일과 유닛 그림 캐시는 그대로 두고 크립만 다시 셈한다. 유닛을
+    /// 놓을 때마다 통째로 비우면 그림을 다시 그리느라 느리기도 하고,
+    /// 방향이 정해지지 않은 유닛이 매번 다른 쪽을 보게 된다.
+    void refreshUnits();
+
     /// 지형 브러시가 덮을 자리를 커서 둘레에 그린다.
     void paintTerrainCursor(QPainter & painter);
 

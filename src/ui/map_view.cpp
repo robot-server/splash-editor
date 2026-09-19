@@ -77,6 +77,18 @@ void MapView::refresh()
     viewport()->update();
 }
 
+void MapView::refreshUnits()
+{
+    // 크립은 저그 건물이 어디 있는지에 달렸으므로 다시 셈해야 한다.
+    creepTiles_.clear();
+    creepMask_.clear();
+    creepLayer_ = QPixmap();
+    creepLayerReady_ = false;
+    creepReady_ = false;
+
+    viewport()->update();
+}
+
 double MapView::scaledTileSize() const
 {
     return io::kTilePixels * zoom_;
@@ -1171,7 +1183,7 @@ bool MapView::placeAt(const QPointF & screenPos)
                            /*drawnAsSprite*/ true))
         {
             lastPlaced_ = pos;
-            refresh();
+            refreshUnits();
             emit documentEdited();
             return true;
         }
@@ -1202,7 +1214,7 @@ bool MapView::placeAt(const QPointF & screenPos)
                      static_cast<std::uint16_t>(pos.y())))
     {
         lastPlaced_ = pos;
-        refresh();
+        refreshUnits();
         emit documentEdited();
         emit unitPlaced(placeUnitType_);
         return true;
@@ -1766,7 +1778,7 @@ bool MapView::pasteAt(const QPointF & screenPos)
         return false;
     }
 
-    refresh();
+    refreshUnits();
     emit documentEdited();
     emit unitPlaced(clipboardType_);
     return true;
@@ -1789,7 +1801,7 @@ bool MapView::deleteSelectedUnit()
     selectedUnit_ = -1;
     emit selectionChanged(-1);
     emit documentEdited();
-    viewport()->update();
+    refreshUnits(); // 저그 건물을 지웠다면 크립도 달라진다
     return true;
 }
 

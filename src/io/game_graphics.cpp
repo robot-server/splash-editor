@@ -1381,6 +1381,14 @@ UnitImage GameGraphics::renderUnit(std::uint16_t unitType,
         // 자원 유닛은 남은 양에 따라 그래픽이 달라진다(미네랄 3단계 등).
         chkUnit.resourceAmount = resourceAmount;
 
+        // MappingCore 는 방향이 정해지지 않은 유닛(units.dat 의 unitDirection
+        // 이 32)의 방향을 std::rand 로 뽑는다. 그대로 두면 다시 그릴 때마다
+        // 방향이 달라져서, 유닛을 하나 놓을 때마다 화면에 있는 유닛이 전부
+        // 돌아간다. 씨앗을 유닛 종류·소유자로 고정해 같은 유닛은 언제나
+        // 같은 방향으로 그린다.
+        std::srand(static_cast<unsigned>(unitType) * 2654435761u +
+                   static_cast<unsigned>(owner));
+
         MapActor actor {};
         impl_->anim->initializeUnitActor(actor, /*isClipboard*/ false, /*unitIndex*/ 0,
                                          chkUnit, 0, 0);
@@ -1413,6 +1421,10 @@ UnitImage GameGraphics::renderSprite(std::uint16_t spriteType,
         chkSprite.flags = drawnAsSprite
             ? Chk::Sprite::toPureSpriteFlags(0)
             : Chk::Sprite::toSpriteUnitFlags(0);
+
+        // 유닛과 같은 이유로 씨앗을 고정한다 (아래 renderUnit 의 설명 참고).
+        std::srand(static_cast<unsigned>(spriteType) * 2654435761u +
+                   static_cast<unsigned>(owner));
 
         MapActor actor {};
         impl_->anim->initializeSpriteActor(actor, /*isClipboard*/ false, /*spriteIndex*/ 0,
