@@ -5,16 +5,21 @@
 #include "mapping_core/map_file.h"
 
 #include <cctype>
+#include <cstring>
 #include <exception>
 #include <filesystem>
+#include <iostream>
 #include <fstream>
 #include <iterator>
+#include <sstream>
 
 // MappingCore 의 여러 번역 단위가 `extern Logger logger` 로 참조하는 전역.
 // Chkdraft 본체에서는 main.cpp 가 정의한다. 라이브러리로 쓰는 쪽에서는
-// 우리가 제공해야 링크가 된다. 기본은 Error — 파싱 중 경고가 stdout 을
-// 오염시키면 CLI 의 round-trip 출력과 뒤섞인다.
-Logger logger(LogLevel::Error);
+// 우리가 제공해야 링크가 된다.
+//
+// stderr 로 보내는 이유: MappingCore 는 보호된 맵 등을 만나면 진단을 쏟아낸다.
+// 그게 stdout 으로 가면 CLI 출력과 뒤섞여 스크립트가 파싱할 수 없게 된다.
+Logger logger(std::cerr, LogLevel::Error);
 
 namespace splash::io {
 
@@ -64,6 +69,64 @@ std::optional<std::vector<std::uint8_t>> readScenarioChk(const std::string & fil
     {
         return std::nullopt;
     }
+}
+
+/// Scenario::write 가 만든 CHK 에서 STR 섹션 끝에 strTailData 를 되살린다.
+///
+/// MappingCore 는 STR 을 읽을 때 정규 문자열 데이터 뒤에 남은 바이트를
+/// strTailData 로 보존하지만(syncBytesToStrings), 쓸 때는 그것을 붙이지 않는다
+/// (syncStringsToBytes). 그래서 저장할 때마다 그 바이트가 사라진다.
+/// 맵 보호나 서명에 쓰이는 경우가 있어 "모르는 바이트는 보존한다" 원칙상
+/// 되돌려 놓아야 한다.
+///
+/// 실패하면 원본을 그대로 두고 false 를 돌려준다 — 불확실하면 건드리지 않는다.
+bool restoreStrTailData(std::string & chkBytes, const std::vector<u8> & tail)
+{
+    if (tail.empty())
+        return true;
+
+    constexpr std::size_t kHeaderSize = 8; // 이름 4 + 크기 4
+    constexpr std::size_t kMaxSectionSize = 65535;
+
+    // 같은 섹션이 여러 번 나오면 뒤엣것이 이긴다. 마지막 STR 을 찾는다.
+    std::size_t target = std::string::npos;
+    std::int32_t targetSize = 0;
+
+    std::size_t off = 0;
+    while (off + kHeaderSize <= chkBytes.size())
+    {
+        std::int32_t size = 0;
+        std::memcpy(&size, chkBytes.data() + off + 4, sizeof(size));
+
+        if (std::memcmp(chkBytes.data() + off, "STR ", 4) == 0 && size >= 0)
+        {
+            target = off;
+            targetSize = size;
+        }
+
+        if (size < 0) // 음수 크기는 앞선 섹션을 되감는다. 여기서는 다루지 않는다.
+            return false;
+
+        off += kHeaderSize + static_cast<std::size_t>(size);
+    }
+
+    if (target == std::string::npos)
+        return false;
+
+    const std::size_t bodyEnd =
+        target + kHeaderSize + static_cast<std::size_t>(targetSize);
+    if (bodyEnd > chkBytes.size())
+        return false;
+
+    const std::size_t newSize = static_cast<std::size_t>(targetSize) + tail.size();
+    if (newSize > kMaxSectionSize)
+        return false; // 규격을 깨느니 tail 을 포기한다
+
+    chkBytes.insert(bodyEnd, reinterpret_cast<const char *>(tail.data()), tail.size());
+
+    const std::int32_t written = static_cast<std::int32_t>(newSize);
+    std::memcpy(&chkBytes[target + 4], &written, sizeof(written));
+    return true;
 }
 
 struct MapArchive::Impl
@@ -164,25 +227,101 @@ Result MapArchive::saveAs(const std::string & filePath) const
     if (filePath.empty())
         return Result::failure("저장 경로가 비어 있습니다.");
 
+    MapFile & map = *impl_->mapFile;
+
+    // MappingCore 의 MapFile::save() 를 쓰지 않는 이유:
+    //
+    // 그 함수는 saveType 에 맞춰 Scenario::changeVersionTo() 를 무조건 호출하고,
+    // changeVersionTo() 는 마지막에 deleteUnusedStrings(Scope::Both) 를 실행한다.
+    // 그 결과 "쓰이지 않는다"고 판단된 STR 문자열이 저장 때마다 사라진다.
+    // 실제 맵에서 고유 문자열이 302 -> 233 개로 줄어드는 것을 확인했다.
+    //
+    // 편집하지 않은 섹션의 바이트를 보존해야 하고, 보호된 맵에서는 참조를
+    // 추적할 수 없는 문자열이 중요할 수 있으므로 그 경로를 피한다.
+    // 대신 Scenario::write() 로 CHK 를 직렬화하고 MPQ 에 직접 넣는다.
+    // 두 API 모두 public 이며, MapFile::save() 가 내부에서 하는 일과 같다.
+    //
+    // 결과적으로 버전 변환은 일어나지 않는다. 포맷을 바꾸는 "다른 형식으로
+    // 저장"이 필요해지면 그때 명시적인 별도 연산으로 만든다.
+
+    std::stringstream chk(std::ios_base::in | std::ios_base::out | std::ios_base::binary);
     try
     {
-        // 인자 의미 (MappingCore MapFile::save):
-        //   overwriting             = true  기존 파일 교체를 허용
-        //   updateListFile          = true  MPQ (listfile) 유지 — 게임/에디터 호환
-        //   lockAnywhere            = false "Anywhere" 로케이션을 건드리지 않는다
-        //   autoDefragmentLocations = false MRGN 을 재배치하지 않는다
-        //
-        // 뒤의 둘을 끄는 이유: 우리가 편집하지 않은 섹션의 바이트를 바꾸기 때문이다.
-        // M1 의 목표는 "열고 다시 저장해도 맵이 그대로"이므로 보존을 우선한다.
-        const bool saved = impl_->mapFile->save(
-            filePath,
-            /*overwriting*/ true,
-            /*updateListFile*/ true,
-            /*lockAnywhere*/ false,
-            /*autoDefragmentLocations*/ false);
+        map.Scenario::write(chk);
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("CHK 직렬화에 실패했습니다: ") + e.what());
+    }
+    catch (...)
+    {
+        return Result::failure("CHK 직렬화 중 알 수 없는 예외가 발생했습니다.");
+    }
 
-        if (!saved)
-            return Result::failure("맵을 저장하지 못했습니다: " + filePath);
+    // Scenario::write 는 직렬화 중 예외를 잡아 failbit 로 바꾼다.
+    // 따라서 failbit 는 "쓰다 말았다"는 뜻이며, 부분 출력을 저장해서는 안 된다.
+    // 구체적 사유는 MappingCore 가 stderr 로 남긴다.
+    if (!chk.good())
+    {
+        return Result::failure(
+            "CHK 를 직렬화하지 못했습니다. 맵이 보호되었거나 CHK 가 유효하지 않을 수 있습니다"
+            " (자세한 사유는 stderr 의 MappingCore 진단 참고).");
+    }
+
+    // MappingCore 가 쓰기에서 누락하는 STR 꼬리 데이터를 되살린다.
+    std::string chkBytes = chk.str();
+    restoreStrTailData(chkBytes, map.getStrTailData());
+
+    // 대상이 .chk 면 MPQ 로 감싸지 않고 시나리오 자체를 쓴다.
+    if (hasChkExtension(filePath))
+    {
+        std::ofstream out(filePath, std::ios::binary | std::ios::trunc);
+        if (!out)
+            return Result::failure("출력 파일을 열지 못했습니다: " + filePath);
+        out.write(chkBytes.data(), static_cast<std::streamsize>(chkBytes.size()));
+        if (!out.good())
+            return Result::failure("CHK 를 쓰지 못했습니다: " + filePath);
+        return Result::success();
+    }
+
+    std::error_code ec;
+    const bool inPlace =
+        !impl_->sourcePath.empty() &&
+        std::filesystem::exists(filePath, ec) &&
+        std::filesystem::equivalent(impl_->sourcePath, filePath, ec);
+
+    // 다른 경로로 저장할 때는 원본 MPQ 를 먼저 복사한다.
+    // 사운드 등 시나리오 밖의 에셋을 잃지 않기 위해서다.
+    if (!inPlace)
+    {
+        std::filesystem::remove(filePath, ec);
+
+        const bool sourceIsMpq =
+            !impl_->sourcePath.empty() && !hasChkExtension(impl_->sourcePath);
+
+        if (sourceIsMpq)
+        {
+            std::filesystem::copy_file(
+                impl_->sourcePath, filePath,
+                std::filesystem::copy_options::overwrite_existing, ec);
+            if (ec)
+                return Result::failure("원본 MPQ 를 복사하지 못했습니다: " + ec.message());
+        }
+    }
+
+    try
+    {
+        if (!map.MpqFile::open(filePath, /*readOnly*/ false, /*createIfNotFound*/ true))
+            return Result::failure("MPQ 를 열지 못했습니다: " + filePath);
+
+        std::stringstream finalChk(
+            chkBytes, std::ios_base::in | std::ios_base::out | std::ios_base::binary);
+        const bool added = map.MpqFile::addFile(kScenarioChkPath, finalChk);
+        map.MpqFile::setUpdatingListFile(true);
+        map.MpqFile::close();
+
+        if (!added)
+            return Result::failure("시나리오를 MPQ 에 넣지 못했습니다: " + filePath);
     }
     catch (const std::exception & e)
     {
