@@ -3,6 +3,7 @@
 // MappingCore 헤더는 이 번역 단위 안에만 존재한다.
 #include "cross_cut/logger.h"
 #include "mapping_core/map_file.h"
+#include "mapping_core/sc.h"
 
 #include <algorithm>
 #include <cctype>
@@ -39,6 +40,15 @@ bool hasChkExtension(const std::string & filePath)
 }
 
 } // namespace
+
+std::string unitTypeName(std::uint16_t type)
+{
+    const auto & names = Sc::Unit::defaultDisplayNames;
+    if (type < names.size())
+        return names[type];
+
+    return "Unit " + std::to_string(type);
+}
 
 std::optional<std::vector<std::uint8_t>> readScenarioChk(const std::string & filePath)
 {
@@ -349,6 +359,85 @@ void MapArchive::close()
 const std::string & MapArchive::sourcePath() const
 {
     return impl_->sourcePath;
+}
+
+std::vector<RawUnit> MapArchive::units() const
+{
+    if (!impl_->isOpen())
+        return {};
+
+    const MapFile & map = *impl_->mapFile;
+    std::vector<RawUnit> out;
+
+    try
+    {
+        const std::size_t count = map.numUnits();
+        out.reserve(count);
+
+        for (std::size_t i = 0; i < count; ++i)
+        {
+            const Chk::Unit & unit = map.getUnit(i);
+            RawUnit raw;
+            raw.classId    = unit.classId;
+            raw.x          = unit.xc;
+            raw.y          = unit.yc;
+            raw.type       = static_cast<std::uint16_t>(unit.type);
+            raw.owner      = unit.owner;
+            raw.stateFlags = unit.stateFlags;
+            out.push_back(raw);
+        }
+    }
+    catch (const std::exception &)
+    {
+        return out; // 읽은 데까지는 돌려준다
+    }
+
+    return out;
+}
+
+std::vector<RawLocation> MapArchive::locations() const
+{
+    if (!impl_->isOpen())
+        return {};
+
+    const MapFile & map = *impl_->mapFile;
+    std::vector<RawLocation> out;
+
+    try
+    {
+        const std::size_t count = map.numLocations();
+        out.reserve(count);
+
+        for (std::size_t i = 0; i < count; ++i)
+        {
+            const Chk::Location & location = map.getLocation(i);
+
+            // 좌표가 전부 0 이고 이름도 없는 슬롯은 쓰이지 않는 자리다.
+            // MRGN 은 항상 255개(또는 확장 시 더) 슬롯을 갖지만 대부분 비어 있다.
+            if (location.isBlank())
+                continue;
+
+            RawLocation raw;
+            raw.left           = location.left;
+            raw.top            = location.top;
+            raw.right          = location.right;
+            raw.bottom         = location.bottom;
+            raw.stringId       = location.stringId;
+            raw.elevationFlags = location.elevationFlags;
+            raw.index          = i;
+
+            if (auto name = map.getLocationName<RawString>(i))
+                raw.name = *name;
+
+            out.push_back(raw);
+        }
+    }
+    catch (const std::exception &)
+    {
+        return out;
+    }
+
+    return out;
 }
 
 std::vector<std::uint16_t> MapArchive::terrainTiles() const

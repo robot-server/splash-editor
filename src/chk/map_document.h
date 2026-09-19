@@ -34,6 +34,31 @@ struct MapInfo
     bool isProtected = false;
 };
 
+/// 맵에 놓인 유닛 하나 (표시용).
+struct MapUnit
+{
+    std::uint16_t x = 0;        ///< 중심 x (픽셀)
+    std::uint16_t y = 0;        ///< 중심 y (픽셀)
+    std::uint16_t type = 0;
+    std::uint8_t  owner = 0;    ///< 0-11
+    std::string typeName;
+};
+
+/// 로케이션 하나 (표시용). 좌표는 정규화되어 left<=right, top<=bottom 이다.
+struct MapLocation
+{
+    std::uint32_t left = 0;
+    std::uint32_t top = 0;
+    std::uint32_t right = 0;
+    std::uint32_t bottom = 0;
+    std::string name;
+    std::size_t index = 0;
+};
+
+/// 플레이어 색 (0-11). 표준 8색 + 중립.
+struct PlayerColor { std::uint8_t r = 0, g = 0, b = 0; };
+PlayerColor playerColor(std::uint8_t owner);
+
 /// 타일셋 원시값 -> 표시 이름. 알 수 없는 값도 문자열로 돌려준다.
 std::string tilesetDisplayName(std::uint16_t tilesetId);
 
@@ -84,6 +109,12 @@ public:
     /// 마지막 실패 사유. 성공했다면 빈 문자열.
     const std::string & lastError() const;
 
+    /// 맵에 놓인 유닛. 열 때 한 번 읽어 둔다.
+    const std::vector<MapUnit> & units() const;
+
+    /// 쓰이고 있는 로케이션.
+    const std::vector<MapLocation> & locations() const;
+
     /// 지형 타일 값. 행 우선이며 길이는 width*height.
     /// 열 때 한 번 읽어 둔다 — 256x256 맵도 128KB 라 들고 있어도 부담이 없고,
     /// 렌더링 때마다 코어를 두드리지 않아도 된다.
@@ -95,6 +126,8 @@ private:
     io::MapArchive archive_;
     MapInfo info_;
     std::vector<std::uint16_t> tiles_;
+    std::vector<MapUnit> units_;
+    std::vector<MapLocation> locations_;
     std::string filePath_;
     std::string lastError_;
     bool modified_ = false;

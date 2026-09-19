@@ -3,6 +3,7 @@
 #include "chk/map_document.h"
 #include "io/tileset_source.h"
 
+#include <QFontMetrics>
 #include <QImage>
 #include <QPaintEvent>
 #include <QPainter>
@@ -91,6 +92,28 @@ void MapView::setZoom(double factor)
         static_cast<int>(centerInTiles.y() * newTile - viewport()->height() / 2.0));
 
     viewport()->update();
+}
+
+void MapView::setUnitsVisible(bool visible)
+{
+    if (showUnits_ == visible)
+        return;
+    showUnits_ = visible;
+    viewport()->update();
+}
+
+void MapView::setLocationsVisible(bool visible)
+{
+    if (showLocations_ == visible)
+        return;
+    showLocations_ = visible;
+    viewport()->update();
+}
+
+QPointF MapView::mapToScreen(double mapX, double mapY) const
+{
+    return QPointF(mapX * zoom_ - horizontalScrollBar()->value(),
+                   mapY * zoom_ - verticalScrollBar()->value());
 }
 
 void MapView::zoomIn()    { setZoom(zoom_ * 2.0); }
@@ -212,6 +235,87 @@ void MapView::paintEvent(QPaintEvent * event)
             painter.drawPixmap(target, *pixmap, QRectF(0, 0, io::kTilePixels, io::kTilePixels));
         }
     }
+
+    if (showLocations_)
+        paintLocations(painter, dirty);
+    if (showUnits_)
+        paintUnits(painter, dirty);
+}
+
+void MapView::paintUnits(QPainter & painter, const QRect & dirty)
+{
+    const auto & units = document_->units();
+    if (units.empty())
+        return;
+
+    // 스프라이트는 아직 없다. 소유자 색 원으로 자리와 소속만 보여 준다.
+    // 지름은 줌에 따르되 너무 작아지거나 커지지 않게 묶는다.
+    const double diameter = std::clamp(16.0 * zoom_, 3.0, 48.0);
+    const double radius = diameter / 2.0;
+
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing, true);
+
+    for (const auto & unit : units)
+    {
+        const QPointF center = mapToScreen(unit.x, unit.y);
+        const QRectF bounds(center.x() - radius, center.y() - radius, diameter, diameter);
+
+        // 화면 밖이면 건너뛴다 — 유닛이 수천 개인 맵이 흔하다.
+        if (!dirty.intersects(bounds.toAlignedRect().adjusted(-1, -1, 1, 1)))
+            continue;
+
+        const chk::PlayerColor color = chk::playerColor(unit.owner);
+        painter.setBrush(QColor(color.r, color.g, color.b));
+        painter.setPen(QPen(QColor(0, 0, 0, 160), 1.0));
+        painter.drawEllipse(bounds);
+    }
+
+    painter.restore();
+}
+
+void MapView::paintLocations(QPainter & painter, const QRect & dirty)
+{
+    const auto & locations = document_->locations();
+    if (locations.empty())
+        return;
+
+    painter.save();
+
+    const QColor edge(255, 220, 90);
+    QFont font = painter.font();
+    font.setPointSizeF(std::max(7.0, font.pointSizeF()));
+    painter.setFont(font);
+    const QFontMetrics metrics(font);
+
+    for (const auto & location : locations)
+    {
+        const QPointF topLeft = mapToScreen(location.left, location.top);
+        const QPointF bottomRight = mapToScreen(location.right, location.bottom);
+        const QRectF bounds(topLeft, bottomRight);
+
+        if (!dirty.intersects(bounds.toAlignedRect().adjusted(-1, -1, 1, 1)))
+            continue;
+
+        painter.setPen(QPen(edge, 1.0, Qt::DashLine));
+        painter.setBrush(QColor(255, 220, 90, 28));
+        painter.drawRect(bounds);
+
+        // 이름은 사각형이 글자를 담을 만큼 클 때만 그린다.
+        const QString label = location.name.empty()
+            ? tr("로케이션 %1").arg(location.index)
+            : QString::fromStdString(location.name);
+
+        if (bounds.width() > metrics.horizontalAdvance(label) + 6 &&
+            bounds.height() > metrics.height() + 4)
+        {
+            painter.setPen(edge);
+            painter.drawText(bounds.adjusted(3, 2, -3, -2),
+                             Qt::AlignTop | Qt::AlignLeft, label);
+        }
+    }
+
+    painter.restore();
 }
 
 } // namespace splash::ui

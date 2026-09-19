@@ -42,6 +42,31 @@ enum class MapFormat
     RemasteredScx ///< 리마스터 (.scx)
 };
 
+/// 맵에 놓인 유닛 하나. 좌표는 픽셀 단위다(타일이 아니다).
+struct RawUnit
+{
+    std::uint32_t classId = 0;
+    std::uint16_t x = 0;          ///< 중심 x (픽셀)
+    std::uint16_t y = 0;          ///< 중심 y (픽셀)
+    std::uint16_t type = 0;       ///< Sc::Unit::Type
+    std::uint8_t  owner = 0;      ///< 0-11 (11 은 중립)
+    std::uint16_t stateFlags = 0;
+};
+
+/// 로케이션 하나. 좌표는 픽셀 단위이며, 좌상단이 우하단보다 클 수 있다
+/// (사용자가 반대로 끌어 만든 경우 — 게임은 그대로 받아들인다).
+struct RawLocation
+{
+    std::uint32_t left = 0;
+    std::uint32_t top = 0;
+    std::uint32_t right = 0;
+    std::uint32_t bottom = 0;
+    std::uint16_t stringId = 0;
+    std::uint16_t elevationFlags = 0;
+    std::string name;             ///< 없으면 빈 문자열
+    std::size_t index = 0;        ///< MRGN 인덱스 (1-based 로 쓰이는 번호)
+};
+
 /// 성공/실패와 사람이 읽을 메시지를 함께 나르는 결과 타입.
 struct Result
 {
@@ -53,6 +78,10 @@ struct Result
     static Result success() { return Result{true, {}}; }
     static Result failure(std::string why) { return Result{false, std::move(why)}; }
 };
+
+/// 유닛 타입의 기본 표시 이름 (예: 12 -> "Terran Marine").
+/// 알 수 없는 번호면 "Unit <번호>" 를 돌려준다.
+std::string unitTypeName(std::uint16_t type);
 
 /// 맵 파일에서 시나리오 청크(CHK)의 원본 바이트를 꺼낸다.
 ///
@@ -106,6 +135,12 @@ public:
 
     /// 열 때 사용한 경로. 열려 있지 않으면 빈 문자열.
     const std::string & sourcePath() const;
+
+    /// 맵에 놓인 유닛 전부.
+    std::vector<RawUnit> units() const;
+
+    /// 로케이션 전부. 비어 있는 슬롯은 건너뛴다.
+    std::vector<RawLocation> locations() const;
 
     /// 지형 타일 값을 행 우선(row-major)으로 복사한다. 길이는 width*height.
     /// 에디터가 보는 값(TILE 섹션)을 쓴다 — 게임이 보는 MTXM 과 다를 수 있고,

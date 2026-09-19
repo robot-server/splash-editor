@@ -1,5 +1,6 @@
 #include "chk/map_document.h"
 
+#include <algorithm>
 #include <array>
 #include <filesystem>
 
@@ -21,6 +22,28 @@ constexpr std::array<const char *, 8> kTilesetNames = {
 };
 
 } // namespace
+
+PlayerColor playerColor(std::uint8_t owner)
+{
+    // StarCraft 의 기본 플레이어 색. 맵이 CRGB 로 덮어쓸 수 있지만,
+    // 표시용 기본값으로는 이것으로 충분하다.
+    static const PlayerColor kColors[] = {
+        {244,  4,  4}, // 0 빨강
+        { 12, 72,204}, // 1 파랑
+        { 44,180,148}, // 2 청록
+        {136, 64,156}, // 3 보라
+        {248,140, 20}, // 4 주황
+        {112, 48, 20}, // 5 갈색
+        {204,168,252}, // 6 연보라
+        { 16,  0,124}, // 7 남색
+        { 56, 12, 44}, // 8
+        {248,224,120}, // 9 노랑
+        { 16,128, 96}, // 10 초록
+        {239,231, 55}, // 11 중립(노랑)
+    };
+    constexpr std::size_t count = sizeof(kColors) / sizeof(kColors[0]);
+    return kColors[owner < count ? owner : count - 1];
+}
 
 std::string tilesetDisplayName(std::uint16_t tilesetId)
 {
@@ -110,6 +133,8 @@ void MapDocument::close()
     archive_.close();
     info_ = MapInfo{};
     tiles_.clear();
+    units_.clear();
+    locations_.clear();
     filePath_.clear();
     lastError_.clear();
     modified_ = false;
@@ -157,9 +182,46 @@ const std::vector<std::uint16_t> & MapDocument::tiles() const
     return tiles_;
 }
 
+const std::vector<MapUnit> & MapDocument::units() const
+{
+    return units_;
+}
+
+const std::vector<MapLocation> & MapDocument::locations() const
+{
+    return locations_;
+}
+
 void MapDocument::refreshInfo()
 {
     tiles_ = archive_.terrainTiles();
+
+    units_.clear();
+    for (const io::RawUnit & raw : archive_.units())
+    {
+        MapUnit unit;
+        unit.x        = raw.x;
+        unit.y        = raw.y;
+        unit.type     = raw.type;
+        unit.owner    = raw.owner;
+        unit.typeName = io::unitTypeName(raw.type);
+        units_.push_back(std::move(unit));
+    }
+
+    locations_.clear();
+    for (const io::RawLocation & raw : archive_.locations())
+    {
+        MapLocation location;
+        // 사용자가 반대로 끌어 만든 로케이션은 좌우/상하가 뒤집혀 저장된다.
+        // 원본 바이트는 건드리지 않고 표시용으로만 정규화한다.
+        location.left   = std::min(raw.left, raw.right);
+        location.right  = std::max(raw.left, raw.right);
+        location.top    = std::min(raw.top, raw.bottom);
+        location.bottom = std::max(raw.top, raw.bottom);
+        location.name   = raw.name;
+        location.index  = raw.index;
+        locations_.push_back(std::move(location));
+    }
 
     const io::RawMapInfo raw = archive_.info();
 

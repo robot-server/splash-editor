@@ -33,8 +33,11 @@ int usage(const char * argv0)
         "      기본값: 64 64 4(Jungle)\n\n"
         "  " << argv0 << " assets <StarCraft 설치폴더>\n"
         "      설치본을 조사한다. 아카이브를 열고 타일셋 데이터가 읽히는지 확인한다.\n\n"
-        "  " << argv0 << " render <맵파일> <설치폴더> <출력.ppm>\n"
-        "      맵 지형을 이미지로 그린다. 타일셋 디코딩 검증용이다.\n";
+        "  " << argv0 << " render <맵파일> <설치폴더> <출력.ppm> [--units] [--locations]\n"
+        "      맵 지형을 이미지로 그린다. 타일셋 디코딩 검증용이다.\n"
+        "      --units / --locations 를 주면 유닛·로케이션도 겹쳐 그린다.\n\n"
+        "  " << argv0 << " units <맵파일> [개수]\n"
+        "      맵에 놓인 유닛을 나열한다 (기본 20개).\n";
     return 2;
 }
 
@@ -180,9 +183,50 @@ int cmdAssets(const std::string & installPath)
     return info.ok() ? 0 : 1;
 }
 
+int cmdUnits(const std::string & mapPath, std::size_t limit)
+{
+    splash::chk::MapDocument doc;
+    if (!doc.open(mapPath))
+    {
+        std::cerr << "열기 실패: " << doc.lastError() << "\n";
+        return 1;
+    }
+
+    const auto & units = doc.units();
+    const auto & locations = doc.locations();
+
+    std::cout << "  유닛 " << units.size() << "개, 로케이션 " << locations.size() << "개\n\n";
+
+    std::cout << "  [유닛]\n";
+    for (std::size_t i = 0; i < units.size() && i < limit; ++i)
+    {
+        const auto & u = units[i];
+        std::cout << "    P" << static_cast<int>(u.owner) + 1
+                  << "  (" << u.x << ", " << u.y << ")  "
+                  << u.typeName << "\n";
+    }
+    if (units.size() > limit)
+        std::cout << "    ... " << (units.size() - limit) << "개 더\n";
+
+    std::cout << "\n  [로케이션]\n";
+    for (std::size_t i = 0; i < locations.size() && i < limit; ++i)
+    {
+        const auto & l = locations[i];
+        std::cout << "    #" << l.index << "  ("
+                  << l.left << "," << l.top << ")-(" << l.right << "," << l.bottom << ")  "
+                  << (l.name.empty() ? "(이름 없음)" : l.name) << "\n";
+    }
+    if (locations.size() > limit)
+        std::cout << "    ... " << (locations.size() - limit) << "개 더\n";
+
+    return 0;
+}
+
 int cmdRender(const std::string & mapPath,
               const std::string & installPath,
-              const std::string & outPath)
+              const std::string & outPath,
+              bool drawUnits,
+              bool drawLocations)
 {
     splash::io::MapArchive archive;
     if (auto r = archive.open(mapPath); !r)
@@ -220,6 +264,9 @@ int cmdRender(const std::string & mapPath,
         std::cerr << "지형 타일 수가 맵 크기와 맞지 않습니다.\n";
         return 1;
     }
+
+    const auto archiveUnits = archive.units();
+    const auto archiveLocations = archive.locations();
 
     splash::io::TilesetSource tileset;
     std::string error;
@@ -261,6 +308,53 @@ int cmdRender(const std::string & mapPath,
         }
     }
 
+    // --- 오버레이 ---
+    const auto putPixel = [&](long long x, long long y, int r, int g, int b) {
+        if (x < 0 || y < 0 || x >= pixelsWide || y >= pixelsTall)
+            return;
+        const std::size_t at = (static_cast<std::size_t>(y) * pixelsWide + x) * 3;
+        image[at + 0] = static_cast<std::uint8_t>(r);
+        image[at + 1] = static_cast<std::uint8_t>(g);
+        image[at + 2] = static_cast<std::uint8_t>(b);
+    };
+
+    if (drawLocations)
+    {
+        for (const auto & l : archiveLocations)
+        {
+            for (long long x = l.left; x <= static_cast<long long>(l.right); ++x)
+            {
+                putPixel(x, l.top, 255, 220, 90);
+                putPixel(x, l.bottom, 255, 220, 90);
+            }
+            for (long long y = l.top; y <= static_cast<long long>(l.bottom); ++y)
+            {
+                putPixel(l.left, y, 255, 220, 90);
+                putPixel(l.right, y, 255, 220, 90);
+            }
+        }
+    }
+
+    if (drawUnits)
+    {
+        constexpr int kRadius = 7;
+        for (const auto & u : archiveUnits)
+        {
+            const auto color = splash::chk::playerColor(u.owner);
+            for (int dy = -kRadius; dy <= kRadius; ++dy)
+            {
+                for (int dx = -kRadius; dx <= kRadius; ++dx)
+                {
+                    if (dx * dx + dy * dy > kRadius * kRadius)
+                        continue;
+                    putPixel(static_cast<long long>(u.x) + dx,
+                             static_cast<long long>(u.y) + dy,
+                             color.r, color.g, color.b);
+                }
+            }
+        }
+    }
+
     std::ofstream out(outPath, std::ios::binary | std::ios::trunc);
     if (!out)
     {
@@ -275,6 +369,10 @@ int cmdRender(const std::string & mapPath,
               << "  타일셋    : " << info.tilesetId << "\n"
               << "  이미지    : " << pixelsWide << " x " << pixelsTall << " 픽셀\n"
               << "  알수없는타일: " << unknownTiles << " / " << tiles.size() << "\n"
+              << "  유닛      : " << archiveUnits.size()
+              << (drawUnits ? " (그림)" : " (생략)") << "\n"
+              << "  로케이션  : " << archiveLocations.size()
+              << (drawLocations ? " (그림)" : " (생략)") << "\n"
               << "  -> " << outPath << "\n";
     return 0;
 }
@@ -401,8 +499,28 @@ int main(int argc, char ** argv)
     if (command == "assets" && args.size() == 2)
         return cmdAssets(args[1]);
 
-    if (command == "render" && args.size() == 4)
-        return cmdRender(args[1], args[2], args[3]);
+    if (command == "render" && args.size() >= 4)
+    {
+        bool drawUnits = false;
+        bool drawLocations = false;
+        for (std::size_t i = 4; i < args.size(); ++i)
+        {
+            if (args[i] == "--units") drawUnits = true;
+            else if (args[i] == "--locations") drawLocations = true;
+        }
+        return cmdRender(args[1], args[2], args[3], drawUnits, drawLocations);
+    }
+
+    if (command == "units" && (args.size() == 2 || args.size() == 3))
+    {
+        std::size_t limit = 20;
+        if (args.size() == 3)
+        {
+            try { limit = static_cast<std::size_t>(std::stoul(args[2])); }
+            catch (const std::exception &) { return usage(argv[0]); }
+        }
+        return cmdUnits(args[1], limit);
+    }
 
     return usage(argv[0]);
 }

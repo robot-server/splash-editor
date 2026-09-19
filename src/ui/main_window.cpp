@@ -150,6 +150,20 @@ void MainWindow::buildMenus()
     zoomResetAction_ = viewMenu->addAction(tr("실제 크기(&A)"));
     zoomResetAction_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_0));
     connect(zoomResetAction_, &QAction::triggered, mapView_, &MapView::zoomReset);
+
+    viewMenu->addSeparator();
+
+    QAction * showUnits = viewMenu->addAction(tr("유닛 표시(&U)"));
+    showUnits->setCheckable(true);
+    showUnits->setChecked(mapView_->unitsVisible());
+    showUnits->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_1));
+    connect(showUnits, &QAction::toggled, mapView_, &MapView::setUnitsVisible);
+
+    QAction * showLocations = viewMenu->addAction(tr("로케이션 표시(&L)"));
+    showLocations->setCheckable(true);
+    showLocations->setChecked(mapView_->locationsVisible());
+    showLocations->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_2));
+    connect(showLocations, &QAction::toggled, mapView_, &MapView::setLocationsVisible);
 }
 
 void MainWindow::onChooseInstallPath()

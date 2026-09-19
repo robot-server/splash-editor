@@ -40,7 +40,13 @@ public:
     double zoom() const { return zoom_; }
     void setZoom(double factor);
 
+    bool unitsVisible() const { return showUnits_; }
+    bool locationsVisible() const { return showLocations_; }
+
 public slots:
+    void setUnitsVisible(bool visible);
+    void setLocationsVisible(bool visible);
+
     void zoomIn();
     void zoomOut();
     void zoomReset();
@@ -57,6 +63,12 @@ private:
     /// 타일셋이 없으면 nullptr.
     const QPixmap * tilePixmap(std::uint16_t tileId);
 
+    /// 맵 픽셀 좌표를 화면 좌표로 옮긴다.
+    QPointF mapToScreen(double mapX, double mapY) const;
+
+    void paintUnits(QPainter & painter, const QRect & dirty);
+    void paintLocations(QPainter & painter, const QRect & dirty);
+
     /// 현재 줌에서 타일 한 변의 화면 픽셀 수.
     double scaledTileSize() const;
 
@@ -68,6 +80,8 @@ private:
 
     QHash<std::uint16_t, QPixmap> tileCache_;
     double zoom_ = 1.0;
+    bool showUnits_ = true;
+    bool showLocations_ = true;
 };
 
 } // namespace splash::ui

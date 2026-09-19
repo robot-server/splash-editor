@@ -19,6 +19,7 @@ StarCraft: Brood War / Remastered 맵 에디터. Windows · macOS · Linux.
 - 빈 맵 새로 만들기 (CLI)
 - **CHK 바이트를 보존하는 round-trip** — 편집하지 않은 섹션은 한 바이트도 바뀌지 않는다
 - **지형 보기** — 게임 설치본의 타일셋으로 실제 지형을 그린다. 스크롤 · 확대/축소
+- **유닛 · 로케이션 보기** — 소유자 색 표시, 로케이션 이름 표시 (토글 가능)
 
 ## 아직 안 되는 것
 
@@ -115,6 +116,8 @@ cmake --build build --config RelWithDebInfo
 | 스크롤 | 스크롤바 · 휠 |
 | 확대 / 축소 | `⌘+` / `⌘-` · `Ctrl`+휠 |
 | 실제 크기 | `⌘0` |
+| 유닛 표시 | `⌘1` |
+| 로케이션 표시 | `⌘2` |
 
 ### CLI
 
@@ -141,6 +144,12 @@ CLI 는 GUI 없이 코어를 두드리는 도구이자 테스트 하네스다.
 
 # 지형을 이미지로 뽑기 (타일셋 디코딩 검증용, PPM 출력)
 ./build/src/cli/splash-cli render map.scx "/경로/StarCraft" out.ppm
+
+# 유닛·로케이션을 겹쳐 그리기
+./build/src/cli/splash-cli render map.scx "/경로/StarCraft" out.ppm --units --locations
+
+# 유닛·로케이션 목록 보기
+./build/src/cli/splash-cli units map.scx 30
 ```
 
 ---
