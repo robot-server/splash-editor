@@ -3,7 +3,7 @@
 # Qt 는 LGPLv3 로 사용하므로 반드시 동적 링크한다(정적 링크 금지).
 # 자세한 내용은 README 의 라이선스 절을 참고.
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Multimedia)
 
 qt_standard_project_setup()
 
@@ -21,9 +21,11 @@ qt_add_executable(splash-editor
   mini_map.h
   trigger_editor.cpp
   trigger_editor.h
+  sound_player.cpp
+  sound_player.h
 )
 
-target_link_libraries(splash-editor PRIVATE splash_core Qt6::Widgets)
+target_link_libraries(splash-editor PRIVATE splash_core Qt6::Widgets Qt6::Multimedia)
 
 target_compile_definitions(splash-editor PRIVATE
   SPLASH_VERSION="${PROJECT_VERSION}"

@@ -26,7 +26,7 @@ StarCraft: Brood War / Remastered 맵 에디터. Windows · macOS · Linux.
 - **미니맵** — 클릭으로 이동, 보고 있는 영역 표시
 - **맵 스프라이트 보기** — THG2 에 배치된 장식 스프라이트
 - **크립 보기** — 저그 건물 주변 크립 (토글 가능)
-- **유닛 편집** — 유닛 팔레트로 배치, 클릭 선택, 드래그 이동, 삭제, 실행 취소/다시 실행
+- **유닛 편집** — 유닛 팔레트로 배치(배치 소리 포함), 클릭 선택, 드래그 이동, 삭제, 실행 취소/다시 실행
 - **로케이션 편집** — 클릭 선택, 드래그 이동
 - **지형 편집** — 세 가지 방식
   - Isometric: 절벽·해안이 자동으로 이어진다 (ISOM 브러시)
@@ -347,7 +347,7 @@ MappingCore 헤더도 마찬가지로 `src/io/map_archive.cpp` 안에만 존재�
 | [CascLib](https://github.com/ladislav-zezula/CascLib) | CASC 아카이브 (리마스터 설치본 에셋) | MIT |
 | [RareCpp](https://github.com/TheNitesWhoSay/RareCpp) | MappingCore 가 쓰는 리플렉션 | MIT |
 | ICU | UTF-8 / UTF-16 변환 | Unicode-DFS-2016 |
-| Qt 6 Widgets | GUI | **LGPLv3** (동적 링크) |
+| Qt 6 Widgets · Multimedia | GUI · 배치 소리 | **LGPLv3** (동적 링크) |
 
 CHK 와 지형 파싱은 **MappingCore 만** 재사용한다. 파서를 직접 다시 만들지 않는다.
 

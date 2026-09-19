@@ -4,6 +4,7 @@
 #include "mapping_core/casc_archive.h"
 #include "mapping_core/archive_cluster.h"
 #include "mapping_core/mpq_file.h"
+#include "mapping_core/system_io.h"
 #include "mapping_core/chk.h"
 #include "mapping_core/sc.h"
 #include "mapping_core/chk.h"
@@ -312,6 +313,65 @@ std::vector<std::uint8_t> GameGraphics::renderMinimap(
             out[index * 3 + 1] = color[1];
             out[index * 3 + 2] = color[2];
         }
+    }
+
+    return out;
+}
+
+std::vector<std::uint8_t> GameGraphics::unitSound(std::uint16_t unitType) const
+{
+    std::vector<std::uint8_t> out;
+    if (!hasUnitGraphics())
+        return out;
+
+    const Sc::Unit & units = impl_->scData->units;
+    if (unitType >= units.numUnitTypes())
+        return out;
+
+    try
+    {
+        const auto & dat = units.getUnit(Sc::Unit::Type(unitType));
+
+        // "무엇" 소리는 여러 개가 묶여 있다. 첫 번째를 쓴다.
+        const std::uint16_t soundIndex = dat.whatSoundStart;
+        if (soundIndex == 0)
+            return out;
+
+        // sfxdata.dat 의 첫 필드가 sfxdata.tbl 의 몇 번째 문자열인지 알려 준다.
+        // MappingCore 는 이 파일을 다루지 않으므로 직접 읽는다.
+        static const std::string kSfxDataPath = "arr\\sfxdata.dat";
+        auto sfxData = Sc::Data::GetAsset(*impl_->cluster, kSfxDataPath, true);
+        if (!sfxData || sfxData->size() < 4)
+            return out;
+
+        // 앞부분이 u32 배열(파일 이름 인덱스)이다. 항목 수는 알려진 값을 쓰되
+        // 파일 크기를 넘지 않도록 자른다.
+        const std::size_t entries = std::min<std::size_t>(1144, sfxData->size() / 4);
+        if (soundIndex >= entries)
+            return out;
+
+        std::uint32_t stringIndex = 0;
+        std::memcpy(&stringIndex, sfxData->data() + soundIndex * 4, sizeof(stringIndex));
+        if (stringIndex == 0)
+            return out;
+
+        Sc::TblFile sfxTbl;
+        if (!sfxTbl.load(*impl_->cluster, "arr\\sfxdata.tbl"))
+            return out;
+        if (stringIndex > sfxTbl.numStrings())
+            return out;
+
+        // tbl 인덱스는 1부터 센다.
+        const std::string & relative = sfxTbl.getString(stringIndex - 1);
+        if (relative.empty())
+            return out;
+
+        const std::string path = makeArchiveFilePath("sound", relative);
+        if (auto wav = Sc::Data::GetAsset(*impl_->cluster, path, true))
+            out = std::move(*wav);
+    }
+    catch (const std::exception &)
+    {
     }
 
     return out;

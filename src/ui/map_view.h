@@ -80,6 +80,9 @@ signals:
     /// 유닛을 두 번 눌렀다 — 속성 창을 열라는 뜻.
     void unitActivated(int unitIndex);
 
+    /// 유닛을 새로 놓았다 (소리를 내라는 뜻).
+    void unitPlaced(std::uint16_t unitType);
+
     /// 지형 브러시가 집은 타일이 바뀌었다.
     void brushTileChanged(std::uint16_t tileId);
 

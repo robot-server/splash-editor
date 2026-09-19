@@ -98,6 +98,12 @@ public:
                                             int width, int height,
                                             std::uint16_t tilesetId) const;
 
+    /// 유닛이 배치될 때 낼 소리(WAV 원본 바이트). 없으면 빈 벡터.
+    ///
+    /// units.dat 의 "무엇" 소리 목록에서 첫 번째를 쓴다. 소리 자료는
+    /// MappingCore 가 다루지 않아 sfxdata.dat/tbl 을 직접 읽는다.
+    std::vector<std::uint8_t> unitSound(std::uint16_t unitType) const;
+
     /// 유닛을 팔레트에서 나누기 위한 분류.
     struct UnitClass
     {

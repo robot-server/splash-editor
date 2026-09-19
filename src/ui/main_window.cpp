@@ -3,6 +3,7 @@
 #include "ui/map_view.h"
 #include "ui/tile_palette.h"
 #include "ui/mini_map.h"
+#include "ui/sound_player.h"
 #include "ui/trigger_editor.h"
 #include "ui/unit_palette.h"
 
@@ -82,6 +83,12 @@ void MainWindow::buildCentralWidget()
     connect(mapView_, &MapView::selectionChanged, this, &MainWindow::onSelectionChanged);
     connect(mapView_, &MapView::unitActivated, this,
             [this](int) { onUnitProperties(); });
+
+    soundPlayer_ = new SoundPlayer(this);
+    connect(mapView_, &MapView::unitPlaced, this, [this](std::uint16_t unitType) {
+        if (tileset_.hasUnitGraphics())
+            soundPlayer_->play(tileset_.unitSound(unitType));
+    });
     connect(mapView_, &MapView::brushTileChanged, this, [this](std::uint16_t tileId) {
         // 맵에서 스포이드로 집으면 팔레트 선택도 따라간다.
         if (tilePalette_ != nullptr)
@@ -399,6 +406,14 @@ void MainWindow::buildMenus()
     connect(showTriggers, &QAction::triggered, this, &MainWindow::onShowTriggers);
 
     toolMenu->addSeparator();
+    QAction * soundAction = toolMenu->addAction(tr("배치 소리(&S)"));
+    soundAction->setCheckable(true);
+    soundAction->setChecked(true);
+    connect(soundAction, &QAction::toggled, this, [this](bool on) {
+        if (soundPlayer_ != nullptr)
+            soundPlayer_->setEnabled(on);
+    });
+
     QAction * showUnitPalette = toolMenu->addAction(tr("유닛 팔레트(&N)"));
     showUnitPalette->setCheckable(true);
     connect(showUnitPalette, &QAction::toggled, this, [this](bool on) {

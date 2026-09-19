@@ -18,6 +18,7 @@ class MapView;
 class TilePalette;
 class UnitPalette;
 class MiniMap;
+class SoundPlayer;
 
 class MainWindow : public QMainWindow
 {
@@ -75,6 +76,7 @@ private:
     UnitPalette * unitPalette_ = nullptr;
     QDockWidget * unitDock_ = nullptr;
     MiniMap * miniMap_ = nullptr;
+    SoundPlayer * soundPlayer_ = nullptr;
 
     QLabel * nameValue_ = nullptr;
     QLabel * sizeValue_ = nullptr;

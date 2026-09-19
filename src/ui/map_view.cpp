@@ -831,6 +831,7 @@ void MapView::mousePressEvent(QMouseEvent * event)
         {
             refresh();
             emit documentEdited();
+            emit unitPlaced(placeUnitType_);
         }
         event->accept();
         return;
