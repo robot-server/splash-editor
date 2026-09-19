@@ -457,6 +457,12 @@ std::vector<std::uint16_t> GameGraphics::paletteTileIds(std::uint16_t tilesetId)
     std::vector<std::uint32_t> seenMegaTiles;
     seenMegaTiles.reserve(groupLimit);
 
+    // 타일 0 은 "null" 타일이다. 맵 가장자리나 검은 영역을 만들 때 쓰므로
+    // 팔레트 맨 앞에 넣는다. 아래 루프는 배정되지 않은 칸을 걸러내느라
+    // megaTileIndex 0 을 모두 빼므로 여기서 따로 챙긴다.
+    out.push_back(0);
+    seenMegaTiles.push_back(0);
+
     for (std::size_t group = 0; group < groupLimit; ++group)
     {
         const auto & tileGroup = tiles.tileGroups[group];

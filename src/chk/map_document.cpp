@@ -249,11 +249,11 @@ bool MapDocument::setUnitOwner(std::size_t unitIndex, std::uint8_t owner)
 }
 
 bool MapDocument::placeIsomTerrain(io::GameGraphics & graphics,
-                                   std::size_t tileX, std::size_t tileY,
-                                   std::uint16_t terrainType, std::size_t brushExtent)
+                                   std::size_t pixelX, std::size_t pixelY,
+                                   std::size_t terrainType, std::size_t brushExtent)
 {
     const io::Result result =
-        archive_.placeIsomTerrain(graphics, tileX, tileY, terrainType, brushExtent);
+        archive_.placeIsomTerrain(graphics, pixelX, pixelY, terrainType, brushExtent);
     if (!result)
     {
         lastError_ = result.message;

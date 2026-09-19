@@ -31,6 +31,28 @@ namespace splash::io {
 
 namespace {
 
+/// ISOM 브러시가 계산한 타일을 실제 맵에 옮겨 적는 캐시.
+///
+/// Chk::IsomCache 의 setTileValue 는 기본 구현이 비어 있다 — 어디에 쓸지는
+/// 쓰는 쪽이 정하라는 뜻이다. 이것을 구현하지 않으면 브러시가 계산만 하고
+/// 맵은 그대로다.
+struct ScenarioIsomCache : Chk::IsomCache
+{
+    Scenario & scenario;
+
+    ScenarioIsomCache(Scenario & scenario, Sc::Terrain::Tileset tileset,
+                      std::size_t tileWidth, std::size_t tileHeight,
+                      const Sc::Terrain::Tiles & tiles)
+        : Chk::IsomCache{tileset, tileWidth, tileHeight, tiles}, scenario(scenario) {}
+
+    void setTileValue(std::size_t tileX, std::size_t tileY, std::uint16_t tileValue) final
+    {
+        // 에디터용(TILE)과 게임용(MTXM)을 함께 쓴다. 둘이 어긋나면 화면과
+        // 게임이 달라진다.
+        scenario.setTile(tileX, tileY, tileValue, Chk::Scope::Both);
+    }
+};
+
 /// MPQ 안에서 시나리오가 저장되는 고정 경로.
 constexpr const char * kScenarioChkPath = "staredit\\scenario.chk";
 
@@ -507,8 +529,8 @@ Result MapArchive::setUnitOwner(std::size_t unitIndex, std::uint8_t owner)
 }
 
 Result MapArchive::placeIsomTerrain(GameGraphics & graphics,
-                                    std::size_t tileX, std::size_t tileY,
-                                    std::uint16_t terrainType,
+                                    std::size_t pixelX, std::size_t pixelY,
+                                    std::size_t terrainType,
                                     std::size_t brushExtent)
 {
     if (!impl_->isOpen())
@@ -523,17 +545,20 @@ Result MapArchive::placeIsomTerrain(GameGraphics & graphics,
     {
         const std::size_t tileWidth = map.getTileWidth();
         const std::size_t tileHeight = map.getTileHeight();
-        if (tileX >= tileWidth || tileY >= tileHeight)
-            return Result::failure("타일 좌표가 맵 범위를 벗어났습니다.");
+        if (pixelX >= tileWidth * 32 || pixelY >= tileHeight * 32)
+            return Result::failure("좌표가 맵 범위를 벗어났습니다.");
 
         const Sc::Terrain::Tiles & tilesetData =
             scData->terrain.get(map.getTileset());
 
         // ISOM 은 타일 격자가 아니라 마름모 격자 위에서 움직인다.
         // 가로는 타일 두 칸이 마름모 한 칸이다(isomWidth = tileWidth/2 + 1).
-        Chk::IsomCache cache(map.getTileset(), tileWidth, tileHeight, tilesetData);
+        ScenarioIsomCache cache(map, map.getTileset(), tileWidth, tileHeight, tilesetData);
 
-        Chk::IsomDiamond diamond { tileX / 2, tileY };
+        // 마름모 격자는 타일 격자와 어긋나 있다. 직접 나누면 엉뚱한 칸이
+        // 잡히므로 MappingCore 의 변환을 쓴다.
+        const Chk::IsomDiamond diamond =
+            Chk::IsomDiamond::fromMapCoordinates(pixelX, pixelY);
         if (!map.placeIsomTerrain(diamond, terrainType, brushExtent, cache))
             return Result::failure("그 자리에는 이 지형을 놓을 수 없습니다.");
 

@@ -200,11 +200,12 @@ public:
 
     /// ISOM 브러시로 지형을 놓는다. 절벽·경계 타일이 자동으로 이어진다.
     ///
-    /// 좌표는 타일 단위이며 내부에서 ISOM 다이아몬드 좌표로 옮긴다.
-    /// terrainType 은 GameGraphics::terrainTypes() 가 알려 주는 index 다.
+    /// 좌표는 맵 픽셀 단위다 — ISOM 마름모 격자는 타일 격자와 어긋나 있어
+    /// MappingCore 의 변환 함수를 그대로 쓴다.
+    /// terrainType 은 GameGraphics::terrainTypes() 의 brushIndex 다.
     Result placeIsomTerrain(GameGraphics & graphics,
-                            std::size_t tileX, std::size_t tileY,
-                            std::uint16_t terrainType,
+                            std::size_t pixelX, std::size_t pixelY,
+                            std::size_t terrainType,
                             std::size_t brushExtent);
 
     /// 지형 타일 하나를 바꾼다. 좌표는 타일 단위.

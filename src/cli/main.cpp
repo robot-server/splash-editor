@@ -41,7 +41,7 @@ int usage(const char * argv0)
         "      트리거를 사람이 읽는 텍스트로 옮긴다.\n\n"
         "  " << argv0 << " set-triggers <맵파일> <설치폴더> <텍스트파일> <출력맵>\n"
         "      텍스트 트리거를 컴파일해 맵에 적용하고 저장한다.\n\n"
-        "  " << argv0 << " place-isom <맵파일> <설치폴더> <타일x> <타일y> <지형종류> <브러시> <출력맵>\n"
+        "  " << argv0 << " place-isom <맵파일> <설치폴더> <픽셀x> <픽셀y> <지형brush> <브러시> <출력맵>\n"
         "      ISOM 브러시로 지형을 놓는다 (절벽·경계가 자동으로 이어진다).\n\n"
         "  " << argv0 << " units <맵파일> [개수]\n"
         "      맵에 놓인 유닛을 나열한다 (기본 20개).\n\n"
@@ -366,8 +366,8 @@ int cmdSetTriggers(const std::string & mapPath, const std::string & installPath,
 }
 
 int cmdPlaceIsom(const std::string & mapPath, const std::string & installPath,
-                 std::size_t tileX, std::size_t tileY,
-                 std::uint16_t terrainType, std::size_t brushExtent,
+                 std::size_t pixelX, std::size_t pixelY,
+                 std::size_t terrainType, std::size_t brushExtent,
                  const std::string & outPath)
 {
     splash::io::MapArchive archive;
@@ -387,7 +387,7 @@ int cmdPlaceIsom(const std::string & mapPath, const std::string & installPath,
 
     const auto before = archive.terrainTiles();
 
-    if (auto r = archive.placeIsomTerrain(graphics, tileX, tileY, terrainType, brushExtent); !r)
+    if (auto r = archive.placeIsomTerrain(graphics, pixelX, pixelY, terrainType, brushExtent); !r)
     {
         std::cerr << "배치 실패: " << r.message << "\n";
         return 1;
@@ -1437,7 +1437,7 @@ int main(int argc, char ** argv)
             return cmdPlaceIsom(args[1], args[2],
                 static_cast<std::size_t>(std::stoul(args[3])),
                 static_cast<std::size_t>(std::stoul(args[4])),
-                static_cast<std::uint16_t>(std::stoul(args[5])),
+                static_cast<std::size_t>(std::stoul(args[5])),
                 static_cast<std::size_t>(std::stoul(args[6])),
                 args[7]);
         } catch (const std::exception &) { return usage(argv[0]); }

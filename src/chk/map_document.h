@@ -145,8 +145,8 @@ public:
     /// ISOM 브러시로 지형을 놓는다 (절벽·경계가 자동으로 이어진다).
     /// 실행 취소 이력이 지워진다 — 타일 여러 개를 한꺼번에 바꾸기 때문이다.
     bool placeIsomTerrain(io::GameGraphics & graphics,
-                          std::size_t tileX, std::size_t tileY,
-                          std::uint16_t terrainType, std::size_t brushExtent);
+                          std::size_t pixelX, std::size_t pixelY,
+                          std::size_t terrainType, std::size_t brushExtent);
 
     /// 지형 타일 하나를 바꾼다. 좌표는 타일 단위.
     bool setTile(std::size_t tileX, std::size_t tileY, std::uint16_t tileValue);
