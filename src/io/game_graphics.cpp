@@ -162,6 +162,36 @@ bool GameGraphics::load(const std::string & installPath, std::string * error)
     return true;
 }
 
+std::vector<GameGraphics::TerrainType> GameGraphics::terrainTypes(
+    std::uint16_t tilesetId) const
+{
+    std::vector<TerrainType> out;
+    if (!impl_->loaded)
+        return out;
+
+    const Sc::Terrain::Tiles & tiles = impl_->tiles(tilesetId);
+    for (std::size_t position = 0; position < tiles.terrainTypes.size(); ++position)
+    {
+        const auto & info = tiles.terrainTypes[position];
+
+        // 브러시로 쓸 수 없는 항목(정렬 순서가 없는 것)은 뺀다.
+        if (info.brushSortOrder < 0 || info.name.empty())
+            continue;
+
+        TerrainType entry;
+        entry.brushIndex = position;
+        entry.index = info.index;
+        entry.name.assign(info.name.begin(), info.name.end());
+        entry.sortOrder = info.brushSortOrder;
+        out.push_back(std::move(entry));
+    }
+
+    std::sort(out.begin(), out.end(), [](const TerrainType & a, const TerrainType & b) {
+        return a.sortOrder < b.sortOrder;
+    });
+    return out;
+}
+
 std::vector<std::uint8_t> GameGraphics::renderMinimap(
     const std::vector<std::uint16_t> & tiles, int width, int height,
     std::uint16_t tilesetId) const

@@ -70,6 +70,22 @@ public:
                            std::uint16_t tilesetId,
                            bool drawnAsSprite) const;
 
+    /// ISOM 브러시로 놓을 수 있는 지형 종류.
+    struct TerrainType
+    {
+        /// placeIsomTerrain 에 넘길 값. terrainTypes 배열 안의 위치이며
+        /// TerrainTypeInfo::index 와는 다르다 — MappingCore 가 배열 위치로
+        /// 조회한다.
+        std::size_t brushIndex = 0;
+
+        std::uint16_t index = 0; ///< TerrainTypeInfo::index (표시·식별용)
+        std::string name;
+        int sortOrder = -1;
+    };
+
+    /// 이 타일셋의 지형 종류 목록 (브러시 정렬 순서대로).
+    std::vector<TerrainType> terrainTypes(std::uint16_t tilesetId) const;
+
     /// 미니맵 한 장을 그린다. 타일 하나가 픽셀 하나가 된다.
     ///
     /// 결과는 width*height*3 바이트(RGB)다. 타일 색은 타일셋에서 한 번만

@@ -204,7 +204,9 @@ Result MapArchive::createNew(MapFormat format,
                              std::uint16_t tilesetId,
                              std::uint16_t width,
                              std::uint16_t height,
-                             bool meleeTriggers)
+                             bool meleeTriggers,
+                             const GameGraphics * graphics,
+                             std::size_t terrainTypeIndex)
 {
     if (width == 0 || height == 0)
         return Result::failure("맵 크기는 0 이 될 수 없습니다.");
@@ -223,11 +225,19 @@ Result MapArchive::createNew(MapFormat format,
     auto fresh = std::make_unique<Impl>();
     try
     {
-        // tilesetData 가 null 이면 지형은 기본 타일로 채워진다.
-        // 실제 타일셋 에셋(MPQ/CASC)은 M1 범위 밖이다.
+        // 타일셋 자료를 주면 고른 지형으로 바닥을 제대로 채운다.
+        // 주지 않으면 기본 타일로만 채워진다.
+        const Sc::Terrain::Tiles * tilesetData = nullptr;
+        if (graphics != nullptr)
+        {
+            const auto * scData = static_cast<const Sc::Data *>(graphics->internalScData());
+            if (scData != nullptr)
+                tilesetData = &scData->terrain.get(Sc::Terrain::Tileset(tilesetId));
+        }
+
         fresh->mapFile = std::make_unique<MapFile>(
             Sc::Terrain::Tileset(tilesetId), width, height,
-            /*terrainTypeIndex*/ 0, triggers, saveType, /*tilesetData*/ nullptr);
+            terrainTypeIndex, triggers, saveType, tilesetData);
     }
     catch (const std::exception & e)
     {
@@ -492,6 +502,62 @@ Result MapArchive::setUnitOwner(std::size_t unitIndex, std::uint8_t owner)
     catch (const std::exception & e)
     {
         return Result::failure(std::string("소유자를 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::placeIsomTerrain(GameGraphics & graphics,
+                                    std::size_t tileX, std::size_t tileY,
+                                    std::uint16_t terrainType,
+                                    std::size_t brushExtent)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    const auto * scData = static_cast<const Sc::Data *>(graphics.internalScData());
+    if (scData == nullptr)
+        return Result::failure("게임 데이터가 준비되지 않았습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        const std::size_t tileWidth = map.getTileWidth();
+        const std::size_t tileHeight = map.getTileHeight();
+        if (tileX >= tileWidth || tileY >= tileHeight)
+            return Result::failure("타일 좌표가 맵 범위를 벗어났습니다.");
+
+        const Sc::Terrain::Tiles & tilesetData =
+            scData->terrain.get(map.getTileset());
+
+        // ISOM 은 타일 격자가 아니라 마름모 격자 위에서 움직인다.
+        // 가로는 타일 두 칸이 마름모 한 칸이다(isomWidth = tileWidth/2 + 1).
+        Chk::IsomCache cache(map.getTileset(), tileWidth, tileHeight, tilesetData);
+
+        Chk::IsomDiamond diamond { tileX / 2, tileY };
+        if (!map.placeIsomTerrain(diamond, terrainType, brushExtent, cache))
+            return Result::failure("그 자리에는 이 지형을 놓을 수 없습니다.");
+
+        if (std::getenv("SPLASH_DEBUG_ISOM") != nullptr)
+        {
+            std::cerr << "    isom diamond=(" << diamond.x << "," << diamond.y << ")"
+                      << " isomWH=" << cache.isomWidth << "x" << cache.isomHeight
+                      << " changed=(" << cache.changedArea.left << "," << cache.changedArea.top
+                      << ")-(" << cache.changedArea.right << "," << cache.changedArea.bottom << ")"
+                      << " isomRects=" << map.read.isomRects.size()
+                      << " editorTiles=" << map.read.editorTiles.size() << "\n";
+        }
+
+        // ISOM 을 고쳤으면 실제 타일로 펼쳐야 화면과 게임에 반영된다.
+        map.updateTilesFromIsom(cache);
+
+        // ISOM 한 번이 타일 여러 개를 바꾼다. 몇 액션이 생기는지 알 수 없어
+        // 이력을 비운다 — 절반만 되돌리면 지형이 어긋난다.
+        impl_->undoSteps.clear();
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("지형을 놓지 못했습니다: ") + e.what());
     }
     return Result::success();
 }

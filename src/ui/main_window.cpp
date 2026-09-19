@@ -503,7 +503,52 @@ void MainWindow::onNewMap()
     heightBox->setSingleStep(32);
     heightBox->setValue(64);
 
+    // 자주 쓰는 크기를 먼저 고르게 한다. 직접 입력도 그대로 된다.
+    auto * presetBox = new QComboBox(&dialog);
+    presetBox->addItem(tr("직접 입력"), QPoint(0, 0));
+    for (const QPoint & size : {QPoint(64, 64), QPoint(96, 96), QPoint(128, 128),
+                                QPoint(128, 96), QPoint(192, 192), QPoint(256, 256),
+                                QPoint(256, 128)})
+    {
+        presetBox->addItem(tr("%1 x %2").arg(size.x()).arg(size.y()), size);
+    }
+    presetBox->setCurrentIndex(1); // 64x64
+
+    connect(presetBox, &QComboBox::currentIndexChanged, &dialog,
+            [presetBox, widthBox, heightBox](int) {
+        const QPoint size = presetBox->currentData().toPoint();
+        if (size.x() > 0)
+        {
+            widthBox->setValue(size.x());
+            heightBox->setValue(size.y());
+        }
+    });
+
     auto * tilesetBox = makeTilesetBox(&dialog, 4); // Jungle
+
+    // 시작 지형 — 타일셋마다 종류가 다르므로 타일셋을 바꾸면 다시 채운다.
+    auto * terrainBox = new QComboBox(&dialog);
+    const auto fillTerrain = [this, terrainBox](std::uint16_t tilesetId) {
+        terrainBox->clear();
+        if (!tileset_.isLoaded())
+        {
+            terrainBox->addItem(tr("기본"), 0);
+            return;
+        }
+        for (const auto & type : tileset_.terrainTypes(tilesetId))
+        {
+            terrainBox->addItem(QString::fromStdString(type.name),
+                                static_cast<qulonglong>(type.brushIndex));
+        }
+        if (terrainBox->count() == 0)
+            terrainBox->addItem(tr("기본"), 0);
+    };
+    fillTerrain(4);
+
+    connect(tilesetBox, &QComboBox::currentIndexChanged, &dialog,
+            [tilesetBox, fillTerrain](int) {
+        fillTerrain(static_cast<std::uint16_t>(tilesetBox->currentData().toInt()));
+    });
 
     auto * formatBox = new QComboBox(&dialog);
     formatBox->addItem(tr("브루드워 (.scx)"), int(splash::io::MapFormat::ExpansionScx));
@@ -513,9 +558,11 @@ void MainWindow::onNewMap()
     auto * meleeBox = new QCheckBox(tr("기본 melee 트리거 넣기"), &dialog);
     meleeBox->setChecked(true);
 
+    form->addRow(tr("크기 프리셋"), presetBox);
     form->addRow(tr("가로 (타일)"), widthBox);
     form->addRow(tr("세로 (타일)"), heightBox);
     form->addRow(tr("타일셋"), tilesetBox);
+    form->addRow(tr("시작 지형"), terrainBox);
     form->addRow(tr("포맷"), formatBox);
     form->addRow(QString(), meleeBox);
 
@@ -538,7 +585,9 @@ void MainWindow::onNewMap()
                              static_cast<std::uint16_t>(tilesetBox->currentData().toInt()),
                              static_cast<std::uint16_t>(widthBox->value()),
                              static_cast<std::uint16_t>(heightBox->value()),
-                             meleeBox->isChecked()))
+                             meleeBox->isChecked(),
+                             tileset_.isLoaded() ? &tileset_ : nullptr,
+                             static_cast<std::size_t>(terrainBox->currentData().toULongLong())))
     {
         QMessageBox::warning(this, tr("새 맵 실패"),
                              QString::fromStdString(document_.lastError()));

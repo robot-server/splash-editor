@@ -145,11 +145,15 @@ public:
     /// M2 이후 "새 맵" 기능의 토대이기도 하다.
     ///
     /// meleeTriggers 를 켜면 MappingCore 의 기본 melee 트리거 세트를 넣는다.
+    /// graphics 를 주면 그 타일셋 자료로 지형을 제대로 채운다.
+    /// terrainTypeIndex 는 GameGraphics::terrainTypes() 의 brushIndex 다.
     Result createNew(MapFormat format,
                      std::uint16_t tilesetId,
                      std::uint16_t width,
                      std::uint16_t height,
-                     bool meleeTriggers);
+                     bool meleeTriggers,
+                     const GameGraphics * graphics = nullptr,
+                     std::size_t terrainTypeIndex = 0);
 
     /// 지정한 경로로 쓴다. 기존 파일이 있으면 덮어쓴다.
     ///
@@ -193,6 +197,15 @@ public:
 
     /// 유닛 하나의 현재 속성.
     std::optional<UnitProperties> unitProperties(std::size_t unitIndex) const;
+
+    /// ISOM 브러시로 지형을 놓는다. 절벽·경계 타일이 자동으로 이어진다.
+    ///
+    /// 좌표는 타일 단위이며 내부에서 ISOM 다이아몬드 좌표로 옮긴다.
+    /// terrainType 은 GameGraphics::terrainTypes() 가 알려 주는 index 다.
+    Result placeIsomTerrain(GameGraphics & graphics,
+                            std::size_t tileX, std::size_t tileY,
+                            std::uint16_t terrainType,
+                            std::size_t brushExtent);
 
     /// 지형 타일 하나를 바꾼다. 좌표는 타일 단위.
     ///

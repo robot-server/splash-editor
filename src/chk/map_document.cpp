@@ -78,10 +78,12 @@ MapDocument::MapDocument(MapDocument &&) noexcept = default;
 MapDocument & MapDocument::operator=(MapDocument &&) noexcept = default;
 
 bool MapDocument::createNew(io::MapFormat format, std::uint16_t tilesetId,
-                            std::uint16_t width, std::uint16_t height, bool meleeTriggers)
+                            std::uint16_t width, std::uint16_t height, bool meleeTriggers,
+                            const io::GameGraphics * graphics,
+                            std::size_t terrainTypeIndex)
 {
-    const io::Result result =
-        archive_.createNew(format, tilesetId, width, height, meleeTriggers);
+    const io::Result result = archive_.createNew(format, tilesetId, width, height,
+                                                 meleeTriggers, graphics, terrainTypeIndex);
     if (!result)
     {
         lastError_ = result.message;
@@ -242,6 +244,23 @@ bool MapDocument::setUnitOwner(std::size_t unitIndex, std::uint8_t owner)
     modified_ = true;
     ++undoDepth_;
     redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::placeIsomTerrain(io::GameGraphics & graphics,
+                                   std::size_t tileX, std::size_t tileY,
+                                   std::uint16_t terrainType, std::size_t brushExtent)
+{
+    const io::Result result =
+        archive_.placeIsomTerrain(graphics, tileX, tileY, terrainType, brushExtent);
+    if (!result)
+    {
+        lastError_ = result.message;
+        return false;
+    }
+    modified_ = true;
+    undoDepth_ = 0; redoDepth_ = 0; savedDepth_ = -1;
     refreshInfo();
     return true;
 }

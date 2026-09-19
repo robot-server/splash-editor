@@ -41,6 +41,8 @@ int usage(const char * argv0)
         "      트리거를 사람이 읽는 텍스트로 옮긴다.\n\n"
         "  " << argv0 << " set-triggers <맵파일> <설치폴더> <텍스트파일> <출력맵>\n"
         "      텍스트 트리거를 컴파일해 맵에 적용하고 저장한다.\n\n"
+        "  " << argv0 << " place-isom <맵파일> <설치폴더> <타일x> <타일y> <지형종류> <브러시> <출력맵>\n"
+        "      ISOM 브러시로 지형을 놓는다 (절벽·경계가 자동으로 이어진다).\n\n"
         "  " << argv0 << " units <맵파일> [개수]\n"
         "      맵에 놓인 유닛을 나열한다 (기본 20개).\n\n"
         "  " << argv0 << " unit-image <설치폴더> <유닛번호> <출력.ppm> [소유자] [타일셋]\n"
@@ -363,6 +365,52 @@ int cmdSetTriggers(const std::string & mapPath, const std::string & installPath,
     return 0;
 }
 
+int cmdPlaceIsom(const std::string & mapPath, const std::string & installPath,
+                 std::size_t tileX, std::size_t tileY,
+                 std::uint16_t terrainType, std::size_t brushExtent,
+                 const std::string & outPath)
+{
+    splash::io::MapArchive archive;
+    if (auto r = archive.open(mapPath); !r)
+    {
+        std::cerr << "열기 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "게임 데이터 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const auto before = archive.terrainTiles();
+
+    if (auto r = archive.placeIsomTerrain(graphics, tileX, tileY, terrainType, brushExtent); !r)
+    {
+        std::cerr << "배치 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    const auto after = archive.terrainTiles();
+    std::size_t changed = 0;
+    for (std::size_t i = 0; i < std::min(before.size(), after.size()); ++i)
+    {
+        if (before[i] != after[i])
+            ++changed;
+    }
+    std::cout << "  바뀐 타일 : " << changed << "개\n";
+
+    if (auto r = archive.saveAs(outPath); !r)
+    {
+        std::cerr << "저장 실패: " << r.message << "\n";
+        return 1;
+    }
+    std::cout << "  -> " << outPath << "\n";
+    return 0;
+}
+
 int cmdUnits(const std::string & mapPath, std::size_t limit)
 {
     splash::chk::MapDocument doc;
@@ -671,6 +719,13 @@ int cmdTilesetInfo(const std::string & installPath, std::uint16_t tilesetId)
     }
 
     const auto info = graphics.describeTileset(tilesetId);
+    {
+        const auto types = graphics.terrainTypes(tilesetId);
+        std::cout << "  지형 종류     : " << types.size() << "\n";
+        for (std::size_t i = 0; i < types.size() && i < 20; ++i)
+            std::cout << "      brush=" << types[i].brushIndex
+                      << " index=" << types[i].index << "  " << types[i].name << "\n";
+    }
     std::cout << "  팔레트 타일   : " << graphics.paletteTileIds(tilesetId).size() << "\n";
     std::cout << "  타일셋 " << tilesetId << "\n"
               << "  타일 그룹     : " << info.tileGroupCount << "\n"
@@ -1375,6 +1430,18 @@ int main(int argc, char ** argv)
 
     if (command == "set-triggers" && args.size() == 5)
         return cmdSetTriggers(args[1], args[2], args[3], args[4]);
+
+    if (command == "place-isom" && args.size() == 8)
+    {
+        try {
+            return cmdPlaceIsom(args[1], args[2],
+                static_cast<std::size_t>(std::stoul(args[3])),
+                static_cast<std::size_t>(std::stoul(args[4])),
+                static_cast<std::uint16_t>(std::stoul(args[5])),
+                static_cast<std::size_t>(std::stoul(args[6])),
+                args[7]);
+        } catch (const std::exception &) { return usage(argv[0]); }
+    }
 
     if (command == "units" && (args.size() == 2 || args.size() == 3))
     {

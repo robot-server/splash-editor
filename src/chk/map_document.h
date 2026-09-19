@@ -96,7 +96,9 @@ public:
 
     /// 빈 맵을 새로 만든다.
     bool createNew(io::MapFormat format, std::uint16_t tilesetId,
-                   std::uint16_t width, std::uint16_t height, bool meleeTriggers);
+                   std::uint16_t width, std::uint16_t height, bool meleeTriggers,
+                   const io::GameGraphics * graphics = nullptr,
+                   std::size_t terrainTypeIndex = 0);
 
     /// 맵을 연다. 실패하면 문서는 이전 상태를 잃고 닫힌 상태가 된다.
     /// 실패 사유는 lastError() 로 확인한다.
@@ -139,6 +141,12 @@ public:
 
     /// 유닛 하나의 현재 속성.
     std::optional<io::UnitProperties> unitProperties(std::size_t unitIndex) const;
+
+    /// ISOM 브러시로 지형을 놓는다 (절벽·경계가 자동으로 이어진다).
+    /// 실행 취소 이력이 지워진다 — 타일 여러 개를 한꺼번에 바꾸기 때문이다.
+    bool placeIsomTerrain(io::GameGraphics & graphics,
+                          std::size_t tileX, std::size_t tileY,
+                          std::uint16_t terrainType, std::size_t brushExtent);
 
     /// 지형 타일 하나를 바꾼다. 좌표는 타일 단위.
     bool setTile(std::size_t tileX, std::size_t tileY, std::uint16_t tileValue);
