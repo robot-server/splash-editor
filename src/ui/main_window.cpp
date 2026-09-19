@@ -10,6 +10,7 @@
 #include "ui/settings_dialogs.h"
 #include "ui/sound_editor.h"
 #include "ui/string_editor.h"
+#include "ui/switch_editor.h"
 #include "ui/trigger_editor.h"
 #include "ui/unit_palette.h"
 
@@ -658,7 +659,59 @@ void MainWindow::buildMenus()
         editor->show();
     });
 
+    scenarioMenu->addSeparator();
+
+    QAction * unprotectAction = scenarioMenu->addAction(tr("보호 해제(&P)…"));
+    unprotectAction->setToolTip(
+        tr("규격을 벗어나게 만들어 둔 맵을 고쳐 편집·저장할 수 있게 합니다."));
+    connect(unprotectAction, &QAction::triggered, this, [this] {
+        if (!document_.isOpen())
+        {
+            statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
+            return;
+        }
+
+        if (!document_.isProtected() && !document_.hasPassword())
+        {
+            QMessageBox::information(this, tr("보호 해제"),
+                                     tr("이 맵은 보호되어 있지 않습니다."));
+            return;
+        }
+
+        const auto answer = QMessageBox::question(this, tr("보호 해제"),
+            tr("맵의 보호를 풉니다. 문자열 표를 줄이고 빠진 구역을 채우며, "
+               "저장할 때 아카이브를 새로 씁니다.\n\n계속할까요?"),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (answer != QMessageBox::Yes)
+            return;
+
+        std::string report;
+        if (!document_.unprotect(&report))
+        {
+            QMessageBox::warning(this, tr("보호 해제 실패"),
+                                 QString::fromStdString(document_.lastError()));
+            return;
+        }
+
+        refreshFromDocument();
+        QMessageBox::information(this, tr("보호 해제"),
+            tr("보호를 풀었습니다.\n\n%1").arg(QString::fromStdString(report)));
+    });
+
     QMenu * triggerMenu = menuBar()->addMenu(tr("트리거(&R)"));
+
+    QAction * switchAction = triggerMenu->addAction(tr("스위치 이름(&W)…"));
+    connect(switchAction, &QAction::triggered, this, [this] {
+        if (!document_.isOpen())
+        {
+            statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
+            return;
+        }
+        auto * editor = new SwitchEditor(document_, this);
+        editor->setAttribute(Qt::WA_DeleteOnClose);
+        connect(editor, &SwitchEditor::documentEdited, this, [this] { onDocumentEdited(); });
+        editor->show();
+    });
     QAction * editTriggers = triggerMenu->addAction(tr("트리거 편집기(&E)…"));
     editTriggers->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_T));
     connect(editTriggers, &QAction::triggered, this, [this] {

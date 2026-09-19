@@ -838,6 +838,45 @@ bool MapDocument::moveAction(std::size_t triggerIndex, std::size_t from, std::si
     return true;
 }
 
+std::vector<std::string> MapDocument::switchNames() const
+{
+    return archive_.switchNames();
+}
+
+bool MapDocument::setSwitchName(std::size_t switchIndex, const std::string & name)
+{
+    const io::Result result = archive_.setSwitchName(switchIndex, name);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    undoDepth_ = 0; redoDepth_ = 0; savedDepth_ = -1;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::isProtected() const
+{
+    return archive_.isProtected();
+}
+
+bool MapDocument::hasPassword() const
+{
+    return archive_.hasPassword();
+}
+
+bool MapDocument::unprotect(std::string * report)
+{
+    const io::Result result = archive_.unprotect();
+    if (report != nullptr)
+        *report = result.message;
+
+    if (!result) { lastError_ = result.message; return false; }
+
+    modified_ = true;
+    undoDepth_ = 0; redoDepth_ = 0; savedDepth_ = -1;
+    refreshInfo();
+    return true;
+}
+
 std::vector<io::MapArchive::RawDoodad> MapDocument::doodads() const
 {
     return archive_.doodads();

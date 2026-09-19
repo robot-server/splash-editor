@@ -1146,6 +1146,53 @@ int cmdAddSound(const std::string & mapPath, const std::string & wavPath,
     return 0;
 }
 
+int cmdUnprotect(const std::string & mapPath, const std::string & outPath)
+{
+    splash::io::MapArchive archive;
+    if (auto r = archive.open(mapPath); !r)
+    {
+        std::cerr << "열기 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    std::cout << "  보호됨: " << (archive.isProtected() ? "예" : "아니오")
+              << "   비밀번호: " << (archive.hasPassword() ? "예" : "아니오") << "\n";
+
+    const auto result = archive.unprotect();
+    std::cout << "  고친 것:\n" << result.message << "\n";
+
+    if (auto r = archive.saveAs(outPath); !r)
+    {
+        std::cerr << "저장 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    std::cout << "  -> " << outPath << "\n";
+    return 0;
+}
+
+int cmdSwitches(const std::string & mapPath)
+{
+    splash::io::MapArchive archive;
+    if (auto r = archive.open(mapPath); !r)
+    {
+        std::cerr << "열기 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    const auto names = archive.switchNames();
+    std::size_t named = 0;
+    for (std::size_t i = 0; i < names.size(); ++i)
+    {
+        if (names[i].empty())
+            continue;
+        std::cout << "    #" << i << "  " << names[i] << "\n";
+        ++named;
+    }
+    std::cout << "  이름 붙은 스위치 " << named << "개\n";
+    return 0;
+}
+
 int cmdDoodads(const std::string & installPath, std::uint16_t tilesetId)
 {
     splash::io::GameGraphics graphics;
@@ -1929,6 +1976,12 @@ int main(int argc, char ** argv)
 
     if (command == "add-sound" && args.size() == 4)
         return cmdAddSound(args[1], args[2], args[3]);
+
+    if (command == "unprotect" && args.size() == 3)
+        return cmdUnprotect(args[1], args[2]);
+
+    if (command == "switches" && args.size() == 2)
+        return cmdSwitches(args[1]);
 
     if (command == "doodads" && args.size() == 3)
     {

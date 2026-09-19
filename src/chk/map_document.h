@@ -270,6 +270,17 @@ public:
     bool moveCondition(std::size_t triggerIndex, std::size_t from, std::size_t to);
     bool moveAction(std::size_t triggerIndex, std::size_t from, std::size_t to);
 
+    // --- 스위치 이름·맵 보호 ---
+
+    std::vector<std::string> switchNames() const;
+    bool setSwitchName(std::size_t switchIndex, const std::string & name);
+
+    bool isProtected() const;
+    bool hasPassword() const;
+
+    /// 보호를 풀어 저장할 수 있게 만든다. 무엇을 고쳤는지 알려 준다.
+    bool unprotect(std::string * report = nullptr);
+
     // --- 두들 (DD2) ---
 
     std::vector<io::MapArchive::RawDoodad> doodads() const;

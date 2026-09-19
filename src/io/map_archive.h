@@ -532,6 +532,28 @@ public:
     /// 어느 플레이어가 이 브리핑을 보는지.
     Result setBriefingOwners(std::size_t index, const std::array<bool, 27> & owners);
 
+    // --- 스위치 이름 (SWNM) ---
+
+    /// 스위치 256개의 이름. 이름이 없으면 빈 문자열.
+    std::vector<std::string> switchNames() const;
+
+    /// 스위치 하나의 이름을 바꾼다.
+    Result setSwitchName(std::size_t switchIndex, const std::string & name);
+
+    // --- 맵 보호 ---
+
+    /// 이 맵이 보호되어 있는지 (규격을 벗어나 에디터를 막아 둔 상태).
+    bool isProtected() const;
+
+    /// 비밀번호가 걸려 있는지.
+    bool hasPassword() const;
+
+    /// 보호를 풀어 저장할 수 있는 상태로 만든다.
+    ///
+    /// 비밀번호를 지우고, 빠진 필수 구역을 채우고, 규격을 벗어난 문자열
+    /// 선언을 정리한다. 무엇을 고쳤는지 message 에 적어 돌려준다.
+    Result unprotect();
+
     // --- 두들 (DD2) ---
 
     /// 맵에 놓인 두들 하나.

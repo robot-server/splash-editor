@@ -339,6 +339,10 @@ struct MapArchive::Impl
     std::vector<std::pair<std::string, std::vector<std::uint8_t>>> pendingFileAdds;
     std::vector<std::string> pendingFileRemovals;
 
+    // 보호된 맵은 MPQ 자체도 조작되어 덮어쓸 수 없다. 보호를 풀면 원본을
+    // 베끼지 않고 새 MPQ 를 만들어 쓴다.
+    bool rebuildArchive = false;
+
     // 맵 문자열이 쓰는 코드 페이지. 열 때 가려내고, 저장할 때 그대로
     // 되돌린다 — 다른 인코딩으로 쓰면 게임에서 글자가 깨진다.
     TextEncoding encoding = TextEncoding::Ascii;
@@ -427,6 +431,208 @@ Result MapArchive::open(const std::string & filePath)
 }
 
 // ---------------------------------------------------------------- 소리
+
+// ------------------------------------------------------- 스위치 이름·보호
+
+std::vector<std::string> MapArchive::switchNames() const
+{
+    std::vector<std::string> out;
+    if (!impl_->isOpen())
+        return out;
+
+    const MapFile & map = *impl_->mapFile;
+    out.resize(256);
+    try
+    {
+        for (std::size_t i = 0; i < 256; ++i)
+        {
+            if (auto name = map.getSwitchName<RawString>(i))
+                out[i] = impl_->decode(*name);
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+    return out;
+}
+
+Result MapArchive::setSwitchName(std::size_t switchIndex, const std::string & name)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+    if (switchIndex >= 256)
+        return Result::failure("스위치 번호가 범위를 벗어났습니다.");
+
+    try
+    {
+        impl_->mapFile->setSwitchName<RawString>(switchIndex, RawString(impl_->encode(name)));
+
+        // 문자열 표를 건드리므로 실행 취소 단위를 셀 수 없다.
+        impl_->undoSteps.clear();
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("스위치 이름을 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+bool MapArchive::isProtected() const
+{
+    if (!impl_->isOpen())
+        return false;
+    try
+    {
+        return impl_->mapFile->isProtected();
+    }
+    catch (const std::exception &)
+    {
+        return false;
+    }
+}
+
+bool MapArchive::hasPassword() const
+{
+    if (!impl_->isOpen())
+        return false;
+    try
+    {
+        return impl_->mapFile->hasPassword();
+    }
+    catch (const std::exception &)
+    {
+        return false;
+    }
+}
+
+Result MapArchive::unprotect()
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    std::vector<std::string> fixed;
+
+    try
+    {
+        // 1) 비밀번호를 지운다.
+        if (map.hasPassword())
+        {
+            if (map.setPassword("", ""))
+                fixed.push_back("비밀번호를 지웠습니다");
+            else
+                fixed.push_back("비밀번호를 지우지 못했습니다 (맞는 비밀번호가 필요합니다)");
+        }
+
+        // 2) 게임이 읽는 데 꼭 있어야 하는 구역을 채운다. 보호된 맵은 이런
+        //    구역을 일부러 빼거나 망가뜨려 에디터를 막는다.
+        const std::pair<Chk::SectionName, const char *> required[] {
+            { Chk::SectionName::VER,  "VER" },
+            { Chk::SectionName::TYPE, "TYPE" },
+            { Chk::SectionName::IVER, "IVER" },
+            { Chk::SectionName::VCOD, "VCOD" },
+        };
+
+        for (const auto & [section, name] : required)
+        {
+            if (!map.hasSection(section))
+            {
+                map.addSaveSection(section);
+                fixed.push_back(std::string(name) + " 구역을 채웠습니다");
+            }
+        }
+
+        // 3) 문자열 표를 규격 안으로 들인다. 보호된 맵은 문자열 수를
+        //    65535 처럼 실제보다 크게 적어 두는데, STR 은 32766 개까지만
+        //    담을 수 있어 저장이 막힌다. 쓰이지 않는 것을 지운 뒤 표를
+        //    다지고, 그래도 넘치면 용량을 규격 상한으로 줄인다.
+        // STR 의 문자열 포인터는 2바이트라 구역 전체가 65535 바이트를
+        // 넘을 수 없다. 포인터만으로 자리를 다 쓰면 글자가 들어갈 곳이
+        // 없으므로, 실제로 쓰는 만큼까지 줄여야 한다.
+        constexpr std::size_t kMaxStrings = 32766;
+
+        const std::size_t before = map.getCapacity(Chk::Scope::Game);
+        if (before > kMaxStrings)
+        {
+            map.deleteUnusedStrings(Chk::Scope::Both);
+            map.defragment(Chk::Scope::Both, /*matchCapacityToUsage*/ true);
+
+            // 다진 뒤에도 표가 크면, 실제로 글자가 든 마지막 자리까지만
+            // 남긴다. 그 뒤는 아무도 가리키지 않는 빈 자리다.
+            std::size_t lastUsed = 0;
+            const std::size_t capacity = map.getCapacity(Chk::Scope::Game);
+            for (std::size_t id = 1; id <= capacity; ++id)
+            {
+                if (map.stringStored(id))
+                    lastUsed = id;
+            }
+
+            const std::size_t target = std::min(kMaxStrings, std::max<std::size_t>(lastUsed, 1));
+            if (capacity > target)
+                map.setCapacity(target, Chk::Scope::Game, /*autoDefragment*/ true);
+
+            const std::size_t after = map.getCapacity(Chk::Scope::Game);
+            fixed.push_back("문자열 표를 " + std::to_string(before) + " -> " +
+                            std::to_string(after) + " 개로 줄였습니다");
+        }
+
+        // 4) 맵 밖으로 나간 것들을 안으로 들인다.
+        map.downsizeOutOfBoundsLocations();
+        map.removeOutOfBoundsDoodads();
+
+        // 5) 저장은 새 MPQ 를 만들어 한다. 보호된 맵은 아카이브 자체가
+        //    조작되어 있어 덮어쓸 수 없다. 그 전에 맵 안 소리를 챙겨 둬야
+        //    새 아카이브에도 함께 들어간다.
+        for (const MapSound & sound : sounds(/*checkArchive*/ true))
+        {
+            if (!sound.inArchive || sound.path.empty())
+                continue;
+
+            const auto already = std::find_if(
+                impl_->pendingFileAdds.begin(), impl_->pendingFileAdds.end(),
+                [&sound](const auto & entry) { return entry.first == sound.path; });
+            if (already != impl_->pendingFileAdds.end())
+                continue;
+
+            MapFile & mutableMap = map;
+            if (!mutableMap.MpqFile::open(impl_->sourcePath, /*readOnly*/ true,
+                                          /*createIfNotFound*/ false))
+                break;
+
+            auto contents = mutableMap.MpqFile::getFile(sound.path);
+            mutableMap.MpqFile::close();
+
+            if (contents && !contents->empty())
+                impl_->pendingFileAdds.emplace_back(sound.path, std::move(*contents));
+        }
+
+        if (!impl_->pendingFileAdds.empty())
+            fixed.push_back("소리 " + std::to_string(impl_->pendingFileAdds.size()) + "개를 챙겼습니다");
+
+        impl_->rebuildArchive = true;
+        fixed.push_back("저장할 때 맵을 새 아카이브로 다시 씁니다");
+
+        impl_->undoSteps.clear();
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("보호를 푸는 중 문제가 생겼습니다: ") + e.what());
+    }
+
+    if (fixed.empty())
+        return Result{true, "고칠 것이 없었습니다."};
+
+    std::string message;
+    for (const std::string & entry : fixed)
+    {
+        if (!message.empty())
+            message += "\n";
+        message += "- " + entry;
+    }
+    return Result{true, message};
+}
 
 // ---------------------------------------------------------------- 두들
 
@@ -1068,6 +1274,7 @@ Result MapArchive::saveAs(const std::string & filePath) const
 
     std::error_code ec;
     const bool inPlace =
+        !impl_->rebuildArchive &&
         !impl_->sourcePath.empty() &&
         std::filesystem::exists(filePath, ec) &&
         std::filesystem::equivalent(impl_->sourcePath, filePath, ec);
@@ -1079,7 +1286,8 @@ Result MapArchive::saveAs(const std::string & filePath) const
         std::filesystem::remove(filePath, ec);
 
         const bool sourceIsMpq =
-            !impl_->sourcePath.empty() && !hasChkExtension(impl_->sourcePath);
+            !impl_->sourcePath.empty() && !hasChkExtension(impl_->sourcePath) &&
+            !impl_->rebuildArchive;
 
         if (sourceIsMpq)
         {

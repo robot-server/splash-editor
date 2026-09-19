@@ -31,6 +31,8 @@ qt_add_executable(splash-editor
   sound_editor.cpp
   sound_editor.h
   string_editor.cpp
+  switch_editor.cpp
+  switch_editor.h
   string_editor.h
   settings_dialogs.h
   trigger_argument_panel.cpp
