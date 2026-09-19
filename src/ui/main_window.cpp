@@ -220,7 +220,8 @@ void MainWindow::buildCentralWidget()
         categoryBox->addItem(UnitPalette::categoryName(category), static_cast<int>(category));
     }
 
-    auto * ownerBox = new QComboBox(unitPanel);
+    ownerBox_ = new QComboBox(unitPanel);
+    QComboBox * ownerBox = ownerBox_;
     for (int player = 1; player <= 12; ++player)
         ownerBox->addItem(tr("플레이어 %1").arg(player), player - 1);
     ownerBox->setCurrentIndex(0);
@@ -247,6 +248,20 @@ void MainWindow::buildCentralWidget()
         const auto owner = static_cast<std::uint8_t>(ownerBox->currentData().toInt());
         unitPalette_->setOwner(owner);
         mapView_->setPlacementUnit(unitPalette_->selectedUnit(), owner);
+    });
+
+    connect(mapView_, &MapView::ownerRequested, this, [this](std::uint8_t owner) {
+        if (ownerBox_ == nullptr)
+            return;
+        const int index = ownerBox_->findData(static_cast<int>(owner));
+        if (index < 0)
+            return;
+        ownerBox_->setCurrentIndex(index); // 나머지는 콤보의 신호가 처리한다
+        statusBar()->showMessage(tr("플레이어 %1").arg(owner + 1), 2000);
+    });
+
+    connect(mapView_, &MapView::placementRejected, this, [this](const QString & reason) {
+        statusBar()->showMessage(reason, 3000);
     });
 
     connect(unitPalette_, &UnitPalette::spriteSelected, this, [this](std::uint16_t spriteType) {
@@ -415,6 +430,39 @@ void MainWindow::buildMenus()
             }
         });
     }
+
+    toolMenu->addSeparator();
+
+    // 유닛을 어디에 놓을지 — 격자에 맞출지, 겹쳐 놓을 수 있을지.
+    QMenu * snapMenu = toolMenu->addMenu(tr("유닛 배치 격자"));
+    auto * snapGroup = new QActionGroup(this);
+    snapGroup->setExclusive(true);
+    const struct { MapView::UnitSnap snap; const char * label; } kSnapChoices[] {
+        { MapView::UnitSnap::Tile,     QT_TR_NOOP("한 타일 (32px)") },
+        { MapView::UnitSnap::HalfTile, QT_TR_NOOP("반 타일 (16px)") },
+        { MapView::UnitSnap::Quarter,  QT_TR_NOOP("1/4 타일 (8px)") },
+        { MapView::UnitSnap::Free,     QT_TR_NOOP("자유 배치") },
+    };
+    for (const auto & choice : kSnapChoices)
+    {
+        QAction * action = snapMenu->addAction(tr(choice.label));
+        action->setCheckable(true);
+        action->setChecked(choice.snap == mapView_->unitSnap());
+        snapGroup->addAction(action);
+        connect(action, &QAction::triggered, this, [this, choice] {
+            mapView_->setUnitSnap(choice.snap);
+            statusBar()->showMessage(tr("유닛 배치 격자: %1").arg(tr(choice.label)), 2000);
+        });
+    }
+
+    QAction * stackAction = toolMenu->addAction(tr("유닛 겹쳐 놓기 허용"));
+    stackAction->setCheckable(true);
+    stackAction->setChecked(mapView_->unitStackingAllowed());
+    connect(stackAction, &QAction::toggled, this, [this](bool on) {
+        mapView_->setUnitStackingAllowed(on);
+        statusBar()->showMessage(on ? tr("겹쳐 놓기를 허용합니다")
+                                    : tr("겹치는 자리에는 놓지 않습니다"), 2500);
+    });
 
     QMenu * triggerMenu = menuBar()->addMenu(tr("트리거(&R)"));
     QAction * editTriggers = triggerMenu->addAction(tr("트리거 편집기(&E)…"));

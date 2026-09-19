@@ -93,6 +93,12 @@ signals:
     /// 유닛을 두 번 눌렀다 — 속성 창을 열라는 뜻.
     void unitActivated(int unitIndex);
 
+    /// 숫자 키로 소유자를 바꿔 달라는 뜻 (0 부터).
+    void ownerRequested(std::uint8_t owner);
+
+    /// 놓기를 거절했다 — 왜인지 알린다.
+    void placementRejected(const QString & reason);
+
     /// 유닛을 새로 놓았다 (소리를 내라는 뜻).
     void unitPlaced(std::uint16_t unitType);
 

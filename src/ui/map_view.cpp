@@ -703,6 +703,76 @@ void MapView::setBrushTile(std::uint16_t tileId)
     emit brushTileChanged(tileId);
 }
 
+void MapView::setUnitSnap(UnitSnap snap)
+{
+    unitSnap_ = snap;
+}
+
+void MapView::setUnitStackingAllowed(bool allowed)
+{
+    allowStack_ = allowed;
+}
+
+QPoint MapView::snapUnitPos(std::uint16_t unitType, int x, int y) const
+{
+    int step = 0;
+    switch (unitSnap_)
+    {
+        case UnitSnap::Free:     return QPoint(std::max(0, x), std::max(0, y));
+        case UnitSnap::Quarter:  step = io::kTilePixels / 4; break;
+        case UnitSnap::HalfTile: step = io::kTilePixels / 2; break;
+        case UnitSnap::Tile:     step = io::kTilePixels; break;
+    }
+
+    // 게임은 유닛 좌표를 중심으로 다루지만, 건물이 타일에 딱 맞아 보이는
+    // 것은 왼쪽·위 모서리가 타일 경계에 붙기 때문이다. 그래서 모서리를
+    // 격자에 맞춘 뒤 다시 중심으로 되돌린다.
+    io::GameGraphics::UnitBounds bounds;
+    if (tileset_ != nullptr)
+        bounds = tileset_->unitBounds(unitType);
+
+    const int left = x - bounds.left;
+    const int top = y - bounds.up;
+
+    const int snappedLeft = static_cast<int>(std::lround(double(left) / step)) * step;
+    const int snappedTop = static_cast<int>(std::lround(double(top) / step)) * step;
+
+    return QPoint(std::max(0, snappedLeft + bounds.left),
+                  std::max(0, snappedTop + bounds.up));
+}
+
+bool MapView::unitWouldOverlap(std::uint16_t unitType, int x, int y, int skipIndex) const
+{
+    if (document_ == nullptr || tileset_ == nullptr)
+        return false;
+
+    const auto bounds = tileset_->unitBounds(unitType);
+    const int left = x - bounds.left;
+    const int right = x + bounds.right;
+    const int top = y - bounds.up;
+    const int bottom = y + bounds.down;
+
+    const auto & units = document_->units();
+    for (std::size_t i = 0; i < units.size(); ++i)
+    {
+        if (static_cast<int>(i) == skipIndex)
+            continue;
+
+        const auto & other = units[i];
+        const auto otherBounds = tileset_->unitBounds(other.type);
+
+        const int otherLeft = static_cast<int>(other.x) - otherBounds.left;
+        const int otherRight = static_cast<int>(other.x) + otherBounds.right;
+        const int otherTop = static_cast<int>(other.y) - otherBounds.up;
+        const int otherBottom = static_cast<int>(other.y) + otherBounds.down;
+
+        if (left <= otherRight && right >= otherLeft &&
+            top <= otherBottom && bottom >= otherTop)
+            return true;
+    }
+    return false;
+}
+
 void MapView::setBrushSize(int size)
 {
     brushSize_ = std::clamp(size, 1, 16);
@@ -872,10 +942,21 @@ void MapView::mousePressEvent(QMouseEvent * event)
     if (tool_ == Tool::PlaceUnit)
     {
         const QPointF mapPos = screenToMap(event->position());
+        const QPoint pos = snapUnitPos(placeUnitType_,
+                                       static_cast<int>(std::max(0.0, mapPos.x())),
+                                       static_cast<int>(std::max(0.0, mapPos.y())));
+
+        if (!allowStack_ && unitWouldOverlap(placeUnitType_, pos.x(), pos.y()))
+        {
+            emit placementRejected(tr("이미 다른 유닛이 있는 자리입니다 — 겹치기를 허용하면 놓을 수 있습니다."));
+            event->accept();
+            return;
+        }
+
         auto * doc = const_cast<chk::MapDocument *>(document_);
         if (doc->addUnit(placeUnitType_, placeUnitOwner_,
-                         static_cast<std::uint16_t>(std::max(0.0, mapPos.x())),
-                         static_cast<std::uint16_t>(std::max(0.0, mapPos.y()))))
+                         static_cast<std::uint16_t>(pos.x()),
+                         static_cast<std::uint16_t>(pos.y())))
         {
             refresh();
             emit documentEdited();
@@ -1038,7 +1119,18 @@ void MapView::mouseMoveEvent(QMouseEvent * event)
 
     const int newX = dragStartUnitPos_.x() + static_cast<int>(delta.x());
     const int newY = dragStartUnitPos_.y() + static_cast<int>(delta.y());
-    previewPos_ = QPoint(std::max(0, newX), std::max(0, newY));
+
+    // 유닛을 끌 때도 놓을 때와 같은 격자를 쓴다. 로케이션은 자기만의
+    // 좌표계를 쓰므로 건드리지 않는다.
+    if (selectedUnit_ >= 0 && selectedUnit_ < static_cast<int>(document_->units().size()))
+    {
+        const auto & unit = document_->units()[static_cast<std::size_t>(selectedUnit_)];
+        previewPos_ = snapUnitPos(unit.type, newX, newY);
+    }
+    else
+    {
+        previewPos_ = QPoint(std::max(0, newX), std::max(0, newY));
+    }
     hasPreview_ = true;
 
     viewport()->update();
@@ -1089,9 +1181,14 @@ void MapView::mouseReleaseEvent(QMouseEvent * event)
             const auto & unit = document_->units()[static_cast<std::size_t>(selectedUnit_)];
             if (unit.x != previewPos_.x() || unit.y != previewPos_.y())
             {
-                if (doc->moveUnit(static_cast<std::size_t>(selectedUnit_),
-                                  static_cast<std::uint16_t>(previewPos_.x()),
-                                  static_cast<std::uint16_t>(previewPos_.y())))
+                if (!allowStack_ && unitWouldOverlap(unit.type, previewPos_.x(), previewPos_.y(),
+                                                     selectedUnit_))
+                {
+                    emit placementRejected(tr("그 자리에는 다른 유닛이 있습니다."));
+                }
+                else if (doc->moveUnit(static_cast<std::size_t>(selectedUnit_),
+                                       static_cast<std::uint16_t>(previewPos_.x()),
+                                       static_cast<std::uint16_t>(previewPos_.y())))
                 {
                     emit documentEdited();
                 }
@@ -1187,6 +1284,22 @@ void MapView::keyPressEvent(QKeyEvent * event)
     else if (event->key() == Qt::Key_Escape)
     {
         clearSelection();
+        event->accept();
+        return;
+    }
+    else if (event->key() >= Qt::Key_1 && event->key() <= Qt::Key_9 &&
+             (event->modifiers() & ~Qt::KeypadModifier) == Qt::NoModifier)
+    {
+        // 1~9 는 플레이어 1~9, 0 은 플레이어 10 이다. SCMDraft 와 같은
+        // 손놀림으로 소유자를 바꿔 가며 놓을 수 있다.
+        emit ownerRequested(static_cast<std::uint8_t>(event->key() - Qt::Key_1));
+        event->accept();
+        return;
+    }
+    else if (event->key() == Qt::Key_0 &&
+             (event->modifiers() & ~Qt::KeypadModifier) == Qt::NoModifier)
+    {
+        emit ownerRequested(9);
         event->accept();
         return;
     }

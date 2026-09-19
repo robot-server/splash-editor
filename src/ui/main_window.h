@@ -9,6 +9,7 @@
 
 #include <QMainWindow>
 
+class QComboBox;
 class QDockWidget;
 class QMenu;
 class QLabel;
@@ -79,6 +80,7 @@ private:
     QMenu * recentMenu_ = nullptr;
     QDockWidget * paletteDock_ = nullptr;
     UnitPalette * unitPalette_ = nullptr;
+    QComboBox * ownerBox_ = nullptr; ///< 놓을 유닛의 소유자 (숫자 키로도 바꾼다)
     QDockWidget * unitDock_ = nullptr;
     MiniMap * miniMap_ = nullptr;
     SoundPlayer * soundPlayer_ = nullptr;
