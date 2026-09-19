@@ -105,6 +105,15 @@ public:
     bool renderMegaTile(std::uint16_t tilesetId, std::uint32_t megaTileIndex,
                         std::uint8_t * rgbaOut) const;
 
+    /// 메가타일의 미니타일 구성 진단. 크립 가장자리 타일이 실제로
+    /// 비어 있는(투명) 미니타일을 갖는지 확인할 때 쓴다.
+    struct MegaTileInfo
+    {
+        int emptyMiniTiles = 0;  ///< vr4Index 가 0 인 칸 수 (0~16)
+        std::uint32_t vr4[16] {};
+    };
+    MegaTileInfo describeMegaTile(std::uint16_t tilesetId, std::uint32_t megaTileIndex) const;
+
     /// 타일셋의 메가타일 개수.
     std::size_t megaTileCount(std::uint16_t tilesetId) const;
 

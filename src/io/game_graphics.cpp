@@ -341,6 +341,31 @@ std::vector<std::uint16_t> GameGraphics::creepTileIds(std::uint16_t tilesetId) c
     return out;
 }
 
+GameGraphics::MegaTileInfo GameGraphics::describeMegaTile(
+    std::uint16_t tilesetId, std::uint32_t megaTileIndex) const
+{
+    MegaTileInfo info;
+    if (!impl_->loaded)
+        return info;
+
+    const Sc::Terrain::Tiles & tiles = impl_->tiles(tilesetId);
+    if (megaTileIndex >= tiles.tileGraphics.size())
+        return info;
+
+    const auto & graphics = tiles.tileGraphics[megaTileIndex];
+    for (int my = 0; my < 4; ++my)
+    {
+        for (int mx = 0; mx < 4; ++mx)
+        {
+            const std::uint32_t vr4 = graphics.miniTileGraphics[my][mx].vr4Index();
+            info.vr4[my * 4 + mx] = vr4;
+            if (vr4 == 0)
+                ++info.emptyMiniTiles;
+        }
+    }
+    return info;
+}
+
 std::size_t GameGraphics::megaTileCount(std::uint16_t tilesetId) const
 {
     if (!impl_->loaded)

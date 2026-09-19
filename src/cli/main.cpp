@@ -9,6 +9,7 @@
 #include "io/map_archive.h"
 
 #include <filesystem>
+#include <set>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -221,6 +222,54 @@ int cmdUnits(const std::string & mapPath, std::size_t limit)
     if (locations.size() > limit)
         std::cout << "    ... " << (locations.size() - limit) << "개 더\n";
 
+    return 0;
+}
+
+int cmdCreepKin(const std::string & installPath, std::uint16_t tilesetId,
+                std::uint32_t creepFirst, int creepCount)
+{
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    // 확실한 크립 메가타일이 쓰는 미니타일(vr4) 인덱스를 모은다.
+    std::set<std::uint32_t> creepMinis;
+    for (int i = 0; i < creepCount; ++i)
+    {
+        const auto info = graphics.describeMegaTile(tilesetId, creepFirst + i);
+        for (int k = 0; k < 16; ++k)
+            creepMinis.insert(info.vr4[k]);
+    }
+    std::cout << "  크립 미니타일 " << creepMinis.size() << "종\n";
+
+    // 그 미니타일을 쓰는 다른 메가타일을 찾는다 — 크립과 지형이 섞인
+    // 가장자리 타일이 있다면 여기서 드러난다.
+    const std::size_t total = graphics.megaTileCount(tilesetId);
+    int found = 0;
+    for (std::uint32_t mt = 0; mt < total; ++mt)
+    {
+        if (mt >= creepFirst && mt < creepFirst + creepCount)
+            continue;
+
+        const auto info = graphics.describeMegaTile(tilesetId, mt);
+        int hits = 0;
+        for (int k = 0; k < 16; ++k)
+        {
+            if (creepMinis.count(info.vr4[k]) != 0)
+                ++hits;
+        }
+        if (hits > 0)
+        {
+            std::cout << "    megatile " << mt << ": 크립 미니타일 " << hits << "/16\n";
+            if (++found >= 40) { std::cout << "    ...\n"; break; }
+        }
+    }
+    if (found == 0)
+        std::cout << "    (크립 미니타일을 쓰는 다른 메가타일 없음)\n";
     return 0;
 }
 
@@ -1038,6 +1087,16 @@ int main(int argc, char ** argv)
             else if (args[i] == "--creep") drawCreep = true;
         }
         return cmdRender(args[1], args[2], args[3], drawUnits, drawLocations, drawCreep);
+    }
+
+    if (command == "creep-kin" && args.size() == 5)
+    {
+        try {
+            return cmdCreepKin(args[1],
+                static_cast<std::uint16_t>(std::stoul(args[2])),
+                static_cast<std::uint32_t>(std::stoul(args[3])),
+                std::stoi(args[4]));
+        } catch (const std::exception &) { return usage(argv[0]); }
     }
 
     if (command == "mega-sheet" && args.size() == 6)
