@@ -428,7 +428,7 @@ Result MapArchive::open(const std::string & filePath)
 
 // ---------------------------------------------------------------- 소리
 
-std::vector<MapArchive::MapSound> MapArchive::sounds() const
+std::vector<MapArchive::MapSound> MapArchive::sounds(bool checkArchive) const
 {
     std::vector<MapSound> out;
     if (!impl_->isOpen())
@@ -440,7 +440,7 @@ std::vector<MapArchive::MapSound> MapArchive::sounds() const
         // 맵 안에 파일이 들어 있는지 보려면 MPQ 를 열어야 한다. 여는 데
         // 실패해도(새 맵이거나 .chk 라면) 목록 자체는 보여 준다.
         MapFile & mutableMap = const_cast<MapFile &>(map);
-        const bool opened = !impl_->sourcePath.empty() &&
+        const bool opened = checkArchive && !impl_->sourcePath.empty() &&
             mutableMap.MpqFile::open(impl_->sourcePath, /*readOnly*/ true,
                                      /*createIfNotFound*/ false);
 
@@ -2710,6 +2710,31 @@ TriggerArg describeActionArg(const TextTrigGenerator & generator,
 
 } // namespace
 
+namespace {
+
+/// 소리 인자에 맵에 든 소리를 고를 수 있게 채운다. 목록에 없는 경로를
+/// 직접 적는 길도 열어 두어야 하므로 kind 는 Sound 로 남긴다.
+void fillSoundChoices(TriggerArg & arg, const std::vector<MapArchive::MapSound> & sounds)
+{
+    if (arg.kind != TriggerArgKind::Sound)
+        return;
+
+    for (const auto & sound : sounds)
+    {
+        if (sound.path.empty())
+            continue;
+
+        std::string label = sound.path;
+        if (!sound.inArchive)
+            label += "  (맵에 없음)";
+
+        arg.choices.push_back(TriggerChoice{static_cast<std::uint32_t>(sound.stringId),
+                                            std::move(label)});
+    }
+}
+
+} // namespace
+
 std::vector<TriggerElement> MapArchive::triggerConditions(std::size_t index,
                                                           const GameGraphics & graphics) const
 {
@@ -2800,6 +2825,8 @@ std::vector<TriggerElement> MapArchive::triggerActions(std::size_t index,
         if (!generator.loadScenario(scenario, *scData))
             return out;
 
+        const auto mapSounds = sounds(/*checkArchive*/ false);
+
         const Chk::Trigger & trigger = map.getTrigger(index);
         for (std::size_t slot = 0; slot < Chk::Trigger::MaxActions; ++slot)
         {
@@ -2820,6 +2847,7 @@ std::vector<TriggerElement> MapArchive::triggerActions(std::size_t index,
                     if (arg.kind == TriggerArgKind::None)
                         continue;
 
+                    fillSoundChoices(arg, mapSounds);
                     arg.text = impl_->decode(arg.text);
                     for (auto & choice : arg.choices)
                         choice.text = impl_->decode(choice.text);
@@ -3471,6 +3499,8 @@ std::vector<TriggerElement> MapArchive::briefingActions(std::size_t index,
         if (!generator.loadScenario(scenario, *scData))
             return out;
 
+        const auto mapSounds = sounds(/*checkArchive*/ false);
+
         const Chk::Trigger & briefing = map.getBriefingTrigger(index);
         for (std::size_t slot = 0; slot < Chk::Trigger::MaxActions; ++slot)
         {
@@ -3491,6 +3521,7 @@ std::vector<TriggerElement> MapArchive::briefingActions(std::size_t index,
                     if (arg.kind == TriggerArgKind::None)
                         continue;
 
+                    fillSoundChoices(arg, mapSounds);
                     arg.text = impl_->decode(arg.text);
                     for (auto & choice : arg.choices)
                         choice.text = impl_->decode(choice.text);

@@ -715,9 +715,9 @@ bool MapDocument::moveAction(std::size_t triggerIndex, std::size_t from, std::si
     return true;
 }
 
-std::vector<io::MapArchive::MapSound> MapDocument::sounds() const
+std::vector<io::MapArchive::MapSound> MapDocument::sounds(bool checkArchive) const
 {
-    return archive_.sounds();
+    return archive_.sounds(checkArchive);
 }
 
 bool MapDocument::addSound(const std::string & sourceFilePath, const std::string & mapPath)

@@ -520,7 +520,10 @@ public:
     };
 
     /// 맵에 등록된 소리 목록.
-    std::vector<MapSound> sounds() const;
+    ///
+    /// checkArchive 를 켜면 파일이 맵 안에 실제로 들어 있는지 MPQ 를 열어
+    /// 확인한다. 트리거 편집기처럼 경로만 필요할 때는 끄는 편이 빠르다.
+    std::vector<MapSound> sounds(bool checkArchive = true) const;
 
     /// 바깥 WAV 파일을 맵에 넣고 소리 목록에 올린다.
     ///

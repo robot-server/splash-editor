@@ -1,6 +1,7 @@
 #include "ui/trigger_argument_panel.h"
 
 #include <QComboBox>
+#include <QLineEdit>
 #include <QFormLayout>
 #include <QLabel>
 #include <QPlainTextEdit>
@@ -145,8 +146,54 @@ void TriggerArgumentPanel::rebuild()
                 break;
             }
 
-            case io::TriggerArgKind::Text:
             case io::TriggerArgKind::Sound:
+            {
+                // 맵에 든 소리를 고르거나, 목록에 없는 경로를 직접 적는다.
+                auto * box = new QComboBox(body_);
+                box->setEditable(true);
+                box->setInsertPolicy(QComboBox::NoInsert);
+
+                QString current = QString::fromStdString(arg.text);
+                if (current.startsWith('"') && current.endsWith('"') && current.size() >= 2)
+                    current = current.mid(1, current.size() - 2);
+
+                int found = -1;
+                for (std::size_t c = 0; c < arg.choices.size(); ++c)
+                {
+                    const auto & choice = arg.choices[c];
+                    box->addItem(QString::fromStdString(choice.text),
+                                 QVariant::fromValue(choice.value));
+                    if (choice.value == arg.value)
+                        found = static_cast<int>(c);
+                }
+
+                if (found >= 0)
+                    box->setCurrentIndex(found);
+                else
+                    box->setEditText(current);
+
+                // 목록에서 고르면 그 문자열 번호를 그대로 쓴다 — 새 문자열을
+                // 만들지 않아 STR 이 불어나지 않는다.
+                connect(box, &QComboBox::activated, this, [this, box, i](int index) {
+                    if (loading_ || index < 0)
+                        return;
+                    emit argChanged(slot_, i, box->itemData(index).toUInt());
+                });
+
+                // 직접 적은 경로는 글자로 넘긴다.
+                connect(box->lineEdit(), &QLineEdit::editingFinished, this, [this, box, i] {
+                    if (loading_)
+                        return;
+                    if (box->findText(box->currentText()) >= 0)
+                        return; // 목록에 있는 것은 위에서 처리했다
+                    emit argTextChanged(slot_, i, box->currentText());
+                });
+
+                form_->addRow(label, box);
+                break;
+            }
+
+            case io::TriggerArgKind::Text:
             {
                 auto * edit = new QPlainTextEdit(body_);
                 // 인용 부호를 벗겨 내 실제 글자만 보여 준다.
@@ -154,7 +201,7 @@ void TriggerArgumentPanel::rebuild()
                 if (text.startsWith('"') && text.endsWith('"') && text.size() >= 2)
                     text = text.mid(1, text.size() - 2);
                 edit->setPlainText(text);
-                edit->setMaximumHeight(arg.kind == io::TriggerArgKind::Sound ? 48 : 110);
+                edit->setMaximumHeight(110);
 
                 auto * apply = new QPushButton(tr("적용"), body_);
                 connect(apply, &QPushButton::clicked, this, [this, edit, i] {

@@ -250,7 +250,7 @@ public:
 
     // --- 소리 (WAV) ---
 
-    std::vector<io::MapArchive::MapSound> sounds() const;
+    std::vector<io::MapArchive::MapSound> sounds(bool checkArchive = true) const;
     bool addSound(const std::string & sourceFilePath, const std::string & mapPath = {});
     bool removeSound(std::size_t soundIndex, bool removeIfUsed = false);
     bool extractSound(std::size_t soundIndex, const std::string & destFilePath) const;
