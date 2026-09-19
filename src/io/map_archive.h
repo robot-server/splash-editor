@@ -296,6 +296,19 @@ class GameGraphics;
 /// 알 수 없는 번호면 "Unit <번호>" 를 돌려준다.
 std::string unitTypeName(std::uint16_t type);
 
+/// 그 자리를 덮는 ISOM 마름모의 한가운데 (맵 픽셀 좌표).
+///
+/// ISOM 브러시는 마름모 단위로 놓이므로, 미리보기를 이 자리에 맞춰야
+/// 실제로 바뀌는 곳과 어긋나지 않는다.
+struct IsomDiamondCentre
+{
+    int x = 0;
+    int y = 0;
+    int halfWidth = 0;  ///< 마름모의 가로 반지름 (픽셀)
+    int halfHeight = 0;
+};
+IsomDiamondCentre isomDiamondCentre(int pixelX, int pixelY, int brushSize = 1);
+
 /// 업그레이드·기술 종류의 이름과 개수.
 std::string upgradeTypeName(std::uint16_t type);
 std::size_t upgradeTypeCount();

@@ -321,6 +321,7 @@ void MapView::paintEvent(QPaintEvent * event)
         paintUnits(painter, dirty);
 
     paintPlacementPreview(painter);
+    paintTerrainCursor(painter);
 }
 
 const QVector<QPixmap> & MapView::creepTiles()
@@ -1073,6 +1074,81 @@ void MapView::paintPlacementPreview(QPainter & painter)
     painter.restore();
 }
 
+void MapView::paintTerrainCursor(QPainter & painter)
+{
+    if (tool_ != Tool::Terrain || !hasHover_ || document_ == nullptr)
+        return;
+
+    const double tile = scaledTileSize();
+    if (tile <= 0)
+        return;
+
+    const int originX = horizontalScrollBar()->value();
+    const int originY = verticalScrollBar()->value();
+    const double scale = tile / io::kTilePixels;
+
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing, true);
+
+    const QColor line(255, 236, 120, 220);
+    const QColor fill(255, 236, 120, 40);
+
+    if (terrainMode_ == TerrainMode::Isometric)
+    {
+        // 마름모의 자리와 크기는 io 가 MappingCore 와 같은 식으로 계산해
+        // 준다 — 미리보기와 실제로 바뀌는 곳이 어긋나지 않는다.
+        const auto centre = io::isomDiamondCentre(hoverPos_.x(), hoverPos_.y(), brushSize_);
+
+        const double centreX = centre.x * scale - originX;
+        const double centreY = centre.y * scale - originY;
+        const double halfWidth = centre.halfWidth * scale;
+        const double halfHeight = centre.halfHeight * scale;
+
+        QPolygonF diamond;
+        diamond << QPointF(centreX, centreY - halfHeight)
+                << QPointF(centreX + halfWidth, centreY)
+                << QPointF(centreX, centreY + halfHeight)
+                << QPointF(centreX - halfWidth, centreY);
+
+        painter.setBrush(fill);
+        painter.setPen(QPen(line, 2));
+        painter.drawPolygon(diamond);
+    }
+    else
+    {
+        // 사각형 — 칠할 타일 범위를 그대로 보여 준다.
+        const int extent = (terrainMode_ == TerrainMode::Subtile) ? 1 : brushSize_;
+        const int half = extent / 2;
+
+        const int centreX = static_cast<int>(hoverPos_.x()) / io::kTilePixels;
+        const int centreY = static_cast<int>(hoverPos_.y()) / io::kTilePixels;
+
+        const QRectF box((centreX - half) * tile - originX,
+                         (centreY - half) * tile - originY,
+                         tile * extent, tile * extent);
+
+        painter.setBrush(fill);
+        painter.setPen(QPen(line, 2));
+        painter.drawRect(box);
+
+        // 한 칸짜리는 격자를 함께 그려 어디에 떨어질지 분명히 한다.
+        if (extent > 1)
+        {
+            painter.setBrush(Qt::NoBrush);
+            painter.setPen(QPen(QColor(255, 236, 120, 90), 1));
+            for (int i = 1; i < extent; ++i)
+            {
+                const double x = box.left() + i * tile;
+                const double y = box.top() + i * tile;
+                painter.drawLine(QPointF(x, box.top()), QPointF(x, box.bottom()));
+                painter.drawLine(QPointF(box.left(), y), QPointF(box.right(), y));
+            }
+        }
+    }
+
+    painter.restore();
+}
+
 bool MapView::placeAt(const QPointF & screenPos)
 {
     if (document_ == nullptr || !document_->isOpen())
@@ -1456,16 +1532,20 @@ void MapView::applyIsomAt(const QPointF & screenPos)
 
 void MapView::mouseMoveEvent(QMouseEvent * event)
 {
-    if (isomPainting_)
+    if (isomPainting_ || painting_)
     {
-        applyIsomAt(event->position());
-        event->accept();
-        return;
-    }
+        // 칠하는 동안에도 브러시 자리를 보여 준다.
+        const QPointF mapPos = screenToMap(event->position());
+        hoverPos_ = QPoint(static_cast<int>(std::max(0.0, mapPos.x())),
+                           static_cast<int>(std::max(0.0, mapPos.y())));
+        hasHover_ = true;
 
-    if (painting_)
-    {
-        paintTerrainAt(event->position());
+        if (isomPainting_)
+            applyIsomAt(event->position());
+        else
+            paintTerrainAt(event->position());
+
+        viewport()->update();
         event->accept();
         return;
     }
@@ -1474,6 +1554,32 @@ void MapView::mouseMoveEvent(QMouseEvent * event)
     {
         paintFogAt(event->position());
         event->accept();
+        return;
+    }
+
+    // 지형 도구는 브러시가 덮을 자리를 커서 둘레에 보여 준다.
+    if (tool_ == Tool::Terrain)
+    {
+        if (document_ != nullptr && document_->isOpen())
+        {
+            const QPointF mapPos = screenToMap(event->position());
+            const QPoint at(static_cast<int>(std::max(0.0, mapPos.x())),
+                            static_cast<int>(std::max(0.0, mapPos.y())));
+
+            const int tileX = at.x() / io::kTilePixels;
+            const int tileY = at.y() / io::kTilePixels;
+            const int wasX = hoverPos_.x() / io::kTilePixels;
+            const int wasY = hoverPos_.y() / io::kTilePixels;
+
+            hoverPos_ = at;
+            if (!hasHover_ || tileX != wasX || tileY != wasY)
+            {
+                hasHover_ = true;
+                viewport()->update();
+            }
+        }
+
+        QAbstractScrollArea::mouseMoveEvent(event);
         return;
     }
 

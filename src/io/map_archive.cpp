@@ -207,6 +207,28 @@ std::string techTypeName(std::uint16_t type)
 
 std::size_t techTypeCount() { return kTechNames.size(); }
 
+IsomDiamondCentre isomDiamondCentre(int pixelX, int pixelY, int brushSize)
+{
+    IsomDiamondCentre out;
+    if (pixelX < 0 || pixelY < 0)
+        return out;
+
+    // MappingCore 가 쓰는 것과 같은 변환이다. 마름모 (x, y) 의 오른쪽
+    // 아래 사각형이 ISOM 격자 (x, y) 이고, 격자 한 칸은 가로 두 타일·
+    // 세로 한 타일이다. 그래서 마름모 한가운데는 (x*2, y) 타일 모서리가 된다.
+    const auto diamond = Chk::IsomDiamond::fromMapCoordinates(
+        static_cast<std::size_t>(pixelX), static_cast<std::size_t>(pixelY));
+
+    out.x = static_cast<int>(diamond.x) * 2 * kTilePixels;
+    out.y = static_cast<int>(diamond.y) * kTilePixels;
+
+    // 마름모 하나는 가로 네 타일·세로 두 타일을 덮는다.
+    const int size = std::max(1, brushSize);
+    out.halfWidth = 2 * kTilePixels * size;
+    out.halfHeight = kTilePixels * size;
+    return out;
+}
+
 std::optional<std::vector<std::uint8_t>> readScenarioChk(const std::string & filePath)
 {
     std::error_code ec;

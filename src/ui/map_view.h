@@ -311,6 +311,9 @@ private:
     /// 커서 자리에 미리보기를 그린다.
     void paintPlacementPreview(QPainter & painter);
 
+    /// 지형 브러시가 덮을 자리를 커서 둘레에 그린다.
+    void paintTerrainCursor(QPainter & painter);
+
     /// 놓기 도구로 한 번 놓는다. 놓았으면 참.
     bool placeAt(const QPointF & screenPos);
 
