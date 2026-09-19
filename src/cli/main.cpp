@@ -1048,6 +1048,37 @@ int cmdUnitClasses(const std::string & installPath)
     return 0;
 }
 
+int cmdIcon(const std::string & installPath, std::uint16_t iconIndex, const std::string & outPath)
+{
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const auto image = graphics.renderIcon(iconIndex, 4);
+    if (image.width <= 0 || image.height <= 0)
+    {
+        std::cerr << "아이콘을 그리지 못했습니다.\n";
+        return 1;
+    }
+
+    std::ofstream out(outPath, std::ios::binary);
+    out << "P6\n" << image.width << " " << image.height << "\n255\n";
+    for (std::size_t i = 0; i + 3 < image.rgba.size(); i += 4)
+    {
+        out.put(static_cast<char>(image.rgba[i + 0]));
+        out.put(static_cast<char>(image.rgba[i + 1]));
+        out.put(static_cast<char>(image.rgba[i + 2]));
+    }
+
+    std::cout << "  아이콘 " << iconIndex << "  " << image.width << "x" << image.height
+              << " -> " << outPath << "\n";
+    return 0;
+}
+
 int cmdUnitImage(const std::string & installPath,
                  std::uint16_t unitType,
                  const std::string & outPath,
@@ -1726,6 +1757,12 @@ int main(int argc, char ** argv)
                 static_cast<std::size_t>(std::stoul(args[6])),
                 args[7], args[8]);
         } catch (const std::exception &) { return usage(argv[0]); }
+    }
+
+    if (command == "icon" && args.size() == 4)
+    {
+        try { return cmdIcon(args[1], static_cast<std::uint16_t>(std::stoul(args[2])), args[3]); }
+        catch (const std::exception &) { return usage(argv[0]); }
     }
 
     if (command == "trigger-args" && args.size() == 4)

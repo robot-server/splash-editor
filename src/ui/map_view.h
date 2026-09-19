@@ -151,6 +151,13 @@ public:
     UnitSnap unitSnap() const { return unitSnap_; }
     void setUnitSnap(UnitSnap snap);
 
+    /// 건물을 놓을 때 지형을 따질지.
+    ///
+    /// 켜면 게임이 건물을 지을 수 있는 땅(평지, 같은 높이)에만 놓는다.
+    /// 유즈맵은 일부러 물 위나 절벽에 올리는 일이 흔하므로 끌 수 있다.
+    bool terrainCheckEnabled() const { return checkTerrain_; }
+    void setTerrainCheckEnabled(bool enabled);
+
     /// 이미 유닛이 있는 자리에 겹쳐 놓을 수 있는지.
     ///
     /// 끄면 유닛의 차지 범위(units.dat 크기)가 겹치는 자리에는 놓지도,
@@ -273,12 +280,32 @@ private:
     bool unitWouldOverlap(std::uint16_t unitType, int x, int y,
                           int skipIndex = -1) const;
 
+    /// 그 자리의 땅이 이 유닛을 받아 줄 수 있는지 (건물만 따진다).
+    bool terrainAccepts(std::uint16_t unitType, int x, int y) const;
+
+    /// 지금 놓기 도구가 그 자리에 놓을 수 있는지.
+    bool canPlaceAt(int x, int y) const;
+
+    /// 커서 자리에 미리보기를 그린다.
+    void paintPlacementPreview(QPainter & painter);
+
+    /// 놓기 도구로 한 번 놓는다. 놓았으면 참.
+    bool placeAt(const QPointF & screenPos);
+
     Tool tool_ = Tool::Select;
     std::uint16_t brushTile_ = 0;
     TerrainMode terrainMode_ = TerrainMode::Rectangular;
     std::size_t isomTerrainType_ = 0;
     UnitSnap unitSnap_ = UnitSnap::Tile;
     bool allowStack_ = false;
+    bool checkTerrain_ = false;
+
+    // 놓기 도구가 커서를 따라 보여 주는 미리보기.
+    QPoint hoverPos_ {-1, -1};   ///< 맵 좌표로 옮긴 커서 자리
+    bool hoverValid_ = false;    ///< 그 자리에 놓을 수 있는지
+    bool hasHover_ = false;
+    bool placingDrag_ = false;   ///< 버튼을 누른 채 끌며 놓는 중
+    QPoint lastPlaced_ {-1, -1}; ///< 끌며 놓을 때 같은 자리에 겹쳐 놓지 않도록
 
     std::uint16_t placeUnitType_ = 0;
     std::uint8_t placeUnitOwner_ = 0;

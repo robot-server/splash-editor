@@ -43,6 +43,12 @@ struct GameGraphics::Impl
     bool loaded = false;
     bool unitsLoaded = false;
 
+    // 명령 카드 아이콘과 업그레이드·기술 표. 설정 창을 열 때 처음 읽는다.
+    mutable std::unique_ptr<Sc::Sprite::Grp> icons;
+    mutable bool iconsLoaded = false;
+    mutable bool upgradesLoaded = false;
+    mutable bool techsLoaded = false;
+
     const Sc::Terrain::Tiles & tiles(std::uint16_t tilesetId) const
     {
         return scData->terrain.get(
@@ -462,6 +468,22 @@ GameGraphics::UnitBounds GameGraphics::unitBounds(std::uint16_t unitType) const
     bounds.right = dat.unitSizeRight;
     bounds.down = dat.unitSizeDown;
     return bounds;
+}
+
+GameGraphics::PlacementBox GameGraphics::placementBox(std::uint16_t unitType) const
+{
+    PlacementBox box;
+    if (!hasUnitGraphics())
+        return box;
+
+    const Sc::Unit & units = impl_->scData->units;
+    if (unitType >= units.numUnitTypes())
+        return box;
+
+    const auto & dat = units.getUnit(Sc::Unit::Type(unitType));
+    box.width = dat.starEditPlacementBoxWidth;
+    box.height = dat.starEditPlacementBoxHeight;
+    return box;
 }
 
 GameGraphics::UnitClass GameGraphics::unitClass(std::uint16_t unitType) const
@@ -1082,6 +1104,163 @@ UnitImage composeActor(Sc::Data & sc,
 }
 
 } // namespace
+
+UnitImage GameGraphics::renderIcon(std::uint16_t iconIndex, std::uint16_t tilesetId) const
+{
+    UnitImage out;
+    if (!isLoaded())
+        return out;
+
+    try
+    {
+        // 아이콘 묶음은 한 번만 읽어 둔다 — 창을 열 때마다 수백 번 부른다.
+        if (!impl_->iconsLoaded)
+        {
+            impl_->iconsLoaded = true;
+            // 아이콘 묶음의 경로는 설치본마다 다르다. 리마스터 CASC 는
+            // 옛 MPQ 와 다른 자리에 두는 경우가 있어 알려진 자리를 차례로
+            // 두드려 본다.
+            // 구분 기호는 아카이브 종류에 따라 다르므로 MappingCore 의
+            // 조립 함수를 쓴다.
+            const std::string kIconPaths[] {
+                makeArchiveFilePath("unit\\cmdbtns", "cmdicons.grp"),
+                makeArchiveFilePath("unit\\cmdbtns", "cmdicons.GRP"),
+                makeArchiveFilePath("game", "cmdicons.grp"),
+                makeArchiveFilePath("unit\\cmdbtns", "icons.grp"),
+                "unit\\cmdbtns\\cmdicons.grp",
+                "unit/cmdbtns/cmdicons.grp",
+            };
+
+            // Grp::load 는 파일이 없어도 참을 돌려주므로(빈 데이터를 그대로
+            // 둔다) 먼저 자산이 있는지 직접 확인한다.
+            for (const std::string & path : kIconPaths)
+            {
+                if (!Sc::Data::GetAsset(*impl_->cluster, path, true))
+                    continue;
+
+                auto candidate = std::make_unique<Sc::Sprite::Grp>();
+                if (candidate->load(*impl_->cluster, path))
+                {
+                    impl_->icons = std::move(candidate);
+                    break;
+                }
+            }
+        }
+        if (!impl_->icons)
+            return out;
+
+        const Sc::Sprite::GrpFile & grp = impl_->icons->get();
+        if (iconIndex >= grp.numFrames)
+            return out;
+
+        const Sc::Terrain::Tiles & tiles = impl_->scData->terrain.get(Sc::Terrain::Tileset(tilesetId & 7));
+        const auto & palette = tiles.systemColorPalette;
+
+        const Sc::Sprite::GrpFrameHeader & header = grp.frameHeaders[iconIndex];
+        out.width = header.frameWidth;
+        out.height = header.frameHeight;
+        if (out.width <= 0 || out.height <= 0)
+        {
+            out.width = out.height = 0;
+            return out;
+        }
+        out.rgba.assign(static_cast<std::size_t>(out.width) * out.height * 4, 0);
+        out.anchorX = out.width / 2;
+        out.anchorY = out.height / 2;
+
+        const auto * frameStart = reinterpret_cast<const std::uint8_t *>(&grp) + header.frameOffset;
+        const auto * rowOffsets = reinterpret_cast<const std::uint16_t *>(frameStart);
+
+        for (int row = 0; row < out.height; ++row)
+        {
+            const std::uint8_t * lineBytes = frameStart + rowOffsets[row];
+
+            int x = 0;
+            std::size_t lineOffset = 0;
+            while (x < out.width)
+            {
+                const Sc::Sprite::PixelLine & line =
+                    reinterpret_cast<const Sc::Sprite::PixelLine &>(lineBytes[lineOffset]);
+
+                int length = static_cast<int>(line.lineLength());
+                if (x + length > out.width)
+                    length = out.width - x;
+                if (length <= 0)
+                    break;
+
+                if (line.isSpeckled() || line.isSolidLine())
+                {
+                    for (int i = 0; i < length; ++i)
+                    {
+                        const std::uint8_t index = line.isSpeckled()
+                            ? line.paletteIndex[i]
+                            : line.paletteIndex[0];
+
+                        const std::size_t at =
+                            (static_cast<std::size_t>(row) * out.width + (x + i)) * 4;
+
+                        const Sc::SystemColor & color = palette[index];
+                        out.rgba[at + 0] = color.red;
+                        out.rgba[at + 1] = color.green;
+                        out.rgba[at + 2] = color.blue;
+                        out.rgba[at + 3] = 255;
+                    }
+                }
+
+                x += length;
+                lineOffset += line.sizeInBytes();
+            }
+        }
+    }
+    catch (const std::exception &)
+    {
+        out = UnitImage {};
+    }
+
+    return out;
+}
+
+std::uint16_t GameGraphics::upgradeIcon(std::uint16_t upgradeType) const
+{
+    if (!isLoaded())
+        return 0;
+
+    try
+    {
+        if (!impl_->upgradesLoaded)
+        {
+            impl_->upgradesLoaded = true;
+            if (!impl_->scData->upgrades.load(*impl_->cluster))
+                return 0;
+        }
+        return impl_->scData->upgrades.getUpgrade(Sc::Upgrade::Type(upgradeType)).icon;
+    }
+    catch (const std::exception &)
+    {
+    }
+    return 0;
+}
+
+std::uint16_t GameGraphics::techIcon(std::uint16_t techType) const
+{
+    if (!isLoaded())
+        return 0;
+
+    try
+    {
+        if (!impl_->techsLoaded)
+        {
+            impl_->techsLoaded = true;
+            if (!impl_->scData->techs.load(*impl_->cluster))
+                return 0;
+        }
+        return impl_->scData->techs.getTech(Sc::Tech::Type(techType)).icon;
+    }
+    catch (const std::exception &)
+    {
+    }
+    return 0;
+}
 
 UnitImage GameGraphics::renderUnit(std::uint16_t unitType,
                                    std::uint8_t owner,

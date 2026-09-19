@@ -131,6 +131,15 @@ public:
     };
     UnitBounds unitBounds(std::uint16_t unitType) const;
 
+    /// 건물이 차지하는 칸 수 (units.dat 의 StarEdit 배치 상자, 픽셀).
+    /// 건물을 놓을 수 있는지 볼 때 이 범위의 타일을 살핀다.
+    struct PlacementBox
+    {
+        int width = 0;   ///< 픽셀
+        int height = 0;
+    };
+    PlacementBox placementBox(std::uint16_t unitType) const;
+
     /// 이 유닛이 크립을 만드는 저그 건물인지 (units.dat 의 CreepBuilding 특성).
     bool isCreepBuilding(std::uint16_t unitType) const;
 
@@ -220,6 +229,16 @@ public:
     /// 지형 팔레트를 쓴다.
     /// resourceAmount 는 자원 유닛(미네랄·베스핀)의 그래픽 단계를 가른다.
     /// 0 이면 고갈된 모습이 되므로 실제 맵 값을 넘겨야 한다.
+    /// 명령 카드 아이콘 하나 (unit\\cmdbtns\\cmdicons.grp 의 프레임).
+    ///
+    /// 유닛·업그레이드·기술 설정 창에서 무엇을 고치는 중인지 한눈에
+    /// 보이라고 쓴다. 없으면 빈 이미지를 준다.
+    UnitImage renderIcon(std::uint16_t iconIndex, std::uint16_t tilesetId) const;
+
+    /// 업그레이드·기술의 아이콘 번호 (dat 의 icon 필드).
+    std::uint16_t upgradeIcon(std::uint16_t upgradeType) const;
+    std::uint16_t techIcon(std::uint16_t techType) const;
+
     UnitImage renderUnit(std::uint16_t unitType,
                          std::uint8_t owner,
                          std::uint16_t tilesetId,

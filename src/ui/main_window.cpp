@@ -458,6 +458,18 @@ void MainWindow::buildMenus()
         });
     }
 
+    QAction * terrainCheckAction = toolMenu->addAction(tr("건물 지형 검사"));
+    terrainCheckAction->setCheckable(true);
+    terrainCheckAction->setChecked(mapView_->terrainCheckEnabled());
+    terrainCheckAction->setToolTip(
+        tr("켜면 건물을 지을 수 있는 평지에만 놓습니다. 유즈맵처럼 일부러 "
+           "물이나 절벽에 올릴 때는 끄세요."));
+    connect(terrainCheckAction, &QAction::toggled, this, [this](bool on) {
+        mapView_->setTerrainCheckEnabled(on);
+        statusBar()->showMessage(on ? tr("건물은 지을 수 있는 땅에만 놓습니다")
+                                    : tr("지형을 따지지 않고 놓습니다"), 2500);
+    });
+
     QAction * stackAction = toolMenu->addAction(tr("유닛 겹쳐 놓기 허용"));
     stackAction->setCheckable(true);
     stackAction->setChecked(mapView_->unitStackingAllowed());

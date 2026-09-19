@@ -35,6 +35,9 @@ MapView::MapView(QWidget * parent) : QAbstractScrollArea(parent)
     setFocusPolicy(Qt::StrongFocus);
     viewport()->setAutoFillBackground(true);
 
+    // 버튼을 누르지 않아도 커서를 따라 미리보기를 그려야 한다.
+    viewport()->setMouseTracking(true);
+
     // 스크롤이 움직이면 미니맵이 따라와야 한다. 매 페인트마다 알리는 것보다
     // 스크롤 신호에 붙이는 편이 싸다.
     connect(horizontalScrollBar(), &QScrollBar::valueChanged,
@@ -314,6 +317,8 @@ void MapView::paintEvent(QPaintEvent * event)
         paintLocations(painter, dirty);
     if (showUnits_)
         paintUnits(painter, dirty);
+
+    paintPlacementPreview(painter);
 }
 
 const QVector<QPixmap> & MapView::creepTiles()
@@ -773,6 +778,216 @@ bool MapView::unitWouldOverlap(std::uint16_t unitType, int x, int y, int skipInd
     return false;
 }
 
+void MapView::setTerrainCheckEnabled(bool enabled)
+{
+    checkTerrain_ = enabled;
+    viewport()->update();
+}
+
+bool MapView::terrainAccepts(std::uint16_t unitType, int x, int y) const
+{
+    if (!checkTerrain_ || document_ == nullptr || tileset_ == nullptr)
+        return true;
+
+    // 땅을 따지는 것은 건물뿐이다. 유닛은 게임에서도 물 위를 지나다닌다.
+    const auto unitInfo = tileset_->unitClass(unitType);
+    if (!unitInfo.building)
+        return true;
+
+    const auto box = tileset_->placementBox(unitType);
+    if (box.width <= 0 || box.height <= 0)
+        return true;
+
+    const auto & info = document_->info();
+    const auto & tiles = document_->tiles();
+    if (tiles.empty())
+        return true;
+
+    // 배치 상자는 유닛 좌표를 가운데로 둔다.
+    const int left = (x - box.width / 2) / io::kTilePixels;
+    const int top = (y - box.height / 2) / io::kTilePixels;
+    const int right = (x + box.width / 2 - 1) / io::kTilePixels;
+    const int bottom = (y + box.height / 2 - 1) / io::kTilePixels;
+
+    if (left < 0 || top < 0 || right >= info.width || bottom >= info.height)
+        return false;
+
+    // 모든 칸이 지을 수 있는 땅이고 높이가 같아야 한다 — 게임과 같은 규칙이다.
+    int elevation = -1;
+    for (int ty = top; ty <= bottom; ++ty)
+    {
+        for (int tx = left; tx <= right; ++tx)
+        {
+            const std::size_t index = static_cast<std::size_t>(ty) * info.width + tx;
+            if (index >= tiles.size())
+                return false;
+
+            const auto terrain = tileset_->tileTerrain(info.tilesetId, tiles[index]);
+            if (!terrain.buildable)
+                return false;
+
+            if (elevation < 0)
+                elevation = terrain.elevation;
+            else if (terrain.elevation != elevation)
+                return false;
+        }
+    }
+    return true;
+}
+
+bool MapView::canPlaceAt(int x, int y) const
+{
+    const std::uint16_t type =
+        (tool_ == Tool::PlaceSprite) ? placeSpriteType_ : placeUnitType_;
+
+    // 스프라이트는 장식이라 겹침·지형을 따지지 않는다.
+    if (tool_ == Tool::PlaceSprite)
+        return true;
+
+    if (!allowStack_ && unitWouldOverlap(type, x, y))
+        return false;
+    if (!terrainAccepts(type, x, y))
+        return false;
+    return true;
+}
+
+void MapView::paintPlacementPreview(QPainter & painter)
+{
+    if (!hasHover_ || document_ == nullptr || tileset_ == nullptr)
+        return;
+    if (tool_ != Tool::PlaceUnit && tool_ != Tool::PlaceSprite)
+        return;
+
+    const double tile = scaledTileSize();
+    if (tile <= 0)
+        return;
+
+    const int originX = horizontalScrollBar()->value();
+    const int originY = verticalScrollBar()->value();
+    const double scale = tile / io::kTilePixels;
+
+    const std::uint16_t type =
+        (tool_ == Tool::PlaceSprite) ? placeSpriteType_ : placeUnitType_;
+
+    painter.save();
+
+    // --- 건물이면 게임의 건설 화면처럼 놓일 칸을 격자로 보여 준다 ---
+    const auto unitInfo = tileset_->unitClass(type);
+    const auto box = tileset_->placementBox(type);
+    if (tool_ == Tool::PlaceUnit && unitInfo.building && box.width > 0 && box.height > 0)
+    {
+        const int left = hoverPos_.x() - box.width / 2;
+        const int top = hoverPos_.y() - box.height / 2;
+        const int cols = std::max(1, box.width / io::kTilePixels);
+        const int rows = std::max(1, box.height / io::kTilePixels);
+
+        const QColor fill = hoverValid_ ? QColor(0, 220, 0, 60) : QColor(220, 0, 0, 70);
+        const QColor line = hoverValid_ ? QColor(0, 255, 0, 190) : QColor(255, 60, 60, 190);
+
+        for (int row = 0; row < rows; ++row)
+        {
+            for (int col = 0; col < cols; ++col)
+            {
+                const double x = (left + col * io::kTilePixels) * scale - originX;
+                const double y = (top + row * io::kTilePixels) * scale - originY;
+                const QRectF cell(x, y, tile, tile);
+
+                painter.fillRect(cell, fill);
+                painter.setPen(QPen(line, 1));
+                painter.drawRect(cell);
+            }
+        }
+    }
+
+    // --- 유닛·스프라이트 그림을 반투명하게 겹쳐 그린다 ---
+    const UnitSprite * sprite = (tool_ == Tool::PlaceSprite)
+        ? mapSprite(type, placeUnitOwner_, /*drawnAsSprite*/ true)
+        : unitSprite(type, placeUnitOwner_, /*resourceAmount*/ 0);
+
+    if (sprite != nullptr && !sprite->pixmap.isNull())
+    {
+        const QPixmap & pixmap = sprite->pixmap;
+        const double left = (hoverPos_.x() - sprite->anchorX) * scale - originX;
+        const double top = (hoverPos_.y() - sprite->anchorY) * scale - originY;
+
+        painter.setOpacity(hoverValid_ ? 0.65 : 0.35);
+        painter.drawPixmap(QRectF(left, top, pixmap.width() * scale, pixmap.height() * scale),
+                           pixmap, QRectF(pixmap.rect()));
+        painter.setOpacity(1.0);
+    }
+    else
+    {
+        // 그림이 없으면 자리만 표시한다.
+        const double x = hoverPos_.x() * scale - originX;
+        const double y = hoverPos_.y() * scale - originY;
+        painter.setPen(QPen(hoverValid_ ? QColor(0, 255, 0) : QColor(255, 60, 60), 2));
+        painter.drawEllipse(QPointF(x, y), tile / 2, tile / 2);
+    }
+
+    painter.restore();
+}
+
+bool MapView::placeAt(const QPointF & screenPos)
+{
+    if (document_ == nullptr || !document_->isOpen())
+        return false;
+
+    const QPointF mapPos = screenToMap(screenPos);
+    auto * doc = const_cast<chk::MapDocument *>(document_);
+
+    if (tool_ == Tool::PlaceSprite)
+    {
+        const QPoint pos = snapUnitPos(placeSpriteType_,
+                                       static_cast<int>(std::max(0.0, mapPos.x())),
+                                       static_cast<int>(std::max(0.0, mapPos.y())));
+        if (pos == lastPlaced_)
+            return false;
+
+        if (doc->addSprite(placeSpriteType_, placeUnitOwner_,
+                           static_cast<std::uint16_t>(pos.x()),
+                           static_cast<std::uint16_t>(pos.y()),
+                           /*drawnAsSprite*/ true))
+        {
+            lastPlaced_ = pos;
+            refresh();
+            emit documentEdited();
+            return true;
+        }
+        return false;
+    }
+
+    const QPoint pos = snapUnitPos(placeUnitType_,
+                                   static_cast<int>(std::max(0.0, mapPos.x())),
+                                   static_cast<int>(std::max(0.0, mapPos.y())));
+    if (pos == lastPlaced_)
+        return false;
+
+    if (!canPlaceAt(pos.x(), pos.y()))
+    {
+        // 끌며 놓는 동안에는 잔소리를 하지 않는다.
+        if (!placingDrag_)
+        {
+            emit placementRejected(
+                !allowStack_ && unitWouldOverlap(placeUnitType_, pos.x(), pos.y())
+                    ? tr("이미 다른 유닛이 있는 자리입니다 — 겹치기를 허용하면 놓을 수 있습니다.")
+                    : tr("이 땅에는 건물을 지을 수 없습니다 — 지형 검사를 끄면 놓을 수 있습니다."));
+        }
+        return false;
+    }
+
+    if (doc->addUnit(placeUnitType_, placeUnitOwner_,
+                     static_cast<std::uint16_t>(pos.x()),
+                     static_cast<std::uint16_t>(pos.y())))
+    {
+        lastPlaced_ = pos;
+        refresh();
+        emit documentEdited();
+        emit unitPlaced(placeUnitType_);
+        return true;
+    }
+    return false;
+}
+
 void MapView::setBrushSize(int size)
 {
     brushSize_ = std::clamp(size, 1, 16);
@@ -923,45 +1138,13 @@ void MapView::mousePressEvent(QMouseEvent * event)
         return;
     }
 
-    if (tool_ == Tool::PlaceSprite)
+    if (tool_ == Tool::PlaceSprite || tool_ == Tool::PlaceUnit)
     {
-        const QPointF mapPos = screenToMap(event->position());
-        auto * doc = const_cast<chk::MapDocument *>(document_);
-        if (doc->addSprite(placeSpriteType_, placeUnitOwner_,
-                           static_cast<std::uint16_t>(std::max(0.0, mapPos.x())),
-                           static_cast<std::uint16_t>(std::max(0.0, mapPos.y())),
-                           /*drawnAsSprite*/ true))
-        {
-            refresh();
-            emit documentEdited();
-        }
-        event->accept();
-        return;
-    }
-
-    if (tool_ == Tool::PlaceUnit)
-    {
-        const QPointF mapPos = screenToMap(event->position());
-        const QPoint pos = snapUnitPos(placeUnitType_,
-                                       static_cast<int>(std::max(0.0, mapPos.x())),
-                                       static_cast<int>(std::max(0.0, mapPos.y())));
-
-        if (!allowStack_ && unitWouldOverlap(placeUnitType_, pos.x(), pos.y()))
-        {
-            emit placementRejected(tr("이미 다른 유닛이 있는 자리입니다 — 겹치기를 허용하면 놓을 수 있습니다."));
-            event->accept();
-            return;
-        }
-
-        auto * doc = const_cast<chk::MapDocument *>(document_);
-        if (doc->addUnit(placeUnitType_, placeUnitOwner_,
-                         static_cast<std::uint16_t>(pos.x()),
-                         static_cast<std::uint16_t>(pos.y())))
-        {
-            refresh();
-            emit documentEdited();
-            emit unitPlaced(placeUnitType_);
-        }
+        // 누른 채 끌면 이어서 놓는다. 같은 자리에 겹쳐 놓지 않도록
+        // 마지막으로 놓은 자리를 기억한다.
+        lastPlaced_ = QPoint(-1, -1);
+        placingDrag_ = true;
+        placeAt(event->position());
         event->accept();
         return;
     }
@@ -1105,6 +1288,35 @@ void MapView::mouseMoveEvent(QMouseEvent * event)
         return;
     }
 
+    // 놓기 도구는 커서를 따라 미리보기를 보여 준다.
+    if (tool_ == Tool::PlaceUnit || tool_ == Tool::PlaceSprite)
+    {
+        if (document_ != nullptr && document_->isOpen())
+        {
+            const QPointF mapPos = screenToMap(event->position());
+            const std::uint16_t type =
+                (tool_ == Tool::PlaceSprite) ? placeSpriteType_ : placeUnitType_;
+
+            const QPoint snapped = snapUnitPos(type,
+                                               static_cast<int>(std::max(0.0, mapPos.x())),
+                                               static_cast<int>(std::max(0.0, mapPos.y())));
+
+            if (!hasHover_ || snapped != hoverPos_)
+            {
+                hoverPos_ = snapped;
+                hoverValid_ = canPlaceAt(snapped.x(), snapped.y());
+                hasHover_ = true;
+                viewport()->update();
+            }
+
+            if (placingDrag_ && (event->buttons() & Qt::LeftButton))
+                placeAt(event->position());
+        }
+
+        event->accept();
+        return;
+    }
+
     if (!dragging_ || document_ == nullptr ||
         (selectedUnit_ < 0 && selectedLocation_ < 0))
     {
@@ -1167,6 +1379,14 @@ void MapView::mouseReleaseEvent(QMouseEvent * event)
     if (!dragging_)
     {
         QAbstractScrollArea::mouseReleaseEvent(event);
+        return;
+    }
+
+    if (placingDrag_)
+    {
+        placingDrag_ = false;
+        lastPlaced_ = QPoint(-1, -1);
+        event->accept();
         return;
     }
 
