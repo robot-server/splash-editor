@@ -67,6 +67,18 @@ public:
     /// 선택된 유닛을 지운다. 지웠으면 true.
     bool deleteSelectedUnit();
 
+    /// 선택된 유닛을 복사한다. 복사했으면 true.
+    bool copySelection();
+
+    /// 복사해 둔 유닛을 그 자리에 붙인다. 붙였으면 true.
+    bool pasteAt(const QPointF & screenPos);
+
+    /// 붙일 것이 있는지.
+    bool hasClipboard() const { return clipboardValid_; }
+
+    /// 화면 가운데에 붙인다 (메뉴에서 부를 때).
+    bool pasteAtCentre();
+
 signals:
     /// 문서가 편집되었다. 창이 제목·상태를 갱신하도록 알린다.
     void documentEdited();
@@ -231,6 +243,12 @@ private:
 
     int selectedUnit_ = -1;
     int selectedLocation_ = -1;
+
+    // 복사해 둔 유닛. 맵 사이에서도 붙일 수 있도록 값으로 들고 있는다.
+    bool clipboardValid_ = false;
+    std::uint16_t clipboardType_ = 0;
+    std::uint8_t clipboardOwner_ = 0;
+    std::uint32_t clipboardResource_ = 0;
     bool dragging_ = false;
     QPointF dragStartMap_;      ///< 드래그 시작 시 맵 좌표
     QPoint dragStartUnitPos_;   ///< 드래그 시작 시 유닛 좌표

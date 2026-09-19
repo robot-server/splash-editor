@@ -1068,6 +1068,48 @@ void MapView::mouseReleaseEvent(QMouseEvent * event)
     event->accept();
 }
 
+bool MapView::copySelection()
+{
+    if (selectedUnit_ < 0 || document_ == nullptr || !document_->isOpen())
+        return false;
+
+    const auto & units = document_->units();
+    if (static_cast<std::size_t>(selectedUnit_) >= units.size())
+        return false;
+
+    const auto & unit = units[static_cast<std::size_t>(selectedUnit_)];
+    clipboardType_ = unit.type;
+    clipboardOwner_ = unit.owner;
+    clipboardResource_ = unit.resourceAmount;
+    clipboardValid_ = true;
+    return true;
+}
+
+bool MapView::pasteAt(const QPointF & screenPos)
+{
+    if (!clipboardValid_ || document_ == nullptr || !document_->isOpen())
+        return false;
+
+    const QPointF mapPos = screenToMap(screenPos);
+    auto * doc = const_cast<chk::MapDocument *>(document_);
+    if (!doc->addUnit(clipboardType_, clipboardOwner_,
+                      static_cast<std::uint16_t>(std::max(0.0, mapPos.x())),
+                      static_cast<std::uint16_t>(std::max(0.0, mapPos.y()))))
+    {
+        return false;
+    }
+
+    refresh();
+    emit documentEdited();
+    emit unitPlaced(clipboardType_);
+    return true;
+}
+
+bool MapView::pasteAtCentre()
+{
+    return pasteAt(QPointF(viewport()->width() / 2.0, viewport()->height() / 2.0));
+}
+
 bool MapView::deleteSelectedUnit()
 {
     if (selectedUnit_ < 0 || document_ == nullptr || !document_->isOpen())

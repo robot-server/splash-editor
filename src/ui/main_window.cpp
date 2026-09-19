@@ -321,6 +321,26 @@ void MainWindow::buildMenus()
 
     editMenu->addSeparator();
 
+    QAction * copyAction = editMenu->addAction(tr("복사(&C)"));
+    copyAction->setShortcut(QKeySequence::Copy);
+    connect(copyAction, &QAction::triggered, this, [this] {
+        if (mapView_->copySelection())
+            statusBar()->showMessage(tr("유닛을 복사했습니다"), 2000);
+        else
+            statusBar()->showMessage(tr("복사할 유닛을 먼저 고르세요"), 2000);
+    });
+
+    QAction * pasteAction = editMenu->addAction(tr("붙여넣기(&V)"));
+    pasteAction->setShortcut(QKeySequence::Paste);
+    connect(pasteAction, &QAction::triggered, this, [this] {
+        if (mapView_->pasteAtCentre())
+            statusBar()->showMessage(tr("유닛을 붙였습니다"), 2000);
+        else
+            statusBar()->showMessage(tr("붙일 유닛이 없습니다"), 2000);
+    });
+
+    editMenu->addSeparator();
+
     QAction * unitPropsAction = editMenu->addAction(tr("유닛 속성(&P)…"));
     unitPropsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_E));
     connect(unitPropsAction, &QAction::triggered, this, &MainWindow::onUnitProperties);
