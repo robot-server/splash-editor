@@ -341,6 +341,80 @@ std::vector<std::uint16_t> GameGraphics::creepTileIds(std::uint16_t tilesetId) c
     return out;
 }
 
+std::size_t GameGraphics::megaTileCount(std::uint16_t tilesetId) const
+{
+    if (!impl_->loaded)
+        return 0;
+    return impl_->tiles(tilesetId).tileGraphics.size();
+}
+
+bool GameGraphics::renderMegaTile(std::uint16_t tilesetId, std::uint32_t megaTileIndex,
+                                  std::uint8_t * rgbaOut) const
+{
+    if (rgbaOut == nullptr || !impl_->loaded)
+        return false;
+
+    const Sc::Terrain::Tiles & tiles = impl_->tiles(tilesetId);
+    if (megaTileIndex >= tiles.tileGraphics.size())
+        return false;
+
+    const auto & graphics = tiles.tileGraphics[megaTileIndex];
+    for (int my = 0; my < 4; ++my)
+    {
+        for (int mx = 0; mx < 4; ++mx)
+        {
+            const auto & mini = graphics.miniTileGraphics[my][mx];
+            const std::uint32_t vr4Index = mini.vr4Index();
+            const bool flipped = mini.isFlipped();
+            if (vr4Index >= tiles.miniTilePixels.size())
+                continue;
+
+            const auto & pixels = tiles.miniTilePixels[vr4Index];
+            for (int py = 0; py < 8; ++py)
+            {
+                for (int px = 0; px < 8; ++px)
+                {
+                    const int srcX = flipped ? (7 - px) : px;
+                    const std::uint8_t paletteIndex = pixels.wpeIndex[py][srcX];
+                    const Sc::SystemColor & color = tiles.systemColorPalette[paletteIndex];
+                    const std::size_t at =
+                        ((static_cast<std::size_t>(my * 8 + py)) * kTilePixels + mx * 8 + px) * 4;
+                    rgbaOut[at + 0] = color.red;
+                    rgbaOut[at + 1] = color.green;
+                    rgbaOut[at + 2] = color.blue;
+                    rgbaOut[at + 3] = 255;
+                }
+            }
+        }
+    }
+    return true;
+}
+
+std::vector<std::string> GameGraphics::imageFileNames() const
+{
+    std::vector<std::string> out;
+    if (!hasUnitGraphics())
+        return out;
+
+    // Sc::Sprite 가 들고 있는 images.tbl 을 직접 읽을 수는 없으므로
+    // 아카이브에서 다시 읽는다. 진단 목적이라 비용은 문제되지 않는다.
+    try
+    {
+        Sc::TblFile tbl;
+        if (!tbl.load(*impl_->cluster, "arr\\images.tbl"))
+            return out;
+
+        out.reserve(tbl.numStrings());
+        for (std::size_t i = 0; i < tbl.numStrings(); ++i)
+            out.push_back(tbl.getString(i));
+    }
+    catch (const std::exception &)
+    {
+    }
+
+    return out;
+}
+
 GameGraphics::TilesetInfo GameGraphics::describeTileset(std::uint16_t tilesetId) const
 {
     TilesetInfo info;

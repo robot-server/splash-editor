@@ -417,11 +417,22 @@ const QPixmap * MapView::creepLayer()
         }
     }
 
+    // 블러 결과를 그대로 알파로 쓰면 크립 전체가 흐리멍덩해진다.
+    // 안쪽은 불투명하게 되돌리고 경계만 좁게 남긴다.
+    constexpr int kSolidAt = 170; // 이 이상이면 완전 불투명
+    constexpr int kClearAt = 60;  // 이 이하면 완전 투명
     for (int y = 0; y < layerH; ++y)
     {
         uchar * line = layer.scanLine(y);
         for (int x = 0; x < layerW; ++x)
-            line[x * 4 + 3] = static_cast<uchar>(alpha[static_cast<std::size_t>(y) * layerW + x]);
+        {
+            const int v = alpha[static_cast<std::size_t>(y) * layerW + x];
+            uchar a = 0;
+            if (v >= kSolidAt)      a = 255;
+            else if (v <= kClearAt) a = 0;
+            else a = static_cast<uchar>(255 * (v - kClearAt) / (kSolidAt - kClearAt));
+            line[x * 4 + 3] = a;
+        }
     }
 
     creepLayer_ = QPixmap::fromImage(layer);

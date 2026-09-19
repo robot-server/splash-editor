@@ -100,6 +100,18 @@ public:
         int tileHeight,
         std::uint16_t tilesetId) const;
 
+    /// 메가타일 하나를 직접 그린다(타일 그룹을 거치지 않는다).
+    /// 타일셋에 어떤 그림이 들어 있는지 훑어볼 때 쓴다.
+    bool renderMegaTile(std::uint16_t tilesetId, std::uint32_t megaTileIndex,
+                        std::uint8_t * rgbaOut) const;
+
+    /// 타일셋의 메가타일 개수.
+    std::size_t megaTileCount(std::uint16_t tilesetId) const;
+
+    /// images.tbl 에 든 GRP 파일 이름들. 게임 데이터에 어떤 그래픽이 있는지
+    /// 직접 확인할 때 쓴다(추측 대신 데이터를 보기 위한 통로).
+    std::vector<std::string> imageFileNames() const;
+
     /// 타일셋 진단 정보. 크립 타일이 어디에 있는지 등을 조사하는 데 쓴다.
     struct TilesetInfo
     {

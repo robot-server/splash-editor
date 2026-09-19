@@ -224,6 +224,90 @@ int cmdUnits(const std::string & mapPath, std::size_t limit)
     return 0;
 }
 
+int cmdMegaSheet(const std::string & installPath, std::uint16_t tilesetId,
+                 std::uint32_t first, int count, const std::string & outPath)
+{
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    constexpr int kCols = 16;
+    const int rows = (count + kCols - 1) / kCols;
+    const int W = kCols * splash::io::kTilePixels;
+    const int H = rows * splash::io::kTilePixels;
+    std::vector<std::uint8_t> canvas(static_cast<std::size_t>(W) * H * 3, 20);
+    std::vector<std::uint8_t> tile(splash::io::kTileRgbaBytes);
+
+    for (int i = 0; i < count; ++i)
+    {
+        if (!graphics.renderMegaTile(tilesetId, first + i, tile.data()))
+            continue;
+        const int r = i / kCols, c = i % kCols;
+        for (int y = 0; y < splash::io::kTilePixels; ++y)
+        {
+            for (int x = 0; x < splash::io::kTilePixels; ++x)
+            {
+                const std::size_t src =
+                    (static_cast<std::size_t>(y) * splash::io::kTilePixels + x) * 4;
+                const std::size_t dst =
+                    ((static_cast<std::size_t>(r) * splash::io::kTilePixels + y) * W +
+                     c * splash::io::kTilePixels + x) * 3;
+                canvas[dst + 0] = tile[src + 0];
+                canvas[dst + 1] = tile[src + 1];
+                canvas[dst + 2] = tile[src + 2];
+            }
+        }
+    }
+
+    std::ofstream out(outPath, std::ios::binary | std::ios::trunc);
+    if (!out) { std::cerr << "출력 파일 열기 실패\n"; return 1; }
+    out << "P6\n" << W << " " << H << "\n255\n";
+    out.write(reinterpret_cast<const char *>(canvas.data()),
+              static_cast<std::streamsize>(canvas.size()));
+    std::cout << "  메가타일 " << first << "~" << (first + count - 1)
+              << " / 총 " << graphics.megaTileCount(tilesetId)
+              << " -> " << outPath << "\n";
+    return 0;
+}
+
+int cmdImagesTbl(const std::string & installPath, const std::string & needle)
+{
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const auto names = graphics.imageFileNames();
+    std::cout << "  images.tbl 항목 " << names.size() << "개\n";
+
+    std::size_t shown = 0;
+    for (std::size_t i = 0; i < names.size(); ++i)
+    {
+        std::string lower = names[i];
+        for (char & ch : lower)
+            ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+        std::string needleLower = needle;
+        for (char & ch : needleLower)
+            ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+
+        if (needle.empty() || lower.find(needleLower) != std::string::npos)
+        {
+            std::cout << "    [" << i << "] " << names[i] << "\n";
+            if (++shown >= 60) { std::cout << "    ...\n"; break; }
+        }
+    }
+    if (shown == 0)
+        std::cout << "    (일치하는 항목 없음)\n";
+    return 0;
+}
+
 int cmdFindCreep(const std::string & installPath, std::uint16_t tilesetId)
 {
     splash::io::GameGraphics graphics;
@@ -679,6 +763,20 @@ int cmdRender(const std::string & mapPath,
                     }
                 }
 
+                // 블러 결과를 그대로 알파로 쓰면 크립 전체가 흐리멍덩해진다.
+                // 안쪽은 불투명하게 되돌리고 경계만 좁게 남긴다.
+                constexpr int kSolidAt = 170; // 이 이상이면 완전 불투명
+                constexpr int kClearAt = 60;  // 이 이하면 완전 투명
+                for (auto & a : alpha)
+                {
+                    const int v = a;
+                    if (v >= kSolidAt)      a = 255;
+                    else if (v <= kClearAt) a = 0;
+                    else
+                        a = static_cast<std::uint8_t>(
+                            255 * (v - kClearAt) / (kSolidAt - kClearAt));
+                }
+
                 for (int ty = 0; ty < height; ++ty)
                 {
                     for (int tx = 0; tx < width; ++tx)
@@ -988,6 +1086,19 @@ int main(int argc, char ** argv)
         }
         return cmdRender(args[1], args[2], args[3], drawUnits, drawLocations, drawCreep);
     }
+
+    if (command == "mega-sheet" && args.size() == 6)
+    {
+        try {
+            return cmdMegaSheet(args[1],
+                static_cast<std::uint16_t>(std::stoul(args[2])),
+                static_cast<std::uint32_t>(std::stoul(args[3])),
+                std::stoi(args[4]), args[5]);
+        } catch (const std::exception &) { return usage(argv[0]); }
+    }
+
+    if (command == "images-tbl" && (args.size() == 2 || args.size() == 3))
+        return cmdImagesTbl(args[1], args.size() == 3 ? args[2] : std::string{});
 
     if (command == "find-creep" && args.size() == 3)
     {
