@@ -183,6 +183,32 @@ std::vector<GameGraphics::TerrainType> GameGraphics::terrainTypes(
         entry.index = info.index;
         entry.name.assign(info.name.begin(), info.name.end());
         entry.sortOrder = info.brushSortOrder;
+
+        // 이 지형에 속한 타일 그룹을 찾아 대표 그림으로 쓴다.
+        // terrainTypeMap 은 타일 그룹 -> 지형 종류를 알려 준다.
+        for (std::size_t group = 0; group < tiles.terrainTypeMap.size(); ++group)
+        {
+            if (tiles.terrainTypeMap[group] != info.index)
+                continue;
+            if (group >= tiles.tileGroups.size())
+                continue;
+
+            // 그룹 안에서 실제 그림이 배정된 칸을 고른다.
+            const auto & tileGroup = tiles.tileGroups[group];
+            for (std::size_t sub = 0; sub < 16; ++sub)
+            {
+                const std::uint16_t megaTileIndex = tileGroup.megaTileIndex[sub];
+                if (megaTileIndex != 0 && megaTileIndex < tiles.tileGraphics.size())
+                {
+                    entry.previewTileId = static_cast<std::uint16_t>(group * 16 + sub);
+                    entry.hasPreview = true;
+                    break;
+                }
+            }
+            if (entry.hasPreview)
+                break;
+        }
+
         out.push_back(std::move(entry));
     }
 

@@ -165,6 +165,9 @@ private:
     /// 그 자리에 있는 유닛 번호. 없으면 -1. 위에 그려진 것이 우선한다.
     int unitAt(const QPointF & screenPos);
 
+    /// ISOM 모드에서 그 자리에 지형을 찍는다(끌고 다닐 때도 쓴다).
+    void applyIsomAt(const QPointF & screenPos);
+
     /// 지형 모드에서 그 자리에 브러시를 찍는다.
     void paintTerrainAt(const QPointF & screenPos);
 
@@ -219,6 +222,8 @@ private:
     std::uint8_t placeUnitOwner_ = 0;
     int brushSize_ = 1;
     bool painting_ = false;
+    bool isomPainting_ = false;
+    QPoint lastIsomTile_ {-1, -1}; ///< 같은 칸에 거듭 찍지 않도록
     std::vector<std::pair<std::size_t, std::size_t>> strokeTiles_; ///< 이번 획에 칠한 자리
 
     int selectedUnit_ = -1;

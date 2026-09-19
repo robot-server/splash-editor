@@ -6,6 +6,7 @@
 // 그것이 상위 계층·UI 로 새어 나가지 않도록 이 파일은 pimpl 뒤에 전부 감춘다.
 // 이 헤더에는 표준 라이브러리 타입만 등장한다. Qt 타입은 코어 전체에서 금지.
 
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -94,6 +95,27 @@ struct RawLocation
     std::uint16_t elevationFlags = 0;
     std::string name;             ///< 없으면 빈 문자열
     std::size_t index = 0;        ///< MRGN 인덱스 (1-based 로 쓰이는 번호)
+};
+
+/// 트리거 하나의 요약. 목록에 늘어놓을 때 쓴다.
+struct TriggerSummary
+{
+    std::size_t index = 0;
+    std::string players;      ///< "플레이어 1, 2" 처럼 읽을 수 있는 형태
+    std::size_t conditions = 0;
+    std::size_t actions = 0;
+    std::string firstAction;  ///< 무엇을 하는 트리거인지 한눈에 보이도록
+    bool disabled = false;
+};
+
+/// 트리거 하나의 자세한 내용.
+struct TriggerDetail
+{
+    std::array<bool, 27> owners {};   ///< 어느 플레이어가 실행하는지
+    std::vector<std::string> conditions; ///< 사람이 읽는 형태
+    std::vector<std::string> actions;
+    std::uint32_t flags = 0;
+    std::string text;                 ///< 이 트리거만의 텍스트 트리거
 };
 
 /// 성공/실패와 사람이 읽을 메시지를 함께 나르는 결과 타입.
@@ -255,6 +277,29 @@ public:
     /// 유닛·업그레이드 이름표가 필요해서 게임 데이터(GameGraphics)를 받는다.
     /// 그것이 준비되지 않았으면 빈 값을 돌려준다.
     std::optional<std::string> triggerText(const GameGraphics & graphics) const;
+
+    /// 트리거 목록 요약.
+    std::vector<TriggerSummary> triggerSummaries(const GameGraphics & graphics) const;
+
+    /// 트리거 하나의 자세한 내용.
+    std::optional<TriggerDetail> triggerDetail(std::size_t index,
+                                               const GameGraphics & graphics) const;
+
+    /// 트리거를 실행할 플레이어를 바꾼다.
+    Result setTriggerOwners(std::size_t index, const std::array<bool, 27> & owners);
+
+    /// 트리거를 켜고 끈다.
+    Result setTriggerEnabled(std::size_t index, bool enabled);
+
+    /// 트리거를 지운다.
+    Result removeTrigger(std::size_t index);
+
+    /// 빈 트리거를 맨 뒤에 더한다.
+    Result addTrigger();
+
+    /// 트리거 하나만 텍스트로 바꿔 적용한다.
+    Result setTriggerText(std::size_t index, const std::string & text,
+                          GameGraphics & graphics);
 
     /// 텍스트 트리거를 컴파일해 TRIG 섹션을 통째로 교체한다.
     ///

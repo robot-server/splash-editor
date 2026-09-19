@@ -857,24 +857,12 @@ void MapView::mousePressEvent(QMouseEvent * event)
         }
 
         // ISOM 은 한 번의 클릭이 여러 타일을 한꺼번에 바꾼다. 획을 모으지
-        // 않고 바로 적용한다.
+        // 않고 바로 적용하되, 끌고 다니는 동안 계속 찍히게 한다.
         if (terrainMode_ == TerrainMode::Isometric)
         {
-            if (tileset_ != nullptr && tileset_->isLoaded())
-            {
-                const QPointF mapPos = screenToMap(event->position());
-                auto * doc = const_cast<chk::MapDocument *>(document_);
-                auto * graphics = const_cast<io::GameGraphics *>(tileset_);
-                if (doc->placeIsomTerrain(*graphics,
-                                          static_cast<std::size_t>(std::max(0.0, mapPos.x())),
-                                          static_cast<std::size_t>(std::max(0.0, mapPos.y())),
-                                          isomTerrainType_,
-                                          static_cast<std::size_t>(brushSize_)))
-                {
-                    refresh();
-                    emit documentEdited();
-                }
-            }
+            isomPainting_ = true;
+            lastIsomTile_ = QPoint(-1, -1);
+            applyIsomAt(event->position());
             event->accept();
             return;
         }
@@ -939,8 +927,47 @@ void MapView::mouseDoubleClickEvent(QMouseEvent * event)
     QAbstractScrollArea::mouseDoubleClickEvent(event);
 }
 
+void MapView::applyIsomAt(const QPointF & screenPos)
+{
+    if (document_ == nullptr || !document_->isOpen() ||
+        tileset_ == nullptr || !tileset_->isLoaded())
+    {
+        return;
+    }
+
+    const QPointF mapPos = screenToMap(screenPos);
+    if (mapPos.x() < 0 || mapPos.y() < 0)
+        return;
+
+    // 끌고 다닐 때 같은 자리에 거듭 찍으면 느리기만 하고 결과는 같다.
+    const QPoint tile(static_cast<int>(mapPos.x()) / io::kTilePixels,
+                      static_cast<int>(mapPos.y()) / io::kTilePixels);
+    if (tile == lastIsomTile_)
+        return;
+    lastIsomTile_ = tile;
+
+    auto * doc = const_cast<chk::MapDocument *>(document_);
+    auto * graphics = const_cast<io::GameGraphics *>(tileset_);
+    if (doc->placeIsomTerrain(*graphics,
+                              static_cast<std::size_t>(mapPos.x()),
+                              static_cast<std::size_t>(mapPos.y()),
+                              isomTerrainType_,
+                              static_cast<std::size_t>(brushSize_)))
+    {
+        refresh();
+        emit documentEdited();
+    }
+}
+
 void MapView::mouseMoveEvent(QMouseEvent * event)
 {
+    if (isomPainting_)
+    {
+        applyIsomAt(event->position());
+        event->accept();
+        return;
+    }
+
     if (painting_)
     {
         paintTerrainAt(event->position());
@@ -971,6 +998,14 @@ void MapView::mouseMoveEvent(QMouseEvent * event)
 
 void MapView::mouseReleaseEvent(QMouseEvent * event)
 {
+    if (isomPainting_)
+    {
+        isomPainting_ = false;
+        lastIsomTile_ = QPoint(-1, -1);
+        event->accept();
+        return;
+    }
+
     if (painting_)
     {
         painting_ = false;

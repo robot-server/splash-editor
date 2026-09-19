@@ -66,7 +66,14 @@ private:
 
     bool terrainTypeMode_ = false;
     int selectedTerrainRow_ = 0;
-    std::vector<std::pair<std::size_t, QString>> terrainTypes_; ///< (brushIndex, 이름)
+    struct TerrainEntry
+    {
+        std::size_t brushIndex = 0;
+        QString name;
+        std::uint16_t previewTileId = 0;
+        bool hasPreview = false;
+    };
+    std::vector<TerrainEntry> terrainTypes_;
     std::vector<std::uint16_t> tiles_;
     QHash<std::uint16_t, QPixmap> cache_;
 };

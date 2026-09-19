@@ -81,6 +81,10 @@ public:
         std::uint16_t index = 0; ///< TerrainTypeInfo::index (표시·식별용)
         std::string name;
         int sortOrder = -1;
+
+        /// 팔레트에 보여 줄 대표 타일. 이 지형에 속한 타일 그룹에서 고른다.
+        std::uint16_t previewTileId = 0;
+        bool hasPreview = false;
     };
 
     /// 이 타일셋의 지형 종류 목록 (브러시 정렬 순서대로).

@@ -1002,6 +1002,268 @@ std::optional<std::string> MapArchive::triggerText(const GameGraphics & graphics
     }
 }
 
+namespace {
+
+/// 트리거를 실행하는 플레이어들을 읽기 좋은 문장으로.
+std::string describeOwners(const Chk::Trigger & trigger)
+{
+    // 앞 8개가 플레이어 1~8, 그 뒤는 All players 같은 특수 항목이다.
+    std::string out;
+    for (std::size_t i = 0; i < 8; ++i)
+    {
+        if (trigger.owners[i] == Chk::Trigger::Owned::Yes)
+        {
+            if (!out.empty())
+                out += ", ";
+            out += std::to_string(i + 1);
+        }
+    }
+
+    if (trigger.owners[17] == Chk::Trigger::Owned::Yes) // All players
+        return "모든 플레이어";
+
+    return out.empty() ? std::string("(없음)") : ("플레이어 " + out);
+}
+
+} // namespace
+
+std::vector<TriggerSummary> MapArchive::triggerSummaries(const GameGraphics & graphics) const
+{
+    std::vector<TriggerSummary> out;
+    if (!impl_->isOpen())
+        return out;
+
+    const auto * scData = static_cast<const Sc::Data *>(graphics.internalScData());
+    const MapFile & map = *impl_->mapFile;
+
+    try
+    {
+        TextTrigGenerator generator(false, 0);
+        const std::size_t count = map.numTriggers();
+        out.reserve(count);
+
+        for (std::size_t i = 0; i < count; ++i)
+        {
+            const Chk::Trigger & trigger = map.getTrigger(i);
+
+            TriggerSummary summary;
+            summary.index = i;
+            summary.players = describeOwners(trigger);
+            summary.disabled = (trigger.flags & Chk::Trigger::Flags::Disabled) != 0;
+
+            for (const auto & condition : trigger.conditions)
+            {
+                if (condition.conditionType != Chk::Condition::Type::NoCondition)
+                    ++summary.conditions;
+            }
+            for (const auto & action : trigger.actions)
+            {
+                if (action.actionType != Chk::Action::Type::NoAction)
+                {
+                    if (summary.actions == 0 && scData != nullptr)
+                        summary.firstAction = generator.getActionName(action.actionType);
+                    ++summary.actions;
+                }
+            }
+
+            out.push_back(std::move(summary));
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+
+    return out;
+}
+
+std::optional<TriggerDetail> MapArchive::triggerDetail(std::size_t index,
+                                                       const GameGraphics & graphics) const
+{
+    if (!impl_->isOpen())
+        return std::nullopt;
+
+    const auto * scData = static_cast<const Sc::Data *>(graphics.internalScData());
+    if (scData == nullptr)
+        return std::nullopt;
+
+    const MapFile & map = *impl_->mapFile;
+
+    try
+    {
+        if (index >= map.numTriggers())
+            return std::nullopt;
+
+        const Chk::Trigger & trigger = map.getTrigger(index);
+
+        TriggerDetail detail;
+        detail.flags = trigger.flags;
+        for (std::size_t i = 0; i < 27 && i < Chk::Trigger::MaxOwners; ++i)
+            detail.owners[i] = (trigger.owners[i] == Chk::Trigger::Owned::Yes);
+
+        TextTrigGenerator generator(false, 0);
+
+        for (const auto & condition : trigger.conditions)
+        {
+            if (condition.conditionType == Chk::Condition::Type::NoCondition)
+                continue;
+            detail.conditions.push_back(generator.getConditionName(condition.conditionType));
+        }
+        for (const auto & action : trigger.actions)
+        {
+            if (action.actionType == Chk::Action::Type::NoAction)
+                continue;
+            detail.actions.push_back(generator.getActionName(action.actionType));
+        }
+
+        // 이 트리거만의 텍스트. 자세히 고칠 때 쓴다.
+        std::string text;
+        const Scenario & scenario = map;
+        if (generator.generateTextTrigs(scenario, index, text, *scData))
+            detail.text = std::move(text);
+
+        return detail;
+    }
+    catch (const std::exception &)
+    {
+        return std::nullopt;
+    }
+}
+
+Result MapArchive::setTriggerOwners(std::size_t index, const std::array<bool, 27> & owners)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (index >= map.numTriggers())
+            return Result::failure("트리거 번호가 범위를 벗어났습니다.");
+
+        Chk::Trigger trigger = map.getTrigger(index);
+        for (std::size_t i = 0; i < 27 && i < Chk::Trigger::MaxOwners; ++i)
+        {
+            trigger.owners[i] = owners[i] ? Chk::Trigger::Owned::Yes
+                                          : Chk::Trigger::Owned::No;
+        }
+
+        map.deleteTrigger(index);
+        map.insertTrigger(index, trigger);
+        impl_->undoSteps.push_back(2);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("플레이어를 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::setTriggerEnabled(std::size_t index, bool enabled)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (index >= map.numTriggers())
+            return Result::failure("트리거 번호가 범위를 벗어났습니다.");
+
+        Chk::Trigger trigger = map.getTrigger(index);
+        if (enabled)
+            trigger.flags &= ~std::uint32_t(Chk::Trigger::Flags::Disabled);
+        else
+            trigger.flags |= std::uint32_t(Chk::Trigger::Flags::Disabled);
+
+        map.deleteTrigger(index);
+        map.insertTrigger(index, trigger);
+        impl_->undoSteps.push_back(2);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("트리거를 켜고 끄지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::removeTrigger(std::size_t index)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+    try
+    {
+        if (index >= impl_->mapFile->numTriggers())
+            return Result::failure("트리거 번호가 범위를 벗어났습니다.");
+
+        impl_->mapFile->deleteTrigger(index);
+        impl_->undoSteps.push_back(1);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("트리거를 지우지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::addTrigger()
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+    try
+    {
+        Chk::Trigger trigger {};
+        // 새 트리거는 플레이어 1이 실행하도록 둔다 — 아무도 실행하지 않는
+        // 트리거는 만들어 놓고 잊기 쉽다.
+        trigger.owners[0] = Chk::Trigger::Owned::Yes;
+
+        impl_->mapFile->addTrigger(trigger);
+        impl_->undoSteps.push_back(1);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("트리거를 더하지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::setTriggerText(std::size_t index, const std::string & text,
+                                  GameGraphics & graphics)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    auto * scData = static_cast<Sc::Data *>(graphics.internalScData());
+    if (scData == nullptr)
+        return Result::failure("게임 데이터가 준비되지 않았습니다.");
+
+    try
+    {
+        if (index >= impl_->mapFile->numTriggers())
+            return Result::failure("트리거 번호가 범위를 벗어났습니다.");
+
+        TextTrigCompiler compiler(false, 0);
+        std::string working = text;
+        Scenario & scenario = *impl_->mapFile;
+
+        if (!compiler.compileTrigger(working, scenario, *scData, index))
+            return Result::failure("트리거 문법에 오류가 있습니다.");
+
+        // 컴파일은 TRIG 과 STR 을 함께 바꾼다. 몇 액션이 생기는지 알 수 없어
+        // 이력을 비운다.
+        impl_->undoSteps.clear();
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("트리거를 컴파일하지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 Result MapArchive::setTriggerText(const std::string & text, GameGraphics & graphics)
 {
     if (!impl_->isOpen())
