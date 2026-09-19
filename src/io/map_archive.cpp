@@ -555,6 +555,80 @@ Result MapArchive::setLocationBounds(std::size_t locationIndex,
     return Result::success();
 }
 
+Result MapArchive::setScenarioName(const std::string & name)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+    try
+    {
+        impl_->mapFile->setScenarioName(RawString(name));
+        impl_->undoSteps.push_back(1);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("이름을 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::setScenarioDescription(const std::string & description)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+    try
+    {
+        impl_->mapFile->setScenarioDescription(RawString(description));
+        impl_->undoSteps.push_back(1);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("설명을 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::setTileset(std::uint16_t tilesetId)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+    try
+    {
+        impl_->mapFile->setTileset(Sc::Terrain::Tileset(tilesetId));
+        impl_->undoSteps.push_back(1);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("타일셋을 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::setDimensions(std::uint16_t width, std::uint16_t height)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+    if (width == 0 || height == 0)
+        return Result::failure("맵 크기는 0 이 될 수 없습니다.");
+
+    try
+    {
+        impl_->mapFile->setDimensions(width, height);
+
+        // 크기 변경은 여러 섹션을 한꺼번에 건드린다. 몇 액션이 생기는지
+        // 알 수 없어 실행 취소 이력을 비운다 — 절반만 되돌리면 맵이 어긋난다.
+        impl_->undoSteps.clear();
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("크기를 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 void MapArchive::mergeLastEdits(int count)
 {
     if (count <= 1)

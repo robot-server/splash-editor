@@ -77,6 +77,28 @@ MapDocument::~MapDocument() = default;
 MapDocument::MapDocument(MapDocument &&) noexcept = default;
 MapDocument & MapDocument::operator=(MapDocument &&) noexcept = default;
 
+bool MapDocument::createNew(io::MapFormat format, std::uint16_t tilesetId,
+                            std::uint16_t width, std::uint16_t height, bool meleeTriggers)
+{
+    const io::Result result =
+        archive_.createNew(format, tilesetId, width, height, meleeTriggers);
+    if (!result)
+    {
+        lastError_ = result.message;
+        return false;
+    }
+
+    // 새 맵은 아직 저장된 적이 없다 — 경로가 없고 저장하면 물어봐야 한다.
+    filePath_.clear();
+    modified_ = true;
+    undoDepth_ = 0;
+    redoDepth_ = 0;
+    savedDepth_ = -1;
+    lastError_.clear();
+    refreshInfo();
+    return true;
+}
+
 bool MapDocument::open(const std::string & filePath)
 {
     const io::Result result = archive_.open(filePath);
@@ -305,6 +327,43 @@ bool MapDocument::moveLocation(std::size_t locationIndex, std::int64_t dx, std::
     modified_ = true;
     ++undoDepth_;
     redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setScenarioName(const std::string & name)
+{
+    const io::Result result = archive_.setScenarioName(name);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true; ++undoDepth_; redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setScenarioDescription(const std::string & description)
+{
+    const io::Result result = archive_.setScenarioDescription(description);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true; ++undoDepth_; redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setTileset(std::uint16_t tilesetId)
+{
+    const io::Result result = archive_.setTileset(tilesetId);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true; ++undoDepth_; redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setDimensions(std::uint16_t width, std::uint16_t height)
+{
+    const io::Result result = archive_.setDimensions(width, height);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    undoDepth_ = 0; redoDepth_ = 0; savedDepth_ = -1;
     refreshInfo();
     return true;
 }

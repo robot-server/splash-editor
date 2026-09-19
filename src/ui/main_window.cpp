@@ -14,7 +14,10 @@
 #include <QApplication>
 #include <QCloseEvent>
 #include <QFileDialog>
+#include <QCheckBox>
 #include <QComboBox>
+#include <QLineEdit>
+#include <QSpinBox>
 #include <QFormLayout>
 #include <QLabel>
 #include <QMenuBar>
@@ -213,6 +216,10 @@ void MainWindow::buildMenus()
 {
     QMenu * fileMenu = menuBar()->addMenu(tr("파일(&F)"));
 
+    QAction * newAction = fileMenu->addAction(tr("새 맵(&N)…"));
+    newAction->setShortcut(QKeySequence::New);
+    connect(newAction, &QAction::triggered, this, &MainWindow::onNewMap);
+
     QAction * openAction = fileMenu->addAction(tr("열기(&O)…"));
     openAction->setShortcut(QKeySequence::Open);
     connect(openAction, &QAction::triggered, this, &MainWindow::onOpen);
@@ -230,6 +237,12 @@ void MainWindow::buildMenus()
     closeAction_ = fileMenu->addAction(tr("닫기(&C)"));
     closeAction_->setShortcut(QKeySequence::Close);
     connect(closeAction_, &QAction::triggered, this, &MainWindow::onClose);
+
+    fileMenu->addSeparator();
+
+    QAction * propertiesAction = fileMenu->addAction(tr("맵 속성(&P)…"));
+    propertiesAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_I));
+    connect(propertiesAction, &QAction::triggered, this, &MainWindow::onMapProperties);
 
     fileMenu->addSeparator();
 
@@ -450,6 +463,176 @@ void MainWindow::onSelectionChanged(int unitIndex)
             .arg(unit.y));
 }
 
+namespace {
+
+/// 타일셋 고르는 콤보를 만든다. 순서는 CHK 의 ERA 값과 같다.
+QComboBox * makeTilesetBox(QWidget * parent, std::uint16_t current)
+{
+    auto * box = new QComboBox(parent);
+    for (std::uint16_t id = 0; id < 8; ++id)
+        box->addItem(QString::fromStdString(splash::chk::tilesetDisplayName(id)), id);
+    box->setCurrentIndex(current % 8);
+    return box;
+}
+
+} // namespace
+
+void MainWindow::onNewMap()
+{
+    if (!confirmDiscardChanges())
+        return;
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("새 맵"));
+
+    auto * form = new QFormLayout();
+
+    auto * widthBox = new QSpinBox(&dialog);
+    widthBox->setRange(32, 256);
+    widthBox->setSingleStep(32);
+    widthBox->setValue(64);
+
+    auto * heightBox = new QSpinBox(&dialog);
+    heightBox->setRange(32, 256);
+    heightBox->setSingleStep(32);
+    heightBox->setValue(64);
+
+    auto * tilesetBox = makeTilesetBox(&dialog, 4); // Jungle
+
+    auto * formatBox = new QComboBox(&dialog);
+    formatBox->addItem(tr("브루드워 (.scx)"), int(splash::io::MapFormat::ExpansionScx));
+    formatBox->addItem(tr("하이브리드 (.scm)"), int(splash::io::MapFormat::HybridScm));
+    formatBox->addItem(tr("리마스터 (.scx)"), int(splash::io::MapFormat::RemasteredScx));
+
+    auto * meleeBox = new QCheckBox(tr("기본 melee 트리거 넣기"), &dialog);
+    meleeBox->setChecked(true);
+
+    form->addRow(tr("가로 (타일)"), widthBox);
+    form->addRow(tr("세로 (타일)"), heightBox);
+    form->addRow(tr("타일셋"), tilesetBox);
+    form->addRow(tr("포맷"), formatBox);
+    form->addRow(QString(), meleeBox);
+
+    auto * buttons = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    auto * layout = new QVBoxLayout(&dialog);
+    layout->addLayout(form);
+    layout->addWidget(buttons);
+
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    const auto format =
+        static_cast<splash::io::MapFormat>(formatBox->currentData().toInt());
+
+    if (!document_.createNew(format,
+                             static_cast<std::uint16_t>(tilesetBox->currentData().toInt()),
+                             static_cast<std::uint16_t>(widthBox->value()),
+                             static_cast<std::uint16_t>(heightBox->value()),
+                             meleeBox->isChecked()))
+    {
+        QMessageBox::warning(this, tr("새 맵 실패"),
+                             QString::fromStdString(document_.lastError()));
+        return;
+    }
+
+    if (tilePalette_ != nullptr)
+        tilePalette_->setTilesetId(document_.info().tilesetId);
+    if (unitPalette_ != nullptr)
+        unitPalette_->setTilesetId(document_.info().tilesetId);
+
+    mapView_->clearSelection();
+    mapView_->refresh();
+    refreshFromDocument();
+    statusBar()->showMessage(tr("새 맵을 만들었습니다"), 3000);
+}
+
+void MainWindow::onMapProperties()
+{
+    if (!document_.isOpen())
+        return;
+
+    const auto & info = document_.info();
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("맵 속성"));
+    dialog.resize(460, 320);
+
+    auto * form = new QFormLayout();
+
+    auto * nameEdit = new QLineEdit(QString::fromStdString(info.name), &dialog);
+    auto * descEdit = new QPlainTextEdit(QString::fromStdString(info.description), &dialog);
+    descEdit->setMaximumHeight(120);
+
+    auto * tilesetBox = makeTilesetBox(&dialog, info.tilesetId);
+
+    auto * widthBox = new QSpinBox(&dialog);
+    widthBox->setRange(32, 256);
+    widthBox->setValue(info.width);
+
+    auto * heightBox = new QSpinBox(&dialog);
+    heightBox->setRange(32, 256);
+    heightBox->setValue(info.height);
+
+    auto * warn = new QLabel(
+        tr("크기를 바꾸면 실행 취소 이력이 지워집니다 — 여러 섹션을 한꺼번에 "
+           "건드리므로 절반만 되돌리면 맵이 어긋납니다."), &dialog);
+    warn->setWordWrap(true);
+
+    form->addRow(tr("이름"), nameEdit);
+    form->addRow(tr("설명"), descEdit);
+    form->addRow(tr("타일셋"), tilesetBox);
+    form->addRow(tr("가로 (타일)"), widthBox);
+    form->addRow(tr("세로 (타일)"), heightBox);
+
+    auto * buttons = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    auto * layout = new QVBoxLayout(&dialog);
+    layout->addLayout(form);
+    layout->addWidget(warn);
+    layout->addWidget(buttons);
+
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    bool changed = false;
+
+    if (nameEdit->text().toStdString() != info.name)
+        changed |= document_.setScenarioName(nameEdit->text().toStdString());
+
+    if (descEdit->toPlainText().toStdString() != info.description)
+        changed |= document_.setScenarioDescription(descEdit->toPlainText().toStdString());
+
+    const auto newTileset = static_cast<std::uint16_t>(tilesetBox->currentData().toInt());
+    if (newTileset != info.tilesetId)
+    {
+        changed |= document_.setTileset(newTileset);
+        if (tilePalette_ != nullptr)
+            tilePalette_->setTilesetId(newTileset);
+        if (unitPalette_ != nullptr)
+            unitPalette_->setTilesetId(newTileset);
+    }
+
+    const auto newWidth = static_cast<std::uint16_t>(widthBox->value());
+    const auto newHeight = static_cast<std::uint16_t>(heightBox->value());
+    if (newWidth != info.width || newHeight != info.height)
+        changed |= document_.setDimensions(newWidth, newHeight);
+
+    if (changed)
+    {
+        mapView_->clearSelection();
+        mapView_->refresh();
+        refreshFromDocument();
+        statusBar()->showMessage(tr("맵 속성을 바꿨습니다"), 3000);
+    }
+}
+
 void MainWindow::onShowTriggers()
 {
     if (!document_.isOpen())
@@ -610,6 +793,13 @@ void MainWindow::onSave()
 {
     if (!document_.isOpen())
         return;
+
+    // 새로 만든 맵은 저장된 적이 없다 — 어디에 쓸지 물어야 한다.
+    if (document_.filePath().empty())
+    {
+        onSaveAs();
+        return;
+    }
 
     if (!document_.save())
     {

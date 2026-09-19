@@ -94,6 +94,10 @@ public:
     MapDocument(MapDocument &&) noexcept;
     MapDocument & operator=(MapDocument &&) noexcept;
 
+    /// 빈 맵을 새로 만든다.
+    bool createNew(io::MapFormat format, std::uint16_t tilesetId,
+                   std::uint16_t width, std::uint16_t height, bool meleeTriggers);
+
     /// 맵을 연다. 실패하면 문서는 이전 상태를 잃고 닫힌 상태가 된다.
     /// 실패 사유는 lastError() 로 확인한다.
     bool open(const std::string & filePath);
@@ -140,6 +144,17 @@ public:
 
     /// 로케이션을 옮긴다(크기는 유지). 좌표는 픽셀.
     bool moveLocation(std::size_t locationIndex, std::int64_t dx, std::int64_t dy);
+
+    /// 맵 이름·설명을 바꾼다.
+    bool setScenarioName(const std::string & name);
+    bool setScenarioDescription(const std::string & description);
+
+    /// 타일셋을 바꾼다 (지형 타일 값은 그대로라 그림이 달라진다).
+    bool setTileset(std::uint16_t tilesetId);
+
+    /// 맵 크기를 바꾼다. 실행 취소 이력이 지워진다 — 여러 섹션을 한꺼번에
+    /// 건드리므로 절반만 되돌리면 맵이 어긋난다.
+    bool setDimensions(std::uint16_t width, std::uint16_t height);
 
     bool canUndo() const;
     bool canRedo() const;

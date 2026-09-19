@@ -183,6 +183,18 @@ public:
                              std::uint32_t left, std::uint32_t top,
                              std::uint32_t right, std::uint32_t bottom);
 
+    /// 맵 이름을 바꾼다.
+    Result setScenarioName(const std::string & name);
+
+    /// 맵 설명을 바꾼다.
+    Result setScenarioDescription(const std::string & description);
+
+    /// 타일셋을 바꾼다. 지형 타일은 그대로 두므로 그림이 달라진다.
+    Result setTileset(std::uint16_t tilesetId);
+
+    /// 맵 크기를 바꾼다. 늘리면 빈 지형이, 줄이면 잘려 나간다.
+    Result setDimensions(std::uint16_t width, std::uint16_t height);
+
     /// 마지막 n 개의 편집을 하나로 묶는다. 브러시 한 획처럼 여러 번 고친
     /// 것을 한 번에 되돌리기 위해 쓴다.
     void mergeLastEdits(int count);

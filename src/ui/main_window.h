@@ -48,6 +48,8 @@ private slots:
     void onDocumentEdited();
     void onSelectionChanged(int unitIndex);
     void onShowTriggers();
+    void onNewMap();
+    void onMapProperties();
 
 private:
     void buildMenus();
