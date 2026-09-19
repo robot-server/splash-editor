@@ -214,7 +214,7 @@ void UnitSettingsDialog::reloadList()
 
         // 실제 유닛 그림을 보여 준다 — 아이콘보다 알아보기 쉽다.
         if (graphics_.hasUnitGraphics())
-            item->setIcon(toIcon(graphics_.renderUnit(type, 0, 4, 1500)));
+            item->setIcon(toIcon(graphics_.renderUnit(type, 0, document_.info().tilesetId, 1500)));
 
         list_->addItem(item);
     }
@@ -314,7 +314,8 @@ UpgradeSettingsDialog::UpgradeSettingsDialog(chk::MapDocument & document, io::Ga
         item->setData(Qt::UserRole, static_cast<int>(type));
 
         if (graphics_.isLoaded())
-            item->setIcon(toIcon(graphics_.renderIcon(graphics_.upgradeIcon(value), 4)));
+            item->setIcon(toIcon(graphics_.renderIcon(graphics_.upgradeIcon(value),
+                                                     document_.info().tilesetId)));
 
         list_->addItem(item);
     }
@@ -491,7 +492,8 @@ TechSettingsDialog::TechSettingsDialog(chk::MapDocument & document, io::GameGrap
         item->setData(Qt::UserRole, static_cast<int>(type));
 
         if (graphics_.isLoaded())
-            item->setIcon(toIcon(graphics_.renderIcon(graphics_.techIcon(value), 4)));
+            item->setIcon(toIcon(graphics_.renderIcon(graphics_.techIcon(value),
+                                                     document_.info().tilesetId)));
 
         list_->addItem(item);
     }

@@ -47,9 +47,6 @@ struct GameGraphics::Impl
     mutable std::unique_ptr<Sc::Sprite::Grp> icons;
     mutable bool iconsLoaded = false;
 
-    // 아이콘은 지형이 아니라 게임 콘솔 팔레트를 쓴다.
-    mutable std::vector<Sc::SystemColor> iconPalette;
-    mutable bool iconPaletteLoaded = false;
     mutable bool upgradesLoaded = false;
     mutable bool techsLoaded = false;
 
@@ -1109,6 +1106,22 @@ UnitImage composeActor(Sc::Data & sc,
 
 } // namespace
 
+std::size_t GameGraphics::assetSize(const std::string & archivePath) const
+{
+    if (!isLoaded())
+        return 0;
+
+    try
+    {
+        if (auto data = Sc::Data::GetAsset(*impl_->cluster, archivePath, true))
+            return data->size();
+    }
+    catch (const std::exception &)
+    {
+    }
+    return 0;
+}
+
 UnitImage GameGraphics::renderIcon(std::uint16_t iconIndex, std::uint16_t tilesetId) const
 {
     UnitImage out;
@@ -1127,8 +1140,8 @@ UnitImage GameGraphics::renderIcon(std::uint16_t iconIndex, std::uint16_t tilese
             // 구분 기호는 아카이브 종류에 따라 다르므로 MappingCore 의
             // 조립 함수를 쓴다.
             const std::string kIconPaths[] {
-                makeArchiveFilePath("unit\\cmdbtns", "cmdicons.grp"),
                 makeArchiveFilePath("unit\\cmdicons", "cmdicons.grp"),
+                makeArchiveFilePath("unit\\cmdbtns", "cmdicons.grp"),
                 makeArchiveFilePath("game", "cmdicons.grp"),
                 makeArchiveFilePath("unit\\cmdbtns", "icons.grp"),
                 "unit\\cmdbtns\\cmdicons.grp",
@@ -1163,31 +1176,12 @@ UnitImage GameGraphics::renderIcon(std::uint16_t iconIndex, std::uint16_t tilese
         // 아이콘 색은 콘솔 팔레트에서 온다. 지형 팔레트로 그리면 보라빛이
         // 도는 엉뚱한 색이 되므로, 콘솔 팔레트를 먼저 찾아보고 없을 때만
         // 지형 팔레트로 물러선다.
-        if (!impl_->iconPaletteLoaded)
-        {
-            impl_->iconPaletteLoaded = true;
-            const std::string kPalettePaths[] {
-                makeArchiveFilePath("game", "tconsole.pcx"),
-                makeArchiveFilePath("game", "tunit.pcx"),
-                "game\\tconsole.pcx",
-            };
-            for (const std::string & path : kPalettePaths)
-            {
-                Sc::Pcx pcx;
-                if (pcx.load(*impl_->cluster, path) && pcx.bgraPalette.size() >= Sc::NumColors)
-                {
-                    impl_->iconPalette = pcx.bgraPalette;
-                    break;
-                }
-            }
-        }
-
-        const Sc::Terrain::Tiles & tiles = impl_->scData->terrain.get(Sc::Terrain::Tileset(tilesetId & 7));
-        const std::vector<Sc::SystemColor> & palette =
-            impl_->iconPalette.size() >= Sc::NumColors
-                ? impl_->iconPalette
-                : std::vector<Sc::SystemColor>(tiles.systemColorPalette.begin(),
-                                               tiles.systemColorPalette.end());
+        // 아이콘도 다른 그래픽과 같은 256색 팔레트를 쓴다. 게임은 그
+        // 팔레트를 타일셋에서 가져오므로, 열린 맵의 타일셋을 넘겨야
+        // 게임 화면과 같은 색이 된다.
+        const Sc::Terrain::Tiles & tiles =
+            impl_->scData->terrain.get(Sc::Terrain::Tileset(tilesetId & 7));
+        const auto & palette = tiles.systemColorPalette;
 
         const Sc::Sprite::GrpFrameHeader & header = grp.frameHeaders[iconIndex];
         out.width = header.frameWidth;

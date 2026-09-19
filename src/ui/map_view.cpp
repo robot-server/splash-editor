@@ -672,6 +672,13 @@ void MapView::paintUnits(QPainter & painter, const QRect & dirty)
 
 void MapView::setTool(Tool tool)
 {
+    if (tool != tool_)
+    {
+        hasHover_ = false;
+        placingDrag_ = false;
+        lastPlaced_ = QPoint(-1, -1);
+    }
+
     if (tool_ == tool)
         return;
     tool_ = tool;
@@ -1271,6 +1278,34 @@ int MapView::unitAt(const QPointF & screenPos)
 
 void MapView::mousePressEvent(QMouseEvent * event)
 {
+    // 오른쪽 단추는 "그만두기"다. 놓거나 칠하던 것을 멈추고 선택 도구로
+    // 돌아간다 — 팔레트에서 고른 유닛을 취소하려고 메뉴까지 갈 일이 없다.
+    if (event->button() == Qt::RightButton)
+    {
+        const bool wasPlacing = (tool_ != Tool::Select);
+
+        placingDrag_ = false;
+        fogPainting_ = false;
+        painting_ = false;
+        isomPainting_ = false;
+        hasHover_ = false;
+        lastPlaced_ = QPoint(-1, -1);
+
+        if (wasPlacing)
+        {
+            tool_ = Tool::Select;
+            emit toolChanged(tool_);
+        }
+        else
+        {
+            clearSelection();
+        }
+
+        viewport()->update();
+        event->accept();
+        return;
+    }
+
     if (event->button() != Qt::LeftButton || document_ == nullptr || !document_->isOpen())
     {
         QAbstractScrollArea::mousePressEvent(event);

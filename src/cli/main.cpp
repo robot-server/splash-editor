@@ -1048,6 +1048,26 @@ int cmdUnitClasses(const std::string & installPath)
     return 0;
 }
 
+int cmdHasAsset(const std::string & installPath, const std::string & assetPath)
+{
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const auto size = graphics.assetSize(assetPath);
+    if (size == 0)
+    {
+        std::cout << "  없음: " << assetPath << "\n";
+        return 1;
+    }
+    std::cout << "  있음: " << assetPath << "  " << size << " 바이트\n";
+    return 0;
+}
+
 int cmdIcon(const std::string & installPath, std::uint16_t iconIndex, const std::string & outPath)
 {
     splash::io::GameGraphics graphics;
@@ -1758,6 +1778,9 @@ int main(int argc, char ** argv)
                 args[7], args[8]);
         } catch (const std::exception &) { return usage(argv[0]); }
     }
+
+    if (command == "has-asset" && args.size() == 3)
+        return cmdHasAsset(args[1], args[2]);
 
     if (command == "icon" && args.size() == 4)
     {

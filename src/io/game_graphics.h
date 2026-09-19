@@ -229,6 +229,9 @@ public:
     /// 지형 팔레트를 쓴다.
     /// resourceAmount 는 자원 유닛(미네랄·베스핀)의 그래픽 단계를 가른다.
     /// 0 이면 고갈된 모습이 되므로 실제 맵 값을 넘겨야 한다.
+    /// 아카이브에 그 파일이 있는지, 있으면 크기. 진단용이다.
+    std::size_t assetSize(const std::string & archivePath) const;
+
     /// 명령 카드 아이콘 하나 (unit\\cmdbtns\\cmdicons.grp 의 프레임).
     ///
     /// 유닛·업그레이드·기술 설정 창에서 무엇을 고치는 중인지 한눈에

@@ -97,6 +97,9 @@ signals:
     /// 숫자 키로 소유자를 바꿔 달라는 뜻 (0 부터).
     void ownerRequested(std::uint8_t owner);
 
+    /// 도구가 바뀌었다 (우클릭으로 배치를 그만두는 경우 등).
+    void toolChanged(Tool tool);
+
     /// 놓기를 거절했다 — 왜인지 알린다.
     void placementRejected(const QString & reason);
 

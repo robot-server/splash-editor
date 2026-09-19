@@ -264,6 +264,14 @@ void MainWindow::buildCentralWidget()
         statusBar()->showMessage(tr("플레이어 %1").arg(owner + 1), 2000);
     });
 
+    connect(mapView_, &MapView::toolChanged, this, [this](MapView::Tool tool) {
+        if (tool == MapView::Tool::Select && selectToolAction_ != nullptr)
+        {
+            selectToolAction_->setChecked(true);
+            statusBar()->showMessage(tr("배치를 그만두고 선택 도구로 돌아갑니다"), 2000);
+        }
+    });
+
     connect(mapView_, &MapView::placementRejected, this, [this](const QString & reason) {
         statusBar()->showMessage(reason, 3000);
     });
@@ -385,7 +393,8 @@ void MainWindow::buildMenus()
     auto * toolGroup = new QActionGroup(this);
     toolGroup->setExclusive(true);
 
-    QAction * selectTool = toolMenu->addAction(tr("선택(&S)"));
+    selectToolAction_ = toolMenu->addAction(tr("선택(&S)"));
+    QAction * selectTool = selectToolAction_;
     selectTool->setCheckable(true);
     selectTool->setChecked(true);
     selectTool->setShortcut(QKeySequence(Qt::Key_S));
