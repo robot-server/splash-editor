@@ -109,6 +109,24 @@ public:
     bool isModified() const;
     void markModified();
 
+    // --- 편집 ---
+    //
+    // 실패하면 false 를 돌려주고 사유는 lastError() 에 담긴다.
+
+    /// 유닛을 옮긴다. 좌표는 픽셀.
+    bool moveUnit(std::size_t unitIndex, std::uint16_t x, std::uint16_t y);
+
+    /// 유닛을 지운다.
+    bool removeUnit(std::size_t unitIndex);
+
+    /// 유닛의 소유자를 바꾼다 (0-11).
+    bool setUnitOwner(std::size_t unitIndex, std::uint8_t owner);
+
+    bool canUndo() const;
+    bool canRedo() const;
+    bool undo();
+    bool redo();
+
     const MapInfo & info() const;
 
     /// 현재 파일 경로. 열려 있지 않으면 빈 문자열.
@@ -146,6 +164,11 @@ private:
     std::string filePath_;
     std::string lastError_;
     bool modified_ = false;
+
+    // 실행 취소 깊이. savedDepth_ 와 같으면 저장된 상태와 일치한다.
+    int undoDepth_ = 0;
+    int redoDepth_ = 0;
+    int savedDepth_ = 0;
 };
 
 } // namespace splash::chk

@@ -261,6 +261,124 @@ void testSyntheticRoundTrips()
     }
 }
 
+/// 편집한 뒤 되돌리면 원본과 완전히 같아져야 한다.
+///
+/// 이것이 실행 취소의 진짜 기준이다. 화면상 값이 돌아온 것처럼 보여도
+/// 저장 결과가 다르면 되돌린 것이 아니다.
+void testEditUndoRestoresBytes()
+{
+    std::cout << "\n[편집 -> 실행 취소]\n";
+
+    const fs::path mapPath =
+        makeSyntheticMap("edit-undo.scm", splash::io::MapFormat::HybridScm, 4, 64, 64, true);
+    if (mapPath.empty())
+    {
+        splash::test::registry().fail("편집 테스트용 맵 생성", __FILE__, __LINE__);
+        return;
+    }
+
+    struct Cleanup
+    {
+        fs::path path;
+        ~Cleanup() { std::error_code ec; fs::remove(path, ec); }
+    } cleanup{mapPath};
+
+    const auto original = splash::io::readScenarioChk(mapPath.string());
+    SPLASH_CHECK(original.has_value());
+    if (!original)
+        return;
+
+    splash::chk::MapDocument doc;
+    if (!doc.open(mapPath.string()))
+    {
+        splash::test::registry().fail("편집 테스트용 맵 열기", __FILE__, __LINE__);
+        return;
+    }
+
+    // 합성 맵에는 유닛이 없으므로, 유닛이 없는 맵에서 편집이 어떻게 실패하는지도 본다.
+    SPLASH_CHECK(!doc.canUndo());
+    SPLASH_CHECK(!doc.canRedo());
+    SPLASH_CHECK(!doc.moveUnit(0, 100, 100)); // 유닛이 없다
+    SPLASH_CHECK(!doc.isModified());
+
+    // 실제 맵이 있으면 그쪽으로 편집 왕복을 검사한다.
+    const fs::path outPath = workDir() / "edit-undo-out.scm";
+    struct Cleanup2 { fs::path path; ~Cleanup2() { std::error_code ec; fs::remove(path, ec); } }
+        cleanup2{outPath};
+
+    SPLASH_CHECK(doc.saveAs(outPath.string()));
+    const auto saved = splash::io::readScenarioChk(outPath.string());
+    SPLASH_CHECK(saved.has_value());
+    if (saved)
+        SPLASH_CHECK(*original == *saved);
+}
+
+/// 실제 맵으로 편집 -> 되돌리기 -> 저장이 원본 바이트를 복원하는지 본다.
+void testEditUndoOnRealMap(const fs::path & mapsDir)
+{
+    std::error_code ec;
+    if (!fs::exists(mapsDir, ec))
+        return;
+
+    for (const auto & entry : fs::directory_iterator(mapsDir, ec))
+    {
+        if (!entry.is_regular_file())
+            continue;
+        std::string ext = entry.path().extension().string();
+        for (char & ch : ext)
+            ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+        if (ext != ".scm" && ext != ".scx")
+            continue;
+
+        splash::chk::MapDocument doc;
+        if (!doc.open(entry.path().string()))
+            continue;
+        if (doc.units().empty())
+            continue;
+
+        const auto original = splash::io::readScenarioChk(entry.path().string());
+        if (!original)
+            continue;
+
+        std::cout << "  · " << entry.path().filename().string()
+                  << " (유닛 " << doc.units().size() << "개)\n";
+
+        const auto before = doc.units()[0];
+        SPLASH_CHECK(doc.moveUnit(0, static_cast<std::uint16_t>(before.x + 64),
+                                     static_cast<std::uint16_t>(before.y + 64)));
+        SPLASH_CHECK(doc.isModified());
+        SPLASH_CHECK(doc.canUndo());
+
+        SPLASH_CHECK(doc.undo());
+        SPLASH_CHECK(!doc.canUndo());
+        SPLASH_CHECK(doc.canRedo());
+
+        // 좌표가 돌아왔는지
+        SPLASH_CHECK_EQ(doc.units()[0].x, before.x);
+        SPLASH_CHECK_EQ(doc.units()[0].y, before.y);
+
+        // 저장 결과가 원본 바이트와 같은지 — 이것이 진짜 기준이다
+        const fs::path outPath = workDir() / ("edit-undo-" + entry.path().filename().string());
+        struct Cleanup { fs::path path; ~Cleanup() { std::error_code ec; fs::remove(path, ec); } }
+            cleanup{outPath};
+
+        if (!doc.saveAs(outPath.string()))
+        {
+            // 보호된 맵은 저장 자체를 거부한다. 편집 왕복을 볼 수 없으므로
+            // 다음 맵으로 넘어간다.
+            std::cout << "    저장 거부 — 다음 맵으로\n";
+            continue;
+        }
+
+        const auto saved = splash::io::readScenarioChk(outPath.string());
+        SPLASH_CHECK(saved.has_value());
+        if (saved)
+            SPLASH_CHECK(*original == *saved);
+
+        return; // 저장까지 확인된 맵 하나면 충분하다
+    }
+}
+
 /// tests/maps/ 에 실제 맵이 있으면 전부 round-trip 한다.
 ///
 /// 이 디렉터리는 비어 있을 수 있다(저작권 자료라 저장소에 커밋하지 않는다).
@@ -336,7 +454,11 @@ int main(int argc, char ** argv)
     testDisplayNames();
     testFailureHandling();
     testSyntheticRoundTrips();
+    testEditUndoRestoresBytes();
     testRealMaps(mapsDir);
+
+    std::cout << "\n[실제 맵 편집 -> 실행 취소]\n";
+    testEditUndoOnRealMap(mapsDir);
 
     return splash::test::registry().report("전체");
 }

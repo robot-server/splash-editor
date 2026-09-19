@@ -92,6 +92,9 @@ bool MapDocument::open(const std::string & filePath)
 
     filePath_ = filePath;
     modified_ = false;
+    undoDepth_ = 0;
+    redoDepth_ = 0;
+    savedDepth_ = 0;
     lastError_.clear();
     refreshInfo();
     return true;
@@ -124,6 +127,7 @@ bool MapDocument::saveAs(const std::string & filePath)
 
     filePath_ = filePath;
     modified_ = false;
+    savedDepth_ = undoDepth_; // 지금 상태가 저장된 상태다
     lastError_.clear();
     return true;
 }
@@ -139,6 +143,9 @@ void MapDocument::close()
     filePath_.clear();
     lastError_.clear();
     modified_ = false;
+    undoDepth_ = 0;
+    redoDepth_ = 0;
+    savedDepth_ = 0;
 }
 
 bool MapDocument::isOpen() const
@@ -154,6 +161,85 @@ bool MapDocument::isModified() const
 void MapDocument::markModified()
 {
     modified_ = true;
+}
+
+bool MapDocument::moveUnit(std::size_t unitIndex, std::uint16_t x, std::uint16_t y)
+{
+    const io::Result result = archive_.moveUnit(unitIndex, x, y);
+    if (!result)
+    {
+        lastError_ = result.message;
+        return false;
+    }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::removeUnit(std::size_t unitIndex)
+{
+    const io::Result result = archive_.removeUnit(unitIndex);
+    if (!result)
+    {
+        lastError_ = result.message;
+        return false;
+    }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setUnitOwner(std::size_t unitIndex, std::uint8_t owner)
+{
+    const io::Result result = archive_.setUnitOwner(unitIndex, owner);
+    if (!result)
+    {
+        lastError_ = result.message;
+        return false;
+    }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::canUndo() const { return undoDepth_ > 0; }
+bool MapDocument::canRedo() const { return redoDepth_ > 0; }
+
+bool MapDocument::undo()
+{
+    const io::Result result = archive_.undo();
+    if (!result)
+    {
+        lastError_ = result.message;
+        return false;
+    }
+    --undoDepth_;
+    ++redoDepth_;
+    // 편집을 전부 되돌리면 저장된 상태로 돌아온 것이다.
+    modified_ = (undoDepth_ != savedDepth_);
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::redo()
+{
+    const io::Result result = archive_.redo();
+    if (!result)
+    {
+        lastError_ = result.message;
+        return false;
+    }
+    ++undoDepth_;
+    --redoDepth_;
+    modified_ = (undoDepth_ != savedDepth_);
+    refreshInfo();
+    return true;
 }
 
 const MapInfo & MapDocument::info() const

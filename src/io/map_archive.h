@@ -149,6 +149,26 @@ public:
     /// 열 때 사용한 경로. 열려 있지 않으면 빈 문자열.
     const std::string & sourcePath() const;
 
+    // --- 편집 ---
+    //
+    // MappingCore 의 Scenario 는 변경을 추적한다(nf::tracked). 그래서 편집은
+    // 그쪽 API 를 통해야 실행 취소가 성립한다.
+
+    /// 유닛을 옮긴다. 좌표는 픽셀.
+    Result moveUnit(std::size_t unitIndex, std::uint16_t x, std::uint16_t y);
+
+    /// 유닛을 지운다.
+    Result removeUnit(std::size_t unitIndex);
+
+    /// 유닛의 소유자를 바꾼다 (0-11).
+    Result setUnitOwner(std::size_t unitIndex, std::uint8_t owner);
+
+    /// 마지막 편집을 되돌린다. 되돌릴 것이 없으면 실패.
+    Result undo();
+
+    /// 되돌린 편집을 다시 적용한다.
+    Result redo();
+
     /// 맵에 놓인 유닛 전부.
     std::vector<RawUnit> units() const;
 

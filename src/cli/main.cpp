@@ -186,6 +186,77 @@ int cmdAssets(const std::string & installPath)
     return info.ok() ? 0 : 1;
 }
 
+int cmdMoveUnit(const std::string & mapPath, std::size_t unitIndex,
+                std::uint16_t x, std::uint16_t y,
+                const std::string & outPath, bool thenUndo)
+{
+    splash::io::MapArchive archive;
+    if (auto r = archive.open(mapPath); !r)
+    {
+        std::cerr << "열기 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    const auto before = archive.units();
+    if (unitIndex >= before.size())
+    {
+        std::cerr << "유닛 번호가 범위를 벗어났습니다 (유닛 " << before.size() << "개)\n";
+        return 1;
+    }
+
+    std::cout << "  이전 위치 : (" << before[unitIndex].x << ", " << before[unitIndex].y << ")  "
+              << splash::io::unitTypeName(before[unitIndex].type) << "\n";
+
+    if (auto r = archive.moveUnit(unitIndex, x, y); !r)
+    {
+        std::cerr << "이동 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    {
+        const auto after = archive.units();
+        std::cout << "  옮긴 위치 : (" << after[unitIndex].x << ", " << after[unitIndex].y << ")\n";
+    }
+
+    if (thenUndo)
+    {
+        if (auto r = archive.undo(); !r)
+        {
+            std::cerr << "되돌리기 실패: " << r.message << "\n";
+            return 1;
+        }
+        const auto after = archive.units();
+        const bool restored = after.size() == before.size() &&
+                              after[unitIndex].x == before[unitIndex].x &&
+                              after[unitIndex].y == before[unitIndex].y;
+        std::cout << "  되돌린 위치: (" << after[unitIndex].x << ", " << after[unitIndex].y << ")"
+                  << (restored ? "  [원본 복원]" : "  [복원 실패]") << "\n";
+        if (!restored)
+            return 1;
+    }
+
+    if (auto r = archive.saveAs(outPath); !r)
+    {
+        std::cerr << "저장 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    // 저장본을 다시 열어 반영됐는지 확인한다.
+    splash::io::MapArchive reopened;
+    if (auto r = reopened.open(outPath); !r)
+    {
+        std::cerr << "재열기 실패: " << r.message << "\n";
+        return 1;
+    }
+    const auto saved = reopened.units();
+    if (unitIndex < saved.size())
+    {
+        std::cout << "  저장본 위치: (" << saved[unitIndex].x << ", " << saved[unitIndex].y << ")\n";
+    }
+    std::cout << "  -> " << outPath << "\n";
+    return 0;
+}
+
 int cmdUnits(const std::string & mapPath, std::size_t limit)
 {
     splash::chk::MapDocument doc;
@@ -1148,6 +1219,19 @@ int main(int argc, char ** argv)
             return cmdUnitImage(args[1], type, args[3], owner, tileset, resource);
         }
         catch (const std::exception &) { return usage(argv[0]); }
+    }
+
+    if (command == "move-unit" && args.size() >= 6)
+    {
+        try {
+            bool thenUndo = false;
+            for (std::size_t i = 6; i < args.size(); ++i)
+                if (args[i] == "--undo") thenUndo = true;
+            return cmdMoveUnit(args[1], static_cast<std::size_t>(std::stoul(args[2])),
+                               static_cast<std::uint16_t>(std::stoul(args[3])),
+                               static_cast<std::uint16_t>(std::stoul(args[4])),
+                               args[5], thenUndo);
+        } catch (const std::exception &) { return usage(argv[0]); }
     }
 
     if (command == "units" && (args.size() == 2 || args.size() == 3))

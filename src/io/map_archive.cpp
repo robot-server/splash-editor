@@ -147,6 +147,13 @@ struct MapArchive::Impl
     std::unique_ptr<MapFile> mapFile;
     std::string sourcePath;
 
+    // MappingCore 는 편집을 액션 단위로 기록하는데, 우리 편집 하나가 그쪽
+    // 액션 여러 개로 나뉘는 경우가 있다(좌표 변경은 삭제+삽입으로 만든다).
+    // 되돌릴 때 한 번만 되돌리면 절반만 취소되므로, 연산마다 몇 액션을
+    // 만들었는지 쌓아 두고 그만큼 되돌린다.
+    std::vector<int> undoSteps;
+    std::vector<int> redoSteps;
+
     bool isOpen() const { return mapFile != nullptr; }
 };
 
@@ -359,6 +366,128 @@ void MapArchive::close()
 const std::string & MapArchive::sourcePath() const
 {
     return impl_->sourcePath;
+}
+
+Result MapArchive::moveUnit(std::size_t unitIndex, std::uint16_t x, std::uint16_t y)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (unitIndex >= map.numUnits())
+            return Result::failure("유닛 번호가 범위를 벗어났습니다.");
+
+        // 필드를 직접 쓰는 통로(edit 프록시)는 Scenario 내부 전용이라
+        // 밖에서는 쓸 수 없다. 대신 public API 인 삭제+삽입으로 같은 결과를
+        // 만든다 — 이쪽도 변경이 기록되므로 실행 취소가 성립한다.
+        Chk::Unit unit = map.getUnit(unitIndex);
+        unit.xc = x;
+        unit.yc = y;
+        map.deleteUnit(unitIndex);
+        map.insertUnit(unitIndex, unit);
+        impl_->undoSteps.push_back(2);
+        impl_->redoSteps.clear(); // 새 편집이 들어오면 되돌린 이력은 버린다
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("유닛을 옮기지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::removeUnit(std::size_t unitIndex)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (unitIndex >= map.numUnits())
+            return Result::failure("유닛 번호가 범위를 벗어났습니다.");
+        map.deleteUnit(unitIndex);
+        impl_->undoSteps.push_back(1);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("유닛을 지우지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::setUnitOwner(std::size_t unitIndex, std::uint8_t owner)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (unitIndex >= map.numUnits())
+            return Result::failure("유닛 번호가 범위를 벗어났습니다.");
+        Chk::Unit unit = map.getUnit(unitIndex);
+        unit.owner = owner;
+        map.deleteUnit(unitIndex);
+        map.insertUnit(unitIndex, unit);
+        impl_->undoSteps.push_back(2);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("소유자를 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::undo()
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    if (impl_->undoSteps.empty())
+        return Result::failure("되돌릴 편집이 없습니다.");
+
+    try
+    {
+        const int steps = impl_->undoSteps.back();
+        for (int i = 0; i < steps; ++i)
+            impl_->mapFile->undoAction();
+
+        impl_->undoSteps.pop_back();
+        impl_->redoSteps.push_back(steps);
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("되돌리지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::redo()
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    if (impl_->redoSteps.empty())
+        return Result::failure("다시 실행할 편집이 없습니다.");
+
+    try
+    {
+        const int steps = impl_->redoSteps.back();
+        for (int i = 0; i < steps; ++i)
+            impl_->mapFile->redoAction();
+
+        impl_->redoSteps.pop_back();
+        impl_->undoSteps.push_back(steps);
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("다시 실행하지 못했습니다: ") + e.what());
+    }
+    return Result::success();
 }
 
 std::vector<RawUnit> MapArchive::units() const
