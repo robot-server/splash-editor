@@ -38,6 +38,11 @@ private slots:
     void onSaveAs();
     void onClose();
     void onChooseInstallPath();
+    void onUndo();
+    void onRedo();
+    void onDeleteSelection();
+    void onDocumentEdited();
+    void onSelectionChanged(int unitIndex);
 
 private:
     void buildMenus();
@@ -70,6 +75,9 @@ private:
     QAction * zoomInAction_ = nullptr;
     QAction * zoomOutAction_ = nullptr;
     QAction * zoomResetAction_ = nullptr;
+    QAction * undoAction_ = nullptr;
+    QAction * redoAction_ = nullptr;
+    QAction * deleteAction_ = nullptr;
 };
 
 } // namespace splash::ui

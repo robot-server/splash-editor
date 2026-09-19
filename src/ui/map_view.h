@@ -10,6 +10,7 @@
 
 #include <QAbstractScrollArea>
 #include <QHash>
+#include <QPoint>
 #include <QVector>
 #include <QPixmap>
 
@@ -39,6 +40,22 @@ public:
     /// 문서나 타일셋의 내용이 바뀌었을 때 호출한다. 캐시를 비우고 다시 그린다.
     void refresh();
 
+    /// 선택된 유닛 번호. 없으면 -1.
+    int selectedUnit() const { return selectedUnit_; }
+    void clearSelection();
+
+    /// 선택된 유닛을 지운다. 지웠으면 true.
+    bool deleteSelectedUnit();
+
+signals:
+    /// 문서가 편집되었다. 창이 제목·상태를 갱신하도록 알린다.
+    void documentEdited();
+
+    /// 선택이 바뀌었다 (없으면 -1).
+    void selectionChanged(int unitIndex);
+
+public:
+
     double zoom() const { return zoom_; }
     void setZoom(double factor);
 
@@ -59,6 +76,10 @@ protected:
     void paintEvent(QPaintEvent * event) override;
     void resizeEvent(QResizeEvent * event) override;
     void wheelEvent(QWheelEvent * event) override;
+    void mousePressEvent(QMouseEvent * event) override;
+    void mouseMoveEvent(QMouseEvent * event) override;
+    void mouseReleaseEvent(QMouseEvent * event) override;
+    void keyPressEvent(QKeyEvent * event) override;
 
 private:
     void updateScrollRanges();
@@ -80,6 +101,12 @@ private:
     QPointF mapToScreen(double mapX, double mapY) const;
 
     void paintUnits(QPainter & painter, const QRect & dirty);
+
+    /// 화면 좌표에서 맵 픽셀 좌표로.
+    QPointF screenToMap(const QPointF & screen) const;
+
+    /// 그 자리에 있는 유닛 번호. 없으면 -1. 위에 그려진 것이 우선한다.
+    int unitAt(const QPointF & screenPos);
     void paintLocations(QPainter & painter, const QRect & dirty);
 
     /// 저그 건물 주변의 크립. 지형 위, 유닛 아래에 그린다.
@@ -118,6 +145,14 @@ private:
     bool showUnits_ = true;
     bool showLocations_ = true;
     bool showCreep_ = true;
+
+    // 선택과 드래그
+    int selectedUnit_ = -1;
+    bool dragging_ = false;
+    QPointF dragStartMap_;      ///< 드래그 시작 시 맵 좌표
+    QPoint dragStartUnitPos_;   ///< 드래그 시작 시 유닛 좌표
+    QPoint previewPos_;         ///< 드래그 중 미리 보여 줄 위치
+    bool hasPreview_ = false;
 };
 
 } // namespace splash::ui

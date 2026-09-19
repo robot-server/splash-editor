@@ -63,6 +63,9 @@ void MainWindow::buildCentralWidget()
     mapView_->setDocument(&document_);
     mapView_->setTileset(&tileset_);
 
+    connect(mapView_, &MapView::documentEdited, this, &MainWindow::onDocumentEdited);
+    connect(mapView_, &MapView::selectionChanged, this, &MainWindow::onSelectionChanged);
+
     auto * side = new QWidget(this);
     auto * outer = new QVBoxLayout(side);
 
@@ -137,6 +140,22 @@ void MainWindow::buildMenus()
     quitAction->setShortcut(QKeySequence::Quit);
     connect(quitAction, &QAction::triggered, this, &QWidget::close);
 
+    QMenu * editMenu = menuBar()->addMenu(tr("편집(&E)"));
+
+    undoAction_ = editMenu->addAction(tr("실행 취소(&U)"));
+    undoAction_->setShortcut(QKeySequence::Undo);
+    connect(undoAction_, &QAction::triggered, this, &MainWindow::onUndo);
+
+    redoAction_ = editMenu->addAction(tr("다시 실행(&R)"));
+    redoAction_->setShortcut(QKeySequence::Redo);
+    connect(redoAction_, &QAction::triggered, this, &MainWindow::onRedo);
+
+    editMenu->addSeparator();
+
+    deleteAction_ = editMenu->addAction(tr("선택 삭제(&D)"));
+    deleteAction_->setShortcut(QKeySequence::Delete);
+    connect(deleteAction_, &QAction::triggered, this, &MainWindow::onDeleteSelection);
+
     QMenu * viewMenu = menuBar()->addMenu(tr("보기(&V)"));
 
     zoomInAction_ = viewMenu->addAction(tr("확대(&I)"));
@@ -170,6 +189,70 @@ void MainWindow::buildMenus()
     showCreep->setChecked(mapView_->creepVisible());
     showCreep->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_3));
     connect(showCreep, &QAction::toggled, mapView_, &MapView::setCreepVisible);
+}
+
+void MainWindow::onUndo()
+{
+    if (!document_.undo())
+    {
+        statusBar()->showMessage(QString::fromStdString(document_.lastError()), 3000);
+        return;
+    }
+    mapView_->clearSelection();
+    mapView_->refresh();
+    refreshFromDocument();
+    statusBar()->showMessage(tr("실행 취소"), 2000);
+}
+
+void MainWindow::onRedo()
+{
+    if (!document_.redo())
+    {
+        statusBar()->showMessage(QString::fromStdString(document_.lastError()), 3000);
+        return;
+    }
+    mapView_->clearSelection();
+    mapView_->refresh();
+    refreshFromDocument();
+    statusBar()->showMessage(tr("다시 실행"), 2000);
+}
+
+void MainWindow::onDeleteSelection()
+{
+    if (!mapView_->deleteSelectedUnit())
+        statusBar()->showMessage(tr("선택된 유닛이 없습니다."), 2000);
+}
+
+void MainWindow::onDocumentEdited()
+{
+    // 편집으로 유닛 목록이 바뀌었으니 뷰의 캐시도 무효가 된다.
+    mapView_->refresh();
+    refreshFromDocument();
+}
+
+void MainWindow::onSelectionChanged(int unitIndex)
+{
+    if (deleteAction_ != nullptr)
+        deleteAction_->setEnabled(unitIndex >= 0);
+
+    if (unitIndex < 0)
+    {
+        statusBar()->clearMessage();
+        return;
+    }
+
+    const auto & units = document_.units();
+    if (static_cast<std::size_t>(unitIndex) >= units.size())
+        return;
+
+    const auto & unit = units[static_cast<std::size_t>(unitIndex)];
+    statusBar()->showMessage(
+        tr("#%1  %2  P%3  (%4, %5)")
+            .arg(unitIndex)
+            .arg(QString::fromStdString(unit.typeName))
+            .arg(unit.owner + 1)
+            .arg(unit.x)
+            .arg(unit.y));
 }
 
 void MainWindow::onChooseInstallPath()
@@ -330,6 +413,13 @@ void MainWindow::refreshFromDocument()
     saveAction_->setEnabled(open);
     saveAsAction_->setEnabled(open);
     closeAction_->setEnabled(open);
+
+    if (undoAction_ != nullptr)
+        undoAction_->setEnabled(open && document_.canUndo());
+    if (redoAction_ != nullptr)
+        redoAction_->setEnabled(open && document_.canRedo());
+    if (deleteAction_ != nullptr)
+        deleteAction_->setEnabled(open && mapView_ != nullptr && mapView_->selectedUnit() >= 0);
 
     if (!open)
     {

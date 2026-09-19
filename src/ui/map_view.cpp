@@ -10,6 +10,8 @@
 #include <QPaintEvent>
 #include <QPainter>
 #include <QScrollBar>
+#include <QKeyEvent>
+#include <QMouseEvent>
 #include <QWheelEvent>
 
 #include <algorithm>
@@ -559,41 +561,224 @@ void MapView::paintUnits(QPainter & painter, const QRect & dirty)
     const double diameter = std::clamp(16.0 * zoom_, 3.0, 48.0);
     const double radius = diameter / 2.0;
 
-    for (const auto & unit : units)
+    for (std::size_t index = 0; index < units.size(); ++index)
     {
+        const auto & unit = units[index];
+        const bool isSelected = (static_cast<int>(index) == selectedUnit_);
+
+        // 드래그 중인 유닛은 손을 따라 움직이는 위치에 그린다.
+        const int drawX = (isSelected && hasPreview_) ? previewPos_.x() : unit.x;
+        const int drawY = (isSelected && hasPreview_) ? previewPos_.y() : unit.y;
+
         const UnitSprite * sprite = unitSprite(unit.type, unit.owner, unit.resourceAmount);
 
         if (sprite != nullptr)
         {
             // 스프라이트는 유닛 중심(anchor)을 기준으로 놓인다.
             const QPointF topLeft =
-                mapToScreen(unit.x - sprite->anchorX, unit.y - sprite->anchorY);
+                mapToScreen(drawX - sprite->anchorX, drawY - sprite->anchorY);
             const QRectF bounds(topLeft.x(), topLeft.y(),
                                 sprite->pixmap.width() * zoom_,
                                 sprite->pixmap.height() * zoom_);
 
             // 화면 밖이면 건너뛴다 — 유닛이 수천 개인 맵이 흔하다.
-            if (!dirty.intersects(bounds.toAlignedRect().adjusted(-1, -1, 1, 1)))
+            if (!dirty.intersects(bounds.toAlignedRect().adjusted(-2, -2, 2, 2)))
                 continue;
 
             painter.drawPixmap(bounds, sprite->pixmap,
                                QRectF(0, 0, sprite->pixmap.width(), sprite->pixmap.height()));
+
+            if (isSelected)
+            {
+                painter.setPen(QPen(QColor(90, 255, 120), 1.5, Qt::DashLine));
+                painter.setBrush(Qt::NoBrush);
+                painter.drawRect(bounds);
+            }
             continue;
         }
 
-        const QPointF center = mapToScreen(unit.x, unit.y);
+        const QPointF center = mapToScreen(drawX, drawY);
         const QRectF bounds(center.x() - radius, center.y() - radius, diameter, diameter);
-        if (!dirty.intersects(bounds.toAlignedRect().adjusted(-1, -1, 1, 1)))
+        if (!dirty.intersects(bounds.toAlignedRect().adjusted(-2, -2, 2, 2)))
             continue;
 
         const chk::PlayerColor color = chk::playerColor(unit.owner);
         painter.setRenderHint(QPainter::Antialiasing, true);
         painter.setBrush(QColor(color.r, color.g, color.b));
-        painter.setPen(QPen(QColor(0, 0, 0, 160), 1.0));
+        painter.setPen(isSelected ? QPen(QColor(90, 255, 120), 1.5)
+                                  : QPen(QColor(0, 0, 0, 160), 1.0));
         painter.drawEllipse(bounds);
     }
 
     painter.restore();
+}
+
+void MapView::clearSelection()
+{
+    if (selectedUnit_ == -1)
+        return;
+    selectedUnit_ = -1;
+    emit selectionChanged(-1);
+    viewport()->update();
+}
+
+QPointF MapView::screenToMap(const QPointF & screen) const
+{
+    if (zoom_ <= 0)
+        return QPointF();
+    return QPointF((screen.x() + horizontalScrollBar()->value()) / zoom_,
+                   (screen.y() + verticalScrollBar()->value()) / zoom_);
+}
+
+int MapView::unitAt(const QPointF & screenPos)
+{
+    if (document_ == nullptr || !document_->isOpen())
+        return -1;
+
+    const auto & units = document_->units();
+
+    // 뒤에서부터 본다 — 나중에 그려진(위에 있는) 유닛이 먼저 잡혀야 한다.
+    for (int i = static_cast<int>(units.size()) - 1; i >= 0; --i)
+    {
+        const auto & unit = units[static_cast<std::size_t>(i)];
+        const UnitSprite * sprite = unitSprite(unit.type, unit.owner, unit.resourceAmount);
+
+        QRectF bounds;
+        if (sprite != nullptr)
+        {
+            const QPointF topLeft =
+                mapToScreen(unit.x - sprite->anchorX, unit.y - sprite->anchorY);
+            bounds = QRectF(topLeft.x(), topLeft.y(),
+                            sprite->pixmap.width() * zoom_,
+                            sprite->pixmap.height() * zoom_);
+        }
+        else
+        {
+            const double d = std::clamp(16.0 * zoom_, 3.0, 48.0);
+            const QPointF center = mapToScreen(unit.x, unit.y);
+            bounds = QRectF(center.x() - d / 2, center.y() - d / 2, d, d);
+        }
+
+        if (bounds.contains(screenPos))
+            return i;
+    }
+    return -1;
+}
+
+void MapView::mousePressEvent(QMouseEvent * event)
+{
+    if (event->button() != Qt::LeftButton || document_ == nullptr || !document_->isOpen())
+    {
+        QAbstractScrollArea::mousePressEvent(event);
+        return;
+    }
+
+    const int hit = unitAt(event->position());
+    if (hit != selectedUnit_)
+    {
+        selectedUnit_ = hit;
+        emit selectionChanged(hit);
+    }
+
+    if (hit >= 0)
+    {
+        dragging_ = true;
+        dragStartMap_ = screenToMap(event->position());
+        const auto & unit = document_->units()[static_cast<std::size_t>(hit)];
+        dragStartUnitPos_ = QPoint(unit.x, unit.y);
+    }
+
+    viewport()->update();
+    event->accept();
+}
+
+void MapView::mouseMoveEvent(QMouseEvent * event)
+{
+    if (!dragging_ || selectedUnit_ < 0 || document_ == nullptr)
+    {
+        QAbstractScrollArea::mouseMoveEvent(event);
+        return;
+    }
+
+    // 드래그 중에는 화면만 미리 옮겨 보여 주고, 문서에는 놓을 때 한 번만 쓴다.
+    // 매 픽셀마다 편집하면 실행 취소 이력이 폭발한다.
+    const QPointF now = screenToMap(event->position());
+    const QPointF delta = now - dragStartMap_;
+
+    const int newX = dragStartUnitPos_.x() + static_cast<int>(delta.x());
+    const int newY = dragStartUnitPos_.y() + static_cast<int>(delta.y());
+    previewPos_ = QPoint(std::max(0, newX), std::max(0, newY));
+    hasPreview_ = true;
+
+    viewport()->update();
+    event->accept();
+}
+
+void MapView::mouseReleaseEvent(QMouseEvent * event)
+{
+    if (!dragging_)
+    {
+        QAbstractScrollArea::mouseReleaseEvent(event);
+        return;
+    }
+
+    dragging_ = false;
+
+    if (hasPreview_ && selectedUnit_ >= 0 && document_ != nullptr)
+    {
+        const auto & unit = document_->units()[static_cast<std::size_t>(selectedUnit_)];
+        const bool moved = (unit.x != previewPos_.x()) || (unit.y != previewPos_.y());
+        if (moved)
+        {
+            auto * doc = const_cast<chk::MapDocument *>(document_);
+            if (doc->moveUnit(static_cast<std::size_t>(selectedUnit_),
+                              static_cast<std::uint16_t>(previewPos_.x()),
+                              static_cast<std::uint16_t>(previewPos_.y())))
+            {
+                emit documentEdited();
+            }
+        }
+    }
+
+    hasPreview_ = false;
+    viewport()->update();
+    event->accept();
+}
+
+bool MapView::deleteSelectedUnit()
+{
+    if (selectedUnit_ < 0 || document_ == nullptr || !document_->isOpen())
+        return false;
+
+    auto * doc = const_cast<chk::MapDocument *>(document_);
+    if (!doc->removeUnit(static_cast<std::size_t>(selectedUnit_)))
+        return false;
+
+    selectedUnit_ = -1;
+    emit selectionChanged(-1);
+    emit documentEdited();
+    viewport()->update();
+    return true;
+}
+
+void MapView::keyPressEvent(QKeyEvent * event)
+{
+    if (event->key() == Qt::Key_Delete || event->key() == Qt::Key_Backspace)
+    {
+        if (deleteSelectedUnit())
+        {
+            event->accept();
+            return;
+        }
+    }
+    else if (event->key() == Qt::Key_Escape)
+    {
+        clearSelection();
+        event->accept();
+        return;
+    }
+
+    QAbstractScrollArea::keyPressEvent(event);
 }
 
 void MapView::paintLocations(QPainter & painter, const QRect & dirty)
