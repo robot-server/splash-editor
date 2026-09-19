@@ -689,6 +689,12 @@ void MapView::setPlacementUnit(std::uint16_t unitType, std::uint8_t owner)
     placeUnitOwner_ = owner;
 }
 
+void MapView::setPlacementSprite(std::uint16_t spriteType, std::uint8_t owner)
+{
+    placeSpriteType_ = spriteType;
+    placeUnitOwner_ = owner;
+}
+
 void MapView::setBrushTile(std::uint16_t tileId)
 {
     if (brushTile_ == tileId)
@@ -844,6 +850,22 @@ void MapView::mousePressEvent(QMouseEvent * event)
     if (event->button() != Qt::LeftButton || document_ == nullptr || !document_->isOpen())
     {
         QAbstractScrollArea::mousePressEvent(event);
+        return;
+    }
+
+    if (tool_ == Tool::PlaceSprite)
+    {
+        const QPointF mapPos = screenToMap(event->position());
+        auto * doc = const_cast<chk::MapDocument *>(document_);
+        if (doc->addSprite(placeSpriteType_, placeUnitOwner_,
+                           static_cast<std::uint16_t>(std::max(0.0, mapPos.x())),
+                           static_cast<std::uint16_t>(std::max(0.0, mapPos.y())),
+                           /*drawnAsSprite*/ true))
+        {
+            refresh();
+            emit documentEdited();
+        }
+        event->accept();
         return;
     }
 

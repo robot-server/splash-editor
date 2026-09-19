@@ -504,6 +504,52 @@ Result MapArchive::addUnit(std::uint16_t unitType, std::uint8_t owner,
     return Result::success();
 }
 
+Result MapArchive::addSprite(std::uint16_t spriteType, std::uint8_t owner,
+                             std::uint16_t x, std::uint16_t y, bool drawnAsSprite)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    try
+    {
+        Chk::Sprite sprite {};
+        sprite.type = Sc::Sprite::Type(spriteType);
+        sprite.owner = owner;
+        sprite.xc = x;
+        sprite.yc = y;
+        sprite.flags = drawnAsSprite ? Chk::Sprite::toPureSpriteFlags(0)
+                                     : Chk::Sprite::toSpriteUnitFlags(0);
+
+        impl_->mapFile->addSprite(sprite);
+        impl_->undoSteps.push_back(1);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("스프라이트를 놓지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::removeSprite(std::size_t spriteIndex)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+    try
+    {
+        if (spriteIndex >= impl_->mapFile->numSprites())
+            return Result::failure("스프라이트 번호가 범위를 벗어났습니다.");
+        impl_->mapFile->deleteSprite(spriteIndex);
+        impl_->undoSteps.push_back(1);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("스프라이트를 지우지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 Result MapArchive::setUnitOwner(std::size_t unitIndex, std::uint8_t owner)
 {
     if (!impl_->isOpen())

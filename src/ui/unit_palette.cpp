@@ -28,6 +28,9 @@ const QColor kCellLine(70, 70, 78);
 /// StarCraft 의 실제 유닛 종류 수. 그 뒤는 트리거 전용 가상 항목이다.
 constexpr std::uint16_t kRealUnitTypes = 228;
 
+/// 맵에 놓을 수 있는 스프라이트 종류 수.
+constexpr std::uint16_t kSpriteTypes = 517;
+
 } // namespace
 
 UnitPalette::UnitPalette(QWidget * parent) : QAbstractScrollArea(parent)
@@ -68,6 +71,7 @@ QString UnitPalette::categoryName(Category category)
         case Category::ProtossUnits:     return tr("프로토스 유닛");
         case Category::ProtossBuildings: return tr("프로토스 건물");
         case Category::Neutral:          return tr("중립 · 자원");
+        case Category::Sprites:          return tr("스프라이트 (장식)");
     }
     return {};
 }
@@ -93,6 +97,18 @@ void UnitPalette::setOwner(std::uint8_t owner)
 void UnitPalette::rebuild()
 {
     units_.clear();
+
+    if (category_ == Category::Sprites)
+    {
+        units_.reserve(kSpriteTypes);
+        for (std::uint16_t type = 0; type < kSpriteTypes; ++type)
+            units_.push_back(type);
+
+        updateScrollRange();
+        viewport()->update();
+        return;
+    }
+
     units_.reserve(kRealUnitTypes);
 
     using Race = io::GameGraphics::UnitClass::Race;
@@ -158,7 +174,10 @@ const QPixmap * UnitPalette::unitPixmap(std::uint16_t unitType)
     if (tileset_ == nullptr || !tileset_->hasUnitGraphics())
         return nullptr;
 
-    const std::uint32_t key = (static_cast<std::uint32_t>(unitType) << 8) | owner_;
+    // 스프라이트와 유닛은 그림이 다르므로 캐시 키도 나눈다.
+    const std::uint32_t key = (static_cast<std::uint32_t>(unitType) << 9) |
+                              (static_cast<std::uint32_t>(owner_) << 1) |
+                              (category_ == Category::Sprites ? 1u : 0u);
     auto found = cache_.find(key);
     if (found != cache_.end())
         return found.value().isNull() ? nullptr : &found.value();
@@ -174,7 +193,9 @@ const QPixmap * UnitPalette::unitPixmap(std::uint16_t unitType)
     else if (unitType == 188)
         resource = 5000;
 
-    const io::UnitImage image = tileset_->renderUnit(unitType, owner_, tilesetId_, resource);
+    const io::UnitImage image = (category_ == Category::Sprites)
+        ? tileset_->renderSprite(unitType, owner_, tilesetId_, /*drawnAsSprite*/ true)
+        : tileset_->renderUnit(unitType, owner_, tilesetId_, resource);
 
     QPixmap pixmap;
     if (image.width > 0 && image.height > 0)
@@ -266,11 +287,19 @@ void UnitPalette::mousePressEvent(QMouseEvent * event)
         return;
 
     selectedUnit_ = units_[index];
-    emit unitSelected(selectedUnit_);
-
-    QToolTip::showText(event->globalPosition().toPoint(),
-                       QString::fromStdString(splash::io::unitTypeName(selectedUnit_)),
-                       this);
+    if (category_ == Category::Sprites)
+    {
+        emit spriteSelected(selectedUnit_);
+        QToolTip::showText(event->globalPosition().toPoint(),
+                           tr("스프라이트 %1").arg(selectedUnit_), this);
+    }
+    else
+    {
+        emit unitSelected(selectedUnit_);
+        QToolTip::showText(event->globalPosition().toPoint(),
+                           QString::fromStdString(splash::io::unitTypeName(selectedUnit_)),
+                           this);
+    }
 
     viewport()->update();
     event->accept();

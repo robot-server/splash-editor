@@ -214,7 +214,8 @@ void MainWindow::buildCentralWidget()
                           UnitPalette::Category::ZergBuildings,
                           UnitPalette::Category::ProtossUnits,
                           UnitPalette::Category::ProtossBuildings,
-                          UnitPalette::Category::Neutral})
+                          UnitPalette::Category::Neutral,
+                          UnitPalette::Category::Sprites})
     {
         categoryBox->addItem(UnitPalette::categoryName(category), static_cast<int>(category));
     }
@@ -246,6 +247,13 @@ void MainWindow::buildCentralWidget()
         const auto owner = static_cast<std::uint8_t>(ownerBox->currentData().toInt());
         unitPalette_->setOwner(owner);
         mapView_->setPlacementUnit(unitPalette_->selectedUnit(), owner);
+    });
+
+    connect(unitPalette_, &UnitPalette::spriteSelected, this, [this](std::uint16_t spriteType) {
+        mapView_->setPlacementSprite(spriteType, unitPalette_->owner());
+        mapView_->setTool(MapView::Tool::PlaceSprite);
+        statusBar()->showMessage(
+            tr("놓을 스프라이트: %1 — 맵을 클릭하세요").arg(spriteType), 4000);
     });
 
     connect(unitPalette_, &UnitPalette::unitSelected, this, [this](std::uint16_t unitType) {

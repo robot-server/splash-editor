@@ -220,6 +220,13 @@ public:
     /// 유닛을 지운다.
     Result removeUnit(std::size_t unitIndex);
 
+    /// 스프라이트를 새로 놓는다. 좌표는 픽셀.
+    Result addSprite(std::uint16_t spriteType, std::uint8_t owner,
+                     std::uint16_t x, std::uint16_t y, bool drawnAsSprite);
+
+    /// 스프라이트를 지운다.
+    Result removeSprite(std::size_t spriteIndex);
+
     /// 유닛을 새로 놓는다. 좌표는 픽셀.
     ///
     /// 자원 유닛(미네랄·베스핀)은 기본 자원량을 함께 넣는다 — 0 으로 두면

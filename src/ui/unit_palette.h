@@ -37,7 +37,8 @@ public:
         TerranUnits, TerranBuildings,
         ZergUnits,   ZergBuildings,
         ProtossUnits, ProtossBuildings,
-        Neutral
+        Neutral,
+        Sprites   ///< 맵 장식 스프라이트 (유닛이 아니다)
     };
     void setCategory(Category category);
     Category category() const { return category_; }
@@ -49,8 +50,12 @@ public:
     std::uint8_t owner() const { return owner_; }
     void setOwner(std::uint8_t owner);
 
+    /// 지금 고른 것이 스프라이트인지(유닛이 아니라).
+    bool spriteMode() const { return category_ == Category::Sprites; }
+
 signals:
     void unitSelected(std::uint16_t unitType);
+    void spriteSelected(std::uint16_t spriteType);
 
 protected:
     void paintEvent(QPaintEvent * event) override;

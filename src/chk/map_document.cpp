@@ -217,6 +217,25 @@ bool MapDocument::removeUnit(std::size_t unitIndex)
     return true;
 }
 
+bool MapDocument::addSprite(std::uint16_t spriteType, std::uint8_t owner,
+                            std::uint16_t x, std::uint16_t y, bool drawnAsSprite)
+{
+    const io::Result result = archive_.addSprite(spriteType, owner, x, y, drawnAsSprite);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true; ++undoDepth_; redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::removeSprite(std::size_t spriteIndex)
+{
+    const io::Result result = archive_.removeSprite(spriteIndex);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true; ++undoDepth_; redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
 bool MapDocument::addUnit(std::uint16_t unitType, std::uint8_t owner,
                           std::uint16_t x, std::uint16_t y)
 {

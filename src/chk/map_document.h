@@ -130,6 +130,13 @@ public:
     /// 유닛을 지운다.
     bool removeUnit(std::size_t unitIndex);
 
+    /// 스프라이트를 새로 놓는다. 좌표는 픽셀.
+    bool addSprite(std::uint16_t spriteType, std::uint8_t owner,
+                   std::uint16_t x, std::uint16_t y, bool drawnAsSprite);
+
+    /// 스프라이트를 지운다.
+    bool removeSprite(std::size_t spriteIndex);
+
     /// 유닛을 새로 놓는다. 좌표는 픽셀.
     bool addUnit(std::uint16_t unitType, std::uint8_t owner,
                  std::uint16_t x, std::uint16_t y);

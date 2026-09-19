@@ -34,7 +34,8 @@ public:
     {
         Select,    ///< 유닛·로케이션 고르고 옮기기
         Terrain,   ///< 지형 칠하기
-        PlaceUnit  ///< 유닛 놓기
+        PlaceUnit,  ///< 유닛 놓기
+        PlaceSprite ///< 맵 장식 스프라이트 놓기
     };
 
     explicit MapView(QWidget * parent = nullptr);
@@ -125,6 +126,9 @@ public:
 
     /// 유닛 놓기 도구가 놓을 유닛과 소유자.
     void setPlacementUnit(std::uint16_t unitType, std::uint8_t owner);
+
+    /// 스프라이트 놓기 도구가 놓을 스프라이트.
+    void setPlacementSprite(std::uint16_t spriteType, std::uint8_t owner);
 
     /// 브러시 한 변의 타일 수 (1, 2, 4 …).
     int brushSize() const { return brushSize_; }
@@ -240,6 +244,7 @@ private:
     std::size_t isomTerrainType_ = 0;
     std::uint16_t placeUnitType_ = 0;
     std::uint8_t placeUnitOwner_ = 0;
+    std::uint16_t placeSpriteType_ = 0;
     int brushSize_ = 1;
     bool painting_ = false;
     bool isomPainting_ = false;
