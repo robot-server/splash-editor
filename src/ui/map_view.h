@@ -95,6 +95,19 @@ public:
     std::uint16_t brushTile() const { return brushTile_; }
     void setBrushTile(std::uint16_t tileId);
 
+    /// 지형 도구가 어떤 방식으로 놓을지.
+    enum class TerrainMode
+    {
+        Isometric,   ///< 마름모 격자. 절벽·해안이 자동으로 이어진다
+        Rectangular, ///< 브러시 크기만큼 사각으로 칠한다
+        Subtile      ///< 한 칸씩 정밀하게 칠한다
+    };
+    TerrainMode terrainMode() const { return terrainMode_; }
+    void setTerrainMode(TerrainMode mode);
+
+    /// ISOM 모드가 놓을 지형 종류(GameGraphics::terrainTypes 의 brushIndex).
+    void setIsomTerrainType(std::size_t brushIndex);
+
     /// 유닛 놓기 도구가 놓을 유닛과 소유자.
     void setPlacementUnit(std::uint16_t unitType, std::uint8_t owner);
 
@@ -200,6 +213,8 @@ private:
     // 선택과 드래그
     Tool tool_ = Tool::Select;
     std::uint16_t brushTile_ = 0;
+    TerrainMode terrainMode_ = TerrainMode::Rectangular;
+    std::size_t isomTerrainType_ = 0;
     std::uint16_t placeUnitType_ = 0;
     std::uint8_t placeUnitOwner_ = 0;
     int brushSize_ = 1;

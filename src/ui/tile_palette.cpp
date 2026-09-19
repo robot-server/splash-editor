@@ -56,13 +56,33 @@ void TilePalette::setSelectedTile(std::uint16_t tileId)
     viewport()->update();
 }
 
+void TilePalette::setTerrainTypeMode(bool on)
+{
+    if (terrainTypeMode_ == on)
+        return;
+    terrainTypeMode_ = on;
+    rebuild();
+    verticalScrollBar()->setValue(0);
+}
+
 void TilePalette::rebuild()
 {
     cache_.clear();
     tiles_.clear();
+    terrainTypes_.clear();
 
     if (tileset_ != nullptr && tileset_->isLoaded())
-        tiles_ = tileset_->paletteTileIds(tilesetId_);
+    {
+        if (terrainTypeMode_)
+        {
+            for (const auto & type : tileset_->terrainTypes(tilesetId_))
+                terrainTypes_.emplace_back(type.brushIndex, QString::fromStdString(type.name));
+        }
+        else
+        {
+            tiles_ = tileset_->paletteTileIds(tilesetId_);
+        }
+    }
 
     updateScrollRange();
     viewport()->update();
@@ -75,6 +95,17 @@ int TilePalette::columns() const
 
 void TilePalette::updateScrollRange()
 {
+    if (terrainTypeMode_)
+    {
+        // 지형 종류는 한 줄에 하나씩 이름으로 보여 준다.
+        const int rowHeight = 24;
+        const int contentHeight = static_cast<int>(terrainTypes_.size()) * rowHeight;
+        verticalScrollBar()->setRange(0, std::max(0, contentHeight - viewport()->height()));
+        verticalScrollBar()->setPageStep(viewport()->height());
+        verticalScrollBar()->setSingleStep(rowHeight);
+        return;
+    }
+
     const int cols = columns();
     const int rows = (static_cast<int>(tiles_.size()) + cols - 1) / cols;
     const int contentHeight = rows * kCell;
@@ -116,6 +147,36 @@ void TilePalette::paintEvent(QPaintEvent * event)
 {
     QPainter painter(viewport());
     painter.fillRect(event->rect(), kBackground);
+
+    if (terrainTypeMode_)
+    {
+        if (terrainTypes_.empty())
+        {
+            painter.setPen(QColor(200, 200, 205));
+            painter.drawText(viewport()->rect(), Qt::AlignCenter,
+                             tr("지형 종류를 보려면\nStarCraft 설치 폴더가 필요합니다."));
+            return;
+        }
+
+        const int rowHeight = 24;
+        const int origin = verticalScrollBar()->value();
+        for (std::size_t i = 0; i < terrainTypes_.size(); ++i)
+        {
+            const QRect row(0, static_cast<int>(i) * rowHeight - origin,
+                            viewport()->width(), rowHeight);
+            if (!row.intersects(event->rect()))
+                continue;
+
+            const bool selected = (static_cast<int>(i) == selectedTerrainRow_);
+            painter.fillRect(row, selected ? QColor(58, 84, 62) : QColor(46, 46, 52));
+            painter.setPen(QColor(70, 70, 78));
+            painter.drawLine(row.bottomLeft(), row.bottomRight());
+            painter.setPen(selected ? QColor(150, 255, 170) : QColor(215, 215, 220));
+            painter.drawText(row.adjusted(8, 0, -4, 0), Qt::AlignVCenter | Qt::AlignLeft,
+                             terrainTypes_[i].second);
+        }
+        return;
+    }
 
     if (tiles_.empty())
     {
@@ -161,6 +222,24 @@ void TilePalette::paintEvent(QPaintEvent * event)
 
 void TilePalette::mousePressEvent(QMouseEvent * event)
 {
+    if (terrainTypeMode_)
+    {
+        if (event->button() != Qt::LeftButton || terrainTypes_.empty())
+            return;
+
+        const int rowHeight = 24;
+        const int index =
+            (static_cast<int>(event->position().y()) + verticalScrollBar()->value()) / rowHeight;
+        if (index < 0 || index >= static_cast<int>(terrainTypes_.size()))
+            return;
+
+        selectedTerrainRow_ = index;
+        emit terrainTypeSelected(terrainTypes_[static_cast<std::size_t>(index)].first);
+        viewport()->update();
+        event->accept();
+        return;
+    }
+
     if (event->button() != Qt::LeftButton || tiles_.empty())
     {
         QAbstractScrollArea::mousePressEvent(event);

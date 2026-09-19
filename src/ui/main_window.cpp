@@ -140,11 +140,44 @@ void MainWindow::buildCentralWidget()
     setCentralWidget(splitter);
 
     // 지형 타일 팔레트는 도크로 둔다 — 지형 작업을 할 때만 열어 두면 된다.
-    tilePalette_ = new TilePalette(this);
+    auto * terrainPanel = new QWidget(this);
+    auto * terrainLayout = new QVBoxLayout(terrainPanel);
+    terrainLayout->setContentsMargins(4, 4, 4, 4);
+
+    // 지형을 놓는 방식. SCMDraft 와 같은 세 가지다.
+    auto * modeBox = new QComboBox(terrainPanel);
+    modeBox->addItem(tr("Isometric — 절벽·해안 자동 연결"),
+                     int(MapView::TerrainMode::Isometric));
+    modeBox->addItem(tr("Rectangular — 브러시 크기로 칠하기"),
+                     int(MapView::TerrainMode::Rectangular));
+    modeBox->addItem(tr("Subtile — 한 칸씩 정밀하게"),
+                     int(MapView::TerrainMode::Subtile));
+    modeBox->setCurrentIndex(1); // Rectangular
+
+    tilePalette_ = new TilePalette(terrainPanel);
     tilePalette_->setTileset(&tileset_);
 
-    paletteDock_ = new QDockWidget(tr("타일 팔레트"), this);
-    paletteDock_->setWidget(tilePalette_);
+    terrainLayout->addWidget(modeBox);
+    terrainLayout->addWidget(tilePalette_, 1);
+
+    connect(modeBox, &QComboBox::currentIndexChanged, this, [this, modeBox](int) {
+        const auto mode = static_cast<MapView::TerrainMode>(modeBox->currentData().toInt());
+        mapView_->setTerrainMode(mode);
+        mapView_->setTool(MapView::Tool::Terrain);
+
+        // ISOM 은 지형 종류를 고르고, 나머지는 타일을 고른다.
+        tilePalette_->setTerrainTypeMode(mode == MapView::TerrainMode::Isometric);
+    });
+
+    connect(tilePalette_, &TilePalette::terrainTypeSelected, this,
+            [this](std::size_t brushIndex) {
+        mapView_->setIsomTerrainType(brushIndex);
+        mapView_->setTool(MapView::Tool::Terrain);
+        statusBar()->showMessage(tr("ISOM 지형을 골랐습니다 — 맵을 클릭하세요"), 3000);
+    });
+
+    paletteDock_ = new QDockWidget(tr("지형 팔레트"), this);
+    paletteDock_->setWidget(terrainPanel);
     paletteDock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     addDockWidget(Qt::LeftDockWidgetArea, paletteDock_);
     paletteDock_->hide(); // 지형 도구를 고를 때 열린다

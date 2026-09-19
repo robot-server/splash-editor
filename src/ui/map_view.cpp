@@ -647,6 +647,16 @@ void MapView::setTool(Tool tool)
     viewport()->update();
 }
 
+void MapView::setTerrainMode(TerrainMode mode)
+{
+    terrainMode_ = mode;
+}
+
+void MapView::setIsomTerrainType(std::size_t brushIndex)
+{
+    isomTerrainType_ = brushIndex;
+}
+
 void MapView::setPlacementUnit(std::uint16_t unitType, std::uint8_t owner)
 {
     placeUnitType_ = unitType;
@@ -676,11 +686,14 @@ void MapView::paintTerrainAt(const QPointF & screenPos)
     const int centerY = static_cast<int>(mapPos.y()) / io::kTilePixels;
 
     const auto & info = document_->info();
-    const int half = brushSize_ / 2;
 
-    for (int dy = 0; dy < brushSize_; ++dy)
+    // Subtile 은 한 칸씩 정밀하게, Rectangular 는 브러시 크기만큼.
+    const int extent = (terrainMode_ == TerrainMode::Subtile) ? 1 : brushSize_;
+    const int half = extent / 2;
+
+    for (int dy = 0; dy < extent; ++dy)
     {
-        for (int dx = 0; dx < brushSize_; ++dx)
+        for (int dx = 0; dx < extent; ++dx)
         {
             const int tx = centerX - half + dx;
             const int ty = centerY - half + dy;
@@ -838,6 +851,29 @@ void MapView::mousePressEvent(QMouseEvent * event)
                 const std::size_t index = static_cast<std::size_t>(ty) * info.width + tx;
                 if (index < tiles.size())
                     setBrushTile(tiles[index]);
+            }
+            event->accept();
+            return;
+        }
+
+        // ISOM 은 한 번의 클릭이 여러 타일을 한꺼번에 바꾼다. 획을 모으지
+        // 않고 바로 적용한다.
+        if (terrainMode_ == TerrainMode::Isometric)
+        {
+            if (tileset_ != nullptr && tileset_->isLoaded())
+            {
+                const QPointF mapPos = screenToMap(event->position());
+                auto * doc = const_cast<chk::MapDocument *>(document_);
+                auto * graphics = const_cast<io::GameGraphics *>(tileset_);
+                if (doc->placeIsomTerrain(*graphics,
+                                          static_cast<std::size_t>(std::max(0.0, mapPos.x())),
+                                          static_cast<std::size_t>(std::max(0.0, mapPos.y())),
+                                          isomTerrainType_,
+                                          static_cast<std::size_t>(brushSize_)))
+                {
+                    refresh();
+                    emit documentEdited();
+                }
             }
             event->accept();
             return;

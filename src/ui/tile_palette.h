@@ -10,7 +10,10 @@
 #include <QPixmap>
 
 #include <cstdint>
+#include <utility>
 #include <vector>
+
+#include <QString>
 
 namespace splash::io { class GameGraphics; }
 
@@ -34,9 +37,16 @@ public:
     std::uint16_t selectedTile() const { return selectedTile_; }
     void setSelectedTile(std::uint16_t tileId);
 
+    /// 지형 종류 목록을 보여 줄지(ISOM 모드), 타일 격자를 보여 줄지.
+    void setTerrainTypeMode(bool on);
+    bool terrainTypeMode() const { return terrainTypeMode_; }
+
 signals:
     /// 팔레트에서 타일을 골랐다.
     void tileSelected(std::uint16_t tileId);
+
+    /// ISOM 모드에서 지형 종류를 골랐다 (brushIndex).
+    void terrainTypeSelected(std::size_t brushIndex);
 
 protected:
     void paintEvent(QPaintEvent * event) override;
@@ -54,6 +64,9 @@ private:
     std::uint16_t tilesetId_ = 0;
     std::uint16_t selectedTile_ = 0;
 
+    bool terrainTypeMode_ = false;
+    int selectedTerrainRow_ = 0;
+    std::vector<std::pair<std::size_t, QString>> terrainTypes_; ///< (brushIndex, 이름)
     std::vector<std::uint16_t> tiles_;
     QHash<std::uint16_t, QPixmap> cache_;
 };
