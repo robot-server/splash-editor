@@ -109,6 +109,7 @@ void MapDocument::close()
 {
     archive_.close();
     info_ = MapInfo{};
+    tiles_.clear();
     filePath_.clear();
     lastError_.clear();
     modified_ = false;
@@ -151,8 +152,15 @@ const std::string & MapDocument::lastError() const
     return lastError_;
 }
 
+const std::vector<std::uint16_t> & MapDocument::tiles() const
+{
+    return tiles_;
+}
+
 void MapDocument::refreshInfo()
 {
+    tiles_ = archive_.terrainTiles();
+
     const io::RawMapInfo raw = archive_.info();
 
     info_.name          = raw.scenarioName;

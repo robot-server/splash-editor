@@ -18,11 +18,12 @@ StarCraft: Brood War / Remastered 맵 에디터. Windows · macOS · Linux.
 - 다시 저장 (저장 · 다른 이름으로 저장)
 - 빈 맵 새로 만들기 (CLI)
 - **CHK 바이트를 보존하는 round-trip** — 편집하지 않은 섹션은 한 바이트도 바뀌지 않는다
+- **지형 보기** — 게임 설치본의 타일셋으로 실제 지형을 그린다. 스크롤 · 확대/축소
 
 ## 아직 안 되는 것
 
-지형 렌더링, 유닛/로케이션/트리거 편집, 실행 취소, 도킹 UI, 멀티 맵 탭.
-모두 M2 이후다.
+유닛/로케이션/트리거 표시와 편집, 지형 편집, 실행 취소, 도킹 UI, 멀티 맵 탭.
+모두 M3 이후다.
 
 ---
 
@@ -98,7 +99,22 @@ cmake --build build --config RelWithDebInfo
 ```sh
 ./build/src/ui/splash-editor              # 빈 창으로 시작
 ./build/src/ui/splash-editor path/to.scx  # 맵을 열고 시작
+
+# 타일셋을 쓰려면 StarCraft 설치 폴더가 필요하다.
+# 한 번 지정하면 기억하므로 다음부터는 생략해도 된다.
+./build/src/ui/splash-editor path/to.scx --install "/경로/StarCraft"
 ```
+
+설치 폴더는 메뉴 `파일 › StarCraft 설치 폴더 지정…` 으로도 고를 수 있다.
+지정하지 않으면 지형 대신 안내 문구가 뜨고, 나머지 기능은 그대로 동작한다.
+
+조작:
+
+| | |
+|---|---|
+| 스크롤 | 스크롤바 · 휠 |
+| 확대 / 축소 | `⌘+` / `⌘-` · `Ctrl`+휠 |
+| 실제 크기 | `⌘0` |
 
 ### CLI
 
@@ -119,6 +135,12 @@ CLI 는 GUI 없이 코어를 두드리는 도구이자 테스트 하네스다.
 
 # 빈 맵 만들기 (확장자로 포맷 결정: .scm=하이브리드, .scx=브루드워)
 ./build/src/cli/splash-cli new new.scx 128 128 4 --melee
+
+# 게임 설치본 조사 — 아카이브 종류와 타일셋 데이터 유무를 확인한다
+./build/src/cli/splash-cli assets "/경로/StarCraft"
+
+# 지형을 이미지로 뽑기 (타일셋 디코딩 검증용, PPM 출력)
+./build/src/cli/splash-cli render map.scx "/경로/StarCraft" out.ppm
 ```
 
 ---
@@ -184,11 +206,26 @@ MPQ 컨테이너는 해시 테이블 배치나 압축 결과가 달라질 수 �
 ```
 src/
   io/    MappingCore 를 감싸는 얇은 I/O 계층 (Qt 없음)
+           map_archive     맵 열기/저장, CHK 바이트 추출
+           game_assets     설치본 조사 (CASC / MPQ)
+           tileset_source  타일셋 그래픽 -> 타일 픽셀
   chk/   MapDocument — 열린 맵 + 더티 플래그 + save() (Qt 없음)
-  ui/    Qt Widgets GUI — 단일 QMainWindow
+  ui/    Qt Widgets GUI — 단일 QMainWindow + 맵 캔버스
   cli/   커맨드라인 프런트엔드
 tests/   round-trip 테스트
 cmake/   의존성 취득, MappingCore 빌드 정의
+```
+
+### 지형 렌더링
+
+맵 캔버스는 **보이는 영역의 타일만** 그린다. 맵 전체를 한 장 이미지로 만들면
+256x256 맵이 8192x8192 픽셀, RGBA 로 268MB 가 되기 때문이다. 타일 그림은
+타일 ID 별로 캐시한다 — 맵 하나가 쓰는 고유 타일은 보통 수백~수천 개다.
+
+타일 하나(32x32)를 그리는 경로는 전부 MappingCore 가 파싱한 자료를 쓴다:
+
+```
+tileId -> CV5 타일 그룹 -> VX4 메가타일 -> VR4 미니타일(8x8) -> WPE 팔레트
 ```
 
 **코어에는 Qt 타입이 없다.** `splash_io` 와 `splash_core` 는 Qt 를 링크하지
@@ -319,7 +356,7 @@ Splash Editor 는 Qt 6 을 **LGPLv3** 조건으로 사용하며, 그 의무를 �
 |---|---|---|
 | **M0** | 문서 · 라이선스 | ✅ 완료 |
 | **M1** | 열기 · 메타데이터 · 재저장, round-trip, 게임에서 열림 | ✅ 완료 |
-| **M2** | 읽기 전용 뷰 (지형 렌더링) | 다음 |
+| **M2** | 읽기 전용 뷰 (지형 렌더링) | 🔨 진행 중 |
 | **M3** | 유닛 / 로케이션 편집 | — |
 | **M4** | 지형 편집 | — |
 | **M5** | 트리거 → 이후 SCMDraft 2 패리티 | — |

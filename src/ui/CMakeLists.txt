@@ -11,6 +11,8 @@ qt_add_executable(splash-editor
   main.cpp
   main_window.cpp
   main_window.h
+  map_view.cpp
+  map_view.h
 )
 
 target_link_libraries(splash-editor PRIVATE splash_core Qt6::Widgets)

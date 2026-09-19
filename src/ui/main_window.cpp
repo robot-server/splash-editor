@@ -1,6 +1,12 @@
 #include "ui/main_window.h"
 
+#include "ui/map_view.h"
+
 #include <QAction>
+#include <QApplication>
+#include <QGroupBox>
+#include <QSettings>
+#include <QSplitter>
 #include <QApplication>
 #include <QCloseEvent>
 #include <QFileDialog>
@@ -16,6 +22,9 @@ namespace splash::ui {
 namespace {
 
 constexpr const char * kAppName = "Splash Editor";
+
+/// StarCraft 설치 경로를 기억해 두는 설정 키.
+constexpr const char * kInstallPathKey = "installPath";
 
 /// 열기/저장 대화상자에서 쓸 필터.
 QString mapFilter()
@@ -40,25 +49,32 @@ MainWindow::MainWindow(QWidget * parent) : QMainWindow(parent)
     buildCentralWidget();
     buildMenus();
     refreshFromDocument();
-    resize(560, 360);
+    resize(960, 640);
+
+    // 지난번에 지정한 설치 폴더가 있으면 조용히 읽는다.
+    loadTilesetFrom(QSettings().value(kInstallPathKey).toString(), /*announce*/ false);
 }
 
 MainWindow::~MainWindow() = default;
 
 void MainWindow::buildCentralWidget()
 {
-    auto * central = new QWidget(this);
-    auto * outer = new QVBoxLayout(central);
+    mapView_ = new MapView(this);
+    mapView_->setDocument(&document_);
+    mapView_->setTileset(&tileset_);
+
+    auto * side = new QWidget(this);
+    auto * outer = new QVBoxLayout(side);
 
     auto * form = new QFormLayout();
     form->setLabelAlignment(Qt::AlignRight);
 
-    nameValue_    = new QLabel(central);
-    sizeValue_    = new QLabel(central);
-    tilesetValue_ = new QLabel(central);
-    versionValue_ = new QLabel(central);
-    countsValue_  = new QLabel(central);
-    pathValue_    = new QLabel(central);
+    nameValue_    = new QLabel(side);
+    sizeValue_    = new QLabel(side);
+    tilesetValue_ = new QLabel(side);
+    versionValue_ = new QLabel(side);
+    countsValue_  = new QLabel(side);
+    pathValue_    = new QLabel(side);
 
     // 긴 경로/이름이 창을 늘리지 않도록.
     for (QLabel * label : {nameValue_, tilesetValue_, versionValue_, countsValue_, pathValue_})
@@ -77,7 +93,14 @@ void MainWindow::buildCentralWidget()
     outer->addLayout(form);
     outer->addStretch();
 
-    setCentralWidget(central);
+    auto * splitter = new QSplitter(Qt::Horizontal, this);
+    splitter->addWidget(mapView_);
+    splitter->addWidget(side);
+    splitter->setStretchFactor(0, 1); // 맵이 주인공이다
+    splitter->setStretchFactor(1, 0);
+    splitter->setSizes({640, 280});
+
+    setCentralWidget(splitter);
     statusBar();
 }
 
@@ -105,9 +128,73 @@ void MainWindow::buildMenus()
 
     fileMenu->addSeparator();
 
+    QAction * installAction = fileMenu->addAction(tr("StarCraft 설치 폴더 지정(&I)…"));
+    connect(installAction, &QAction::triggered, this, &MainWindow::onChooseInstallPath);
+
+    fileMenu->addSeparator();
+
     QAction * quitAction = fileMenu->addAction(tr("종료(&Q)"));
     quitAction->setShortcut(QKeySequence::Quit);
     connect(quitAction, &QAction::triggered, this, &QWidget::close);
+
+    QMenu * viewMenu = menuBar()->addMenu(tr("보기(&V)"));
+
+    zoomInAction_ = viewMenu->addAction(tr("확대(&I)"));
+    zoomInAction_->setShortcut(QKeySequence::ZoomIn);
+    connect(zoomInAction_, &QAction::triggered, mapView_, &MapView::zoomIn);
+
+    zoomOutAction_ = viewMenu->addAction(tr("축소(&O)"));
+    zoomOutAction_->setShortcut(QKeySequence::ZoomOut);
+    connect(zoomOutAction_, &QAction::triggered, mapView_, &MapView::zoomOut);
+
+    zoomResetAction_ = viewMenu->addAction(tr("실제 크기(&A)"));
+    zoomResetAction_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_0));
+    connect(zoomResetAction_, &QAction::triggered, mapView_, &MapView::zoomReset);
+}
+
+void MainWindow::onChooseInstallPath()
+{
+    const QString path = QFileDialog::getExistingDirectory(
+        this, tr("StarCraft 설치 폴더 선택"),
+        QSettings().value(kInstallPathKey).toString());
+
+    if (path.isEmpty())
+        return;
+
+    loadTilesetFrom(path, /*announce*/ true);
+}
+
+void MainWindow::useInstallPath(const QString & installPath)
+{
+    loadTilesetFrom(installPath, /*announce*/ true);
+}
+
+void MainWindow::loadTilesetFrom(const QString & installPath, bool announce)
+{
+    if (installPath.isEmpty())
+        return;
+
+    // CASC 인덱스를 읽느라 몇 초가 걸릴 수 있다.
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    std::string error;
+    const bool ok = tileset_.load(installPath.toStdString(), &error);
+    QApplication::restoreOverrideCursor();
+
+    if (!ok)
+    {
+        if (announce)
+        {
+            QMessageBox::warning(this, tr("타일셋 로드 실패"),
+                                 QString::fromStdString(error));
+        }
+        return;
+    }
+
+    QSettings().setValue(kInstallPathKey, installPath);
+    mapView_->refresh();
+
+    if (announce)
+        statusBar()->showMessage(tr("타일셋을 읽었습니다: %1").arg(installPath), 4000);
 }
 
 void MainWindow::openPath(const QString & path)
@@ -216,6 +303,9 @@ void MainWindow::closeEvent(QCloseEvent * event)
 void MainWindow::refreshFromDocument()
 {
     const bool open = document_.isOpen();
+
+    if (mapView_ != nullptr)
+        mapView_->refresh();
 
     saveAction_->setEnabled(open);
     saveAsAction_->setEnabled(open);

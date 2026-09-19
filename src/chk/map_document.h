@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace splash::chk {
 
@@ -83,11 +84,17 @@ public:
     /// 마지막 실패 사유. 성공했다면 빈 문자열.
     const std::string & lastError() const;
 
+    /// 지형 타일 값. 행 우선이며 길이는 width*height.
+    /// 열 때 한 번 읽어 둔다 — 256x256 맵도 128KB 라 들고 있어도 부담이 없고,
+    /// 렌더링 때마다 코어를 두드리지 않아도 된다.
+    const std::vector<std::uint16_t> & tiles() const;
+
 private:
     void refreshInfo();
 
     io::MapArchive archive_;
     MapInfo info_;
+    std::vector<std::uint16_t> tiles_;
     std::string filePath_;
     std::string lastError_;
     bool modified_ = false;
