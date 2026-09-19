@@ -558,6 +558,17 @@ void MainWindow::buildMenus()
     QAction * copyAction = editMenu->addAction(tr("복사(&C)"));
     copyAction->setShortcut(QKeySequence::Copy);
     connect(copyAction, &QAction::triggered, this, [this] {
+        // 지형 도구에서는 고른 지형을, 아니면 고른 유닛을 담는다.
+        if (mapView_->tool() == MapView::Tool::SelectTerrain)
+        {
+            if (mapView_->copyTerrainSelection())
+                statusBar()->showMessage(
+                    tr("지형을 복사했습니다 — 누르면 찍힙니다"), 3000);
+            else
+                statusBar()->showMessage(tr("복사할 지형을 먼저 고르세요"), 2000);
+            return;
+        }
+
         if (mapView_->copySelection())
             statusBar()->showMessage(tr("유닛을 복사했습니다"), 2000);
         else
@@ -607,6 +618,19 @@ void MainWindow::buildMenus()
         if (unitDock_ != nullptr)
             unitDock_->show();
         statusBar()->showMessage(tr("유닛 놓기 — 팔레트에서 유닛을 고르세요"), 4000);
+    });
+
+    QAction * terrainSelectTool = toolMenu->addAction(tr("지형 고르기(&E)"));
+    terrainSelectTool->setCheckable(true);
+    terrainSelectTool->setShortcut(QKeySequence(Qt::Key_E));
+    terrainSelectTool->setToolTip(
+        tr("지형을 네모로 골라 복사합니다. 복사한 지형은 브러시가 되어 "
+           "커서를 따라다니고, 누르면 그 자리에 찍힙니다."));
+    toolGroup->addAction(terrainSelectTool);
+    connect(terrainSelectTool, &QAction::triggered, this, [this] {
+        mapView_->setTool(MapView::Tool::SelectTerrain);
+        statusBar()->showMessage(
+            tr("지형 고르기 — 끌어서 고르고 Ctrl+C 로 복사, 누르면 찍습니다"), 5000);
     });
 
     QAction * spriteTool = toolMenu->addAction(tr("스프라이트 놓기(&R)"));

@@ -2015,6 +2015,47 @@ Result MapArchive::setScenarioDescription(const std::string & description)
     return Result::success();
 }
 
+Result MapArchive::writeTiles(const std::vector<TileWrite> & writes)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+    if (writes.empty())
+        return Result::success();
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        const std::size_t width = map.getTileWidth();
+        const std::size_t height = map.getTileHeight();
+
+        int actions = 0;
+        for (const TileWrite & write : writes)
+        {
+            if (write.x >= width || write.y >= height)
+                continue;
+
+            // Scope::Both 는 MTXM 과 TILE 을 각각 고치므로 액션이 두 개 생긴다.
+            const bool hasEditorTiles =
+                map.read.editorTiles.size() > (write.y * width + write.x);
+
+            map.setTile(write.x, write.y, write.value, Chk::Scope::Both);
+            actions += hasEditorTiles ? 2 : 1;
+        }
+
+        if (actions > 0)
+        {
+            // 한 번의 실행 취소로 붙여 넣은 것을 통째로 되돌린다.
+            impl_->undoSteps.push_back(actions);
+            impl_->redoSteps.clear();
+        }
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("타일을 쓰지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 Result MapArchive::setTileset(std::uint16_t tilesetId)
 {
     if (!impl_->isOpen())

@@ -426,6 +426,17 @@ public:
     /// 보이는 것과 게임에서 도는 것이 달라진다.
     Result setTile(std::size_t tileX, std::size_t tileY, std::uint16_t tileValue);
 
+    /// 칸마다 다른 값을 한 번에 쓴다. 지형을 붙여 넣을 때 쓴다.
+    ///
+    /// 한 번의 실행 취소로 전부 되돌아간다.
+    struct TileWrite
+    {
+        std::size_t x = 0;
+        std::size_t y = 0;
+        std::uint16_t value = 0;
+    };
+    Result writeTiles(const std::vector<TileWrite> & writes);
+
     /// 로케이션의 범위를 바꾼다. 좌표는 픽셀이며 left<=right, top<=bottom 이어야 한다.
     /// 두 유닛을 잇는다 (애드온이 붙거나 나이더스 굴이 이어진 상태).
     ///

@@ -36,7 +36,8 @@ public:
         Terrain,     ///< 지형 칠하기
         PlaceUnit,   ///< 유닛 놓기
         PlaceSprite, ///< 맵 장식 스프라이트 놓기
-        PlaceDoodad, ///< 두들(지형 장식) 놓기
+        PlaceDoodad,   ///< 두들(지형 장식) 놓기
+        SelectTerrain, ///< 지형을 네모로 고르기 (복사·붙여넣기)
         Fog          ///< 시야 가리개 칠하기
     };
 
@@ -160,6 +161,18 @@ public:
 
     /// ISOM 모드가 놓을 지형 종류(GameGraphics::terrainTypes 의 brushIndex).
     void setIsomTerrainType(std::size_t brushIndex);
+
+    /// 지형을 네모로 골라 복사·붙여넣기 하는 도구.
+    ///
+    /// SCMDraft 처럼 고른 지형이 곧 브러시가 된다 — 붙여넣기를 켜면 커서를
+    /// 따라 미리 보이고, 누르면 그 자리에 찍힌다.
+    bool hasTerrainClipboard() const { return !terrainClipboard_.empty(); }
+
+    /// 고른 지형을 클립보드에 담는다. 담았으면 참.
+    bool copyTerrainSelection();
+
+    /// 담아 둔 지형을 커서 자리에 찍는다.
+    bool pasteTerrainAt(const QPointF & screenPos);
 
     /// 유닛 놓기 도구가 놓을 유닛과 소유자.
     void setPlacementUnit(std::uint16_t unitType, std::uint8_t owner);
@@ -377,6 +390,9 @@ public:
     /// 픽셀 좌표판. ISOM 처럼 픽셀로 다루는 것에 쓴다.
     std::vector<QPoint> mirrorPixels(int pixelX, int pixelY) const;
 
+    /// 고른 지형과 붙여넣기 미리보기를 그린다.
+    void paintTerrainSelection(QPainter & painter);
+
     /// 고르는 사각형을 그린다.
     void paintSelectionBox(QPainter & painter);
 
@@ -436,6 +452,14 @@ public:
     bool boxSelecting_ = false;
     QPointF boxStart_;   ///< 맵 좌표
     QPointF boxEnd_;
+
+    // 지형 고르기·클립보드.
+    bool terrainSelecting_ = false;
+    QRect terrainSelection_;  ///< 타일 좌표 (없으면 비어 있음)
+    int clipboardWidth_ = 0;  ///< 담아 둔 지형의 타일 크기
+    int clipboardHeight_ = 0;
+    std::vector<std::uint16_t> terrainClipboard_;
+    bool pastingTerrain_ = false; ///< 붙여넣기 브러시가 켜져 있는지
 
     // 복사해 둔 유닛. 맵 사이에서도 붙일 수 있도록 값으로 들고 있는다.
     bool clipboardValid_ = false;

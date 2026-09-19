@@ -170,6 +170,9 @@ public:
 
     /// 여러 타일을 한 번의 편집으로 묶어 바꾼다(브러시 한 획).
     /// 실행 취소도 한 번에 되돌아간다.
+    /// 칸마다 다른 값을 한 번에 쓴다 (지형 붙여넣기).
+    bool writeTiles(const std::vector<io::MapArchive::TileWrite> & writes);
+
     bool setTiles(const std::vector<std::pair<std::size_t, std::size_t>> & positions,
                   std::uint16_t tileValue);
 

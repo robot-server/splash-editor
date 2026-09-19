@@ -299,6 +299,18 @@ bool MapDocument::setTile(std::size_t tileX, std::size_t tileY, std::uint16_t ti
     return true;
 }
 
+bool MapDocument::writeTiles(const std::vector<io::MapArchive::TileWrite> & writes)
+{
+    const io::Result result = archive_.writeTiles(writes);
+    if (!result) { lastError_ = result.message; return false; }
+
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
 bool MapDocument::setTiles(const std::vector<std::pair<std::size_t, std::size_t>> & positions,
                            std::uint16_t tileValue)
 {
