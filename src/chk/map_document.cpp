@@ -193,6 +193,22 @@ bool MapDocument::removeUnit(std::size_t unitIndex)
     return true;
 }
 
+bool MapDocument::addUnit(std::uint16_t unitType, std::uint8_t owner,
+                          std::uint16_t x, std::uint16_t y)
+{
+    const io::Result result = archive_.addUnit(unitType, owner, x, y);
+    if (!result)
+    {
+        lastError_ = result.message;
+        return false;
+    }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
 bool MapDocument::setUnitOwner(std::size_t unitIndex, std::uint8_t owner)
 {
     const io::Result result = archive_.setUnitOwner(unitIndex, owner);

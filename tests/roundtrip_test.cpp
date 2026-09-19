@@ -379,6 +379,64 @@ void testEditUndoOnRealMap(const fs::path & mapsDir)
     }
 }
 
+/// 유닛을 놓고 되돌리면 원본 바이트가 복원되어야 한다.
+void testAddUnitUndo()
+{
+    std::cout << "\n[유닛 놓기 -> 실행 취소]\n";
+
+    const fs::path mapPath =
+        makeSyntheticMap("add-unit.scm", splash::io::MapFormat::HybridScm, 4, 64, 64, false);
+    if (mapPath.empty())
+    {
+        splash::test::registry().fail("유닛 테스트용 맵 생성", __FILE__, __LINE__);
+        return;
+    }
+    struct Cleanup { fs::path path; ~Cleanup() { std::error_code ec; fs::remove(path, ec); } }
+        cleanup{mapPath};
+
+    const auto original = splash::io::readScenarioChk(mapPath.string());
+    SPLASH_CHECK(original.has_value());
+    if (!original)
+        return;
+
+    splash::chk::MapDocument doc;
+    if (!doc.open(mapPath.string()))
+    {
+        splash::test::registry().fail("유닛 테스트용 맵 열기", __FILE__, __LINE__);
+        return;
+    }
+
+    const std::size_t before = doc.units().size();
+
+    // 12 = Terran Marine
+    SPLASH_CHECK(doc.addUnit(12, 0, 512, 512));
+    SPLASH_CHECK_EQ(doc.units().size(), before + 1);
+    SPLASH_CHECK(doc.isModified());
+
+    const auto & placed = doc.units().back();
+    SPLASH_CHECK_EQ(placed.type, std::uint16_t(12));
+    SPLASH_CHECK_EQ(placed.x, std::uint16_t(512));
+    SPLASH_CHECK_EQ(placed.y, std::uint16_t(512));
+
+    // 미네랄은 자원량이 기본으로 채워져야 한다 (0 이면 고갈된 모습이 된다)
+    SPLASH_CHECK(doc.addUnit(176, 11, 256, 256));
+    SPLASH_CHECK(doc.units().back().resourceAmount > 0);
+
+    SPLASH_CHECK(doc.undo());
+    SPLASH_CHECK(doc.undo());
+    SPLASH_CHECK_EQ(doc.units().size(), before);
+
+    const fs::path outPath = workDir() / "add-unit-out.scm";
+    struct Cleanup2 { fs::path path; ~Cleanup2() { std::error_code ec; fs::remove(path, ec); } }
+        cleanup2{outPath};
+
+    SPLASH_CHECK(doc.saveAs(outPath.string()));
+    const auto saved = splash::io::readScenarioChk(outPath.string());
+    SPLASH_CHECK(saved.has_value());
+    if (saved)
+        SPLASH_CHECK(*original == *saved);
+}
+
 /// 지형을 칠한 뒤 되돌리면 원본 바이트가 복원되어야 한다.
 void testTerrainEditUndo()
 {
@@ -522,6 +580,7 @@ int main(int argc, char ** argv)
     testSyntheticRoundTrips();
     testEditUndoRestoresBytes();
     testTerrainEditUndo();
+    testAddUnitUndo();
     testRealMaps(mapsDir);
 
     std::cout << "\n[실제 맵 편집 -> 실행 취소]\n";

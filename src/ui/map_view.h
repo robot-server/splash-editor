@@ -31,8 +31,9 @@ public:
     /// 지금 마우스가 무슨 일을 하는지.
     enum class Tool
     {
-        Select,  ///< 유닛·로케이션 고르고 옮기기
-        Terrain  ///< 지형 칠하기
+        Select,    ///< 유닛·로케이션 고르고 옮기기
+        Terrain,   ///< 지형 칠하기
+        PlaceUnit  ///< 유닛 놓기
     };
 
     explicit MapView(QWidget * parent = nullptr);
@@ -80,6 +81,9 @@ public:
     /// 지형 브러시가 칠할 타일. 스포이드로 바꾼다.
     std::uint16_t brushTile() const { return brushTile_; }
     void setBrushTile(std::uint16_t tileId);
+
+    /// 유닛 놓기 도구가 놓을 유닛과 소유자.
+    void setPlacementUnit(std::uint16_t unitType, std::uint8_t owner);
 
     /// 브러시 한 변의 타일 수 (1, 2, 4 …).
     int brushSize() const { return brushSize_; }
@@ -182,6 +186,8 @@ private:
     // 선택과 드래그
     Tool tool_ = Tool::Select;
     std::uint16_t brushTile_ = 0;
+    std::uint16_t placeUnitType_ = 0;
+    std::uint8_t placeUnitOwner_ = 0;
     int brushSize_ = 1;
     bool painting_ = false;
     std::vector<std::pair<std::size_t, std::size_t>> strokeTiles_; ///< 이번 획에 칠한 자리

@@ -634,8 +634,14 @@ void MapView::setTool(Tool tool)
         return;
     tool_ = tool;
     clearSelection();
-    viewport()->setCursor(tool == Tool::Terrain ? Qt::CrossCursor : Qt::ArrowCursor);
+    viewport()->setCursor(tool == Tool::Select ? Qt::ArrowCursor : Qt::CrossCursor);
     viewport()->update();
+}
+
+void MapView::setPlacementUnit(std::uint16_t unitType, std::uint8_t owner)
+{
+    placeUnitType_ = unitType;
+    placeUnitOwner_ = owner;
 }
 
 void MapView::setBrushTile(std::uint16_t tileId)
@@ -769,6 +775,21 @@ void MapView::mousePressEvent(QMouseEvent * event)
     if (event->button() != Qt::LeftButton || document_ == nullptr || !document_->isOpen())
     {
         QAbstractScrollArea::mousePressEvent(event);
+        return;
+    }
+
+    if (tool_ == Tool::PlaceUnit)
+    {
+        const QPointF mapPos = screenToMap(event->position());
+        auto * doc = const_cast<chk::MapDocument *>(document_);
+        if (doc->addUnit(placeUnitType_, placeUnitOwner_,
+                         static_cast<std::uint16_t>(std::max(0.0, mapPos.x())),
+                         static_cast<std::uint16_t>(std::max(0.0, mapPos.y()))))
+        {
+            refresh();
+            emit documentEdited();
+        }
+        event->accept();
         return;
     }
 

@@ -2,6 +2,7 @@
 
 #include "ui/map_view.h"
 #include "ui/tile_palette.h"
+#include "ui/unit_palette.h"
 
 #include <QAction>
 #include <QActionGroup>
@@ -12,6 +13,7 @@
 #include <QApplication>
 #include <QCloseEvent>
 #include <QFileDialog>
+#include <QComboBox>
 #include <QFormLayout>
 #include <QLabel>
 #include <QMenuBar>
@@ -135,6 +137,42 @@ void MainWindow::buildCentralWidget()
         statusBar()->showMessage(tr("브러시 타일: %1").arg(tileId), 2000);
     });
 
+    // 유닛 팔레트 — 놓을 유닛과 소유자를 고른다.
+    auto * unitPanel = new QWidget(this);
+    auto * unitLayout = new QVBoxLayout(unitPanel);
+    unitLayout->setContentsMargins(4, 4, 4, 4);
+
+    auto * ownerBox = new QComboBox(unitPanel);
+    for (int player = 1; player <= 12; ++player)
+        ownerBox->addItem(tr("플레이어 %1").arg(player), player - 1);
+    ownerBox->setCurrentIndex(0);
+
+    unitPalette_ = new UnitPalette(unitPanel);
+    unitPalette_->setTileset(&tileset_);
+
+    unitLayout->addWidget(ownerBox);
+    unitLayout->addWidget(unitPalette_, 1);
+
+    unitDock_ = new QDockWidget(tr("유닛 팔레트"), this);
+    unitDock_->setWidget(unitPanel);
+    unitDock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    addDockWidget(Qt::LeftDockWidgetArea, unitDock_);
+    unitDock_->hide();
+
+    connect(ownerBox, &QComboBox::currentIndexChanged, this, [this, ownerBox](int) {
+        const auto owner = static_cast<std::uint8_t>(ownerBox->currentData().toInt());
+        unitPalette_->setOwner(owner);
+        mapView_->setPlacementUnit(unitPalette_->selectedUnit(), owner);
+    });
+
+    connect(unitPalette_, &UnitPalette::unitSelected, this, [this](std::uint16_t unitType) {
+        mapView_->setPlacementUnit(unitType, unitPalette_->owner());
+        mapView_->setTool(MapView::Tool::PlaceUnit);
+        statusBar()->showMessage(
+            tr("놓을 유닛: %1 — 맵을 클릭하세요")
+                .arg(QString::fromStdString(splash::io::unitTypeName(unitType))), 4000);
+    });
+
     statusBar();
 }
 
@@ -201,6 +239,17 @@ void MainWindow::buildMenus()
             [this] { mapView_->setTool(MapView::Tool::Select);
                      statusBar()->showMessage(tr("선택 도구"), 2000); });
 
+    QAction * placeTool = toolMenu->addAction(tr("유닛 놓기(&U)"));
+    placeTool->setCheckable(true);
+    placeTool->setShortcut(QKeySequence(Qt::Key_U));
+    toolGroup->addAction(placeTool);
+    connect(placeTool, &QAction::triggered, this, [this] {
+        mapView_->setTool(MapView::Tool::PlaceUnit);
+        if (unitDock_ != nullptr)
+            unitDock_->show();
+        statusBar()->showMessage(tr("유닛 놓기 — 팔레트에서 유닛을 고르세요"), 4000);
+    });
+
     QAction * terrainTool = toolMenu->addAction(tr("지형 칠하기(&T)"));
     terrainTool->setCheckable(true);
     terrainTool->setShortcut(QKeySequence(Qt::Key_T));
@@ -237,6 +286,14 @@ void MainWindow::buildMenus()
     connect(showTriggers, &QAction::triggered, this, &MainWindow::onShowTriggers);
 
     toolMenu->addSeparator();
+    QAction * showUnitPalette = toolMenu->addAction(tr("유닛 팔레트(&N)"));
+    showUnitPalette->setCheckable(true);
+    connect(showUnitPalette, &QAction::toggled, this, [this](bool on) {
+        if (unitDock_ != nullptr)
+            unitDock_->setVisible(on);
+    });
+    connect(unitDock_, &QDockWidget::visibilityChanged, showUnitPalette, &QAction::setChecked);
+
     QAction * showPalette = toolMenu->addAction(tr("타일 팔레트(&P)"));
     showPalette->setCheckable(true);
     connect(showPalette, &QAction::toggled, this, [this](bool on) {
@@ -477,6 +534,8 @@ void MainWindow::loadTilesetFrom(const QString & installPath, bool announce)
     mapView_->refresh();
     if (tilePalette_ != nullptr)
         tilePalette_->setTileset(&tileset_);
+    if (unitPalette_ != nullptr)
+        unitPalette_->setTileset(&tileset_);
 
     if (announce)
         statusBar()->showMessage(tr("타일셋을 읽었습니다: %1").arg(installPath), 4000);
@@ -497,6 +556,8 @@ void MainWindow::openPath(const QString & path)
 
     if (tilePalette_ != nullptr)
         tilePalette_->setTilesetId(document_.info().tilesetId);
+    if (unitPalette_ != nullptr)
+        unitPalette_->setTilesetId(document_.info().tilesetId);
 
     refreshFromDocument();
     statusBar()->showMessage(tr("열었습니다: %1").arg(path), 4000);

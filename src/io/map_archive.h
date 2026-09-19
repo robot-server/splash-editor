@@ -162,6 +162,13 @@ public:
     /// 유닛을 지운다.
     Result removeUnit(std::size_t unitIndex);
 
+    /// 유닛을 새로 놓는다. 좌표는 픽셀.
+    ///
+    /// 자원 유닛(미네랄·베스핀)은 기본 자원량을 함께 넣는다 — 0 으로 두면
+    /// 게임에서 고갈된 상태로 나온다.
+    Result addUnit(std::uint16_t unitType, std::uint8_t owner,
+                   std::uint16_t x, std::uint16_t y);
+
     /// 유닛의 소유자를 바꾼다 (0-11).
     Result setUnitOwner(std::size_t unitIndex, std::uint8_t owner);
 

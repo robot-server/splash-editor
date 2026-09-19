@@ -422,6 +422,56 @@ Result MapArchive::removeUnit(std::size_t unitIndex)
     return Result::success();
 }
 
+Result MapArchive::addUnit(std::uint16_t unitType, std::uint8_t owner,
+                           std::uint16_t x, std::uint16_t y)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        Chk::Unit unit {};
+        unit.type = Sc::Unit::Type(unitType);
+        unit.owner = owner;
+        unit.xc = x;
+        unit.yc = y;
+        unit.hitpointPercent = 100;
+        unit.shieldPercent = 100;
+        unit.energyPercent = 100;
+
+        // 자원 유닛은 남은 양이 그래픽과 게임 양쪽에 영향을 준다.
+        // StarCraft 의 기본값을 쓴다.
+        switch (unitType)
+        {
+            case 176: case 177: case 178: // Mineral Field 1~3
+                unit.resourceAmount = 1500;
+                break;
+            case 188: // Vespene Geyser
+                unit.resourceAmount = 5000;
+                break;
+            default:
+                break;
+        }
+
+        // classId 는 맵 안에서 유닛을 가리키는 번호다. 겹치지 않게 뒤에서 잇는다.
+        std::uint32_t nextClassId = 0;
+        for (std::size_t i = 0; i < map.numUnits(); ++i)
+            nextClassId = std::max(nextClassId, map.getUnit(i).classId + 1);
+        unit.classId = nextClassId;
+        unit.relationClassId = nextClassId;
+
+        map.addUnit(unit);
+        impl_->undoSteps.push_back(1);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("유닛을 놓지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 Result MapArchive::setUnitOwner(std::size_t unitIndex, std::uint8_t owner)
 {
     if (!impl_->isOpen())
