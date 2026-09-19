@@ -2,6 +2,7 @@
 
 #include "ui/map_view.h"
 #include "ui/tile_palette.h"
+#include "ui/mini_map.h"
 #include "ui/unit_palette.h"
 
 #include <QAction>
@@ -83,6 +84,19 @@ void MainWindow::buildCentralWidget()
 
     auto * side = new QWidget(this);
     auto * outer = new QVBoxLayout(side);
+
+    // 미니맵은 정보 패널 맨 위에 둔다 — 맵 전체를 보며 옮겨 다니는 용도다.
+    miniMap_ = new MiniMap(side);
+    miniMap_->setDocument(&document_);
+    miniMap_->setTileset(&tileset_);
+    outer->addWidget(miniMap_);
+
+    connect(miniMap_, &MiniMap::navigationRequested, this, [this](const QPointF & at) {
+        mapView_->centerOnMap(at);
+    });
+    connect(mapView_, &MapView::viewportMoved, this, [this] {
+        miniMap_->setViewportRect(mapView_->visibleMapRect());
+    });
 
     auto * form = new QFormLayout();
     form->setLabelAlignment(Qt::AlignRight);
@@ -674,6 +688,11 @@ void MainWindow::refreshFromDocument()
 
     if (mapView_ != nullptr)
         mapView_->refresh();
+    if (miniMap_ != nullptr)
+    {
+        miniMap_->refresh();
+        miniMap_->setViewportRect(mapView_->visibleMapRect());
+    }
 
     saveAction_->setEnabled(open);
     saveAsAction_->setEnabled(open);

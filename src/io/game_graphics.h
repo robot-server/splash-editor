@@ -70,6 +70,14 @@ public:
                            std::uint16_t tilesetId,
                            bool drawnAsSprite) const;
 
+    /// 미니맵 한 장을 그린다. 타일 하나가 픽셀 하나가 된다.
+    ///
+    /// 결과는 width*height*3 바이트(RGB)다. 타일 색은 타일셋에서 한 번만
+    /// 계산해 캐시하므로 여러 번 불러도 비용이 크지 않다.
+    std::vector<std::uint8_t> renderMinimap(const std::vector<std::uint16_t> & tiles,
+                                            int width, int height,
+                                            std::uint16_t tilesetId) const;
+
     /// 유닛을 팔레트에서 나누기 위한 분류.
     struct UnitClass
     {

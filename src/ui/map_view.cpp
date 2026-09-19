@@ -34,6 +34,13 @@ MapView::MapView(QWidget * parent) : QAbstractScrollArea(parent)
 {
     setFocusPolicy(Qt::StrongFocus);
     viewport()->setAutoFillBackground(true);
+
+    // 스크롤이 움직이면 미니맵이 따라와야 한다. 매 페인트마다 알리는 것보다
+    // 스크롤 신호에 붙이는 편이 싸다.
+    connect(horizontalScrollBar(), &QScrollBar::valueChanged,
+            this, &MapView::viewportMoved);
+    connect(verticalScrollBar(), &QScrollBar::valueChanged,
+            this, &MapView::viewportMoved);
 }
 
 MapView::~MapView() = default;
@@ -97,6 +104,7 @@ void MapView::setZoom(double factor)
 
     zoom_ = clamped;
     updateScrollRanges();
+    emit viewportMoved();
 
     const double newTile = scaledTileSize();
     horizontalScrollBar()->setValue(
@@ -158,6 +166,7 @@ void MapView::resizeEvent(QResizeEvent * event)
 {
     QAbstractScrollArea::resizeEvent(event);
     updateScrollRanges();
+    emit viewportMoved();
 }
 
 void MapView::wheelEvent(QWheelEvent * event)
@@ -687,6 +696,27 @@ void MapView::paintTerrainAt(const QPointF & screenPos)
     }
 
     viewport()->update();
+}
+
+QRectF MapView::visibleMapRect() const
+{
+    if (zoom_ <= 0)
+        return QRectF();
+
+    return QRectF(horizontalScrollBar()->value() / zoom_,
+                  verticalScrollBar()->value() / zoom_,
+                  viewport()->width() / zoom_,
+                  viewport()->height() / zoom_);
+}
+
+void MapView::centerOnMap(const QPointF & mapPos)
+{
+    horizontalScrollBar()->setValue(
+        static_cast<int>(mapPos.x() * zoom_ - viewport()->width() / 2.0));
+    verticalScrollBar()->setValue(
+        static_cast<int>(mapPos.y() * zoom_ - viewport()->height() / 2.0));
+    viewport()->update();
+    emit viewportMoved();
 }
 
 void MapView::clearSelection()

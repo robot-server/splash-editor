@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <array>
+#include <map>
 #include <cstring>
 #include <exception>
 #include <cstdlib>
@@ -23,6 +24,10 @@ namespace splash::io {
 struct GameGraphics::Impl
 {
     std::shared_ptr<ArchiveCluster> cluster;
+
+    /// 타일 대표색 캐시. [타일셋][타일ID] -> RGB.
+    /// 미니맵은 맵을 열거나 지형을 고칠 때마다 다시 그리므로 캐시가 필요하다.
+    mutable std::map<std::uint32_t, std::array<std::uint8_t, 3>> miniColors;
 
     // Sc::Data 는 load() 대신 필요한 부분만 직접 채운다. 그쪽 load() 는
     // 파일 브라우저를 요구하고 우리가 이미 연 아카이브를 쓰지 않는다.
@@ -155,6 +160,94 @@ bool GameGraphics::load(const std::string & installPath, std::string * error)
     fresh->loaded = true;
     impl_ = std::move(fresh);
     return true;
+}
+
+std::vector<std::uint8_t> GameGraphics::renderMinimap(
+    const std::vector<std::uint16_t> & tiles, int width, int height,
+    std::uint16_t tilesetId) const
+{
+    std::vector<std::uint8_t> out;
+    if (!impl_->loaded || width <= 0 || height <= 0)
+        return out;
+    if (tiles.size() < static_cast<std::size_t>(width) * height)
+        return out;
+
+    out.assign(static_cast<std::size_t>(width) * height * 3, 0);
+
+    const Sc::Terrain::Tiles & tileset = impl_->tiles(tilesetId);
+
+    // 타일 하나의 대표색은 그 타일 그림의 평균이다. 타일 종류는 많지만
+    // 한 맵이 쓰는 종류는 훨씬 적으므로 필요한 것만 계산해 캐시한다.
+    const auto colorOf = [&](std::uint16_t tileId) -> std::array<std::uint8_t, 3> {
+        const std::uint32_t key =
+            (static_cast<std::uint32_t>(tilesetId % Sc::Terrain::NumTilesets) << 16) | tileId;
+
+        auto found = impl_->miniColors.find(key);
+        if (found != impl_->miniColors.end())
+            return found->second;
+
+        std::array<std::uint8_t, 3> color {0, 0, 0};
+
+        const std::size_t groupIndex = static_cast<std::size_t>(tileId) / 16;
+        const std::size_t subIndex = static_cast<std::size_t>(tileId) % 16;
+        if (groupIndex < tileset.tileGroups.size())
+        {
+            const std::uint16_t megaTileIndex =
+                tileset.tileGroups[groupIndex].megaTileIndex[subIndex];
+            if (megaTileIndex < tileset.tileGraphics.size())
+            {
+                const auto & graphics = tileset.tileGraphics[megaTileIndex];
+                std::uint32_t r = 0, g = 0, b = 0, count = 0;
+
+                for (int my = 0; my < 4; ++my)
+                {
+                    for (int mx = 0; mx < 4; ++mx)
+                    {
+                        const std::uint32_t vr4 = graphics.miniTileGraphics[my][mx].vr4Index();
+                        if (vr4 >= tileset.miniTilePixels.size())
+                            continue;
+
+                        // 미니타일마다 네 귀퉁이만 본다 — 평균을 내는 데
+                        // 64픽셀을 다 훑을 필요가 없다.
+                        const auto & pixels = tileset.miniTilePixels[vr4];
+                        for (int p = 0; p < 4; ++p)
+                        {
+                            const int py = (p / 2) * 7;
+                            const int px = (p % 2) * 7;
+                            const Sc::SystemColor & c =
+                                tileset.systemColorPalette[pixels.wpeIndex[py][px]];
+                            r += c.red; g += c.green; b += c.blue;
+                            ++count;
+                        }
+                    }
+                }
+
+                if (count > 0)
+                {
+                    color[0] = static_cast<std::uint8_t>(r / count);
+                    color[1] = static_cast<std::uint8_t>(g / count);
+                    color[2] = static_cast<std::uint8_t>(b / count);
+                }
+            }
+        }
+
+        impl_->miniColors.emplace(key, color);
+        return color;
+    };
+
+    for (int y = 0; y < height; ++y)
+    {
+        for (int x = 0; x < width; ++x)
+        {
+            const std::size_t index = static_cast<std::size_t>(y) * width + x;
+            const auto color = colorOf(tiles[index]);
+            out[index * 3 + 0] = color[0];
+            out[index * 3 + 1] = color[1];
+            out[index * 3 + 2] = color[2];
+        }
+    }
+
+    return out;
 }
 
 GameGraphics::UnitClass GameGraphics::unitClass(std::uint16_t unitType) const

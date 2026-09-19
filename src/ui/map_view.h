@@ -11,6 +11,7 @@
 #include <QAbstractScrollArea>
 #include <QHash>
 #include <QPoint>
+#include <QRectF>
 #include <QVector>
 #include <QPixmap>
 
@@ -49,6 +50,12 @@ public:
     /// 문서나 타일셋의 내용이 바뀌었을 때 호출한다. 캐시를 비우고 다시 그린다.
     void refresh();
 
+    /// 지금 보고 있는 맵 영역(맵 픽셀 좌표).
+    QRectF visibleMapRect() const;
+
+    /// 그 지점이 화면 가운데 오도록 옮긴다(맵 픽셀 좌표).
+    void centerOnMap(const QPointF & mapPos);
+
     /// 선택된 유닛 번호. 없으면 -1.
     int selectedUnit() const { return selectedUnit_; }
 
@@ -63,6 +70,9 @@ public:
 signals:
     /// 문서가 편집되었다. 창이 제목·상태를 갱신하도록 알린다.
     void documentEdited();
+
+    /// 보고 있는 영역이 바뀌었다(스크롤·줌·크기 변경).
+    void viewportMoved();
 
     /// 선택이 바뀌었다 (없으면 -1).
     void selectionChanged(int unitIndex);

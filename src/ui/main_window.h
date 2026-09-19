@@ -17,6 +17,7 @@ namespace splash::ui {
 class MapView;
 class TilePalette;
 class UnitPalette;
+class MiniMap;
 
 class MainWindow : public QMainWindow
 {
@@ -69,6 +70,7 @@ private:
     QDockWidget * paletteDock_ = nullptr;
     UnitPalette * unitPalette_ = nullptr;
     QDockWidget * unitDock_ = nullptr;
+    MiniMap * miniMap_ = nullptr;
 
     QLabel * nameValue_ = nullptr;
     QLabel * sizeValue_ = nullptr;
