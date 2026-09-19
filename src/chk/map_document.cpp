@@ -453,6 +453,34 @@ std::string MapDocument::fileName() const
     return std::filesystem::path(filePath_).filename().string();
 }
 
+std::vector<io::PlayerSetting> MapDocument::playerSettings() const
+{
+    return archive_.playerSettings();
+}
+
+bool MapDocument::setPlayerSetting(std::size_t player, const io::PlayerSetting & setting)
+{
+    const io::Result result = archive_.setPlayerSetting(player, setting);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true; ++undoDepth_; redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+std::vector<std::string> MapDocument::forceNames() const
+{
+    return archive_.forceNames();
+}
+
+bool MapDocument::setForceName(std::size_t force, const std::string & name)
+{
+    const io::Result result = archive_.setForceName(force, name);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true; ++undoDepth_; redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
 std::vector<io::TriggerSummary> MapDocument::triggerSummaries(
     const io::GameGraphics & graphics) const
 {

@@ -97,6 +97,14 @@ struct RawLocation
     std::size_t index = 0;        ///< MRGN 인덱스 (1-based 로 쓰이는 번호)
 };
 
+/// 플레이어 슬롯 하나의 설정.
+struct PlayerSetting
+{
+    std::uint8_t race = 0;     ///< Chk::Race (0 저그, 1 테란, 2 프로토스, …)
+    std::uint8_t slotType = 0; ///< Sc::Player::SlotType
+    std::uint8_t force = 0;    ///< 0~3
+};
+
 /// 트리거 하나의 요약. 목록에 늘어놓을 때 쓴다.
 struct TriggerSummary
 {
@@ -277,6 +285,18 @@ public:
     /// 유닛·업그레이드 이름표가 필요해서 게임 데이터(GameGraphics)를 받는다.
     /// 그것이 준비되지 않았으면 빈 값을 돌려준다.
     std::optional<std::string> triggerText(const GameGraphics & graphics) const;
+
+    /// 플레이어 12칸의 설정.
+    std::vector<PlayerSetting> playerSettings() const;
+
+    /// 플레이어 하나의 설정을 바꾼다.
+    Result setPlayerSetting(std::size_t player, const PlayerSetting & setting);
+
+    /// 세력 이름 네 개.
+    std::vector<std::string> forceNames() const;
+
+    /// 세력 이름을 바꾼다 (0~3).
+    Result setForceName(std::size_t force, const std::string & name);
 
     /// 트리거 목록 요약.
     std::vector<TriggerSummary> triggerSummaries(const GameGraphics & graphics) const;

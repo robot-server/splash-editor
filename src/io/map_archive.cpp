@@ -1027,6 +1027,101 @@ std::string describeOwners(const Chk::Trigger & trigger)
 
 } // namespace
 
+std::vector<PlayerSetting> MapArchive::playerSettings() const
+{
+    std::vector<PlayerSetting> out;
+    if (!impl_->isOpen())
+        return out;
+
+    const MapFile & map = *impl_->mapFile;
+    try
+    {
+        // 12칸이지만 앞 8칸만 사람이 고를 수 있다. 나머지는 중립·구조물용이다.
+        for (std::size_t player = 0; player < 12; ++player)
+        {
+            PlayerSetting setting;
+            setting.race = static_cast<std::uint8_t>(map.getPlayerRace(player));
+            setting.slotType = static_cast<std::uint8_t>(map.getSlotType(player));
+            setting.force = (player < 8)
+                ? static_cast<std::uint8_t>(map.getPlayerForce(player)) : 0;
+            out.push_back(setting);
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+    return out;
+}
+
+Result MapArchive::setPlayerSetting(std::size_t player, const PlayerSetting & setting)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+    if (player >= 12)
+        return Result::failure("플레이어 번호가 범위를 벗어났습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        map.setPlayerRace(player, Chk::Race(setting.race));
+        map.setSlotType(player, Sc::Player::SlotType(setting.slotType));
+        if (player < 8)
+            map.setPlayerForce(player, Chk::Force(setting.force));
+
+        // 세 가지를 각각 기록하므로 액션도 그만큼 생긴다.
+        impl_->undoSteps.push_back(player < 8 ? 3 : 2);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("플레이어 설정을 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+std::vector<std::string> MapArchive::forceNames() const
+{
+    std::vector<std::string> out;
+    if (!impl_->isOpen())
+        return out;
+
+    const MapFile & map = *impl_->mapFile;
+    try
+    {
+        for (std::size_t force = 0; force < 4; ++force)
+        {
+            if (auto name = map.getForceName<RawString>(Chk::Force(force)))
+                out.push_back(*name);
+            else
+                out.push_back(std::string());
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+    return out;
+}
+
+Result MapArchive::setForceName(std::size_t force, const std::string & name)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+    if (force >= 4)
+        return Result::failure("세력 번호가 범위를 벗어났습니다.");
+
+    try
+    {
+        impl_->mapFile->setForceName(Chk::Force(force), RawString(name));
+        impl_->undoSteps.push_back(1);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("세력 이름을 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 std::vector<TriggerSummary> MapArchive::triggerSummaries(const GameGraphics & graphics) const
 {
     std::vector<TriggerSummary> out;
@@ -1059,10 +1154,30 @@ std::vector<TriggerSummary> MapArchive::triggerSummaries(const GameGraphics & gr
             for (const auto & action : trigger.actions)
             {
                 if (action.actionType != Chk::Action::Type::NoAction)
-                {
-                    if (summary.actions == 0 && scData != nullptr)
-                        summary.firstAction = generator.getActionName(action.actionType);
                     ++summary.actions;
+            }
+
+            // 무엇을 하는 트리거인지 한 줄로 보여 준다. 이름표는 텍스트
+            // 생성기가 채우므로 그쪽에서 첫 동작 줄을 가져온다.
+            if (scData != nullptr && summary.actions > 0)
+            {
+                std::string text;
+                const Scenario & scenario = map;
+                if (generator.generateTextTrigs(scenario, i, text, *scData))
+                {
+                    const std::size_t actionsAt = text.find("Actions:");
+                    if (actionsAt != std::string::npos)
+                    {
+                        std::size_t lineStart = text.find_first_not_of(" \t\r\n",
+                            actionsAt + std::strlen("Actions:"));
+                        if (lineStart != std::string::npos)
+                        {
+                            std::size_t lineEnd = text.find_first_of(";\n", lineStart);
+                            if (lineEnd == std::string::npos)
+                                lineEnd = text.size();
+                            summary.firstAction = text.substr(lineStart, lineEnd - lineStart);
+                        }
+                    }
                 }
             }
 
@@ -1102,24 +1217,67 @@ std::optional<TriggerDetail> MapArchive::triggerDetail(std::size_t index,
 
         TextTrigGenerator generator(false, 0);
 
-        for (const auto & condition : trigger.conditions)
-        {
-            if (condition.conditionType == Chk::Condition::Type::NoCondition)
-                continue;
-            detail.conditions.push_back(generator.getConditionName(condition.conditionType));
-        }
-        for (const auto & action : trigger.actions)
-        {
-            if (action.actionType == Chk::Action::Type::NoAction)
-                continue;
-            detail.actions.push_back(generator.getActionName(action.actionType));
-        }
-
-        // 이 트리거만의 텍스트. 자세히 고칠 때 쓴다.
+        // 이 트리거만의 텍스트. 자세히 고칠 때 쓰고, 조건·동작 목록도
+        // 여기서 뽑는다 — 이름만 따로 물으면 인자가 빠져 "Bring" 처럼
+        // 반쪽짜리가 되고, 이름표가 준비되지 않으면 숫자만 나온다.
         std::string text;
         const Scenario & scenario = map;
         if (generator.generateTextTrigs(scenario, index, text, *scData))
-            detail.text = std::move(text);
+            detail.text = text;
+
+        // 텍스트는 다음 모양이다:
+        //   Trigger("...")\n{\nConditions:\n\t...;\n\nActions:\n\t...;\n}
+        // 탭으로 들여쓴 줄이 조건·동작 한 줄씩이다.
+        const auto collect = [](const std::string & body,
+                                std::vector<std::string> & out) {
+            std::size_t start = 0;
+            while (start < body.size())
+            {
+                std::size_t end = body.find('\n', start);
+                if (end == std::string::npos)
+                    end = body.size();
+
+                std::string line = body.substr(start, end - start);
+                start = end + 1;
+
+                // 앞뒤 공백·탭을 걷어낸다.
+                const auto first = line.find_first_not_of(" \t\r");
+                if (first == std::string::npos)
+                    continue;
+                const auto last = line.find_last_not_of(" \t\r");
+                line = line.substr(first, last - first + 1);
+
+                if (line.empty() || line == "{" || line == "}")
+                    continue;
+                if (line.rfind("Trigger(", 0) == 0)
+                    continue;
+                // 트리거 사이 구분선 주석은 목록에 넣지 않는다.
+                if (line.rfind("//", 0) == 0)
+                    continue;
+
+                // 끝의 세미콜론은 목록에서 군더더기다.
+                if (!line.empty() && line.back() == ';')
+                    line.pop_back();
+
+                out.push_back(std::move(line));
+            }
+        };
+
+        const std::size_t conditionsAt = detail.text.find("Conditions:");
+        const std::size_t actionsAt = detail.text.find("Actions:");
+
+        if (conditionsAt != std::string::npos)
+        {
+            const std::size_t from = conditionsAt + std::strlen("Conditions:");
+            const std::size_t to = (actionsAt != std::string::npos && actionsAt > from)
+                ? actionsAt : detail.text.size();
+            collect(detail.text.substr(from, to - from), detail.conditions);
+        }
+        if (actionsAt != std::string::npos)
+        {
+            const std::size_t from = actionsAt + std::strlen("Actions:");
+            collect(detail.text.substr(from), detail.actions);
+        }
 
         return detail;
     }

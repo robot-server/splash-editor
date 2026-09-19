@@ -43,6 +43,8 @@ int usage(const char * argv0)
         "      텍스트 트리거를 컴파일해 맵에 적용하고 저장한다.\n\n"
         "  " << argv0 << " place-isom <맵파일> <설치폴더> <픽셀x> <픽셀y> <지형brush> <브러시> <출력맵>\n"
         "      ISOM 브러시로 지형을 놓는다 (절벽·경계가 자동으로 이어진다).\n\n"
+        "  " << argv0 << " trigger-list <맵파일> <설치폴더> [번호]\n"
+        "      트리거 목록과, 번호를 주면 그 트리거의 조건·동작을 보여 준다.\n\n"
         "  " << argv0 << " units <맵파일> [개수]\n"
         "      맵에 놓인 유닛을 나열한다 (기본 20개).\n\n"
         "  " << argv0 << " unit-image <설치폴더> <유닛번호> <출력.ppm> [소유자] [타일셋]\n"
@@ -408,6 +410,56 @@ int cmdPlaceIsom(const std::string & mapPath, const std::string & installPath,
         return 1;
     }
     std::cout << "  -> " << outPath << "\n";
+    return 0;
+}
+
+int cmdTriggerList(const std::string & mapPath, const std::string & installPath,
+                   int detailIndex)
+{
+    splash::io::MapArchive archive;
+    if (auto r = archive.open(mapPath); !r)
+    {
+        std::cerr << "열기 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "게임 데이터 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const auto summaries = archive.triggerSummaries(graphics);
+    std::cout << "  트리거 " << summaries.size() << "개\n";
+    for (std::size_t i = 0; i < summaries.size() && i < 12; ++i)
+    {
+        const auto & s = summaries[i];
+        std::cout << "    #" << s.index << "  " << s.players
+                  << "  조건 " << s.conditions << " · 동작 " << s.actions;
+        if (!s.firstAction.empty())
+            std::cout << "  — " << s.firstAction;
+        if (s.disabled)
+            std::cout << "  [꺼짐]";
+        std::cout << "\n";
+    }
+
+    if (detailIndex >= 0)
+    {
+        const auto detail = archive.triggerDetail(static_cast<std::size_t>(detailIndex), graphics);
+        if (!detail)
+        {
+            std::cerr << "트리거를 읽지 못했습니다.\n";
+            return 1;
+        }
+        std::cout << "\n  [트리거 " << detailIndex << "]\n  조건:\n";
+        for (const auto & c : detail->conditions)
+            std::cout << "    " << c << "\n";
+        std::cout << "  동작:\n";
+        for (const auto & a : detail->actions)
+            std::cout << "    " << a << "\n";
+    }
     return 0;
 }
 
@@ -1442,6 +1494,14 @@ int main(int argc, char ** argv)
                 static_cast<std::size_t>(std::stoul(args[5])),
                 static_cast<std::size_t>(std::stoul(args[6])),
                 args[7]);
+        } catch (const std::exception &) { return usage(argv[0]); }
+    }
+
+    if (command == "trigger-list" && (args.size() == 3 || args.size() == 4))
+    {
+        try {
+            return cmdTriggerList(args[1], args[2],
+                args.size() == 4 ? std::stoi(args[3]) : -1);
         } catch (const std::exception &) { return usage(argv[0]); }
     }
 

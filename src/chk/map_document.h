@@ -184,6 +184,13 @@ public:
     /// 창 제목 등에 쓸 이름. 열려 있지 않으면 빈 문자열.
     std::string fileName() const;
 
+    // --- 플레이어 ---
+
+    std::vector<io::PlayerSetting> playerSettings() const;
+    bool setPlayerSetting(std::size_t player, const io::PlayerSetting & setting);
+    std::vector<std::string> forceNames() const;
+    bool setForceName(std::size_t force, const std::string & name);
+
     // --- 트리거 ---
 
     std::vector<io::TriggerSummary> triggerSummaries(const io::GameGraphics & graphics) const;
