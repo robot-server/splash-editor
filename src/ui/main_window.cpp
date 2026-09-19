@@ -3,6 +3,7 @@
 #include "ui/map_view.h"
 #include "ui/tile_palette.h"
 #include "ui/mini_map.h"
+#include "ui/trigger_editor.h"
 #include "ui/unit_palette.h"
 
 #include <QAction>
@@ -366,7 +367,29 @@ void MainWindow::buildMenus()
     }
 
     QMenu * triggerMenu = menuBar()->addMenu(tr("트리거(&R)"));
-    QAction * showTriggers = triggerMenu->addAction(tr("트리거 보기(&V)…"));
+    QAction * editTriggers = triggerMenu->addAction(tr("트리거 편집기(&E)…"));
+    editTriggers->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_T));
+    connect(editTriggers, &QAction::triggered, this, [this] {
+        if (!document_.isOpen())
+            return;
+        if (!tileset_.hasUnitGraphics())
+        {
+            QMessageBox::information(this, tr("트리거"),
+                tr("트리거를 다루려면 StarCraft 설치 폴더가 필요합니다.\n"
+                   "유닛과 업그레이드 이름표가 게임 데이터에 들어 있기 때문입니다."));
+            return;
+        }
+
+        auto * editor = new TriggerEditor(document_, tileset_, this);
+        editor->setAttribute(Qt::WA_DeleteOnClose);
+        connect(editor, &TriggerEditor::documentEdited, this, [this] {
+            mapView_->refresh();
+            refreshFromDocument();
+        });
+        editor->show();
+    });
+
+    QAction * showTriggers = triggerMenu->addAction(tr("트리거 텍스트 보기(&V)…"));
     showTriggers->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_T));
     connect(showTriggers, &QAction::triggered, this, &MainWindow::onShowTriggers);
 
@@ -947,10 +970,20 @@ void MainWindow::loadTilesetFrom(const QString & installPath, bool announce)
 
     QSettings().setValue(kInstallPathKey, installPath);
     mapView_->refresh();
+    // 게임 데이터가 이제 막 로드됐다. 팔레트는 그것 없이는 비어 있었으므로
+    // 타일셋을 다시 알려 목록을 채우게 한다.
     if (tilePalette_ != nullptr)
+    {
         tilePalette_->setTileset(&tileset_);
+        if (document_.isOpen())
+            tilePalette_->setTilesetId(document_.info().tilesetId);
+    }
     if (unitPalette_ != nullptr)
+    {
         unitPalette_->setTileset(&tileset_);
+        if (document_.isOpen())
+            unitPalette_->setTilesetId(document_.info().tilesetId);
+    }
 
     if (announce)
         statusBar()->showMessage(tr("타일셋을 읽었습니다: %1").arg(installPath), 4000);

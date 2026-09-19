@@ -19,6 +19,8 @@ qt_add_executable(splash-editor
   unit_palette.h
   mini_map.cpp
   mini_map.h
+  trigger_editor.cpp
+  trigger_editor.h
 )
 
 target_link_libraries(splash-editor PRIVATE splash_core Qt6::Widgets)

@@ -42,7 +42,10 @@ void TilePalette::setTileset(const io::GameGraphics * tileset)
 
 void TilePalette::setTilesetId(std::uint16_t tilesetId)
 {
-    if (tilesetId_ == tilesetId && !tiles_.empty())
+    // 같은 타일셋이라도 목록이 비어 있으면 다시 만든다. 게임 데이터가 나중에
+    // 로드되는 경우가 있어 한 번 비었다고 그대로 두면 영영 비어 있게 된다.
+    const bool empty = terrainTypeMode_ ? terrainTypes_.empty() : tiles_.empty();
+    if (tilesetId_ == tilesetId && !empty)
         return;
     tilesetId_ = tilesetId;
     rebuild();
@@ -105,7 +108,7 @@ void TilePalette::updateScrollRange()
     if (terrainTypeMode_)
     {
         // 지형 종류는 한 줄에 하나씩 이름으로 보여 준다.
-        const int rowHeight = 40;
+        const int rowHeight = 52;
         const int contentHeight = static_cast<int>(terrainTypes_.size()) * rowHeight;
         verticalScrollBar()->setRange(0, std::max(0, contentHeight - viewport()->height()));
         verticalScrollBar()->setPageStep(viewport()->height());
@@ -166,7 +169,7 @@ void TilePalette::paintEvent(QPaintEvent * event)
         }
 
         // 이름만 있으면 어떤 지형인지 감이 안 온다. 대표 타일을 함께 보여 준다.
-        const int rowHeight = 40;
+        const int rowHeight = 52;
         const int origin = verticalScrollBar()->value();
         for (std::size_t i = 0; i < terrainTypes_.size(); ++i)
         {
@@ -184,11 +187,17 @@ void TilePalette::paintEvent(QPaintEvent * event)
             if (entry.hasPreview)
             {
                 if (const QPixmap * pixmap = tilePixmap(entry.previewTileId))
-                    painter.drawPixmap(QRect(row.left() + 4, row.top() + 4, 32, 32), *pixmap);
+                {
+                    // 32픽셀 타일을 그대로 두면 이름 옆에서 눈에 잘 띄지 않는다.
+                    painter.drawPixmap(QRect(row.left() + 6, row.top() + 6, 40, 40), *pixmap);
+                    painter.setPen(QColor(90, 90, 98));
+                    painter.setBrush(Qt::NoBrush);
+                    painter.drawRect(QRect(row.left() + 6, row.top() + 6, 40, 40));
+                }
             }
 
             painter.setPen(selected ? QColor(150, 255, 170) : QColor(215, 215, 220));
-            painter.drawText(row.adjusted(44, 0, -4, 0), Qt::AlignVCenter | Qt::AlignLeft,
+            painter.drawText(row.adjusted(56, 0, -4, 0), Qt::AlignVCenter | Qt::AlignLeft,
                              entry.name);
         }
         return;
@@ -243,7 +252,7 @@ void TilePalette::mousePressEvent(QMouseEvent * event)
         if (event->button() != Qt::LeftButton || terrainTypes_.empty())
             return;
 
-        const int rowHeight = 40;
+        const int rowHeight = 52;
         const int index =
             (static_cast<int>(event->position().y()) + verticalScrollBar()->value()) / rowHeight;
         if (index < 0 || index >= static_cast<int>(terrainTypes_.size()))
