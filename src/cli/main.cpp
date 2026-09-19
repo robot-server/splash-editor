@@ -514,6 +514,46 @@ int cmdSetBriefing(const std::string & mapPath, const std::string & installPath,
     return 0;
 }
 
+int cmdBriefingArgs(const std::string & mapPath, const std::string & installPath,
+                    std::size_t index)
+{
+    splash::io::MapArchive archive;
+    if (auto r = archive.open(mapPath); !r)
+    {
+        std::cerr << "열기 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "게임 데이터 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const auto elements = archive.briefingActions(index, graphics);
+    std::cout << "  브리핑 " << index << " 의 동작:\n";
+    for (std::size_t slot = 0; slot < elements.size(); ++slot)
+    {
+        const auto & element = elements[slot];
+        if (element.type == 0)
+            continue;
+
+        std::cout << "    [" << slot << "] " << element.text << "\n";
+        for (std::size_t i = 0; i < element.args.size(); ++i)
+        {
+            const auto & arg = element.args[i];
+            std::cout << "         인자 " << i << " " << arg.label
+                      << " = " << arg.text << " (값 " << arg.value;
+            if (!arg.choices.empty())
+                std::cout << ", 선택지 " << arg.choices.size() << "개";
+            std::cout << ")\n";
+        }
+    }
+    return 0;
+}
+
 int cmdTriggerArgs(const std::string & mapPath, const std::string & installPath,
                    std::size_t triggerIndex)
 {
@@ -1786,6 +1826,14 @@ int main(int argc, char ** argv)
     {
         try { return cmdIcon(args[1], static_cast<std::uint16_t>(std::stoul(args[2])), args[3]); }
         catch (const std::exception &) { return usage(argv[0]); }
+    }
+
+    if (command == "briefing-args" && args.size() == 4)
+    {
+        try {
+            return cmdBriefingArgs(args[1], args[2],
+                static_cast<std::size_t>(std::stoul(args[3])));
+        } catch (const std::exception &) { return usage(argv[0]); }
     }
 
     if (command == "trigger-args" && args.size() == 4)

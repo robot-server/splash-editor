@@ -1,7 +1,8 @@
 #include "ui/briefing_editor.h"
 
 #include "chk/map_document.h"
-#include "ui/code_editor.h"
+#include "ui/code_editor_pane.h"
+#include "ui/trigger_argument_panel.h"
 #include "io/game_graphics.h"
 
 #include <QCheckBox>
@@ -42,7 +43,7 @@ BriefingEditor::BriefingEditor(chk::MapDocument & document, io::GameGraphics & g
     : QDialog(parent), document_(document), graphics_(graphics)
 {
     setWindowTitle(tr("미션 브리핑"));
-    resize(920, 620);
+    resize(1360, 760);
 
     // --- 왼쪽: 브리핑 목록 ---
     list_ = new QListWidget(this);
@@ -83,11 +84,95 @@ BriefingEditor::BriefingEditor(chk::MapDocument & document, io::GameGraphics & g
     connect(owners_[8], &QCheckBox::toggled, this, [this] { applyOwners(); });
 
     actions_ = new QListWidget(this);
+    actionArgs_ = new TriggerArgumentPanel(TriggerArgumentPanel::Kind::Action, this);
+
     auto * actionBox = new QGroupBox(tr("동작"), this);
     auto * actionLayout = new QVBoxLayout(actionBox);
-    actionLayout->addWidget(actions_);
+    actionLayout->addWidget(actions_, 1);
 
-    text_ = new CodeEditor(this);
+    auto * actionButtons = new QHBoxLayout();
+    auto * removeAction = new QPushButton(tr("줄 지우기"), this);
+    auto * actionUp = new QPushButton(tr("위로"), this);
+    auto * actionDown = new QPushButton(tr("아래로"), this);
+    actionButtons->addWidget(removeAction);
+    actionButtons->addWidget(actionUp);
+    actionButtons->addWidget(actionDown);
+    actionButtons->addStretch();
+    actionLayout->addLayout(actionButtons);
+    actionLayout->addWidget(actionArgs_, 1);
+
+    connect(actions_, &QListWidget::currentRowChanged, this,
+            [this](int row) { showActionArgs(row); });
+
+    const auto briefingIndex = [this] { return static_cast<std::size_t>(currentIndex()); };
+
+    connect(actionArgs_, &TriggerArgumentPanel::typeChanged, this,
+            [this, briefingIndex](std::size_t slot, std::uint8_t type) {
+        if (currentIndex() < 0) return;
+        const int row = actions_->currentRow();
+        if (document_.setBriefingActionType(briefingIndex(), slot, type))
+        {
+            emit documentEdited();
+            reloadElements();
+            actions_->setCurrentRow(row);
+        }
+    });
+    connect(actionArgs_, &TriggerArgumentPanel::argChanged, this,
+            [this, briefingIndex](std::size_t slot, std::size_t argIndex, std::uint32_t value) {
+        if (currentIndex() < 0) return;
+        const int row = actions_->currentRow();
+        if (document_.setBriefingActionArg(briefingIndex(), slot, argIndex, value))
+        {
+            emit documentEdited();
+            reloadElements();
+            actions_->setCurrentRow(row);
+        }
+    });
+    connect(actionArgs_, &TriggerArgumentPanel::argTextChanged, this,
+            [this, briefingIndex](std::size_t slot, std::size_t argIndex, const QString & text) {
+        if (currentIndex() < 0) return;
+        const int row = actions_->currentRow();
+        if (document_.setBriefingActionArgText(briefingIndex(), slot, argIndex, text.toStdString()))
+        {
+            emit documentEdited();
+            reloadElements();
+            actions_->setCurrentRow(row);
+        }
+        else
+        {
+            QMessageBox::warning(this, tr("적용 실패"),
+                                 QString::fromStdString(document_.lastError()));
+        }
+    });
+
+    connect(removeAction, &QPushButton::clicked, this, [this, briefingIndex] {
+        const int row = actions_->currentRow();
+        if (currentIndex() < 0 || row < 0) return;
+        if (document_.removeBriefingAction(briefingIndex(), static_cast<std::size_t>(row)))
+        {
+            emit documentEdited();
+            reloadElements();
+            actions_->setCurrentRow(row);
+        }
+    });
+
+    const auto moveAction = [this, briefingIndex](int delta) {
+        const int row = actions_->currentRow();
+        const int target = row + delta;
+        if (currentIndex() < 0 || row < 0 || target < 0 || target >= actions_->count())
+            return;
+        if (document_.moveBriefingAction(briefingIndex(), static_cast<std::size_t>(row),
+                                         static_cast<std::size_t>(target)))
+        {
+            emit documentEdited();
+            reloadElements();
+            actions_->setCurrentRow(target);
+        }
+    };
+    connect(actionUp, &QPushButton::clicked, this, [moveAction] { moveAction(-1); });
+    connect(actionDown, &QPushButton::clicked, this, [moveAction] { moveAction(1); });
+
+    text_ = new CodeEditorPane(this);
     text_->setVocabulary(document_.triggerVocabulary(graphics_));
 
     QFont mono(QStringLiteral("Menlo"));
@@ -106,7 +191,7 @@ BriefingEditor::BriefingEditor(chk::MapDocument & document, io::GameGraphics & g
             return;
 
         if (!document_.setBriefingText(static_cast<std::size_t>(index),
-                                       text_->toPlainText().toStdString(), graphics_))
+                                       text_->text().toStdString(), graphics_))
         {
             QMessageBox::warning(this, tr("적용 실패"),
                                  QString::fromStdString(document_.lastError()));
@@ -126,15 +211,16 @@ BriefingEditor::BriefingEditor(chk::MapDocument & document, io::GameGraphics & g
     auto * detailLayout = new QVBoxLayout(detailPanel);
     detailLayout->setContentsMargins(0, 0, 0, 0);
     detailLayout->addWidget(ownerBox);
-    detailLayout->addWidget(actionBox);
-    detailLayout->addWidget(textBox, 1);
+    detailLayout->addWidget(actionBox, 1);
 
     auto * splitter = new QSplitter(Qt::Horizontal, this);
     splitter->addWidget(listPanel);
     splitter->addWidget(detailPanel);
+    splitter->addWidget(textBox);
     splitter->setStretchFactor(0, 0);
     splitter->setStretchFactor(1, 1);
-    splitter->setSizes({300, 620});
+    splitter->setStretchFactor(2, 2);
+    splitter->setSizes({260, 460, 560});
 
     auto * buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::close);
@@ -237,7 +323,7 @@ void BriefingEditor::reloadDetail()
 
     loading_ = true;
     actions_->clear();
-    text_->clear();
+    text_->setText(QString());
     for (auto * box : owners_)
     {
         if (box != nullptr)
@@ -252,13 +338,67 @@ void BriefingEditor::reloadDetail()
                 owners_[i]->setChecked(detail->owners[static_cast<std::size_t>(i)]);
             owners_[8]->setChecked(detail->owners[kAllPlayersSlot]);
 
-            for (const auto & action : detail->actions)
-                actions_->addItem(QString::fromStdString(action));
-
-            text_->setPlainText(QString::fromStdString(detail->text));
+            text_->setText(QString::fromStdString(detail->text));
         }
     }
     loading_ = false;
+
+    reloadElements();
+}
+
+/// 동작 목록을 다시 읽는다. 마지막에 빈 자리를 한 줄 남겨 두어 거기서
+/// 종류를 고르면 새 동작이 된다.
+void BriefingEditor::reloadElements()
+{
+    const int index = currentIndex();
+
+    const bool wasLoading = loading_;
+    loading_ = true;
+
+    actions_->clear();
+    actionElements_.clear();
+
+    if (index >= 0)
+    {
+        if (actionTypes_.empty())
+            actionTypes_ = document_.briefingActionTypes(graphics_);
+
+        actionElements_ = document_.briefingActions(static_cast<std::size_t>(index), graphics_);
+
+        std::size_t used = 0;
+        for (std::size_t i = 0; i < actionElements_.size(); ++i)
+        {
+            if (actionElements_[i].type != 0)
+                used = i + 1;
+        }
+
+        for (std::size_t i = 0; i < actionElements_.size() && i <= used; ++i)
+        {
+            const auto & element = actionElements_[i];
+            QString label = element.type == 0
+                ? tr("(빈 자리 — 여기에 새로 넣습니다)")
+                : QString::fromStdString(element.text);
+            if (element.disabled)
+                label = tr("[꺼짐] ") + label;
+            actions_->addItem(label);
+        }
+    }
+
+    loading_ = wasLoading;
+    actionArgs_->clear();
+}
+
+void BriefingEditor::showActionArgs(int row)
+{
+    const int index = currentIndex();
+    if (index < 0 || row < 0 || row >= static_cast<int>(actionElements_.size()))
+    {
+        actionArgs_->clear();
+        return;
+    }
+
+    actionArgs_->setElement(static_cast<std::size_t>(index), static_cast<std::size_t>(row),
+                            actionElements_[static_cast<std::size_t>(row)], actionTypes_);
 }
 
 void BriefingEditor::applyOwners()

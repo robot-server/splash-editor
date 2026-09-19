@@ -469,6 +469,22 @@ public:
     /// 브리핑 전체를 텍스트로 갈아 끼운다.
     Result setBriefingText(const std::string & text, GameGraphics & graphics);
 
+    /// 브리핑 하나의 동작을 인자까지 풀어서 돌려준다.
+    std::vector<TriggerElement> briefingActions(std::size_t index,
+                                                const GameGraphics & graphics) const;
+
+    /// 고를 수 있는 브리핑 동작 종류.
+    std::vector<TriggerChoice> briefingActionTypes(const GameGraphics & graphics) const;
+
+    /// 브리핑 동작의 종류·인자를 바꾼다.
+    Result setBriefingActionType(std::size_t index, std::size_t slot, std::uint8_t type);
+    Result setBriefingActionArg(std::size_t index, std::size_t slot,
+                                std::size_t argIndex, std::uint32_t value);
+    Result setBriefingActionArgText(std::size_t index, std::size_t slot,
+                                    std::size_t argIndex, const std::string & text);
+    Result removeBriefingAction(std::size_t index, std::size_t slot);
+    Result moveBriefingAction(std::size_t index, std::size_t from, std::size_t to);
+
     /// 브리핑을 더하거나 지우거나 옮긴다.
     Result addBriefing();
     Result removeBriefing(std::size_t index);

@@ -3113,6 +3113,311 @@ Result MapArchive::setBriefingText(const std::string & text, GameGraphics & grap
     return Result::success();
 }
 
+namespace {
+
+/// 브리핑 동작의 인자 한 자리를 편집기가 쓸 수 있는 꼴로 푼다.
+TriggerArg describeBriefingArg(const BriefingTextTrigGenerator & generator,
+                               const Chk::Action & action,
+                               std::size_t argIndex,
+                               const Sc::Data & scData)
+{
+    using ArgType = Chk::Action::ArgType;
+
+    const Chk::Action::Argument & argument =
+        Chk::Action::getBriefingTextArg(action.actionType, argIndex);
+
+    TriggerArg out;
+    if (argument.type == ArgType::NoType)
+        return out;
+
+    out.value = readField(action, argument.field);
+    out.text = generator.getBriefingActionArgument(action, argIndex);
+
+    const auto addChoice = [&out](std::uint32_t value, std::string text) {
+        if (!namedValue(text))
+            return;
+        out.choices.push_back(TriggerChoice{value, std::move(text)});
+    };
+
+    switch (argument.type)
+    {
+        case ArgType::String:
+            out.kind = TriggerArgKind::Text;
+            out.label = "문자열";
+            break;
+
+        case ArgType::Sound:
+            out.kind = TriggerArgKind::Sound;
+            out.label = "소리 파일";
+            break;
+
+        case ArgType::Unit:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "초상화 유닛";
+            for (int i = 0; i < int(Sc::Unit::TotalReferenceTypes); ++i)
+                addChoice(std::uint32_t(i), generator.getBriefingTrigUnit(Sc::Unit::Type(i)));
+            break;
+
+        case ArgType::BriefingSlot:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "자리";
+            for (std::uint32_t i = 0; i < 4; ++i)
+                addChoice(i, generator.getBriefingSlot(i));
+            break;
+
+        case ArgType::Duration:
+            out.kind = TriggerArgKind::Number;
+            out.label = "시간 (밀리초)";
+            break;
+
+        case ArgType::NumericMod:
+            out.kind = TriggerArgKind::Choice;
+            out.label = "수정 방식";
+            for (int i = 0; i < 16; ++i)
+                addChoice(std::uint32_t(i),
+                          generator.getBriefingTrigNumericModifier(Chk::Trigger::ValueModifier(i)));
+            break;
+
+        case ArgType::Amount:
+        case ArgType::Number:
+            out.kind = TriggerArgKind::Number;
+            out.label = "값";
+            break;
+
+        default:
+            out.kind = TriggerArgKind::None;
+            break;
+    }
+
+    (void)scData;
+    return out;
+}
+
+} // namespace
+
+std::vector<TriggerElement> MapArchive::briefingActions(std::size_t index,
+                                                        const GameGraphics & graphics) const
+{
+    std::vector<TriggerElement> out;
+    if (!impl_->isOpen())
+        return out;
+
+    const auto * scData = static_cast<const Sc::Data *>(graphics.internalScData());
+    if (scData == nullptr)
+        return out;
+
+    const MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (index >= map.numBriefingTriggers())
+            return out;
+
+        const Scenario & scenario = map;
+        BriefingTextTrigGenerator generator;
+        if (!generator.loadScenario(scenario, *scData))
+            return out;
+
+        const Chk::Trigger & briefing = map.getBriefingTrigger(index);
+        for (std::size_t slot = 0; slot < Chk::Trigger::MaxActions; ++slot)
+        {
+            const Chk::Action & action = briefing.actions[slot];
+
+            TriggerElement element;
+            element.type = std::uint8_t(action.actionType);
+            element.disabled = action.isDisabled();
+            element.name = impl_->decode(generator.getBriefingActionName(action.actionType));
+
+            if (action.actionType != Chk::Action::Type::BriefingNoAction)
+            {
+                std::string text = element.name + "(";
+                bool first = true;
+                for (std::size_t i = 0; i < Chk::Action::MaxArguments; ++i)
+                {
+                    TriggerArg arg = describeBriefingArg(generator, action, i, *scData);
+                    if (arg.kind == TriggerArgKind::None)
+                        continue;
+
+                    arg.text = impl_->decode(arg.text);
+                    for (auto & choice : arg.choices)
+                        choice.text = impl_->decode(choice.text);
+
+                    if (!first)
+                        text += ", ";
+                    text += arg.text;
+                    first = false;
+
+                    element.args.push_back(std::move(arg));
+                }
+                text += ")";
+                element.text = text;
+            }
+
+            out.push_back(std::move(element));
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+    return out;
+}
+
+std::vector<TriggerChoice> MapArchive::briefingActionTypes(const GameGraphics & graphics) const
+{
+    std::vector<TriggerChoice> out;
+    const auto * scData = static_cast<const Sc::Data *>(graphics.internalScData());
+    if (!impl_->isOpen() || scData == nullptr)
+        return out;
+
+    try
+    {
+        const Scenario & scenario = *impl_->mapFile;
+        BriefingTextTrigGenerator generator;
+        if (!generator.loadScenario(scenario, *scData))
+            return out;
+
+        for (std::size_t i = 0; i < Chk::Action::NumBriefingActionTypes; ++i)
+        {
+            std::string name = generator.getBriefingActionName(Chk::Action::Type(i));
+            if (namedValue(name))
+                out.push_back(TriggerChoice{std::uint32_t(i), impl_->decode(name)});
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+    return out;
+}
+
+namespace {
+
+/// 브리핑 트리거 하나를 고쳐 다시 넣는다.
+template <typename Mutator>
+Result mutateBriefing(MapFile & map, std::vector<int> & undoSteps, std::vector<int> & redoSteps,
+                      std::size_t index, Mutator && mutate)
+{
+    if (index >= map.numBriefingTriggers())
+        return Result::failure("브리핑 번호가 범위를 벗어났습니다.");
+
+    Chk::Trigger briefing = map.getBriefingTrigger(index);
+    if (!mutate(briefing))
+        return Result::failure("고칠 수 없는 자리입니다.");
+
+    map.deleteBriefingTrigger(index);
+    map.insertBriefingTrigger(index, briefing);
+    undoSteps.push_back(2);
+    redoSteps.clear();
+    return Result::success();
+}
+
+} // namespace
+
+Result MapArchive::setBriefingActionType(std::size_t index, std::size_t slot, std::uint8_t type)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    return mutateBriefing(*impl_->mapFile, impl_->undoSteps, impl_->redoSteps, index,
+        [slot, type](Chk::Trigger & briefing) {
+            if (slot >= Chk::Trigger::MaxActions)
+                return false;
+
+            Chk::Action fresh {};
+            fresh.actionType = Chk::Action::Type(type);
+            fresh.flags = Chk::Action::getBriefingDefaultFlags(fresh.actionType);
+            briefing.actions[slot] = fresh;
+            return true;
+        });
+}
+
+Result MapArchive::setBriefingActionArg(std::size_t index, std::size_t slot,
+                                        std::size_t argIndex, std::uint32_t value)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    return mutateBriefing(*impl_->mapFile, impl_->undoSteps, impl_->redoSteps, index,
+        [slot, argIndex, value](Chk::Trigger & briefing) {
+            if (slot >= Chk::Trigger::MaxActions)
+                return false;
+
+            Chk::Action & action = briefing.actions[slot];
+
+            std::size_t seen = 0;
+            for (std::size_t i = 0; i < Chk::Action::MaxArguments; ++i)
+            {
+                const auto & argument = Chk::Action::getBriefingTextArg(action.actionType, i);
+                if (argument.type == Chk::Action::ArgType::NoType ||
+                    argument.field == Chk::Action::ArgField::NoField)
+                    continue;
+
+                if (seen == argIndex)
+                {
+                    writeField(action, argument.field, value);
+                    return true;
+                }
+                ++seen;
+            }
+            return false;
+        });
+}
+
+Result MapArchive::setBriefingActionArgText(std::size_t index, std::size_t slot,
+                                            std::size_t argIndex, const std::string & text)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        const std::string encoded = impl_->encode(text);
+        std::size_t stringId = map.findString(RawString(encoded));
+        if (stringId == 0 || stringId == std::size_t(-1))
+            stringId = map.addString(RawString(encoded));
+
+        if (stringId == 0 || stringId == std::size_t(-1))
+            return Result::failure("문자열을 넣지 못했습니다 (STR 이 가득 찼을 수 있습니다).");
+
+        return setBriefingActionArg(index, slot, argIndex, std::uint32_t(stringId));
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("문자열을 넣지 못했습니다: ") + e.what());
+    }
+}
+
+Result MapArchive::removeBriefingAction(std::size_t index, std::size_t slot)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    return mutateBriefing(*impl_->mapFile, impl_->undoSteps, impl_->redoSteps, index,
+        [slot](Chk::Trigger & briefing) {
+            if (slot >= Chk::Trigger::MaxActions)
+                return false;
+
+            for (std::size_t i = slot; i + 1 < Chk::Trigger::MaxActions; ++i)
+                briefing.actions[i] = briefing.actions[i + 1];
+            briefing.actions[Chk::Trigger::MaxActions - 1] = Chk::Action {};
+            return true;
+        });
+}
+
+Result MapArchive::moveBriefingAction(std::size_t index, std::size_t from, std::size_t to)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    return mutateBriefing(*impl_->mapFile, impl_->undoSteps, impl_->redoSteps, index,
+        [from, to](Chk::Trigger & briefing) {
+            if (from >= Chk::Trigger::MaxActions || to >= Chk::Trigger::MaxActions)
+                return false;
+
+            std::swap(briefing.actions[from], briefing.actions[to]);
+            return true;
+        });
+}
+
 Result MapArchive::addBriefing()
 {
     if (!impl_->isOpen())

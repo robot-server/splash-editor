@@ -765,6 +765,74 @@ bool MapDocument::setBriefingText(const std::string & text, io::GameGraphics & g
     return true;
 }
 
+
+std::vector<io::TriggerElement> MapDocument::briefingActions(
+    std::size_t index, const io::GameGraphics & graphics) const
+{
+    return archive_.briefingActions(index, graphics);
+}
+
+std::vector<io::TriggerChoice> MapDocument::briefingActionTypes(
+    const io::GameGraphics & graphics) const
+{
+    return archive_.briefingActionTypes(graphics);
+}
+
+bool MapDocument::setBriefingActionType(std::size_t index, std::size_t slot, std::uint8_t type)
+{
+    const io::Result result = archive_.setBriefingActionType(index, slot, type);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setBriefingActionArg(std::size_t index, std::size_t slot, std::size_t argIndex, std::uint32_t value)
+{
+    const io::Result result = archive_.setBriefingActionArg(index, slot, argIndex, value);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setBriefingActionArgText(std::size_t index, std::size_t slot, std::size_t argIndex, const std::string & text)
+{
+    const io::Result result = archive_.setBriefingActionArgText(index, slot, argIndex, text);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::removeBriefingAction(std::size_t index, std::size_t slot)
+{
+    const io::Result result = archive_.removeBriefingAction(index, slot);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::moveBriefingAction(std::size_t index, std::size_t from, std::size_t to)
+{
+    const io::Result result = archive_.moveBriefingAction(index, from, to);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
 bool MapDocument::addBriefing()
 {
     const io::Result result = archive_.addBriefing();

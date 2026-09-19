@@ -8,6 +8,9 @@
 #include <QDialog>
 
 #include <cstdint>
+#include <vector>
+
+#include "io/map_archive.h"
 
 class QCheckBox;
 class QListWidget;
@@ -19,7 +22,8 @@ namespace splash::io  { class GameGraphics; }
 
 namespace splash::ui {
 
-class CodeEditor;
+class CodeEditorPane;
+class TriggerArgumentPanel;
 
 class BriefingEditor : public QDialog
 {
@@ -36,6 +40,8 @@ signals:
 private:
     void reloadList(int selectRow = -1);
     void reloadDetail();
+    void reloadElements();
+    void showActionArgs(int row);
     void applyOwners();
 
     int currentIndex() const;
@@ -46,7 +52,11 @@ private:
     QListWidget * list_ = nullptr;
     QCheckBox * owners_[9] {};   ///< 플레이어 1~8 + 모든 플레이어
     QListWidget * actions_ = nullptr;
-    CodeEditor * text_ = nullptr;
+    TriggerArgumentPanel * actionArgs_ = nullptr;
+    CodeEditorPane * text_ = nullptr;
+
+    std::vector<io::TriggerElement> actionElements_;
+    std::vector<io::TriggerChoice> actionTypes_;
     QLabel * summary_ = nullptr;
     QLabel * hint_ = nullptr;
 

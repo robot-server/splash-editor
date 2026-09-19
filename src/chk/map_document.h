@@ -263,6 +263,16 @@ public:
     std::optional<std::string> briefingText(const io::GameGraphics & graphics) const;
     bool setBriefingText(std::size_t index, const std::string & text, io::GameGraphics & graphics);
     bool setBriefingText(const std::string & text, io::GameGraphics & graphics);
+    std::vector<io::TriggerElement> briefingActions(std::size_t index,
+                                                    const io::GameGraphics & graphics) const;
+    std::vector<io::TriggerChoice> briefingActionTypes(const io::GameGraphics & graphics) const;
+    bool setBriefingActionType(std::size_t index, std::size_t slot, std::uint8_t type);
+    bool setBriefingActionArg(std::size_t index, std::size_t slot,
+                              std::size_t argIndex, std::uint32_t value);
+    bool setBriefingActionArgText(std::size_t index, std::size_t slot,
+                                  std::size_t argIndex, const std::string & text);
+    bool removeBriefingAction(std::size_t index, std::size_t slot);
+    bool moveBriefingAction(std::size_t index, std::size_t from, std::size_t to);
     bool addBriefing();
     bool removeBriefing(std::size_t index);
     bool moveBriefing(std::size_t from, std::size_t to);
