@@ -53,6 +53,9 @@ struct MapUnit
     std::uint32_t classId = 0;
     std::uint16_t relationFlags = 0;
     std::uint32_t relationClassId = 0;
+
+    /// 은폐·버로우·떠 있음·환영·무적 (Chk::Unit::State).
+    std::uint16_t stateFlags = 0;
 };
 
 /// 맵에 배치된 스프라이트 (표시용).

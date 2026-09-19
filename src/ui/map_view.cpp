@@ -537,7 +537,9 @@ void MapView::paintCreep(QPainter & painter, const QRect & dirty)
 }
 
 const MapView::UnitSprite * MapView::unitSprite(std::uint16_t type, std::uint8_t owner,
-                                               std::uint32_t resourceAmount)
+                                               std::uint32_t resourceAmount,
+                                               std::uint16_t stateFlags,
+                                               std::uint16_t relationFlags)
 {
     if (tileset_ == nullptr || !tileset_->hasUnitGraphics() || document_ == nullptr)
         return nullptr;
@@ -546,8 +548,17 @@ const MapView::UnitSprite * MapView::unitSprite(std::uint16_t type, std::uint8_t
     // 단계는 몇 개뿐이라 양 자체를 그대로 쓰면 캐시가 흩어진다 — 구간으로 묶는다.
     const std::uint32_t resourceBucket = resourceAmount == 0 ? 0u
         : (resourceAmount < 250 ? 1u : (resourceAmount < 500 ? 2u : 3u));
+    // 상태에 따라 그림이 달라지므로 캐시 키에 함께 넣는다. 그림을 바꾸는
+    // 비트만 추린다 — 나머지까지 넣으면 캐시가 쓸데없이 흩어진다.
+    constexpr std::uint16_t kDrawingStates = 0x01 | 0x02 | 0x04 | 0x08; // 은폐·버로우·떠 있음·환영
+    constexpr std::uint16_t kAddonLink = 0x0400;
+
+    const std::uint32_t stateKey = (stateFlags & kDrawingStates) |
+                                   ((relationFlags & kAddonLink) != 0 ? 0x10u : 0u);
+
     const std::uint32_t key =
-        (static_cast<std::uint32_t>(type) << 10) |
+        (static_cast<std::uint32_t>(type) << 15) |
+        (stateKey << 10) |
         (static_cast<std::uint32_t>(owner) << 2) | resourceBucket;
 
     auto found = unitCache_.find(key);
@@ -555,7 +566,8 @@ const MapView::UnitSprite * MapView::unitSprite(std::uint16_t type, std::uint8_t
         return found.value().pixmap.isNull() ? nullptr : &found.value();
 
     const io::UnitImage image =
-        tileset_->renderUnit(type, owner, document_->info().tilesetId, resourceAmount);
+        tileset_->renderUnit(type, owner, document_->info().tilesetId, resourceAmount,
+                             stateFlags, relationFlags);
 
     UnitSprite sprite;
     if (image.width > 0 && image.height > 0)
@@ -643,7 +655,8 @@ void MapView::paintUnits(QPainter & painter, const QRect & dirty)
         const int drawX = (isSelected && hasPreview_) ? previewPos_.x() : unit.x;
         const int drawY = (isSelected && hasPreview_) ? previewPos_.y() : unit.y;
 
-        const UnitSprite * sprite = unitSprite(unit.type, unit.owner, unit.resourceAmount);
+        const UnitSprite * sprite = unitSprite(unit.type, unit.owner, unit.resourceAmount,
+                                              unit.stateFlags, unit.relationFlags);
 
         if (sprite != nullptr)
         {
@@ -1644,7 +1657,8 @@ int MapView::unitAt(const QPointF & screenPos)
     for (int i = static_cast<int>(units.size()) - 1; i >= 0; --i)
     {
         const auto & unit = units[static_cast<std::size_t>(i)];
-        const UnitSprite * sprite = unitSprite(unit.type, unit.owner, unit.resourceAmount);
+        const UnitSprite * sprite = unitSprite(unit.type, unit.owner, unit.resourceAmount,
+                                              unit.stateFlags, unit.relationFlags);
 
         QRectF bounds;
         if (sprite != nullptr)

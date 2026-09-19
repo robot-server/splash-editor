@@ -1248,6 +1248,7 @@ void MapDocument::refreshInfo()
         unit.classId = raw.classId;
         unit.relationFlags = raw.relationFlags;
         unit.relationClassId = raw.relationClassId;
+        unit.stateFlags = raw.stateFlags;
         units_.push_back(std::move(unit));
     }
 

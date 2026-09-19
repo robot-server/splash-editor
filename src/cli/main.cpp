@@ -1296,7 +1296,9 @@ int cmdUnitImage(const std::string & installPath,
                  const std::string & outPath,
                  std::uint8_t owner,
                  std::uint16_t tilesetId,
-                 std::uint32_t resourceAmount)
+                 std::uint32_t resourceAmount,
+                 std::uint16_t stateFlags = 0,
+                 std::uint16_t relationFlags = 0)
 {
     splash::io::GameGraphics graphics;
     std::string error;
@@ -1311,7 +1313,14 @@ int cmdUnitImage(const std::string & installPath,
         return 1;
     }
 
-    const auto image = graphics.renderUnit(unitType, owner, tilesetId, resourceAmount);
+    // 진단용으로 상태를 환경 변수로 넘길 수 있게 둔다.
+    if (const char * chosen = std::getenv("SPLASH_UNIT_STATE"))
+        stateFlags = static_cast<std::uint16_t>(std::stoul(chosen, nullptr, 0));
+    if (const char * chosen = std::getenv("SPLASH_UNIT_RELATION"))
+        relationFlags = static_cast<std::uint16_t>(std::stoul(chosen, nullptr, 0));
+
+    const auto image = graphics.renderUnit(unitType, owner, tilesetId, resourceAmount,
+                                           stateFlags, relationFlags);
     if (image.width <= 0 || image.height <= 0)
     {
         std::cerr << "유닛 " << unitType << " 을 그리지 못했습니다.\n";

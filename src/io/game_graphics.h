@@ -273,10 +273,15 @@ public:
     std::uint16_t upgradeIcon(std::uint16_t upgradeType) const;
     std::uint16_t techIcon(std::uint16_t techType) const;
 
+    /// stateFlags 는 은폐·버로우·환영·떠 있음을, relationFlags 는 애드온이
+    /// 붙었는지를 알려 준다 (Chk::Unit 의 같은 이름 필드). 그대로 넘기면
+    /// 게임과 같은 모습으로 그린다.
     UnitImage renderUnit(std::uint16_t unitType,
                          std::uint8_t owner,
                          std::uint16_t tilesetId,
-                         std::uint32_t resourceAmount = 0) const;
+                         std::uint32_t resourceAmount = 0,
+                         std::uint16_t stateFlags = 0,
+                         std::uint16_t relationFlags = 0) const;
 
 private:
     struct Impl;

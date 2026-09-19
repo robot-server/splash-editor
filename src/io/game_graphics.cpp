@@ -1496,7 +1496,9 @@ std::uint16_t GameGraphics::techIcon(std::uint16_t techType) const
 UnitImage GameGraphics::renderUnit(std::uint16_t unitType,
                                    std::uint8_t owner,
                                    std::uint16_t tilesetId,
-                                   std::uint32_t resourceAmount) const
+                                   std::uint32_t resourceAmount,
+                                   std::uint16_t stateFlags,
+                                   std::uint16_t relationFlags) const
 {
     if (!hasUnitGraphics())
         return UnitImage{};
@@ -1510,6 +1512,12 @@ UnitImage GameGraphics::renderUnit(std::uint16_t unitType,
         chkUnit.yc = 0;
         // 자원 유닛은 남은 양에 따라 그래픽이 달라진다(미네랄 3단계 등).
         chkUnit.resourceAmount = resourceAmount;
+
+        // 상태에 따라 iscript 가 다른 자세·그리기 방식을 고른다 — 은폐와
+        // 환영은 반투명하게, 버로우는 묻힌 모습, 떠 있는 건물은 뜬 모습,
+        // 애드온이 붙은 건물은 붙은 모습이 된다.
+        chkUnit.stateFlags = stateFlags;
+        chkUnit.relationFlags = relationFlags;
 
         // MappingCore 는 방향이 정해지지 않은 유닛(units.dat 의 unitDirection
         // 이 32)의 방향을 std::rand 로 뽑는다. 그대로 두면 다시 그릴 때마다

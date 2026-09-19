@@ -237,8 +237,12 @@ private:
     /// 유닛 스프라이트. 타입과 소유자 조합으로 캐시한다(플레이어 색이 다르다).
     /// 스프라이트를 구하지 못하면 nullptr — 호출부가 원으로 대신 그린다.
     struct UnitSprite { QPixmap pixmap; int anchorX = 0; int anchorY = 0; };
+    /// stateFlags·relationFlags 는 은폐·버로우·떠 있음·애드온 붙음을
+    /// 그림에 반영하는 데 쓴다.
     const UnitSprite * unitSprite(std::uint16_t type, std::uint8_t owner,
-                                  std::uint32_t resourceAmount);
+                                  std::uint32_t resourceAmount,
+                                  std::uint16_t stateFlags = 0,
+                                  std::uint16_t relationFlags = 0);
 
     /// 맵 스프라이트(THG2). 유닛과 캐시를 나눠 쓴다.
     const UnitSprite * mapSprite(std::uint16_t type, std::uint8_t owner, bool drawnAsSprite);
