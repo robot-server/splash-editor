@@ -523,6 +523,18 @@ void MainWindow::buildMenus()
                                     : tr("지형을 따지지 않고 놓습니다"), 2500);
     });
 
+    QAction * groundCheckAction = toolMenu->addAction(tr("지상 유닛 지형 검사"));
+    groundCheckAction->setCheckable(true);
+    groundCheckAction->setChecked(mapView_->groundUnitCheckEnabled());
+    groundCheckAction->setToolTip(
+        tr("켜면 지상 유닛을 걸을 수 있는 땅에만 놓습니다. 공중 유닛은 "
+           "어디든 놓입니다."));
+    connect(groundCheckAction, &QAction::toggled, this, [this](bool on) {
+        mapView_->setGroundUnitCheckEnabled(on);
+        statusBar()->showMessage(on ? tr("지상 유닛은 갈 수 있는 땅에만 놓습니다")
+                                    : tr("지상 유닛은 지형을 따지지 않습니다"), 2500);
+    });
+
     QAction * stackAction = toolMenu->addAction(tr("유닛 겹쳐 놓기 허용"));
     stackAction->setCheckable(true);
     stackAction->setChecked(mapView_->unitStackingAllowed());

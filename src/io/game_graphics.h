@@ -113,6 +113,7 @@ public:
         enum class Race { Zerg, Terran, Protoss, Neutral };
         Race race = Race::Neutral;
         bool building = false;
+        bool flyer = false;      ///< 하늘을 나는 유닛 (땅을 따지지 않는다)
         std::uint8_t groupFlags = 0; ///< units.dat 의 starEditGroupFlags 원시값
     };
     UnitClass unitClass(std::uint16_t unitType) const;
@@ -148,6 +149,12 @@ public:
     {
         bool buildable = false; ///< 건물을 놓을 수 있는 평지인지
         int elevation = 0;      ///< 0 저지대, 1 중지대, 2 고지대
+
+        /// 지상 유닛이 지나다닐 수 있는지. 한 타일은 4x4 미니타일로
+        /// 나뉘고 각 칸마다 걷기 여부가 따로 있어서, 그중 얼마나
+        /// 걸을 수 있는지를 함께 준다 (VF4).
+        bool walkable = false;      ///< 한 칸이라도 걸을 수 있는지
+        bool fullyWalkable = false; ///< 열여섯 칸 모두 걸을 수 있는지
     };
     TileTerrain tileTerrain(std::uint16_t tilesetId, std::uint16_t tileId) const;
 

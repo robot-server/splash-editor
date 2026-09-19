@@ -499,8 +499,9 @@ GameGraphics::UnitClass GameGraphics::unitClass(std::uint16_t unitType) const
 
     const auto & dat = units.getUnit(Sc::Unit::Type(unitType));
 
-    // 건물 여부는 units.dat 의 특성 플래그가 알려 준다.
+    // 건물·비행 여부는 units.dat 의 특성 플래그가 알려 준다.
     result.building = (dat.flags & Sc::Unit::Flags::Building) != 0;
+    result.flyer = (dat.flags & Sc::Unit::Flags::Flyer) != 0;
 
     // 종족은 StarEdit 그룹 플래그에 들어 있다. MappingCore 에 이름이 붙은
     // 열거형이 없어 비트를 직접 읽는다 — 값은 실제 데이터로 확인했다.
@@ -557,6 +558,27 @@ GameGraphics::TileTerrain GameGraphics::tileTerrain(std::uint16_t tilesetId,
         terrain.elevation = 1;
     else
         terrain.elevation = 0;
+
+    // 걷기 여부는 미니타일마다 따로 있다. 타일 하나는 4x4 = 16칸이다.
+    const std::size_t megaTileIndex =
+        tiles.tileGroups[groupIndex].megaTileIndex[static_cast<std::size_t>(tileId) % 16];
+    if (megaTileIndex < tiles.tileFlags.size())
+    {
+        const auto & tileFlags = tiles.tileFlags[megaTileIndex];
+
+        std::size_t walkableCount = 0;
+        for (std::size_t y = 0; y < 4; ++y)
+        {
+            for (std::size_t x = 0; x < 4; ++x)
+            {
+                if (tileFlags.miniTileFlags[y][x].isWalkable())
+                    ++walkableCount;
+            }
+        }
+
+        terrain.walkable = walkableCount > 0;
+        terrain.fullyWalkable = walkableCount == 16;
+    }
 
     return terrain;
 }

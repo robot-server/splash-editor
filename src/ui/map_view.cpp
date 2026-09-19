@@ -943,23 +943,51 @@ void MapView::setTerrainCheckEnabled(bool enabled)
     viewport()->update();
 }
 
+void MapView::setGroundUnitCheckEnabled(bool enabled)
+{
+    checkGroundUnits_ = enabled;
+    viewport()->update();
+}
+
 bool MapView::terrainAccepts(std::uint16_t unitType, int x, int y) const
 {
-    if (!checkTerrain_ || document_ == nullptr || tileset_ == nullptr)
+    if (document_ == nullptr || tileset_ == nullptr)
         return true;
 
-    // 땅을 따지는 것은 건물뿐이다. 유닛은 게임에서도 물 위를 지나다닌다.
     const auto unitInfo = tileset_->unitClass(unitType);
+    const auto & info = document_->info();
+    const auto & tiles = document_->tiles();
+    if (tiles.empty())
+        return true;
+
+    // --- 지상 유닛: 걸을 수 있는 땅인지 ---
     if (!unitInfo.building)
+    {
+        if (!checkGroundUnits_ || unitInfo.flyer)
+            return true;
+
+        const int tileX = x / io::kTilePixels;
+        const int tileY = y / io::kTilePixels;
+        if (tileX < 0 || tileY < 0 || tileX >= info.width || tileY >= info.height)
+            return false;
+
+        const std::size_t index = static_cast<std::size_t>(tileY) * info.width + tileX;
+        if (index >= tiles.size())
+            return false;
+
+        // 한 타일은 4x4 칸으로 나뉘고 칸마다 걷기 여부가 다르다. 가장자리
+        // 한 칸만 걸을 수 있는 자리에 놓으면 게임에서 갇히므로, 절반
+        // 이상 걸을 수 있는 타일만 받는다.
+        const auto terrain = tileset_->tileTerrain(info.tilesetId, tiles[index]);
+        return terrain.fullyWalkable || terrain.walkable;
+    }
+
+    // --- 건물: 지을 수 있는 땅인지 ---
+    if (!checkTerrain_)
         return true;
 
     const auto box = tileset_->placementBox(unitType);
     if (box.width <= 0 || box.height <= 0)
-        return true;
-
-    const auto & info = document_->info();
-    const auto & tiles = document_->tiles();
-    if (tiles.empty())
         return true;
 
     // 배치 상자는 유닛 좌표를 가운데로 둔다.
@@ -1201,10 +1229,20 @@ bool MapView::placeAt(const QPointF & screenPos)
         // 끌며 놓는 동안에는 잔소리를 하지 않는다.
         if (!placingDrag_)
         {
-            emit placementRejected(
-                !allowStack_ && unitWouldOverlap(placeUnitType_, pos.x(), pos.y())
-                    ? tr("이미 다른 유닛이 있는 자리입니다 — 겹치기를 허용하면 놓을 수 있습니다.")
-                    : tr("이 땅에는 건물을 지을 수 없습니다 — 지형 검사를 끄면 놓을 수 있습니다."));
+            QString reason;
+            if (!allowStack_ && unitWouldOverlap(placeUnitType_, pos.x(), pos.y()))
+            {
+                reason = tr("이미 다른 유닛이 있는 자리입니다 — 겹치기를 허용하면 놓을 수 있습니다.");
+            }
+            else if (tileset_ != nullptr && tileset_->unitClass(placeUnitType_).building)
+            {
+                reason = tr("이 땅에는 건물을 지을 수 없습니다 — 지형 검사를 끄면 놓을 수 있습니다.");
+            }
+            else
+            {
+                reason = tr("지상 유닛이 갈 수 없는 땅입니다 — 지상 유닛 지형 검사를 끄면 놓을 수 있습니다.");
+            }
+            emit placementRejected(reason);
         }
         return false;
     }

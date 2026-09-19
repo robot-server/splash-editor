@@ -155,12 +155,16 @@ public:
     UnitSnap unitSnap() const { return unitSnap_; }
     void setUnitSnap(UnitSnap snap);
 
-    /// 건물을 놓을 때 지형을 따질지.
+    /// 놓을 때 지형을 따질지.
     ///
-    /// 켜면 게임이 건물을 지을 수 있는 땅(평지, 같은 높이)에만 놓는다.
-    /// 유즈맵은 일부러 물 위나 절벽에 올리는 일이 흔하므로 끌 수 있다.
+    /// 건물은 지을 수 있는 땅(평지, 같은 높이)에만, 지상 유닛은 걸을 수
+    /// 있는 땅에만 놓는다. 공중 유닛은 어디든 놓는다. 유즈맵은 일부러
+    /// 물 위나 절벽에 올리는 일이 흔하므로 따로 끌 수 있다.
     bool terrainCheckEnabled() const { return checkTerrain_; }
     void setTerrainCheckEnabled(bool enabled);
+
+    bool groundUnitCheckEnabled() const { return checkGroundUnits_; }
+    void setGroundUnitCheckEnabled(bool enabled);
 
     /// 이미 유닛이 있는 자리에 겹쳐 놓을 수 있는지.
     ///
@@ -331,6 +335,7 @@ private:
     UnitSnap unitSnap_ = UnitSnap::Tile;
     bool allowStack_ = false;
     bool checkTerrain_ = false;
+    bool checkGroundUnits_ = false;
 
     bool showFog_ = false;
     std::uint8_t fogPlayers_ = 0x01; ///< 기본은 플레이어 1
