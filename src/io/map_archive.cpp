@@ -3510,6 +3510,32 @@ void fillSoundChoices(TriggerArg & arg, const std::vector<MapArchive::MapSound> 
 
 } // namespace
 
+Result MapArchive::duplicateTrigger(std::size_t index)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (index >= map.numTriggers())
+            return Result::failure("트리거 번호가 범위를 벗어났습니다.");
+
+        // 문자열은 그대로 가리키게 둔다 — 같은 글자를 두 번 넣을 이유가 없고,
+        // 한쪽을 고치면 어차피 새 문자열이 생긴다.
+        const Chk::Trigger copy = map.getTrigger(index);
+        map.insertTrigger(index + 1, copy);
+
+        impl_->undoSteps.push_back(1);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("트리거를 베끼지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 std::vector<TriggerElement> MapArchive::triggerConditions(std::size_t index,
                                                           const GameGraphics & graphics) const
 {

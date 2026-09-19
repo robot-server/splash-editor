@@ -345,6 +345,9 @@ public:
     bool removeTrigger(std::size_t index);
     bool addTrigger();
 
+    /// 트리거를 그대로 베껴 바로 뒤에 넣는다.
+    bool duplicateTrigger(std::size_t index);
+
     /// 트리거 하나만 텍스트로 바꿔 적용한다.
     /// 실행 취소 이력이 지워진다 — 컴파일이 TRIG 과 STR 을 함께 바꾼다.
     bool applyTriggerText(std::size_t index, const std::string & text,

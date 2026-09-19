@@ -26,6 +26,7 @@
 #include <QSplitter>
 #include <QApplication>
 #include <QCloseEvent>
+#include <QFile>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QTabBar>
@@ -606,6 +607,31 @@ void MainWindow::buildMenus()
         if (unitDock_ != nullptr)
             unitDock_->show();
         statusBar()->showMessage(tr("유닛 놓기 — 팔레트에서 유닛을 고르세요"), 4000);
+    });
+
+    QAction * spriteTool = toolMenu->addAction(tr("스프라이트 놓기(&R)"));
+    spriteTool->setCheckable(true);
+    spriteTool->setShortcut(QKeySequence(Qt::Key_R));
+    toolGroup->addAction(spriteTool);
+    connect(spriteTool, &QAction::triggered, this, [this] {
+        mapView_->setTool(MapView::Tool::PlaceSprite);
+        if (unitDock_ != nullptr)
+            unitDock_->show();
+        statusBar()->showMessage(
+            tr("스프라이트 놓기 — 팔레트의 '스프라이트' 분류에서 고르세요"), 4000);
+    });
+
+    QAction * doodadTool = toolMenu->addAction(tr("두들 놓기(&D)"));
+    doodadTool->setCheckable(true);
+    doodadTool->setShortcut(QKeySequence(Qt::Key_D));
+    toolGroup->addAction(doodadTool);
+    connect(doodadTool, &QAction::triggered, this, [this] {
+        mapView_->setTool(MapView::Tool::PlaceDoodad);
+        if (paletteDock_ != nullptr)
+            paletteDock_->show();
+        if (tilePalette_ != nullptr)
+            tilePalette_->setDoodadMode(true);
+        statusBar()->showMessage(tr("두들 놓기 — 팔레트에서 고르세요"), 4000);
     });
 
     QAction * terrainTool = toolMenu->addAction(tr("지형 칠하기(&T)"));
@@ -1733,6 +1759,48 @@ void MainWindow::onShowTriggers()
 
     auto * buttons = new QDialogButtonBox(
         QDialogButtonBox::Apply | QDialogButtonBox::Close, dialog);
+
+    // 텍스트 트리거를 파일로 주고받는다 — 다른 에디터와 나눠 쓰거나
+    // 따로 손보기 위해서다.
+    auto * importButton = buttons->addButton(tr("파일에서 열기…"),
+                                             QDialogButtonBox::ActionRole);
+    connect(importButton, &QPushButton::clicked, this, [this, editor, dialog] {
+        const QString path = QFileDialog::getOpenFileName(
+            dialog, tr("트리거 텍스트 열기"), QString(),
+            tr("텍스트 (*.txt);;모든 파일 (*)"));
+        if (path.isEmpty())
+            return;
+
+        QFile file(path);
+        if (!file.open(QIODevice::ReadOnly))
+        {
+            QMessageBox::warning(dialog, tr("열기 실패"), tr("파일을 읽지 못했습니다."));
+            return;
+        }
+
+        editor->setText(QString::fromUtf8(file.readAll()));
+        statusBar()->showMessage(tr("트리거 텍스트를 읽었습니다: %1").arg(path), 4000);
+    });
+
+    auto * exportButton = buttons->addButton(tr("파일로 저장…"),
+                                             QDialogButtonBox::ActionRole);
+    connect(exportButton, &QPushButton::clicked, this, [this, editor, dialog] {
+        const QString path = QFileDialog::getSaveFileName(
+            dialog, tr("트리거 텍스트 저장"), QStringLiteral("triggers.txt"),
+            tr("텍스트 (*.txt)"));
+        if (path.isEmpty())
+            return;
+
+        QFile file(path);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate))
+        {
+            QMessageBox::warning(dialog, tr("저장 실패"), tr("파일을 쓰지 못했습니다."));
+            return;
+        }
+
+        file.write(editor->text().toUtf8());
+        statusBar()->showMessage(tr("트리거 텍스트를 썼습니다: %1").arg(path), 4000);
+    });
 
     auto * hint = new QLabel(
         tr("고친 뒤 적용하면 트리거 전체가 새 내용으로 바뀝니다. "

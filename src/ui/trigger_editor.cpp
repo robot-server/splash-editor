@@ -38,12 +38,28 @@ TriggerEditor::TriggerEditor(chk::MapDocument & document, io::GameGraphics & gra
     list_->setAlternatingRowColors(true);
 
     auto * addButton = new QPushButton(tr("추가"), this);
+    auto * duplicateButton = new QPushButton(tr("복제"), this);
     auto * removeButton = new QPushButton(tr("삭제"), this);
 
     auto * listButtons = new QHBoxLayout();
     listButtons->addWidget(addButton);
+    listButtons->addWidget(duplicateButton);
     listButtons->addWidget(removeButton);
     listButtons->addStretch();
+
+    connect(duplicateButton, &QPushButton::clicked, this, [this] {
+        const int index = currentIndex();
+        if (index < 0)
+            return;
+        if (!document_.duplicateTrigger(static_cast<std::size_t>(index)))
+        {
+            QMessageBox::warning(this, tr("복제 실패"),
+                                 QString::fromStdString(document_.lastError()));
+            return;
+        }
+        emit documentEdited();
+        reloadList(index + 1);
+    });
 
     auto * listPanel = new QWidget(this);
     auto * listLayout = new QVBoxLayout(listPanel);

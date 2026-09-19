@@ -664,6 +664,9 @@ public:
     /// 다른 값을 고르면 게임에서 글자가 깨진다.
     void setTextEncoding(TextEncoding encoding);
 
+    /// 트리거 하나를 그대로 베껴 바로 뒤에 넣는다.
+    Result duplicateTrigger(std::size_t index);
+
     /// 트리거 하나의 조건 목록을 인자까지 풀어서 돌려준다.
     std::vector<TriggerElement> triggerConditions(std::size_t index,
                                                   const GameGraphics & graphics) const;

@@ -695,6 +695,17 @@ bool MapDocument::setForceName(std::size_t force, const std::string & name)
 }
 
 
+bool MapDocument::duplicateTrigger(std::size_t index)
+{
+    const io::Result result = archive_.duplicateTrigger(index);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
 std::vector<io::TriggerElement> MapDocument::triggerConditions(
     std::size_t index, const io::GameGraphics & graphics) const
 {
