@@ -91,6 +91,11 @@ private:
     /// 크립 타일 마스크. 문서나 타일셋이 바뀌면 다시 만든다.
     const std::vector<std::uint8_t> & creepMask();
 
+    /// 크립을 미리 합성해 둔 이미지(맵 좌표계, 알파 포함).
+    /// 가장자리를 흐려 두므로 타일 경계가 드러나지 않는다.
+    /// 큰 맵에서는 메모리를 아끼려고 축소해 만든다.
+    const QPixmap * creepLayer();
+
     /// 현재 줌에서 타일 한 변의 화면 픽셀 수.
     double scaledTileSize() const;
 
@@ -105,6 +110,9 @@ private:
     QHash<std::uint32_t, UnitSprite> spriteCache_;
     double zoom_ = 1.0;
     QVector<QPixmap> creepTiles_;
+    QPixmap creepLayer_;
+    int creepLayerScale_ = 1; ///< 원본 대비 축소 배수 (1 = 등배)
+    bool creepLayerReady_ = false;
     std::vector<std::uint8_t> creepMask_;
     bool creepReady_ = false;
     bool showUnits_ = true;

@@ -58,6 +58,8 @@ void MapView::refresh()
     spriteCache_.clear();
     creepTiles_.clear();
     creepMask_.clear();
+    creepLayer_ = QPixmap();
+    creepLayerReady_ = false;
     creepReady_ = false;
     updateScrollRanges();
     viewport()->update();
@@ -315,77 +317,141 @@ const std::vector<std::uint8_t> & MapView::creepMask()
     return creepMask_;
 }
 
-void MapView::paintCreep(QPainter & painter, const QRect & dirty)
+const QPixmap * MapView::creepLayer()
 {
+    if (creepLayerReady_)
+        return creepLayer_.isNull() ? nullptr : &creepLayer_;
+
+    creepLayerReady_ = true;
+
     const auto & tiles = creepTiles();
     const auto & mask = creepMask();
-    if (tiles.isEmpty() || mask.empty())
-        return;
+    if (tiles.isEmpty() || mask.empty() || document_ == nullptr)
+        return nullptr;
 
     const auto & info = document_->info();
+
+    // 맵 전체를 픽셀 해상도로 합성하면 256x256 맵이 8192x8192 가 된다.
+    // 화면에 보이는 정밀도면 충분하므로, 큰 맵은 축소해 만든다.
+    int scale = 1;
+    while ((static_cast<long long>(info.width) * io::kTilePixels / scale) *
+           (static_cast<long long>(info.height) * io::kTilePixels / scale) > 16LL * 1024 * 1024)
+    {
+        scale *= 2;
+    }
+    creepLayerScale_ = scale;
+
+    const int layerW = info.width * io::kTilePixels / scale;
+    const int layerH = info.height * io::kTilePixels / scale;
+    if (layerW <= 0 || layerH <= 0)
+        return nullptr;
+
+    // 1) 크립 바닥을 깔고
+    QImage layer(layerW, layerH, QImage::Format_RGBA8888);
+    layer.fill(Qt::transparent);
+
+    const int tilePx = io::kTilePixels / scale;
+    {
+        QPainter tilePainter(&layer);
+        for (int ty = 0; ty < info.height; ++ty)
+        {
+            for (int tx = 0; tx < info.width; ++tx)
+            {
+                if (mask[static_cast<std::size_t>(ty) * info.width + tx] == 0)
+                    continue;
+
+                const std::size_t hash = (static_cast<std::size_t>(tx) * 73856093u) ^
+                                         (static_cast<std::size_t>(ty) * 19349663u);
+                const std::size_t plainCount =
+                    std::max<std::size_t>(1, static_cast<std::size_t>(tiles.size()) / 3);
+                const bool useDecor =
+                    (hash % 11 == 0) && static_cast<std::size_t>(tiles.size()) > plainCount;
+                const std::size_t pick = useDecor
+                    ? plainCount + (hash / 11) % (static_cast<std::size_t>(tiles.size()) - plainCount)
+                    : hash % plainCount;
+
+                tilePainter.drawPixmap(QRect(tx * tilePx, ty * tilePx, tilePx, tilePx),
+                                       tiles[static_cast<int>(pick)]);
+            }
+        }
+    }
+
+    // 2) 가장자리를 흐린다.
+    //
+    // 크립 타일에는 가장자리 전이 변형이 없어서(이 타일셋 기준 전부 가득 찬
+    // 질감이다) 마스크 경계가 그대로 드러나면 네모나게 보인다. 알파만 흐려
+    // 서서히 사라지게 만든다. 색은 건드리지 않는다.
+    const int blur = std::max(1, 10 / scale);
+    std::vector<std::uint16_t> alpha(
+        static_cast<std::size_t>(layerW) * layerH, 0);
+    for (int y = 0; y < layerH; ++y)
+    {
+        const uchar * line = layer.constScanLine(y);
+        for (int x = 0; x < layerW; ++x)
+            alpha[static_cast<std::size_t>(y) * layerW + x] = line[x * 4 + 3];
+    }
+
+    std::vector<std::uint16_t> tmp(alpha.size(), 0);
+    const int window = 2 * blur + 1;
+    for (int y = 0; y < layerH; ++y)
+    {
+        int sum = 0;
+        const std::size_t row = static_cast<std::size_t>(y) * layerW;
+        for (int x = -blur; x < layerW; ++x)
+        {
+            if (x + blur < layerW) sum += alpha[row + x + blur];
+            if (x - blur - 1 >= 0)  sum -= alpha[row + x - blur - 1];
+            if (x >= 0) tmp[row + x] = static_cast<std::uint16_t>(sum / window);
+        }
+    }
+    for (int x = 0; x < layerW; ++x)
+    {
+        int sum = 0;
+        for (int y = -blur; y < layerH; ++y)
+        {
+            if (y + blur < layerH) sum += tmp[static_cast<std::size_t>(y + blur) * layerW + x];
+            if (y - blur - 1 >= 0)  sum -= tmp[static_cast<std::size_t>(y - blur - 1) * layerW + x];
+            if (y >= 0)
+                alpha[static_cast<std::size_t>(y) * layerW + x] =
+                    static_cast<std::uint16_t>(sum / window);
+        }
+    }
+
+    for (int y = 0; y < layerH; ++y)
+    {
+        uchar * line = layer.scanLine(y);
+        for (int x = 0; x < layerW; ++x)
+            line[x * 4 + 3] = static_cast<uchar>(alpha[static_cast<std::size_t>(y) * layerW + x]);
+    }
+
+    creepLayer_ = QPixmap::fromImage(layer);
+    return creepLayer_.isNull() ? nullptr : &creepLayer_;
+}
+
+void MapView::paintCreep(QPainter & painter, const QRect & dirty)
+{
+    const QPixmap * layer = creepLayer();
+    if (layer == nullptr)
+        return;
+
     const double tile = scaledTileSize();
     if (tile <= 0)
         return;
 
-    const int originX = horizontalScrollBar()->value();
-    const int originY = verticalScrollBar()->value();
+    const double originX = horizontalScrollBar()->value();
+    const double originY = verticalScrollBar()->value();
+    const double scaleToScreen = zoom_ * creepLayerScale_;
 
-    const int firstX = std::max(0, static_cast<int>((originX + dirty.left()) / tile));
-    const int firstY = std::max(0, static_cast<int>((originY + dirty.top()) / tile));
-    const int lastX = std::min<int>(info.width - 1,
-                                    static_cast<int>((originX + dirty.right()) / tile));
-    const int lastY = std::min<int>(info.height - 1,
-                                    static_cast<int>((originY + dirty.bottom()) / tile));
+    // 보이는 부분만 잘라 그린다.
+    const QRectF target(dirty);
+    const QRectF source((target.left() + originX) / scaleToScreen,
+                        (target.top() + originY) / scaleToScreen,
+                        target.width() / scaleToScreen,
+                        target.height() / scaleToScreen);
 
     painter.save();
-    painter.setRenderHint(QPainter::SmoothPixmapTransform, zoom_ < 1.0);
-
-    const auto at = [&](int x, int y) -> bool {
-        if (x < 0 || y < 0 || x >= info.width || y >= info.height)
-            return false;
-        return mask[static_cast<std::size_t>(y) * info.width + x] != 0;
-    };
-
-    for (int ty = firstY; ty <= lastY; ++ty)
-    {
-        for (int tx = firstX; tx <= lastX; ++tx)
-        {
-            if (!at(tx, ty))
-                continue;
-
-            // 크립 타일에는 가장자리 전이 변형이 없다. 경계가 뚝 끊겨 보이지
-            // 않도록, 이웃이 빈 쪽일수록 옅게 그린다.
-            int neighbours = 0;
-            for (int dy = -1; dy <= 1; ++dy)
-            {
-                for (int dx = -1; dx <= 1; ++dx)
-                {
-                    if (dx == 0 && dy == 0)
-                        continue;
-                    if (at(tx + dx, ty + dy))
-                        ++neighbours;
-                }
-            }
-            const double opacity = 0.35 + 0.65 * (neighbours / 8.0);
-
-            // 좌표를 섞어 변형을 고른다. 앞쪽이 평범한 질감, 뒤쪽이 장식이다.
-            const std::size_t hash = (static_cast<std::size_t>(tx) * 73856093u) ^
-                                     (static_cast<std::size_t>(ty) * 19349663u);
-            const std::size_t plainCount =
-                std::max<std::size_t>(1, static_cast<std::size_t>(tiles.size()) / 3);
-            const bool useDecor =
-                (hash % 11 == 0) && static_cast<std::size_t>(tiles.size()) > plainCount;
-            const std::size_t pick = useDecor
-                ? plainCount + (hash / 11) % (static_cast<std::size_t>(tiles.size()) - plainCount)
-                : hash % plainCount;
-
-            painter.setOpacity(opacity);
-            const QRectF target(tx * tile - originX, ty * tile - originY, tile, tile);
-            painter.drawPixmap(target, tiles[static_cast<int>(pick)],
-                               QRectF(0, 0, io::kTilePixels, io::kTilePixels));
-        }
-    }
-
+    painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
+    painter.drawPixmap(target, *layer, source);
     painter.restore();
 }
 

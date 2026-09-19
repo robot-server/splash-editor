@@ -224,6 +224,76 @@ int cmdUnits(const std::string & mapPath, std::size_t limit)
     return 0;
 }
 
+int cmdFindCreep(const std::string & installPath, std::uint16_t tilesetId)
+{
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const auto creepIds = graphics.creepTileIds(tilesetId);
+    if (creepIds.empty())
+    {
+        std::cerr << "기준 크립 타일을 찾지 못했습니다.\n";
+        return 1;
+    }
+
+    // 기준 크립 타일의 평균 색을 구한다.
+    const auto averageOf = [&](std::uint16_t tileId, double & r, double & g, double & b) {
+        std::vector<std::uint8_t> buf(splash::io::kTileRgbaBytes);
+        if (!graphics.renderTile(tilesetId, tileId, buf.data()))
+            return false;
+        double sr = 0, sg = 0, sb = 0;
+        const int n = splash::io::kTilePixels * splash::io::kTilePixels;
+        for (int i = 0; i < n; ++i)
+        {
+            sr += buf[i * 4 + 0];
+            sg += buf[i * 4 + 1];
+            sb += buf[i * 4 + 2];
+        }
+        r = sr / n; g = sg / n; b = sb / n;
+        return true;
+    };
+
+    double br = 0, bg = 0, bb = 0;
+    if (!averageOf(creepIds[0], br, bg, bb))
+        return 1;
+    std::cout << "  기준 크립 타일 평균색: (" << int(br) << ", " << int(bg) << ", " << int(bb) << ")\n";
+
+    const auto info = graphics.describeTileset(tilesetId);
+    std::cout << "  타일 그룹 " << info.tileGroupCount << "개를 훑습니다...\n";
+
+    // 색이 비슷한 타일이 섞인 그룹을 찾는다. 가장자리 타일은 크립과 지형이
+    // 반반 섞이므로 "일부 칸만 비슷한" 그룹이 후보다.
+    int reported = 0;
+    for (std::size_t group = 0; group < info.tileGroupCount && reported < 40; ++group)
+    {
+        int similar = 0;
+        for (std::size_t sub = 0; sub < 16; ++sub)
+        {
+            double r = 0, g = 0, b = 0;
+            if (!averageOf(static_cast<std::uint16_t>(group * 16 + sub), r, g, b))
+                continue;
+            // 밝기만 보면 어두운 바위·절벽이 함께 걸린다. 크립은 보라 계열이라
+            // 파랑이 초록보다 높다(B>G). 그 관계를 함께 본다.
+            const double d = std::abs(r - br) + std::abs(g - bg) + std::abs(b - bb);
+            const bool purplish = (b - g) > 3.0 && r > g;
+            if (d < 30.0 && purplish)
+                ++similar;
+        }
+        if (similar > 0)
+        {
+            std::cout << "    그룹 " << group << ": 유사 타일 " << similar << "/16"
+                      << "  flags=0x" << std::hex << 0 << std::dec << "\n";
+            ++reported;
+        }
+    }
+    return 0;
+}
+
 int cmdTileSheet(const std::string & installPath, std::uint16_t tilesetId,
                  std::uint16_t firstGroup, int groupCount, const std::string & outPath)
 {
@@ -917,6 +987,12 @@ int main(int argc, char ** argv)
             else if (args[i] == "--creep") drawCreep = true;
         }
         return cmdRender(args[1], args[2], args[3], drawUnits, drawLocations, drawCreep);
+    }
+
+    if (command == "find-creep" && args.size() == 3)
+    {
+        try { return cmdFindCreep(args[1], static_cast<std::uint16_t>(std::stoul(args[2]))); }
+        catch (const std::exception &) { return usage(argv[0]); }
     }
 
     if (command == "tile-sheet" && args.size() == 6)
