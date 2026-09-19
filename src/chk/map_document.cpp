@@ -838,6 +838,21 @@ bool MapDocument::moveAction(std::size_t triggerIndex, std::size_t from, std::si
     return true;
 }
 
+std::vector<io::MapArchive::UnitPreset> MapDocument::unitPresets() const
+{
+    return archive_.unitPresets();
+}
+
+bool MapDocument::setUnitPreset(std::size_t index, const io::MapArchive::UnitPreset & preset)
+{
+    const io::Result result = archive_.setUnitPreset(index, preset);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    undoDepth_ = 0; redoDepth_ = 0; savedDepth_ = -1;
+    refreshInfo();
+    return true;
+}
+
 std::vector<std::string> MapDocument::switchNames() const
 {
     return archive_.switchNames();

@@ -7,6 +7,7 @@
 #include "ui/briefing_editor.h"
 #include "ui/code_editor_pane.h"
 #include "ui/location_editor.h"
+#include "ui/preset_editor.h"
 #include "ui/settings_dialogs.h"
 #include "ui/sound_editor.h"
 #include "ui/string_editor.h"
@@ -766,6 +767,19 @@ void MainWindow::buildMenus()
         auto * editor = new BriefingEditor(document(), tileset_, this);
         editor->setAttribute(Qt::WA_DeleteOnClose);
         connect(editor, &BriefingEditor::documentEdited, this, [this] { onDocumentEdited(); });
+        editor->show();
+    });
+
+    QAction * presetAction = scenarioMenu->addAction(tr("유닛 속성 프리셋(&R)…"));
+    connect(presetAction, &QAction::triggered, this, [this] {
+        if (!document().isOpen())
+        {
+            statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
+            return;
+        }
+        auto * editor = new PresetEditor(document(), this);
+        editor->setAttribute(Qt::WA_DeleteOnClose);
+        connect(editor, &PresetEditor::documentEdited, this, [this] { onDocumentEdited(); });
         editor->show();
     });
 

@@ -432,6 +432,114 @@ Result MapArchive::open(const std::string & filePath)
 
 // ---------------------------------------------------------------- 소리
 
+// -------------------------------------------------- 유닛 속성 프리셋
+
+std::vector<MapArchive::UnitPreset> MapArchive::unitPresets() const
+{
+    std::vector<UnitPreset> out;
+    if (!impl_->isOpen())
+        return out;
+
+    const MapFile & map = *impl_->mapFile;
+    try
+    {
+        // CUWP 는 64자리로 정해져 있다.
+        constexpr std::size_t kTotalPresets = 64;
+        out.reserve(kTotalPresets);
+
+        for (std::size_t i = 0; i < kTotalPresets; ++i)
+        {
+            const Chk::Cuwp cuwp = map.getCuwp(i);
+
+            UnitPreset preset;
+            preset.index = i;
+            preset.used = map.cuwpUsed(i);
+
+            using Field = Chk::Cuwp::ValidField;
+            preset.setOwner = (cuwp.validUnitFieldFlags & Field::Owner) != 0;
+            preset.setHitpoints = (cuwp.validUnitFieldFlags & Field::Hitpoints) != 0;
+            preset.setShields = (cuwp.validUnitFieldFlags & Field::Shields) != 0;
+            preset.setEnergy = (cuwp.validUnitFieldFlags & Field::Energy) != 0;
+            preset.setResources = (cuwp.validUnitFieldFlags & Field::Resources) != 0;
+            preset.setHangar = (cuwp.validUnitFieldFlags & Field::Hangar) != 0;
+
+            preset.owner = cuwp.owner;
+            preset.hitpointPercent = cuwp.hitpointPercent;
+            preset.shieldPercent = cuwp.shieldPercent;
+            preset.energyPercent = cuwp.energyPercent;
+            preset.resourceAmount = cuwp.resourceAmount;
+            preset.hangarAmount = cuwp.hangarAmount;
+
+            preset.cloaked = cuwp.isCloaked();
+            preset.burrowed = cuwp.isBurrowed();
+            preset.inTransit = cuwp.isInTransit();
+            preset.hallucinated = cuwp.isHallucinated();
+            preset.invincible = cuwp.isInvincible();
+
+            out.push_back(preset);
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+    return out;
+}
+
+Result MapArchive::setUnitPreset(std::size_t index, const UnitPreset & preset)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+    if (index >= 64)
+        return Result::failure("프리셋 번호가 범위를 벗어났습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        Chk::Cuwp cuwp {};
+
+        using Field = Chk::Cuwp::ValidField;
+        std::uint16_t fields = 0;
+        if (preset.setOwner)     fields |= Field::Owner;
+        if (preset.setHitpoints) fields |= Field::Hitpoints;
+        if (preset.setShields)   fields |= Field::Shields;
+        if (preset.setEnergy)    fields |= Field::Energy;
+        if (preset.setResources) fields |= Field::Resources;
+        if (preset.setHangar)    fields |= Field::Hangar;
+        cuwp.validUnitFieldFlags = fields;
+
+        cuwp.owner = preset.owner;
+        cuwp.hitpointPercent = preset.hitpointPercent;
+        cuwp.shieldPercent = preset.shieldPercent;
+        cuwp.energyPercent = preset.energyPercent;
+        cuwp.resourceAmount = preset.resourceAmount;
+        cuwp.hangarAmount = preset.hangarAmount;
+
+        // 상태는 "정할지"와 "값"을 함께 적는다. 정하지 않은 상태는 게임이
+        // 유닛 기본값을 그대로 쓴다.
+        cuwp.validUnitStateFlags = 0;
+        cuwp.unitStateFlags = 0;
+        cuwp.setCloaked(preset.cloaked);
+        cuwp.setBurrowed(preset.burrowed);
+        cuwp.setInTransit(preset.inTransit);
+        cuwp.setHallucinated(preset.hallucinated);
+        cuwp.setInvincible(preset.invincible);
+
+        map.setCuwp(index, cuwp);
+
+        // 값을 넣었으면 그 자리를 쓰는 것으로 표시한다 — 표시하지 않으면
+        // 다른 편집이 그 자리를 덮어쓴다.
+        map.setCuwpUsed(index, true);
+
+        impl_->undoSteps.clear();
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("유닛 속성 프리셋을 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 // ------------------------------------------------------- 스위치 이름·보호
 
 std::vector<std::string> MapArchive::switchNames() const

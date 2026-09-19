@@ -27,6 +27,8 @@ qt_add_executable(splash-editor
   briefing_editor.h
   location_editor.cpp
   location_editor.h
+  preset_editor.cpp
+  preset_editor.h
   settings_dialogs.cpp
   sound_editor.cpp
   sound_editor.h

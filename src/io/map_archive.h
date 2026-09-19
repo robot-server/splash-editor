@@ -532,6 +532,41 @@ public:
     /// 어느 플레이어가 이 브리핑을 보는지.
     Result setBriefingOwners(std::size_t index, const std::array<bool, 27> & owners);
 
+    // --- 유닛 속성 프리셋 (CUWP) ---
+
+    /// 트리거의 "유닛 속성으로 유닛 만들기" 가 쓰는 프리셋 하나.
+    struct UnitPreset
+    {
+        std::size_t index = 0;
+        bool used = false;          ///< 트리거가 이 자리를 쓰는지
+
+        bool setOwner = false;      ///< 어떤 값을 정할지 (validFieldFlags)
+        bool setHitpoints = false;
+        bool setShields = false;
+        bool setEnergy = false;
+        bool setResources = false;
+        bool setHangar = false;
+
+        std::uint8_t owner = 0;
+        std::uint8_t hitpointPercent = 100;
+        std::uint8_t shieldPercent = 100;
+        std::uint8_t energyPercent = 100;
+        std::uint32_t resourceAmount = 0;
+        std::uint16_t hangarAmount = 0;
+
+        bool cloaked = false;
+        bool burrowed = false;
+        bool inTransit = false;
+        bool hallucinated = false;
+        bool invincible = false;
+    };
+
+    /// 프리셋 64자리를 모두 돌려준다.
+    std::vector<UnitPreset> unitPresets() const;
+
+    /// 프리셋 하나를 바꾼다.
+    Result setUnitPreset(std::size_t index, const UnitPreset & preset);
+
     // --- 스위치 이름 (SWNM) ---
 
     /// 스위치 256개의 이름. 이름이 없으면 빈 문자열.

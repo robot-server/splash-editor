@@ -270,6 +270,11 @@ public:
     bool moveCondition(std::size_t triggerIndex, std::size_t from, std::size_t to);
     bool moveAction(std::size_t triggerIndex, std::size_t from, std::size_t to);
 
+    // --- 유닛 속성 프리셋 (CUWP) ---
+
+    std::vector<io::MapArchive::UnitPreset> unitPresets() const;
+    bool setUnitPreset(std::size_t index, const io::MapArchive::UnitPreset & preset);
+
     // --- 스위치 이름·맵 보호 ---
 
     std::vector<std::string> switchNames() const;
