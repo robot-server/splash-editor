@@ -567,6 +567,108 @@ void testRealMaps(const fs::path & mapsDir)
 
 } // namespace
 
+/// 유닛·업그레이드·기술 설정이 저장되고 다시 읽힌다.
+void testGameplaySettings()
+{
+    std::cout << "\n[유닛·업그레이드·기술 설정]\n";
+
+    const fs::path mapPath =
+        makeSyntheticMap("settings.scx", splash::io::MapFormat::ExpansionScx, 4, 64, 64, false);
+    if (mapPath.empty())
+    {
+        splash::test::registry().fail("설정 테스트용 맵 생성", __FILE__, __LINE__);
+        return;
+    }
+    struct Cleanup { fs::path path; ~Cleanup() { std::error_code ec; fs::remove(path, ec); } }
+        cleanup{mapPath};
+
+    splash::chk::MapDocument doc;
+    if (!doc.open(mapPath.string()))
+    {
+        splash::test::registry().fail("설정 테스트용 맵 열기", __FILE__, __LINE__);
+        return;
+    }
+
+    auto stats = doc.unitStats(0);
+    SPLASH_CHECK(stats.has_value());
+    if (!stats)
+        return;
+    stats->useDefault = false;
+    stats->hitpoints = 123 * 256;
+    stats->mineralCost = 77;
+    stats->defaultBuildable = false;
+    stats->playerUsesDefault[0] = false;
+    stats->buildable[0] = true;
+    SPLASH_CHECK(doc.setUnitStats(0, *stats));
+
+    auto upgrade = doc.upgradeSettings(0);
+    SPLASH_CHECK(upgrade.has_value());
+    if (!upgrade)
+        return;
+    upgrade->useDefaultCosts = false;
+    upgrade->baseMineralCost = 111;
+    upgrade->mineralCostFactor = 55;
+    upgrade->playerUsesDefault[0] = false;
+    upgrade->maxLevel[0] = 3;
+    upgrade->startLevel[0] = 1;
+    SPLASH_CHECK(doc.setUpgradeSettings(0, *upgrade));
+
+    auto tech = doc.techSettings(0);
+    SPLASH_CHECK(tech.has_value());
+    if (!tech)
+        return;
+    tech->useDefaultCosts = false;
+    tech->gasCost = 222;
+    tech->researchTime = 900;
+    tech->playerUsesDefault[1] = false;
+    tech->researched[1] = true;
+    SPLASH_CHECK(doc.setTechSettings(0, *tech));
+
+    const fs::path outPath = workDir() / "settings-out.scx";
+    struct Cleanup2 { fs::path path; ~Cleanup2() { std::error_code ec; fs::remove(path, ec); } }
+        cleanup2{outPath};
+    SPLASH_CHECK(doc.saveAs(outPath.string()));
+
+    // 저장본을 다시 열어 같은 값이 나오는지 본다.
+    splash::chk::MapDocument again;
+    if (!again.open(outPath.string()))
+    {
+        splash::test::registry().fail("저장한 설정 맵 열기", __FILE__, __LINE__);
+        return;
+    }
+
+    const auto savedStats = again.unitStats(0);
+    SPLASH_CHECK(savedStats.has_value());
+    if (savedStats)
+    {
+        SPLASH_CHECK(!savedStats->useDefault);
+        SPLASH_CHECK_EQ(savedStats->hitpoints, std::uint32_t(123 * 256));
+        SPLASH_CHECK_EQ(savedStats->mineralCost, std::uint16_t(77));
+        SPLASH_CHECK(savedStats->buildable[0]);
+    }
+
+    const auto savedUpgrade = again.upgradeSettings(0);
+    SPLASH_CHECK(savedUpgrade.has_value());
+    if (savedUpgrade)
+    {
+        SPLASH_CHECK(!savedUpgrade->useDefaultCosts);
+        SPLASH_CHECK_EQ(savedUpgrade->baseMineralCost, std::uint16_t(111));
+        SPLASH_CHECK_EQ(savedUpgrade->mineralCostFactor, std::uint16_t(55));
+        SPLASH_CHECK_EQ(savedUpgrade->maxLevel[0], std::uint8_t(3));
+        SPLASH_CHECK_EQ(savedUpgrade->startLevel[0], std::uint8_t(1));
+    }
+
+    const auto savedTech = again.techSettings(0);
+    SPLASH_CHECK(savedTech.has_value());
+    if (savedTech)
+    {
+        SPLASH_CHECK(!savedTech->useDefaultCosts);
+        SPLASH_CHECK_EQ(savedTech->gasCost, std::uint16_t(222));
+        SPLASH_CHECK_EQ(savedTech->researchTime, std::uint16_t(900));
+        SPLASH_CHECK(savedTech->researched[1]);
+    }
+}
+
 int main(int argc, char ** argv)
 {
     // 실제 맵 디렉터리는 CMake 가 인자로 넘겨 준다.
@@ -581,6 +683,7 @@ int main(int argc, char ** argv)
     testEditUndoRestoresBytes();
     testTerrainEditUndo();
     testAddUnitUndo();
+    testGameplaySettings();
     testRealMaps(mapsDir);
 
     std::cout << "\n[실제 맵 편집 -> 실행 취소]\n";

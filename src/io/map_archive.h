@@ -123,6 +123,44 @@ struct UnitStats
     std::uint16_t buildTime = 0;   ///< 1/15 초 단위
     std::uint16_t mineralCost = 0;
     std::uint16_t gasCost = 0;
+
+    bool defaultBuildable = true;
+    std::array<bool, 12> playerUsesDefault {};
+    std::array<bool, 12> buildable {};
+};
+
+/// 맵이 정하는 업그레이드 설정.
+struct UpgradeSettings
+{
+    bool useDefaultCosts = true;
+    std::uint16_t baseMineralCost = 0;
+    std::uint16_t mineralCostFactor = 0;  ///< 단계마다 더해지는 값
+    std::uint16_t baseGasCost = 0;
+    std::uint16_t gasCostFactor = 0;
+    std::uint16_t baseResearchTime = 0;   ///< 1/15 초 단위
+    std::uint16_t researchTimeFactor = 0;
+
+    std::uint8_t defaultStartLevel = 0;
+    std::uint8_t defaultMaxLevel = 0;
+    std::array<bool, 12> playerUsesDefault {};
+    std::array<std::uint8_t, 12> startLevel {};
+    std::array<std::uint8_t, 12> maxLevel {};
+};
+
+/// 맵이 정하는 기술 설정.
+struct TechSettings
+{
+    bool useDefaultCosts = true;
+    std::uint16_t mineralCost = 0;
+    std::uint16_t gasCost = 0;
+    std::uint16_t researchTime = 0;       ///< 1/15 초 단위
+    std::uint16_t energyCost = 0;
+
+    bool defaultAvailable = false;
+    bool defaultResearched = false;
+    std::array<bool, 12> playerUsesDefault {};
+    std::array<bool, 12> available {};
+    std::array<bool, 12> researched {};
 };
 
 /// 맵에 든 문자열 하나.
@@ -217,6 +255,12 @@ class GameGraphics;
 /// 유닛 타입의 기본 표시 이름 (예: 12 -> "Terran Marine").
 /// 알 수 없는 번호면 "Unit <번호>" 를 돌려준다.
 std::string unitTypeName(std::uint16_t type);
+
+/// 업그레이드·기술 종류의 이름과 개수.
+std::string upgradeTypeName(std::uint16_t type);
+std::size_t upgradeTypeCount();
+std::string techTypeName(std::uint16_t type);
+std::size_t techTypeCount();
 
 /// 맵 파일에서 시나리오 청크(CHK)의 원본 바이트를 꺼낸다.
 ///
@@ -413,6 +457,14 @@ public:
     /// 조건·액션 순서를 바꾼다.
     Result moveCondition(std::size_t triggerIndex, std::size_t from, std::size_t to);
     Result moveAction(std::size_t triggerIndex, std::size_t from, std::size_t to);
+
+    /// 업그레이드 하나의 설정.
+    std::optional<UpgradeSettings> upgradeSettings(std::uint16_t upgradeType) const;
+    Result setUpgradeSettings(std::uint16_t upgradeType, const UpgradeSettings & settings);
+
+    /// 기술 하나의 설정.
+    std::optional<TechSettings> techSettings(std::uint16_t techType) const;
+    Result setTechSettings(std::uint16_t techType, const TechSettings & settings);
 
     /// 트리거 편집기에 줄 낱말 목록.
     TriggerVocabulary triggerVocabulary(const GameGraphics & graphics) const;

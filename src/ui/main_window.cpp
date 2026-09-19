@@ -4,6 +4,7 @@
 #include "ui/tile_palette.h"
 #include "ui/mini_map.h"
 #include "ui/sound_player.h"
+#include "ui/settings_dialogs.h"
 #include "ui/trigger_editor.h"
 #include "ui/unit_palette.h"
 
@@ -462,6 +463,46 @@ void MainWindow::buildMenus()
         mapView_->setUnitStackingAllowed(on);
         statusBar()->showMessage(on ? tr("겹쳐 놓기를 허용합니다")
                                     : tr("겹치는 자리에는 놓지 않습니다"), 2500);
+    });
+
+    // 시나리오가 게임 규칙을 어떻게 바꾸는지 — 유닛 능력치, 업그레이드,
+    // 기술. StarEdit 의 Scenario 메뉴에 해당한다.
+    QMenu * scenarioMenu = menuBar()->addMenu(tr("시나리오(&C)"));
+
+    QAction * unitSettingsAction = scenarioMenu->addAction(tr("유닛 설정(&U)…"));
+    connect(unitSettingsAction, &QAction::triggered, this, [this] {
+        if (!document_.isOpen())
+        {
+            statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
+            return;
+        }
+        UnitSettingsDialog dialog(document_, this);
+        connect(&dialog, &UnitSettingsDialog::documentEdited, this, [this] { onDocumentEdited(); });
+        dialog.exec();
+    });
+
+    QAction * upgradeSettingsAction = scenarioMenu->addAction(tr("업그레이드 설정(&G)…"));
+    connect(upgradeSettingsAction, &QAction::triggered, this, [this] {
+        if (!document_.isOpen())
+        {
+            statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
+            return;
+        }
+        UpgradeSettingsDialog dialog(document_, this);
+        connect(&dialog, &UpgradeSettingsDialog::documentEdited, this, [this] { onDocumentEdited(); });
+        dialog.exec();
+    });
+
+    QAction * techSettingsAction = scenarioMenu->addAction(tr("기술 설정(&T)…"));
+    connect(techSettingsAction, &QAction::triggered, this, [this] {
+        if (!document_.isOpen())
+        {
+            statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
+            return;
+        }
+        TechSettingsDialog dialog(document_, this);
+        connect(&dialog, &TechSettingsDialog::documentEdited, this, [this] { onDocumentEdited(); });
+        dialog.exec();
     });
 
     QMenu * triggerMenu = menuBar()->addMenu(tr("트리거(&R)"));

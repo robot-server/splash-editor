@@ -498,6 +498,37 @@ bool MapDocument::setUnitStats(std::uint16_t unitType, const io::UnitStats & sta
     return true;
 }
 
+std::optional<io::UpgradeSettings> MapDocument::upgradeSettings(std::uint16_t upgradeType) const
+{
+    return archive_.upgradeSettings(upgradeType);
+}
+
+bool MapDocument::setUpgradeSettings(std::uint16_t upgradeType,
+                                     const io::UpgradeSettings & settings)
+{
+    const io::Result result = archive_.setUpgradeSettings(upgradeType, settings);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    undoDepth_ = 0; redoDepth_ = 0; savedDepth_ = -1;
+    refreshInfo();
+    return true;
+}
+
+std::optional<io::TechSettings> MapDocument::techSettings(std::uint16_t techType) const
+{
+    return archive_.techSettings(techType);
+}
+
+bool MapDocument::setTechSettings(std::uint16_t techType, const io::TechSettings & settings)
+{
+    const io::Result result = archive_.setTechSettings(techType, settings);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    undoDepth_ = 0; redoDepth_ = 0; savedDepth_ = -1;
+    refreshInfo();
+    return true;
+}
+
 std::vector<io::MapString> MapDocument::strings() const
 {
     return archive_.strings();

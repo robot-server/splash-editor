@@ -65,6 +65,119 @@ bool hasChkExtension(const std::string & filePath)
     return ext == ".chk";
 }
 
+/// 업그레이드 종류 이름. sc.h 의 열거값을 사람이 읽게 띄어 쓴 것이다.
+const std::array<const char *, 61> kUpgradeNames {
+    "Terran Infantry Armor",
+    "Terran Vehicle Plating",
+    "Terran Ship Plating",
+    "Zerg Carapace",
+    "Zerg Flyer Carapace",
+    "Protoss Armor",
+    "Protoss Plating",
+    "Terran Infantry Weapons",
+    "Terran Vehicle Weapons",
+    "Terran Ship Weapons",
+    "Zerg Melee Attacks",
+    "Zerg Missile Attacks",
+    "Zerg Flyer Attacks",
+    "Protoss Ground Weapons",
+    "Protoss Air Weapons",
+    "Protoss Plasma Shields",
+    "U238 Shells",
+    "Ion Thrusters",
+    "Burst Lasers Unused",
+    "Titan Reactor",
+    "Ocular Implants",
+    "Moebius Reactor",
+    "Apollo Reactor",
+    "Colossus Reactor",
+    "Ventral Sacs",
+    "Antennae",
+    "Pneumatized Carapace",
+    "Metabolic Boost",
+    "Adrenal Glands",
+    "Muscular Augments",
+    "Grooved Spines",
+    "Gamete Meiosis",
+    "Metasynaptic Node",
+    "Singularity Charge",
+    "Leg Enhancements",
+    "Scarab Damage",
+    "Reaver Capacity",
+    "Gravitic Drive",
+    "Sensor Array",
+    "Gravitic Boosters",
+    "Khaydarin Amulet",
+    "Apial Sensors",
+    "Gravitic Thrusters",
+    "Carrier Capacity",
+    "Khaydarin Core",
+    "UnusedUpgrade 45",
+    "UnusedUpgrade 46",
+    "Argus Jewel",
+    "UnusedUpgrade 48",
+    "Argus Talisman",
+    "UnusedUpgrade 50",
+    "Caduceus Reactor",
+    "Chitinous Plating",
+    "Anabolic Synthesis",
+    "Charon Booster",
+    "UnusedUpgrade 55",
+    "UnusedUpgrade 56",
+    "UnusedUpgrade 57",
+    "UnusedUpgrade 58",
+    "UnusedUpgrade 59",
+    "SpecialUpgrade 60"
+};
+
+/// 기술 종류 이름. sc.h 의 열거값을 사람이 읽게 띄어 쓴 것이다.
+const std::array<const char *, 44> kTechNames {
+    "Stim Packs",
+    "Lockdown",
+    "EMPShockwave",
+    "Spider Mines",
+    "Scanner Sweep",
+    "Tank Siege Mode",
+    "Defensive Matrix",
+    "Irradiate",
+    "Yamato Gun",
+    "Cloaking Field",
+    "Personnel Cloaking",
+    "Burrowing",
+    "Infestation",
+    "Spawn Broodlings",
+    "Dark Swarm",
+    "Plague",
+    "Consume",
+    "Ensnare",
+    "Parasite",
+    "Psionic Storm",
+    "Hallucination",
+    "Recall",
+    "Stasis Field",
+    "Archon Warp",
+    "Restoration",
+    "Disruption Web",
+    "UnusedTech 26",
+    "Mind Control",
+    "Dark Archon Meld",
+    "Feedback",
+    "Optical Flare",
+    "Maelstrom",
+    "Lurker Aspect",
+    "UnusedTech 33",
+    "Healing",
+    "UnusedTech 35",
+    "UnusedTech 36",
+    "UnusedTech 37",
+    "UnusedTech 38",
+    "UnusedTech 39",
+    "UnusedTech 40",
+    "UnusedTech 41",
+    "UnusedTech 42",
+    "UnusedTech 43"
+};
+
 } // namespace
 
 std::string unitTypeName(std::uint16_t type)
@@ -75,6 +188,24 @@ std::string unitTypeName(std::uint16_t type)
 
     return "Unit " + std::to_string(type);
 }
+
+std::string upgradeTypeName(std::uint16_t type)
+{
+    if (type < kUpgradeNames.size())
+        return kUpgradeNames[type];
+    return "Upgrade " + std::to_string(type);
+}
+
+std::size_t upgradeTypeCount() { return kUpgradeNames.size(); }
+
+std::string techTypeName(std::uint16_t type)
+{
+    if (type < kTechNames.size())
+        return kTechNames[type];
+    return "Tech " + std::to_string(type);
+}
+
+std::size_t techTypeCount() { return kTechNames.size(); }
 
 std::optional<std::vector<std::uint8_t>> readScenarioChk(const std::string & filePath)
 {
@@ -1128,6 +1259,167 @@ std::string describeOwners(const Chk::Trigger & trigger)
 
 } // namespace
 
+std::optional<UpgradeSettings> MapArchive::upgradeSettings(std::uint16_t upgradeType) const
+{
+    if (!impl_->isOpen())
+        return std::nullopt;
+
+    const MapFile & map = *impl_->mapFile;
+    try
+    {
+        const auto type = Sc::Upgrade::Type(upgradeType);
+        UpgradeSettings settings;
+
+        settings.useDefaultCosts = map.upgradeUsesDefaultCosts(type);
+        settings.baseMineralCost = map.getUpgradeBaseMineralCost(type);
+        settings.mineralCostFactor = map.getUpgradeMineralCostFactor(type);
+        settings.baseGasCost = map.getUpgradeBaseGasCost(type);
+        settings.gasCostFactor = map.getUpgradeGasCostFactor(type);
+        settings.baseResearchTime = map.getUpgradeBaseResearchTime(type);
+        settings.researchTimeFactor = map.getUpgradeResearchTimeFactor(type);
+
+        settings.defaultStartLevel =
+            static_cast<std::uint8_t>(map.getDefaultStartUpgradeLevel(type));
+        settings.defaultMaxLevel =
+            static_cast<std::uint8_t>(map.getDefaultMaxUpgradeLevel(type));
+
+        for (std::size_t player = 0; player < 12; ++player)
+        {
+            settings.playerUsesDefault[player] = map.playerUsesDefaultUpgradeLeveling(type, player);
+            settings.startLevel[player] =
+                static_cast<std::uint8_t>(map.getStartUpgradeLevel(type, player));
+            settings.maxLevel[player] =
+                static_cast<std::uint8_t>(map.getMaxUpgradeLevel(type, player));
+        }
+        return settings;
+    }
+    catch (const std::exception &)
+    {
+        return std::nullopt;
+    }
+}
+
+Result MapArchive::setUpgradeSettings(std::uint16_t upgradeType, const UpgradeSettings & settings)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        const auto type = Sc::Upgrade::Type(upgradeType);
+
+        map.setUpgradeUsesDefaultCosts(type, settings.useDefaultCosts);
+        if (!settings.useDefaultCosts)
+        {
+            map.setUpgradeBaseMineralCost(type, settings.baseMineralCost);
+            map.setUpgradeMineralCostFactor(type, settings.mineralCostFactor);
+            map.setUpgradeBaseGasCost(type, settings.baseGasCost);
+            map.setUpgradeGasCostFactor(type, settings.gasCostFactor);
+            map.setUpgradeBaseResearchTime(type, settings.baseResearchTime);
+            map.setUpgradeResearchTimeFactor(type, settings.researchTimeFactor);
+        }
+
+        map.setDefaultStartUpgradeLevel(type, settings.defaultStartLevel);
+        map.setDefaultMaxUpgradeLevel(type, settings.defaultMaxLevel);
+
+        for (std::size_t player = 0; player < 12; ++player)
+        {
+            map.setPlayerUsesDefaultUpgradeLeveling(type, player, settings.playerUsesDefault[player]);
+            if (!settings.playerUsesDefault[player])
+            {
+                map.setStartUpgradeLevel(type, player, settings.startLevel[player]);
+                map.setMaxUpgradeLevel(type, player, settings.maxLevel[player]);
+            }
+        }
+
+        // 여러 값을 한꺼번에 쓰므로 실행 취소 단위를 셀 수 없다.
+        impl_->undoSteps.clear();
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("업그레이드 설정을 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+std::optional<TechSettings> MapArchive::techSettings(std::uint16_t techType) const
+{
+    if (!impl_->isOpen())
+        return std::nullopt;
+
+    const MapFile & map = *impl_->mapFile;
+    try
+    {
+        const auto type = Sc::Tech::Type(techType);
+        TechSettings settings;
+
+        settings.useDefaultCosts = map.techUsesDefaultSettings(type);
+        settings.mineralCost = map.getTechMineralCost(type);
+        settings.gasCost = map.getTechGasCost(type);
+        settings.researchTime = map.getTechResearchTime(type);
+        settings.energyCost = map.getTechEnergyCost(type);
+
+        settings.defaultAvailable = map.techDefaultAvailable(type);
+        settings.defaultResearched = map.techDefaultResearched(type);
+
+        for (std::size_t player = 0; player < 12; ++player)
+        {
+            settings.playerUsesDefault[player] = map.playerUsesDefaultTechSettings(type, player);
+            settings.available[player] = map.techAvailable(type, player);
+            settings.researched[player] = map.techResearched(type, player);
+        }
+        return settings;
+    }
+    catch (const std::exception &)
+    {
+        return std::nullopt;
+    }
+}
+
+Result MapArchive::setTechSettings(std::uint16_t techType, const TechSettings & settings)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        const auto type = Sc::Tech::Type(techType);
+
+        map.setTechUsesDefaultSettings(type, settings.useDefaultCosts);
+        if (!settings.useDefaultCosts)
+        {
+            map.setTechMineralCost(type, settings.mineralCost);
+            map.setTechGasCost(type, settings.gasCost);
+            map.setTechResearchTime(type, settings.researchTime);
+            map.setTechEnergyCost(type, settings.energyCost);
+        }
+
+        map.setDefaultTechAvailable(type, settings.defaultAvailable);
+        map.setDefaultTechResearched(type, settings.defaultResearched);
+
+        for (std::size_t player = 0; player < 12; ++player)
+        {
+            map.setPlayerUsesDefaultTechSettings(type, player, settings.playerUsesDefault[player]);
+            if (!settings.playerUsesDefault[player])
+            {
+                map.setTechAvailable(type, player, settings.available[player]);
+                map.setTechResearched(type, player, settings.researched[player]);
+            }
+        }
+
+        impl_->undoSteps.clear();
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("기술 설정을 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 TriggerVocabulary MapArchive::triggerVocabulary(const GameGraphics & graphics) const
 {
     TriggerVocabulary out;
@@ -1233,6 +1525,13 @@ std::optional<UnitStats> MapArchive::unitStats(std::uint16_t unitType) const
         stats.buildTime = map.getUnitBuildTime(type);
         stats.mineralCost = map.getUnitMineralCost(type);
         stats.gasCost = map.getUnitGasCost(type);
+
+        stats.defaultBuildable = map.isUnitDefaultBuildable(type);
+        for (std::size_t player = 0; player < 12; ++player)
+        {
+            stats.playerUsesDefault[player] = map.playerUsesDefaultUnitBuildability(type, player);
+            stats.buildable[player] = map.isUnitBuildable(type, player);
+        }
         return stats;
     }
     catch (const std::exception &)
@@ -1260,6 +1559,14 @@ Result MapArchive::setUnitStats(std::uint16_t unitType, const UnitStats & stats)
             map.setUnitBuildTime(type, stats.buildTime);
             map.setUnitMineralCost(type, stats.mineralCost);
             map.setUnitGasCost(type, stats.gasCost);
+        }
+
+        map.setUnitDefaultBuildable(type, stats.defaultBuildable);
+        for (std::size_t player = 0; player < 12; ++player)
+        {
+            map.setPlayerUsesDefaultUnitBuildability(type, player, stats.playerUsesDefault[player]);
+            if (!stats.playerUsesDefault[player])
+                map.setUnitBuildable(type, player, stats.buildable[player]);
         }
 
         // 여러 필드를 각각 기록한다. 몇 액션이 생기는지 세기 어려워 이력을

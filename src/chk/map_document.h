@@ -202,6 +202,14 @@ public:
     std::optional<io::UnitStats> unitStats(std::uint16_t unitType) const;
     bool setUnitStats(std::uint16_t unitType, const io::UnitStats & stats);
 
+    // --- 업그레이드·기술 설정 ---
+
+    std::optional<io::UpgradeSettings> upgradeSettings(std::uint16_t upgradeType) const;
+    bool setUpgradeSettings(std::uint16_t upgradeType, const io::UpgradeSettings & settings);
+
+    std::optional<io::TechSettings> techSettings(std::uint16_t techType) const;
+    bool setTechSettings(std::uint16_t techType, const io::TechSettings & settings);
+
     // --- 문자열 ---
 
     std::vector<io::MapString> strings() const;
