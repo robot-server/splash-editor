@@ -42,7 +42,7 @@ SoundEditor::SoundEditor(chk::MapDocument & document, SoundPlayer * player, QWid
     resize(820, 520);
 
     list_ = new QTableWidget(0, 4, this);
-    list_->setHorizontalHeaderLabels({tr("번호"), tr("경로"), tr("맵 안"), tr("쓰임")});
+    list_->setHorizontalHeaderLabels({tr("등록"), tr("경로"), tr("맵 안"), tr("쓰임")});
     list_->horizontalHeader()->setStretchLastSection(false);
     list_->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
     list_->verticalHeader()->setVisible(false);
@@ -104,7 +104,11 @@ void SoundEditor::reloadList(int selectRow)
         const auto & sound = sounds_[row];
         const int r = static_cast<int>(row);
 
-        list_->setItem(r, 0, new QTableWidgetItem(QString::number(sound.index)));
+        auto * registered = new QTableWidgetItem(
+            sound.registered ? QString::number(sound.index) : tr("미등록"));
+        if (!sound.registered)
+            registered->setForeground(QColor(200, 160, 90));
+        list_->setItem(r, 0, registered);
         list_->setItem(r, 1, new QTableWidgetItem(QString::fromStdString(sound.path)));
 
         auto * inArchive = new QTableWidgetItem(
@@ -124,7 +128,8 @@ void SoundEditor::reloadList(int selectRow)
 
     status_->setText(sounds_.empty()
         ? tr("이 맵에는 소리가 없습니다. WAV 를 넣으면 트리거의 Play WAV 에서 고를 수 있습니다.")
-        : tr("맵 안에 없는 소리는 게임 기본 소리를 가리키는 것입니다."));
+        : tr("맵 안에 없는 소리는 게임 기본 소리를 가리키는 것입니다. "
+             "'미등록'은 WAV 목록에 올라 있지 않지만 트리거가 쓰거나 맵 안에 든 파일입니다."));
 }
 
 void SoundEditor::addSounds()
@@ -171,6 +176,14 @@ void SoundEditor::removeSelected()
         return;
 
     const auto & sound = sounds_[static_cast<std::size_t>(row)];
+    if (!sound.registered)
+    {
+        QMessageBox::information(this, tr("뺄 수 없습니다"),
+            tr("WAV 목록에 올라 있지 않은 소리입니다. 트리거에서 그 소리를 "
+               "가리키지 않게 고치면 사라집니다."));
+        return;
+    }
+
     if (!document_.removeSound(sound.index, removeIfUsed_->isChecked()))
     {
         QMessageBox::warning(this, tr("빼지 못했습니다"),

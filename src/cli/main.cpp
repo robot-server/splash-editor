@@ -1105,7 +1105,12 @@ int cmdSounds(const std::string & mapPath)
     std::cout << "  소리 " << sounds.size() << "개\n";
     for (const auto & sound : sounds)
     {
-        std::cout << "    #" << sound.index << "  " << sound.path;
+        std::cout << "    ";
+        if (sound.registered)
+            std::cout << "#" << sound.index;
+        else
+            std::cout << "(미등록)";
+        std::cout << "  " << sound.path;
         std::cout << (sound.inArchive ? "  [맵 안 " + std::to_string(sound.bytes) + "바이트]"
                                       : "  [맵에 없음]");
         if (sound.usedByTrigger)

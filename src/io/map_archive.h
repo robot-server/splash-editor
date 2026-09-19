@@ -511,12 +511,13 @@ public:
     /// 맵에 등록된 소리 하나.
     struct MapSound
     {
-        std::size_t index = 0;    ///< WAV 구역에서의 자리
-        std::size_t stringId = 0; ///< 경로가 든 문자열 번호
-        std::string path;         ///< "staredit\\wav\\...".
-        bool inArchive = false;   ///< 맵 안에 파일이 실제로 들어 있는지
+        std::size_t index = std::size_t(-1); ///< WAV 구역에서의 자리 (없으면 -1)
+        std::size_t stringId = 0;  ///< 경로가 든 문자열 번호 (없으면 0)
+        std::string path;          ///< "staredit\\wav\\...".
+        bool registered = false;   ///< WAV 구역에 올라 있는지
+        bool inArchive = false;    ///< 맵 안에 파일이 실제로 들어 있는지
         bool usedByTrigger = false;
-        std::size_t bytes = 0;    ///< 맵 안 파일 크기
+        std::size_t bytes = 0;     ///< 맵 안 파일 크기
     };
 
     /// 맵에 등록된 소리 목록.

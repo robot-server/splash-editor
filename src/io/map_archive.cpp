@@ -451,45 +451,147 @@ std::vector<MapArchive::MapSound> MapArchive::sounds(bool checkArchive) const
             ~CloseWhenDone() { if (opened) map.MpqFile::close(); }
         } closer{mutableMap, opened};
 
-        for (std::size_t index = 0; index < Chk::TotalSounds; ++index)
-        {
-            const std::size_t stringId = map.getSoundStringId(index);
+        // 경로가 같은 소리를 여러 번 싣지 않도록 자리를 기억해 둔다.
+        // MPQ 의 목록 파일은 경로를 소문자로 적어 두는 일이 흔해서,
+        // 대소문자를 무시하고 견준다.
+        std::map<std::string, std::size_t> seen;
+
+        const auto key = [](std::string path) {
+            for (char & c : path)
+                c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            return path;
+        };
+
+        const auto pathOf = [&](std::size_t stringId) -> std::string {
             if (stringId == 0 || stringId == Chk::StringId::UnusedSound)
-                continue;
+                return {};
+            if (auto stored = map.getString<RawString>(stringId))
+                return impl_->decode(*stored);
+            return {};
+        };
+
+        const auto remember = [&](std::string path, std::size_t stringId,
+                                  std::size_t index, bool registered,
+                                  bool usedByTrigger) -> MapSound & {
+            const std::string lookup = key(path);
+            auto found = seen.find(lookup);
+            if (found != seen.end())
+            {
+                MapSound & existing = out[found->second];
+                if (registered)
+                {
+                    existing.registered = true;
+                    existing.index = index;
+                }
+                if (usedByTrigger)
+                    existing.usedByTrigger = true;
+                if (existing.stringId == 0)
+                    existing.stringId = stringId;
+                return existing;
+            }
 
             MapSound sound;
             sound.index = index;
             sound.stringId = stringId;
+            sound.path = path;
+            sound.registered = registered;
+            sound.usedByTrigger = usedByTrigger;
 
-            if (auto path = map.getString<RawString>(stringId))
-                sound.path = impl_->decode(*path);
+            seen.emplace(lookup, out.size());
+            out.push_back(std::move(sound));
+            return out.back();
+        };
 
-            // 맵 안에 실제 파일이 들어 있는지 본다. 트리거가 게임 기본
-            // 소리를 가리키는 경우에는 파일이 없다.
-            if (!sound.path.empty())
+        // 1) WAV 구역에 올라 있는 소리.
+        for (std::size_t index = 0; index < Chk::TotalSounds; ++index)
+        {
+            const std::size_t stringId = map.getSoundStringId(index);
+            std::string path = pathOf(stringId);
+            if (path.empty())
+                continue;
+
+            remember(std::move(path), stringId, index, /*registered*/ true,
+                     map.stringUsed(stringId, Chk::Scope::Either, Chk::Scope::Game,
+                                    Chk::StringUserFlag::AnyTrigger));
+        }
+
+        // 2) 트리거·브리핑이 직접 가리키는 소리. WAV 구역에 올리지 않고
+        //    쓰는 맵이 흔하다 — 그런 소리도 보여 줘야 한다.
+        const auto collectFrom = [&](const Chk::Trigger & trigger, bool briefing) {
+            for (const auto & action : trigger.actions)
             {
-                // 아직 저장하지 않고 넣은 소리도 "맵 안"으로 센다.
-                const auto pending = std::find_if(
-                    impl_->pendingFileAdds.begin(), impl_->pendingFileAdds.end(),
-                    [&sound](const auto & entry) { return entry.first == sound.path; });
+                const bool isSoundAction = briefing
+                    ? (action.actionType == Chk::Action::Type::BriefingPlaySound ||
+                       action.actionType == Chk::Action::Type::BriefingTransmission)
+                    : (action.actionType == Chk::Action::Type::PlaySound ||
+                       action.actionType == Chk::Action::Type::Transmission);
 
-                if (pending != impl_->pendingFileAdds.end())
+                if (!isSoundAction || action.soundStringId == Chk::StringId::NoString)
+                    continue;
+
+                std::string path = pathOf(action.soundStringId);
+                if (path.empty())
+                    continue;
+
+                remember(std::move(path), action.soundStringId, std::size_t(-1),
+                         /*registered*/ false, /*usedByTrigger*/ true);
+            }
+        };
+
+        for (std::size_t i = 0; i < map.numTriggers(); ++i)
+            collectFrom(map.getTrigger(i), /*briefing*/ false);
+        for (std::size_t i = 0; i < map.numBriefingTriggers(); ++i)
+            collectFrom(map.getBriefingTrigger(i), /*briefing*/ true);
+
+        // 3) 맵 안에 파일은 있는데 어디에서도 가리키지 않는 소리.
+        if (opened)
+        {
+            if (auto listfile = mutableMap.MpqFile::getListfile())
+            {
+                for (const std::string & entry : *listfile)
                 {
-                    sound.inArchive = true;
-                    sound.bytes = pending->second.size();
-                }
-                else if (opened && mutableMap.MpqFile::findFile(sound.path))
-                {
-                    sound.inArchive = true;
-                    sound.bytes = mutableMap.MpqFile::getFileSize(sound.path);
+                    // 소리만 본다. 시나리오·그림 따위는 건너뛴다.
+                    std::string lower = entry;
+                    for (char & c : lower)
+                        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+
+                    if (lower.size() < 4 || lower.compare(lower.size() - 4, 4, ".wav") != 0)
+                        continue;
+
+                    remember(entry, 0, std::size_t(-1), /*registered*/ false,
+                             /*usedByTrigger*/ false);
                 }
             }
-
-            sound.usedByTrigger = map.stringUsed(stringId, Chk::Scope::Either, Chk::Scope::Game,
-                                                 Chk::StringUserFlag::AnyTrigger);
-
-            out.push_back(std::move(sound));
         }
+
+        // 맵 안에 파일이 실제로 있는지, 크기는 얼마인지 채운다.
+        for (MapSound & sound : out)
+        {
+            // 아직 저장하지 않고 넣은 소리도 "맵 안"으로 센다.
+            const auto pending = std::find_if(
+                impl_->pendingFileAdds.begin(), impl_->pendingFileAdds.end(),
+                [&sound](const auto & entry) { return entry.first == sound.path; });
+
+            if (pending != impl_->pendingFileAdds.end())
+            {
+                sound.inArchive = true;
+                sound.bytes = pending->second.size();
+            }
+            else if (opened && mutableMap.MpqFile::findFile(sound.path))
+            {
+                sound.inArchive = true;
+                sound.bytes = mutableMap.MpqFile::getFileSize(sound.path);
+            }
+        }
+
+        // 등록된 소리를 앞에, 그 다음 경로 차례로 보여 준다.
+        std::sort(out.begin(), out.end(), [](const MapSound & a, const MapSound & b) {
+            if (a.registered != b.registered)
+                return a.registered;
+            if (a.index != b.index)
+                return a.index < b.index;
+            return a.path < b.path;
+        });
     }
     catch (const std::exception &)
     {
