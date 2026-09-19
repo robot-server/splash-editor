@@ -1015,6 +1015,7 @@ void MainWindow::onPlayerSettings()
     grid->addWidget(new QLabel(tr("종족"), &dialog), 0, 1);
     grid->addWidget(new QLabel(tr("슬롯"), &dialog), 0, 2);
     grid->addWidget(new QLabel(tr("세력"), &dialog), 0, 3);
+    grid->addWidget(new QLabel(tr("색"), &dialog), 0, 4);
 
     // Chk::Race 와 Sc::Player::SlotType 의 값들.
     const std::vector<std::pair<QString, int>> races {
@@ -1032,6 +1033,7 @@ void MainWindow::onPlayerSettings()
     std::vector<QComboBox *> raceBoxes(settings.size());
     std::vector<QComboBox *> slotBoxes(settings.size());
     std::vector<QComboBox *> forceBoxes(settings.size());
+    std::vector<QComboBox *> colorBoxes(settings.size());
 
     for (std::size_t player = 0; player < settings.size(); ++player)
     {
@@ -1067,6 +1069,20 @@ void MainWindow::onPlayerSettings()
         forceBox->setEnabled(player < 8);
         grid->addWidget(forceBox, row, 3);
         forceBoxes[player] = forceBox;
+
+        // 색 — 목록에 실제 색을 칠해 둔다. 9번부터는 색 구역이 없다.
+        auto * colorBox = new QComboBox(&dialog);
+        for (const auto & entry : splash::io::playerColors())
+        {
+            QPixmap swatch(14, 14);
+            swatch.fill(QColor(entry.red, entry.green, entry.blue));
+            colorBox->addItem(QIcon(swatch), QString::fromStdString(entry.name), entry.value);
+        }
+        const int colorIndex = colorBox->findData(settings[player].color);
+        colorBox->setCurrentIndex(colorIndex >= 0 ? colorIndex : 0);
+        colorBox->setEnabled(player < 8);
+        grid->addWidget(colorBox, row, 4);
+        colorBoxes[player] = colorBox;
     }
 
     auto * forceGroup = new QGroupBox(tr("세력 이름"), &dialog);
@@ -1103,9 +1119,18 @@ void MainWindow::onPlayerSettings()
         next.slotType = static_cast<std::uint8_t>(slotBoxes[player]->currentData().toInt());
         next.force = static_cast<std::uint8_t>(forceBoxes[player]->currentData().toInt());
 
+        // 색 말고 다른 값은 그대로 이어 간다 (리마스터 색 설정 등).
+        next.color = static_cast<std::uint8_t>(colorBoxes[player]->currentData().toInt());
+        next.remasteredColors = settings[player].remasteredColors;
+        next.colorSetting = settings[player].colorSetting;
+        next.customRed = settings[player].customRed;
+        next.customGreen = settings[player].customGreen;
+        next.customBlue = settings[player].customBlue;
+
         if (next.race != settings[player].race ||
             next.slotType != settings[player].slotType ||
-            (player < 8 && next.force != settings[player].force))
+            (player < 8 && next.force != settings[player].force) ||
+            (player < 8 && next.color != settings[player].color))
         {
             changed |= document_.setPlayerSetting(player, next);
         }

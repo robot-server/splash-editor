@@ -177,7 +177,30 @@ struct PlayerSetting
     std::uint8_t race = 0;     ///< Chk::Race (0 저그, 1 테란, 2 프로토스, …)
     std::uint8_t slotType = 0; ///< Sc::Player::SlotType
     std::uint8_t force = 0;    ///< 0~3
+
+    // 색은 앞 8칸에만 있다 (CHK 의 COLR).
+    std::uint8_t color = 0;    ///< Chk::PlayerColor (0 빨강, 1 파랑, …)
+
+    // 리마스터 맵은 색을 더 자세히 정한다 (CRGB).
+    bool remasteredColors = false;  ///< 이 맵이 리마스터 색을 쓰는지
+    std::uint8_t colorSetting = 0;  ///< 0 무작위, 1 플레이어 선택, 2 직접 정함, 3 위 색 번호
+    std::uint8_t customRed = 0;
+    std::uint8_t customGreen = 0;
+    std::uint8_t customBlue = 0;
 };
+
+/// 색 번호의 이름과 화면에 보일 색.
+struct PlayerColorInfo
+{
+    std::uint8_t value = 0;
+    std::string name;
+    std::uint8_t red = 0;
+    std::uint8_t green = 0;
+    std::uint8_t blue = 0;
+};
+
+/// 고를 수 있는 플레이어 색 목록.
+const std::vector<PlayerColorInfo> & playerColors();
 
 /// 트리거 하나의 요약. 목록에 늘어놓을 때 쓴다.
 struct TriggerSummary

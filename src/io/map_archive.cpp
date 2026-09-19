@@ -1631,6 +1631,26 @@ Result MapArchive::setString(std::size_t stringId, const std::string & text)
     return Result::success();
 }
 
+const std::vector<PlayerColorInfo> & playerColors()
+{
+    // 게임이 쓰는 12가지 색. RGB 는 tunit.pcx 의 대표색에 가깝게 적었다.
+    static const std::vector<PlayerColorInfo> kColors {
+        {  0, "빨강",       244,   4,   4 },
+        {  1, "파랑",        12,  72, 204 },
+        {  2, "청록",        44, 180, 148 },
+        {  3, "보라",       136,  64, 156 },
+        {  4, "주황",       248, 140,  20 },
+        {  5, "갈색",       112,  48,  20 },
+        {  6, "흰색",       204, 224, 208 },
+        {  7, "노랑",       252, 252,  56 },
+        {  8, "초록",         8, 128,   8 },
+        {  9, "연노랑",     252, 252, 124 },
+        { 10, "연갈색",     184, 156, 124 },
+        { 11, "하늘",        16, 152, 248 },
+    };
+    return kColors;
+}
+
 std::vector<PlayerSetting> MapArchive::playerSettings() const
 {
     std::vector<PlayerSetting> out;
@@ -1648,6 +1668,26 @@ std::vector<PlayerSetting> MapArchive::playerSettings() const
             setting.slotType = static_cast<std::uint8_t>(map.getSlotType(player));
             setting.force = (player < 8)
                 ? static_cast<std::uint8_t>(map.getPlayerForce(player)) : 0;
+
+            if (player < 8)
+            {
+                setting.color = static_cast<std::uint8_t>(map.getPlayerColor(player));
+
+                // 리마스터 색을 묻는 함수들은 const 가 아니다(없으면 구역을
+                // 만들어 넣기 때문이다). 읽기만 하므로 const 를 벗긴다.
+                MapFile & mutableMap = const_cast<MapFile &>(map);
+                setting.remasteredColors = mutableMap.isUsingRemasteredColors();
+                if (setting.remasteredColors)
+                {
+                    setting.colorSetting =
+                        static_cast<std::uint8_t>(mutableMap.getPlayerColorSetting(player));
+                    const Chk::Rgb rgb = mutableMap.getPlayerCustomColor(player);
+                    setting.customRed = rgb.red;
+                    setting.customGreen = rgb.green;
+                    setting.customBlue = rgb.blue;
+                }
+            }
+
             out.push_back(setting);
         }
     }
@@ -1675,6 +1715,52 @@ Result MapArchive::setPlayerSetting(std::size_t player, const PlayerSetting & se
         // 세 가지를 각각 기록하므로 액션도 그만큼 생긴다.
         impl_->undoSteps.push_back(player < 8 ? 3 : 2);
         impl_->redoSteps.clear();
+
+        if (player < 8)
+        {
+            // 색은 별개의 구역(COLR/CRGB)이라 몇 액션이 생기는지 세기
+            // 어렵다. 색까지 바꿀 때는 이력을 비운다.
+            // COLR 은 하이브리드 이후 맵에만 있다. 오래된 맵에는 구역이
+            // 없으므로 색을 바꾸기 전에 먼저 만들어 준다 — 그러지 않으면
+            // 값을 써도 저장되지 않는다.
+            if (!map.hasSection(Chk::SectionName::COLR))
+            {
+                map.addSaveSection(Chk::SectionName::COLR);
+                for (std::size_t slot = 0; slot < 8; ++slot)
+                    map.setPlayerColor(slot, Chk::PlayerColor(slot));
+            }
+
+            const auto before = static_cast<std::uint8_t>(map.getPlayerColor(player));
+            bool touchedColor = false;
+
+            if (before != setting.color)
+            {
+                map.setPlayerColor(player, Chk::PlayerColor(setting.color));
+                touchedColor = true;
+            }
+
+            if (setting.remasteredColors)
+            {
+                if (!map.isUsingRemasteredColors())
+                    map.upgradeToRemasteredColors();
+
+                map.setPlayerColorSetting(player,
+                    Chk::PlayerColorSetting(setting.colorSetting));
+
+                Chk::Rgb rgb {};
+                rgb.red = setting.customRed;
+                rgb.green = setting.customGreen;
+                rgb.blue = setting.customBlue;
+                map.setPlayerCustomColor(player, rgb);
+                touchedColor = true;
+            }
+
+            if (touchedColor)
+            {
+                impl_->undoSteps.clear();
+                impl_->redoSteps.clear();
+            }
+        }
     }
     catch (const std::exception & e)
     {
