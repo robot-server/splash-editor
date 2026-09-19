@@ -4,6 +4,7 @@
 #include "mapping_core/casc_archive.h"
 #include "mapping_core/archive_cluster.h"
 #include "mapping_core/mpq_file.h"
+#include "mapping_core/chk.h"
 #include "mapping_core/sc.h"
 #include "mapping_core/chk.h"
 #include "mapping_core/render/map_animations.h"
@@ -184,29 +185,39 @@ std::vector<GameGraphics::TerrainType> GameGraphics::terrainTypes(
         entry.name.assign(info.name.begin(), info.name.end());
         entry.sortOrder = info.brushSortOrder;
 
-        // 이 지형에 속한 타일 그룹을 찾아 대표 그림으로 쓴다.
-        // terrainTypeMap 은 타일 그룹 -> 지형 종류를 알려 준다.
-        for (std::size_t group = 0; group < tiles.terrainTypeMap.size(); ++group)
+        // 대표 그림은 그 지형의 "한가운데" 타일이어야 한다. 아무 타일 그룹이나
+        // 고르면 절벽 모서리 같은 전이 타일이 잡혀 실제 지형과 달라 보인다.
+        //
+        // ISOM 은 마름모의 네 변에 지형 값을 적고, 그 조합의 해시로 타일
+        // 그룹을 찾는다. 네 변을 모두 같은 지형으로 채우면 그것이 한가운데다.
         {
-            if (tiles.terrainTypeMap[group] != info.index)
-                continue;
-            if (group >= tiles.tileGroups.size())
-                continue;
+            const Span<Sc::Isom::ShapeLinks> isomLinks(
+                tiles.isomLinks.empty() ? nullptr : &tiles.isomLinks[0],
+                tiles.isomLinks.size());
 
-            // 그룹 안에서 실제 그림이 배정된 칸을 고른다.
-            const auto & tileGroup = tiles.tileGroups[group];
-            for (std::size_t sub = 0; sub < 16; ++sub)
+            const std::uint16_t stored = static_cast<std::uint16_t>(info.isomValue << 4);
+            const Chk::IsomRect centre(stored, stored, stored, stored);
+            const std::uint32_t hash = centre.getHash(isomLinks);
+
+            const auto found = tiles.hashToTileGroup.find(hash);
+            if (found != tiles.hashToTileGroup.end() && !found->second.empty())
             {
-                const std::uint16_t megaTileIndex = tileGroup.megaTileIndex[sub];
-                if (megaTileIndex != 0 && megaTileIndex < tiles.tileGraphics.size())
+                const std::uint16_t group = found->second.front();
+                if (group < tiles.tileGroups.size())
                 {
-                    entry.previewTileId = static_cast<std::uint16_t>(group * 16 + sub);
-                    entry.hasPreview = true;
-                    break;
+                    const auto & tileGroup = tiles.tileGroups[group];
+                    for (std::size_t sub = 0; sub < 16; ++sub)
+                    {
+                        const std::uint16_t megaTileIndex = tileGroup.megaTileIndex[sub];
+                        if (megaTileIndex != 0 && megaTileIndex < tiles.tileGraphics.size())
+                        {
+                            entry.previewTileId = static_cast<std::uint16_t>(group * 16 + sub);
+                            entry.hasPreview = true;
+                            break;
+                        }
+                    }
                 }
             }
-            if (entry.hasPreview)
-                break;
         }
 
         out.push_back(std::move(entry));

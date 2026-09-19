@@ -724,7 +724,9 @@ int cmdTilesetInfo(const std::string & installPath, std::uint16_t tilesetId)
         std::cout << "  지형 종류     : " << types.size() << "\n";
         for (std::size_t i = 0; i < types.size() && i < 20; ++i)
             std::cout << "      brush=" << types[i].brushIndex
-                      << " index=" << types[i].index << "  " << types[i].name << "\n";
+                      << " preview=" << (types[i].hasPreview
+                                         ? std::to_string(types[i].previewTileId) : std::string("없음"))
+                      << "  " << types[i].name << "\n";
     }
     std::cout << "  팔레트 타일   : " << graphics.paletteTileIds(tilesetId).size() << "\n";
     std::cout << "  타일셋 " << tilesetId << "\n"

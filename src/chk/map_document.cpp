@@ -453,6 +453,65 @@ std::string MapDocument::fileName() const
     return std::filesystem::path(filePath_).filename().string();
 }
 
+std::vector<io::TriggerSummary> MapDocument::triggerSummaries(
+    const io::GameGraphics & graphics) const
+{
+    return archive_.triggerSummaries(graphics);
+}
+
+std::optional<io::TriggerDetail> MapDocument::triggerDetail(
+    std::size_t index, const io::GameGraphics & graphics) const
+{
+    return archive_.triggerDetail(index, graphics);
+}
+
+bool MapDocument::setTriggerOwners(std::size_t index, const std::array<bool, 27> & owners)
+{
+    const io::Result result = archive_.setTriggerOwners(index, owners);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true; ++undoDepth_; redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setTriggerEnabled(std::size_t index, bool enabled)
+{
+    const io::Result result = archive_.setTriggerEnabled(index, enabled);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true; ++undoDepth_; redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::removeTrigger(std::size_t index)
+{
+    const io::Result result = archive_.removeTrigger(index);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true; ++undoDepth_; redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::addTrigger()
+{
+    const io::Result result = archive_.addTrigger();
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true; ++undoDepth_; redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::applyTriggerText(std::size_t index, const std::string & text,
+                                   io::GameGraphics & graphics)
+{
+    const io::Result result = archive_.setTriggerText(index, text, graphics);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    undoDepth_ = 0; redoDepth_ = 0; savedDepth_ = -1;
+    refreshInfo();
+    return true;
+}
+
 std::optional<std::string> MapDocument::triggerText(const io::GameGraphics & graphics) const
 {
     return archive_.triggerText(graphics);

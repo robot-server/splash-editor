@@ -8,6 +8,7 @@
 #include "io/game_graphics.h"
 #include "io/map_archive.h"
 
+#include <array>
 #include <optional>
 
 #include <cstdint>
@@ -182,6 +183,22 @@ public:
 
     /// 창 제목 등에 쓸 이름. 열려 있지 않으면 빈 문자열.
     std::string fileName() const;
+
+    // --- 트리거 ---
+
+    std::vector<io::TriggerSummary> triggerSummaries(const io::GameGraphics & graphics) const;
+    std::optional<io::TriggerDetail> triggerDetail(std::size_t index,
+                                                   const io::GameGraphics & graphics) const;
+
+    bool setTriggerOwners(std::size_t index, const std::array<bool, 27> & owners);
+    bool setTriggerEnabled(std::size_t index, bool enabled);
+    bool removeTrigger(std::size_t index);
+    bool addTrigger();
+
+    /// 트리거 하나만 텍스트로 바꿔 적용한다.
+    /// 실행 취소 이력이 지워진다 — 컴파일이 TRIG 과 STR 을 함께 바꾼다.
+    bool applyTriggerText(std::size_t index, const std::string & text,
+                          io::GameGraphics & graphics);
 
     /// 트리거를 사람이 읽는 텍스트로 옮긴다. 게임 데이터가 필요하다.
     std::optional<std::string> triggerText(const io::GameGraphics & graphics) const;
