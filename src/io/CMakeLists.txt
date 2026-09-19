@@ -3,6 +3,8 @@
 add_library(splash_io STATIC
   map_archive.cpp
   map_archive.h
+  game_assets.cpp
+  game_assets.h
 )
 
 target_include_directories(splash_io PUBLIC "${CMAKE_SOURCE_DIR}/src")

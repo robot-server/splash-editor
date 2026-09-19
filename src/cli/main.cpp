@@ -4,6 +4,7 @@
 // 여기서 실행하며, tests/ 의 자동 테스트도 같은 코드를 쓴다.
 
 #include "chk/map_document.h"
+#include "io/game_assets.h"
 #include "io/map_archive.h"
 
 #include <filesystem>
@@ -28,7 +29,9 @@ int usage(const char * argv0)
         "      맵 안의 시나리오 청크(CHK)를 그대로 꺼낸다.\n\n"
         "  " << argv0 << " new <출력파일> [가로] [세로] [타일셋ID] [--melee]\n"
         "      빈 맵을 만든다. 확장자로 포맷을 고른다(.scm=하이브리드, .scx=브루드워).\n"
-        "      기본값: 64 64 4(Jungle)\n";
+        "      기본값: 64 64 4(Jungle)\n\n"
+        "  " << argv0 << " assets <StarCraft 설치폴더>\n"
+        "      설치본을 조사한다. 아카이브를 열고 타일셋 데이터가 읽히는지 확인한다.\n";
     return 2;
 }
 
@@ -152,6 +155,28 @@ int cmdNew(const std::vector<std::string> & args)
     return 0;
 }
 
+int cmdAssets(const std::string & installPath)
+{
+    const auto info = splash::io::probeInstallation(installPath);
+
+    std::cout << "  경로    : " << info.path << "\n";
+    std::cout << "  종류    : ";
+    switch (info.kind)
+    {
+        case splash::io::InstallationKind::Casc: std::cout << "CASC (리마스터)\n"; break;
+        case splash::io::InstallationKind::Mpq:  std::cout << "MPQ (구버전)\n";   break;
+        case splash::io::InstallationKind::None: std::cout << "알 수 없음\n";      break;
+    }
+    std::cout << "  설명    : " << info.detail << "\n";
+    std::cout << "  타일셋  : " << info.tilesetsFound.size() << " / "
+              << splash::io::tilesetAssetNames().size() << "\n";
+
+    for (const auto & name : info.tilesetsFound)
+        std::cout << "      - " << name << "\n";
+
+    return info.ok() ? 0 : 1;
+}
+
 int cmdRoundtrip(const std::string & mapPath, const std::string & requestedOut)
 {
     std::cout << "== round-trip: " << mapPath << " ==\n";
@@ -270,6 +295,9 @@ int main(int argc, char ** argv)
 
     if (command == "new" && args.size() >= 2)
         return cmdNew(args);
+
+    if (command == "assets" && args.size() == 2)
+        return cmdAssets(args[1]);
 
     return usage(argv[0]);
 }
