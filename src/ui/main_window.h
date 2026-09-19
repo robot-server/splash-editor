@@ -9,7 +9,11 @@
 
 #include <QMainWindow>
 
+#include <memory>
+#include <vector>
+
 class QComboBox;
+class QTabBar;
 class QDockWidget;
 class QMenu;
 class QLabel;
@@ -73,7 +77,24 @@ private:
     /// 계속 진행해도 되면 true.
     bool confirmDiscardChanges();
 
-    chk::MapDocument document_;
+    /// 열려 있는 맵들. 탭 하나가 문서 하나다.
+    ///
+    /// MapDocument 는 복사도 이동도 되지 않아(MapFile 이 그렇다) 포인터로
+    /// 들고 있는다. 맵이 하나도 없을 때를 없애려고 빈 문서를 늘 하나 둔다.
+    std::vector<std::unique_ptr<chk::MapDocument>> documents_;
+    int currentDocument_ = 0;
+
+    /// 지금 보고 있는 맵.
+    chk::MapDocument & document();
+    const chk::MapDocument & document() const;
+
+    /// 탭을 더하고 지운다.
+    int addDocumentTab();
+    void switchToDocument(int index);
+    void closeDocumentTab(int index);
+    void refreshTabText(int index);
+
+    QTabBar * tabs_ = nullptr;
     io::GameGraphics tileset_;
     MapView * mapView_ = nullptr;
     TilePalette * tilePalette_ = nullptr;

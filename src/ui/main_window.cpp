@@ -27,6 +27,7 @@
 #include <QCloseEvent>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QTabBar>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QLineEdit>
@@ -72,6 +73,9 @@ QString orDash(const std::string & value)
 
 MainWindow::MainWindow(QWidget * parent) : QMainWindow(parent)
 {
+    // 맵이 하나도 없는 상태를 만들지 않는다 — 빈 문서로 시작한다.
+    documents_.push_back(std::make_unique<chk::MapDocument>());
+
     buildCentralWidget();
     buildMenus();
     refreshFromDocument();
@@ -83,10 +87,89 @@ MainWindow::MainWindow(QWidget * parent) : QMainWindow(parent)
 
 MainWindow::~MainWindow() = default;
 
+chk::MapDocument & MainWindow::document()
+{
+    return *documents_[static_cast<std::size_t>(currentDocument_)];
+}
+
+const chk::MapDocument & MainWindow::document() const
+{
+    return *documents_[static_cast<std::size_t>(currentDocument_)];
+}
+
+int MainWindow::addDocumentTab()
+{
+    documents_.push_back(std::make_unique<chk::MapDocument>());
+    const int index = static_cast<int>(documents_.size()) - 1;
+
+    if (tabs_ != nullptr)
+        tabs_->addTab(tr("새 맵"));
+
+    return index;
+}
+
+void MainWindow::switchToDocument(int index)
+{
+    if (index < 0 || index >= static_cast<int>(documents_.size()))
+        return;
+
+    currentDocument_ = index;
+
+    if (tabs_ != nullptr && tabs_->currentIndex() != index)
+        tabs_->setCurrentIndex(index);
+
+    mapView_->setDocument(&document());
+    mapView_->refresh();
+    miniMap_->setDocument(&document());
+    refreshFromDocument();
+}
+
+void MainWindow::closeDocumentTab(int index)
+{
+    if (index < 0 || index >= static_cast<int>(documents_.size()))
+        return;
+
+    // 마지막 하나는 닫는 대신 비운다 — 맵 없는 상태를 따로 다루지 않는다.
+    if (documents_.size() == 1)
+    {
+        documents_[0] = std::make_unique<chk::MapDocument>();
+        currentDocument_ = 0;
+        if (tabs_ != nullptr)
+            tabs_->setTabText(0, tr("새 맵"));
+        switchToDocument(0);
+        return;
+    }
+
+    documents_.erase(documents_.begin() + index);
+    if (tabs_ != nullptr)
+        tabs_->removeTab(index);
+
+    currentDocument_ = std::min(currentDocument_, static_cast<int>(documents_.size()) - 1);
+    switchToDocument(currentDocument_);
+}
+
+void MainWindow::refreshTabText(int index)
+{
+    if (tabs_ == nullptr || index < 0 || index >= tabs_->count())
+        return;
+
+    const auto & doc = *documents_[static_cast<std::size_t>(index)];
+
+    QString label = doc.isOpen()
+        ? QFileInfo(QString::fromStdString(doc.filePath())).fileName()
+        : tr("새 맵");
+    if (label.isEmpty())
+        label = tr("새 맵");
+    if (doc.isModified())
+        label += QStringLiteral(" *");
+
+    tabs_->setTabText(index, label);
+}
+
 void MainWindow::buildCentralWidget()
 {
     mapView_ = new MapView(this);
-    mapView_->setDocument(&document_);
+    mapView_->setDocument(&document());
     mapView_->setTileset(&tileset_);
 
     connect(mapView_, &MapView::documentEdited, this, &MainWindow::onDocumentEdited);
@@ -111,7 +194,7 @@ void MainWindow::buildCentralWidget()
 
     // 미니맵은 정보 패널 맨 위에 둔다 — 맵 전체를 보며 옮겨 다니는 용도다.
     miniMap_ = new MiniMap(side);
-    miniMap_->setDocument(&document_);
+    miniMap_->setDocument(&document());
     miniMap_->setTileset(&tileset_);
     outer->addWidget(miniMap_);
 
@@ -156,7 +239,34 @@ void MainWindow::buildCentralWidget()
     splitter->setStretchFactor(1, 0);
     splitter->setSizes({640, 280});
 
-    setCentralWidget(splitter);
+    // 여러 맵을 함께 열어 두고 탭으로 오간다.
+    tabs_ = new QTabBar(this);
+    tabs_->setTabsClosable(true);
+    tabs_->setMovable(false);
+    tabs_->setExpanding(false);
+    tabs_->setDocumentMode(true);
+    tabs_->addTab(tr("새 맵"));
+
+    connect(tabs_, &QTabBar::currentChanged, this, [this](int index) {
+        if (index >= 0 && index != currentDocument_)
+            switchToDocument(index);
+    });
+    connect(tabs_, &QTabBar::tabCloseRequested, this, [this](int index) {
+        // 닫기 전에 저장을 물어야 하므로 그 탭으로 옮겨 놓고 확인한다.
+        switchToDocument(index);
+        if (!confirmDiscardChanges())
+            return;
+        closeDocumentTab(index);
+    });
+
+    auto * central = new QWidget(this);
+    auto * centralLayout = new QVBoxLayout(central);
+    centralLayout->setContentsMargins(0, 0, 0, 0);
+    centralLayout->setSpacing(0);
+    centralLayout->addWidget(tabs_);
+    centralLayout->addWidget(splitter, 1);
+
+    setCentralWidget(central);
 
     // 지형 타일 팔레트는 도크로 둔다 — 지형 작업을 할 때만 열어 두면 된다.
     auto * terrainPanel = new QWidget(this);
@@ -573,48 +683,48 @@ void MainWindow::buildMenus()
 
     QAction * unitSettingsAction = scenarioMenu->addAction(tr("유닛 설정(&U)…"));
     connect(unitSettingsAction, &QAction::triggered, this, [this] {
-        if (!document_.isOpen())
+        if (!document().isOpen())
         {
             statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
             return;
         }
-        UnitSettingsDialog dialog(document_, tileset_, this);
+        UnitSettingsDialog dialog(document(), tileset_, this);
         connect(&dialog, &UnitSettingsDialog::documentEdited, this, [this] { onDocumentEdited(); });
         dialog.exec();
     });
 
     QAction * upgradeSettingsAction = scenarioMenu->addAction(tr("업그레이드 설정(&G)…"));
     connect(upgradeSettingsAction, &QAction::triggered, this, [this] {
-        if (!document_.isOpen())
+        if (!document().isOpen())
         {
             statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
             return;
         }
-        UpgradeSettingsDialog dialog(document_, tileset_, this);
+        UpgradeSettingsDialog dialog(document(), tileset_, this);
         connect(&dialog, &UpgradeSettingsDialog::documentEdited, this, [this] { onDocumentEdited(); });
         dialog.exec();
     });
 
     QAction * techSettingsAction = scenarioMenu->addAction(tr("기술 설정(&T)…"));
     connect(techSettingsAction, &QAction::triggered, this, [this] {
-        if (!document_.isOpen())
+        if (!document().isOpen())
         {
             statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
             return;
         }
-        TechSettingsDialog dialog(document_, tileset_, this);
+        TechSettingsDialog dialog(document(), tileset_, this);
         connect(&dialog, &TechSettingsDialog::documentEdited, this, [this] { onDocumentEdited(); });
         dialog.exec();
     });
 
     QAction * locationAction = scenarioMenu->addAction(tr("로케이션(&L)…"));
     connect(locationAction, &QAction::triggered, this, [this] {
-        if (!document_.isOpen())
+        if (!document().isOpen())
         {
             statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
             return;
         }
-        auto * editor = new LocationEditor(document_, this);
+        auto * editor = new LocationEditor(document(), this);
         editor->setAttribute(Qt::WA_DeleteOnClose);
         connect(editor, &LocationEditor::documentEdited, this, [this] {
             mapView_->refresh();
@@ -630,12 +740,12 @@ void MainWindow::buildMenus()
 
     QAction * soundSettingsAction = scenarioMenu->addAction(tr("소리 설정(&S)…"));
     connect(soundSettingsAction, &QAction::triggered, this, [this] {
-        if (!document_.isOpen())
+        if (!document().isOpen())
         {
             statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
             return;
         }
-        auto * editor = new SoundEditor(document_, soundPlayer_, this);
+        auto * editor = new SoundEditor(document(), soundPlayer_, this);
         editor->setAttribute(Qt::WA_DeleteOnClose);
         connect(editor, &SoundEditor::documentEdited, this, [this] { onDocumentEdited(); });
         editor->show();
@@ -643,7 +753,7 @@ void MainWindow::buildMenus()
 
     QAction * briefingAction = scenarioMenu->addAction(tr("미션 브리핑(&B)…"));
     connect(briefingAction, &QAction::triggered, this, [this] {
-        if (!document_.isOpen())
+        if (!document().isOpen())
         {
             statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
             return;
@@ -653,7 +763,7 @@ void MainWindow::buildMenus()
             statusBar()->showMessage(tr("브리핑을 읽으려면 StarCraft 설치 폴더가 필요합니다"), 4000);
             return;
         }
-        auto * editor = new BriefingEditor(document_, tileset_, this);
+        auto * editor = new BriefingEditor(document(), tileset_, this);
         editor->setAttribute(Qt::WA_DeleteOnClose);
         connect(editor, &BriefingEditor::documentEdited, this, [this] { onDocumentEdited(); });
         editor->show();
@@ -665,13 +775,13 @@ void MainWindow::buildMenus()
     unprotectAction->setToolTip(
         tr("규격을 벗어나게 만들어 둔 맵을 고쳐 편집·저장할 수 있게 합니다."));
     connect(unprotectAction, &QAction::triggered, this, [this] {
-        if (!document_.isOpen())
+        if (!document().isOpen())
         {
             statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
             return;
         }
 
-        if (!document_.isProtected() && !document_.hasPassword())
+        if (!document().isProtected() && !document().hasPassword())
         {
             QMessageBox::information(this, tr("보호 해제"),
                                      tr("이 맵은 보호되어 있지 않습니다."));
@@ -686,10 +796,10 @@ void MainWindow::buildMenus()
             return;
 
         std::string report;
-        if (!document_.unprotect(&report))
+        if (!document().unprotect(&report))
         {
             QMessageBox::warning(this, tr("보호 해제 실패"),
-                                 QString::fromStdString(document_.lastError()));
+                                 QString::fromStdString(document().lastError()));
             return;
         }
 
@@ -702,12 +812,12 @@ void MainWindow::buildMenus()
 
     QAction * switchAction = triggerMenu->addAction(tr("스위치 이름(&W)…"));
     connect(switchAction, &QAction::triggered, this, [this] {
-        if (!document_.isOpen())
+        if (!document().isOpen())
         {
             statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
             return;
         }
-        auto * editor = new SwitchEditor(document_, this);
+        auto * editor = new SwitchEditor(document(), this);
         editor->setAttribute(Qt::WA_DeleteOnClose);
         connect(editor, &SwitchEditor::documentEdited, this, [this] { onDocumentEdited(); });
         editor->show();
@@ -715,7 +825,7 @@ void MainWindow::buildMenus()
     QAction * editTriggers = triggerMenu->addAction(tr("트리거 편집기(&E)…"));
     editTriggers->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_T));
     connect(editTriggers, &QAction::triggered, this, [this] {
-        if (!document_.isOpen())
+        if (!document().isOpen())
             return;
         if (!tileset_.hasUnitGraphics())
         {
@@ -725,7 +835,7 @@ void MainWindow::buildMenus()
             return;
         }
 
-        auto * editor = new TriggerEditor(document_, tileset_, this);
+        auto * editor = new TriggerEditor(document(), tileset_, this);
         editor->setAttribute(Qt::WA_DeleteOnClose);
         connect(editor, &TriggerEditor::documentEdited, this, [this] {
             mapView_->refresh();
@@ -762,6 +872,25 @@ void MainWindow::buildMenus()
             paletteDock_->setVisible(on);
     });
     connect(paletteDock_, &QDockWidget::visibilityChanged, showPalette, &QAction::setChecked);
+
+    QMenu * windowMenu = menuBar()->addMenu(tr("창(&W)"));
+
+    QAction * nextTab = windowMenu->addAction(tr("다음 맵"));
+    nextTab->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Tab));
+    connect(nextTab, &QAction::triggered, this, [this] {
+        if (documents_.size() < 2)
+            return;
+        switchToDocument((currentDocument_ + 1) % static_cast<int>(documents_.size()));
+    });
+
+    QAction * previousTab = windowMenu->addAction(tr("이전 맵"));
+    previousTab->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Tab));
+    connect(previousTab, &QAction::triggered, this, [this] {
+        const int count = static_cast<int>(documents_.size());
+        if (count < 2)
+            return;
+        switchToDocument((currentDocument_ - 1 + count) % count);
+    });
 
     QMenu * viewMenu = menuBar()->addMenu(tr("보기(&V)"));
 
@@ -818,9 +947,9 @@ void MainWindow::buildMenus()
 
 void MainWindow::onUndo()
 {
-    if (!document_.undo())
+    if (!document().undo())
     {
-        statusBar()->showMessage(QString::fromStdString(document_.lastError()), 3000);
+        statusBar()->showMessage(QString::fromStdString(document().lastError()), 3000);
         return;
     }
     mapView_->clearSelection();
@@ -831,9 +960,9 @@ void MainWindow::onUndo()
 
 void MainWindow::onRedo()
 {
-    if (!document_.redo())
+    if (!document().redo())
     {
-        statusBar()->showMessage(QString::fromStdString(document_.lastError()), 3000);
+        statusBar()->showMessage(QString::fromStdString(document().lastError()), 3000);
         return;
     }
     mapView_->clearSelection();
@@ -864,7 +993,7 @@ void MainWindow::onSelectionChanged(int unitIndex)
     {
         // 유닛이 아니면 로케이션이 잡혔을 수 있다.
         const int locationIndex = mapView_->selectedLocation();
-        const auto & locations = document_.locations();
+        const auto & locations = document().locations();
         if (locationIndex >= 0 && static_cast<std::size_t>(locationIndex) < locations.size())
         {
             const auto & location = locations[static_cast<std::size_t>(locationIndex)];
@@ -882,7 +1011,7 @@ void MainWindow::onSelectionChanged(int unitIndex)
         return;
     }
 
-    const auto & units = document_.units();
+    const auto & units = document().units();
     if (static_cast<std::size_t>(unitIndex) >= units.size())
         return;
 
@@ -1008,7 +1137,14 @@ void MainWindow::onNewMap()
     const auto format =
         static_cast<splash::io::MapFormat>(formatBox->currentData().toInt());
 
-    if (!document_.createNew(format,
+    // 열어 둔 맵이 있으면 새 탭에 만든다.
+    if (document().isOpen())
+    {
+        const int index = addDocumentTab();
+        switchToDocument(index);
+    }
+
+    if (!document().createNew(format,
                              static_cast<std::uint16_t>(tilesetBox->currentData().toInt()),
                              static_cast<std::uint16_t>(widthBox->value()),
                              static_cast<std::uint16_t>(heightBox->value()),
@@ -1017,14 +1153,18 @@ void MainWindow::onNewMap()
                              static_cast<std::size_t>(terrainBox->currentData().toULongLong())))
     {
         QMessageBox::warning(this, tr("새 맵 실패"),
-                             QString::fromStdString(document_.lastError()));
+                             QString::fromStdString(document().lastError()));
         return;
     }
 
+    mapView_->setDocument(&document());
+    mapView_->refresh();
+    miniMap_->setDocument(&document());
+
     if (tilePalette_ != nullptr)
-        tilePalette_->setTilesetId(document_.info().tilesetId);
+        tilePalette_->setTilesetId(document().info().tilesetId);
     if (unitPalette_ != nullptr)
-        unitPalette_->setTilesetId(document_.info().tilesetId);
+        unitPalette_->setTilesetId(document().info().tilesetId);
 
     mapView_->clearSelection();
     mapView_->refresh();
@@ -1034,10 +1174,10 @@ void MainWindow::onNewMap()
 
 void MainWindow::onMapProperties()
 {
-    if (!document_.isOpen())
+    if (!document().isOpen())
         return;
 
-    const auto & info = document_.info();
+    const auto & info = document().info();
 
     QDialog dialog(this);
     dialog.setWindowTitle(tr("맵 속성"));
@@ -1086,15 +1226,15 @@ void MainWindow::onMapProperties()
     bool changed = false;
 
     if (nameEdit->text().toStdString() != info.name)
-        changed |= document_.setScenarioName(nameEdit->text().toStdString());
+        changed |= document().setScenarioName(nameEdit->text().toStdString());
 
     if (descEdit->toPlainText().toStdString() != info.description)
-        changed |= document_.setScenarioDescription(descEdit->toPlainText().toStdString());
+        changed |= document().setScenarioDescription(descEdit->toPlainText().toStdString());
 
     const auto newTileset = static_cast<std::uint16_t>(tilesetBox->currentData().toInt());
     if (newTileset != info.tilesetId)
     {
-        changed |= document_.setTileset(newTileset);
+        changed |= document().setTileset(newTileset);
         if (tilePalette_ != nullptr)
             tilePalette_->setTilesetId(newTileset);
         if (unitPalette_ != nullptr)
@@ -1104,7 +1244,7 @@ void MainWindow::onMapProperties()
     const auto newWidth = static_cast<std::uint16_t>(widthBox->value());
     const auto newHeight = static_cast<std::uint16_t>(heightBox->value());
     if (newWidth != info.width || newHeight != info.height)
-        changed |= document_.setDimensions(newWidth, newHeight);
+        changed |= document().setDimensions(newWidth, newHeight);
 
     if (changed)
     {
@@ -1170,10 +1310,10 @@ void MainWindow::rebuildRecentMenu()
 
 void MainWindow::onStringEditor()
 {
-    if (!document_.isOpen())
+    if (!document().isOpen())
         return;
 
-    auto * editor = new StringEditor(document_, this);
+    auto * editor = new StringEditor(document(), this);
     editor->setAttribute(Qt::WA_DeleteOnClose);
     connect(editor, &StringEditor::documentEdited, this, [this] {
         mapView_->refresh();
@@ -1184,11 +1324,11 @@ void MainWindow::onStringEditor()
 
 void MainWindow::onPlayerSettings()
 {
-    if (!document_.isOpen())
+    if (!document().isOpen())
         return;
 
-    const auto settings = document_.playerSettings();
-    const auto forces = document_.forceNames();
+    const auto settings = document().playerSettings();
+    const auto forces = document().forceNames();
     if (settings.empty())
         return;
 
@@ -1318,7 +1458,7 @@ void MainWindow::onPlayerSettings()
             (player < 8 && next.force != settings[player].force) ||
             (player < 8 && next.color != settings[player].color))
         {
-            changed |= document_.setPlayerSetting(player, next);
+            changed |= document().setPlayerSetting(player, next);
         }
     }
 
@@ -1328,7 +1468,7 @@ void MainWindow::onPlayerSettings()
         const std::string before = force < static_cast<int>(forces.size())
             ? forces[static_cast<std::size_t>(force)] : std::string();
         if (name != before)
-            changed |= document_.setForceName(static_cast<std::size_t>(force), name);
+            changed |= document().setForceName(static_cast<std::size_t>(force), name);
     }
 
     if (changed)
@@ -1340,7 +1480,7 @@ void MainWindow::onPlayerSettings()
 
 void MainWindow::onUnitProperties()
 {
-    if (!document_.isOpen() || mapView_ == nullptr)
+    if (!document().isOpen() || mapView_ == nullptr)
         return;
 
     const int index = mapView_->selectedUnit();
@@ -1350,11 +1490,11 @@ void MainWindow::onUnitProperties()
         return;
     }
 
-    const auto current = document_.unitProperties(static_cast<std::size_t>(index));
+    const auto current = document().unitProperties(static_cast<std::size_t>(index));
     if (!current)
         return;
 
-    const auto & units = document_.units();
+    const auto & units = document().units();
     const auto & unit = units[static_cast<std::size_t>(index)];
 
     QDialog dialog(this);
@@ -1437,10 +1577,10 @@ void MainWindow::onUnitProperties()
         (hallucinatedBox->isChecked() ? 0x08 : 0) |
         (invincibleBox->isChecked() ? 0x10 : 0));
 
-    if (!document_.setUnitProperties(static_cast<std::size_t>(index), next))
+    if (!document().setUnitProperties(static_cast<std::size_t>(index), next))
     {
         QMessageBox::warning(this, tr("유닛 속성 실패"),
-                             QString::fromStdString(document_.lastError()));
+                             QString::fromStdString(document().lastError()));
         return;
     }
 
@@ -1451,7 +1591,7 @@ void MainWindow::onUnitProperties()
 
 void MainWindow::onShowTriggers()
 {
-    if (!document_.isOpen())
+    if (!document().isOpen())
         return;
 
     if (!tileset_.hasUnitGraphics())
@@ -1464,7 +1604,7 @@ void MainWindow::onShowTriggers()
     }
 
     QApplication::setOverrideCursor(Qt::WaitCursor);
-    const auto text = document_.triggerText(tileset_);
+    const auto text = document().triggerText(tileset_);
     QApplication::restoreOverrideCursor();
 
     if (!text)
@@ -1475,12 +1615,12 @@ void MainWindow::onShowTriggers()
 
     auto * dialog = new QDialog(this);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
-    dialog->setWindowTitle(tr("트리거 텍스트 — %1개").arg(document_.info().triggerCount));
+    dialog->setWindowTitle(tr("트리거 텍스트 — %1개").arg(document().info().triggerCount));
     dialog->resize(1000, 720);
 
     auto * layout = new QVBoxLayout(dialog);
     auto * editor = new CodeEditorPane(dialog);
-    editor->setVocabulary(document_.triggerVocabulary(tileset_));
+    editor->setVocabulary(document().triggerVocabulary(tileset_));
     editor->setText(QString::fromStdString(*text));
 
     auto * buttons = new QDialogButtonBox(
@@ -1512,20 +1652,20 @@ void MainWindow::onShowTriggers()
         const QString edited = editor->text();
 
         QApplication::setOverrideCursor(Qt::WaitCursor);
-        const bool ok = document_.applyTriggerText(edited.toStdString(), tileset_);
+        const bool ok = document().applyTriggerText(edited.toStdString(), tileset_);
         QApplication::restoreOverrideCursor();
 
         if (!ok)
         {
             QMessageBox::warning(dialog, tr("트리거 적용 실패"),
-                                 QString::fromStdString(document_.lastError()));
+                                 QString::fromStdString(document().lastError()));
             return;
         }
 
         mapView_->refresh();
         refreshFromDocument();
         statusBar()->showMessage(
-            tr("트리거를 적용했습니다 — %1개").arg(document_.info().triggerCount), 4000);
+            tr("트리거를 적용했습니다 — %1개").arg(document().info().triggerCount), 4000);
         dialog->close();
     });
 
@@ -1577,14 +1717,14 @@ void MainWindow::loadTilesetFrom(const QString & installPath, bool announce)
     if (tilePalette_ != nullptr)
     {
         tilePalette_->setTileset(&tileset_);
-        if (document_.isOpen())
-            tilePalette_->setTilesetId(document_.info().tilesetId);
+        if (document().isOpen())
+            tilePalette_->setTilesetId(document().info().tilesetId);
     }
     if (unitPalette_ != nullptr)
     {
         unitPalette_->setTileset(&tileset_);
-        if (document_.isOpen())
-            unitPalette_->setTilesetId(document_.info().tilesetId);
+        if (document().isOpen())
+            unitPalette_->setTilesetId(document().info().tilesetId);
     }
 
     if (announce)
@@ -1596,29 +1736,36 @@ void MainWindow::openPath(const QString & path)
     if (path.isEmpty())
         return;
 
-    if (!document_.open(path.toStdString()))
+    // 지금 탭에 이미 맵이 있으면 새 탭에 연다 — 열어 둔 맵을 밀어내지 않는다.
+    if (document().isOpen())
+    {
+        const int index = addDocumentTab();
+        switchToDocument(index);
+    }
+
+    if (!document().open(path.toStdString()))
     {
         QMessageBox::warning(this, tr("열기 실패"),
-                             QString::fromStdString(document_.lastError()));
+                             QString::fromStdString(document().lastError()));
         refreshFromDocument();
         return;
     }
 
     if (tilePalette_ != nullptr)
-        tilePalette_->setTilesetId(document_.info().tilesetId);
+        tilePalette_->setTilesetId(document().info().tilesetId);
     if (unitPalette_ != nullptr)
-        unitPalette_->setTilesetId(document_.info().tilesetId);
+        unitPalette_->setTilesetId(document().info().tilesetId);
 
     rememberRecentFile(path);
+    mapView_->setDocument(&document());
+    mapView_->refresh();
+    miniMap_->setDocument(&document());
     refreshFromDocument();
     statusBar()->showMessage(tr("열었습니다: %1").arg(path), 4000);
 }
 
 void MainWindow::onOpen()
 {
-    if (!confirmDiscardChanges())
-        return;
-
     const QString path = QFileDialog::getOpenFileName(
         this, tr("맵 열기"), QString(), mapFilter());
     openPath(path);
@@ -1626,43 +1773,43 @@ void MainWindow::onOpen()
 
 void MainWindow::onSave()
 {
-    if (!document_.isOpen())
+    if (!document().isOpen())
         return;
 
     // 새로 만든 맵은 저장된 적이 없다 — 어디에 쓸지 물어야 한다.
-    if (document_.filePath().empty())
+    if (document().filePath().empty())
     {
         onSaveAs();
         return;
     }
 
-    if (!document_.save())
+    if (!document().save())
     {
         QMessageBox::warning(this, tr("저장 실패"),
-                             QString::fromStdString(document_.lastError()));
+                             QString::fromStdString(document().lastError()));
         return;
     }
 
     refreshFromDocument();
     statusBar()->showMessage(
-        tr("저장했습니다: %1").arg(QString::fromStdString(document_.filePath())), 4000);
+        tr("저장했습니다: %1").arg(QString::fromStdString(document().filePath())), 4000);
 }
 
 void MainWindow::onSaveAs()
 {
-    if (!document_.isOpen())
+    if (!document().isOpen())
         return;
 
     const QString path = QFileDialog::getSaveFileName(
         this, tr("다른 이름으로 저장"),
-        QString::fromStdString(document_.filePath()), mapFilter());
+        QString::fromStdString(document().filePath()), mapFilter());
     if (path.isEmpty())
         return;
 
-    if (!document_.saveAs(path.toStdString()))
+    if (!document().saveAs(path.toStdString()))
     {
         QMessageBox::warning(this, tr("저장 실패"),
-                             QString::fromStdString(document_.lastError()));
+                             QString::fromStdString(document().lastError()));
         return;
     }
 
@@ -1675,13 +1822,13 @@ void MainWindow::onClose()
     if (!confirmDiscardChanges())
         return;
 
-    document_.close();
-    refreshFromDocument();
+    // 탭을 닫는다. 마지막 하나면 비운 채로 남는다.
+    closeDocumentTab(currentDocument_);
 }
 
 bool MainWindow::confirmDiscardChanges()
 {
-    if (!document_.isOpen() || !document_.isModified())
+    if (!document().isOpen() || !document().isModified())
         return true;
 
     const auto choice = QMessageBox::question(
@@ -1696,20 +1843,32 @@ bool MainWindow::confirmDiscardChanges()
         return true;
 
     onSave();
-    return !document_.isModified();
+    return !document().isModified();
 }
 
 void MainWindow::closeEvent(QCloseEvent * event)
 {
-    if (confirmDiscardChanges())
-        event->accept();
-    else
-        event->ignore();
+    // 탭마다 저장하지 않은 것이 있는지 묻는다.
+    const int wasOn = currentDocument_;
+    for (int i = 0; i < static_cast<int>(documents_.size()); ++i)
+    {
+        switchToDocument(i);
+        if (!confirmDiscardChanges())
+        {
+            switchToDocument(wasOn);
+            event->ignore();
+            return;
+        }
+    }
+
+    event->accept();
 }
 
 void MainWindow::refreshFromDocument()
 {
-    const bool open = document_.isOpen();
+    refreshTabText(currentDocument_);
+
+    const bool open = document().isOpen();
 
     if (mapView_ != nullptr)
         mapView_->refresh();
@@ -1724,9 +1883,9 @@ void MainWindow::refreshFromDocument()
     closeAction_->setEnabled(open);
 
     if (undoAction_ != nullptr)
-        undoAction_->setEnabled(open && document_.canUndo());
+        undoAction_->setEnabled(open && document().canUndo());
     if (redoAction_ != nullptr)
-        redoAction_->setEnabled(open && document_.canRedo());
+        redoAction_->setEnabled(open && document().canRedo());
     if (deleteAction_ != nullptr)
         deleteAction_->setEnabled(open && mapView_ != nullptr && mapView_->selectedUnit() >= 0);
 
@@ -1741,7 +1900,7 @@ void MainWindow::refreshFromDocument()
         return;
     }
 
-    const auto & info = document_.info();
+    const auto & info = document().info();
 
     nameValue_->setText(orDash(info.name));
     sizeValue_->setText(tr("%1 × %2 타일").arg(info.width).arg(info.height));
@@ -1756,23 +1915,23 @@ void MainWindow::refreshFromDocument()
         .arg(info.locationCount)
         .arg(info.triggerCount)
         .arg(info.stringCount));
-    pathValue_->setText(orDash(document_.filePath()));
+    pathValue_->setText(orDash(document().filePath()));
 
     updateWindowTitle();
 }
 
 void MainWindow::updateWindowTitle()
 {
-    if (!document_.isOpen())
+    if (!document().isOpen())
     {
         setWindowTitle(QString::fromLatin1(kAppName));
         return;
     }
 
-    const QString fileName = QString::fromStdString(document_.fileName());
+    const QString fileName = QString::fromStdString(document().fileName());
     setWindowTitle(QStringLiteral("%1%2 — %3")
         .arg(fileName)
-        .arg(document_.isModified() ? QStringLiteral("*") : QString())
+        .arg(document().isModified() ? QStringLiteral("*") : QString())
         .arg(QString::fromLatin1(kAppName)));
 }
 
