@@ -7,6 +7,7 @@
 #include "ui/briefing_editor.h"
 #include "ui/code_editor_pane.h"
 #include "ui/settings_dialogs.h"
+#include "ui/sound_editor.h"
 #include "ui/string_editor.h"
 #include "ui/trigger_editor.h"
 #include "ui/unit_palette.h"
@@ -569,6 +570,19 @@ void MainWindow::buildMenus()
         TechSettingsDialog dialog(document_, tileset_, this);
         connect(&dialog, &TechSettingsDialog::documentEdited, this, [this] { onDocumentEdited(); });
         dialog.exec();
+    });
+
+    QAction * soundSettingsAction = scenarioMenu->addAction(tr("소리 설정(&S)…"));
+    connect(soundSettingsAction, &QAction::triggered, this, [this] {
+        if (!document_.isOpen())
+        {
+            statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
+            return;
+        }
+        auto * editor = new SoundEditor(document_, soundPlayer_, this);
+        editor->setAttribute(Qt::WA_DeleteOnClose);
+        connect(editor, &SoundEditor::documentEdited, this, [this] { onDocumentEdited(); });
+        editor->show();
     });
 
     QAction * briefingAction = scenarioMenu->addAction(tr("미션 브리핑(&B)…"));

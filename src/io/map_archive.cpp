@@ -333,6 +333,12 @@ struct MapArchive::Impl
     std::vector<int> undoSteps;
     std::vector<int> redoSteps;
 
+    // 맵 안에 넣고 뺄 파일들. 저장은 원본 MPQ 를 복사한 뒤 CHK 만
+    // 갈아 끼우므로, 소리처럼 시나리오 밖에 있는 파일은 저장할 때 함께
+    // 손봐야 원본을 잃지 않는다.
+    std::vector<std::pair<std::string, std::vector<std::uint8_t>>> pendingFileAdds;
+    std::vector<std::string> pendingFileRemovals;
+
     // 맵 문자열이 쓰는 코드 페이지. 열 때 가려내고, 저장할 때 그대로
     // 되돌린다 — 다른 인코딩으로 쓰면 게임에서 글자가 깨진다.
     TextEncoding encoding = TextEncoding::Ascii;
@@ -417,6 +423,217 @@ Result MapArchive::open(const std::string & filePath)
     }
 
     impl_ = std::move(fresh);
+    return Result::success();
+}
+
+// ---------------------------------------------------------------- 소리
+
+std::vector<MapArchive::MapSound> MapArchive::sounds() const
+{
+    std::vector<MapSound> out;
+    if (!impl_->isOpen())
+        return out;
+
+    const MapFile & map = *impl_->mapFile;
+    try
+    {
+        // 맵 안에 파일이 들어 있는지 보려면 MPQ 를 열어야 한다. 여는 데
+        // 실패해도(새 맵이거나 .chk 라면) 목록 자체는 보여 준다.
+        MapFile & mutableMap = const_cast<MapFile &>(map);
+        const bool opened = !impl_->sourcePath.empty() &&
+            mutableMap.MpqFile::open(impl_->sourcePath, /*readOnly*/ true,
+                                     /*createIfNotFound*/ false);
+
+        struct CloseWhenDone
+        {
+            MapFile & map;
+            bool opened;
+            ~CloseWhenDone() { if (opened) map.MpqFile::close(); }
+        } closer{mutableMap, opened};
+
+        for (std::size_t index = 0; index < Chk::TotalSounds; ++index)
+        {
+            const std::size_t stringId = map.getSoundStringId(index);
+            if (stringId == 0 || stringId == Chk::StringId::UnusedSound)
+                continue;
+
+            MapSound sound;
+            sound.index = index;
+            sound.stringId = stringId;
+
+            if (auto path = map.getString<RawString>(stringId))
+                sound.path = impl_->decode(*path);
+
+            // 맵 안에 실제 파일이 들어 있는지 본다. 트리거가 게임 기본
+            // 소리를 가리키는 경우에는 파일이 없다.
+            if (!sound.path.empty())
+            {
+                // 아직 저장하지 않고 넣은 소리도 "맵 안"으로 센다.
+                const auto pending = std::find_if(
+                    impl_->pendingFileAdds.begin(), impl_->pendingFileAdds.end(),
+                    [&sound](const auto & entry) { return entry.first == sound.path; });
+
+                if (pending != impl_->pendingFileAdds.end())
+                {
+                    sound.inArchive = true;
+                    sound.bytes = pending->second.size();
+                }
+                else if (opened && mutableMap.MpqFile::findFile(sound.path))
+                {
+                    sound.inArchive = true;
+                    sound.bytes = mutableMap.MpqFile::getFileSize(sound.path);
+                }
+            }
+
+            sound.usedByTrigger = map.stringUsed(stringId, Chk::Scope::Either, Chk::Scope::Game,
+                                                 Chk::StringUserFlag::AnyTrigger);
+
+            out.push_back(std::move(sound));
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+    return out;
+}
+
+Result MapArchive::addSound(const std::string & sourceFilePath, const std::string & mapPath)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    std::error_code ec;
+    if (!std::filesystem::exists(sourceFilePath, ec))
+        return Result::failure("소리 파일이 없습니다: " + sourceFilePath);
+
+    try
+    {
+        std::string destination = mapPath;
+        if (destination.empty())
+        {
+            const std::filesystem::path source(sourceFilePath);
+            destination = "staredit\\wav\\" + source.filename().string();
+        }
+
+        // 소리는 원본 그대로 넣는다. 다시 압축하면 게임에서 나는 소리가
+        // 달라지고, 되돌릴 수도 없다.
+        if (!impl_->mapFile->addSound(sourceFilePath, destination,
+                                      WavQuality::Uncompressed, /*virtualFile*/ false))
+        {
+            return Result::failure("소리를 맵에 넣지 못했습니다.");
+        }
+
+        // 저장할 때 다시 넣어야 하므로 내용을 들고 있는다.
+        std::ifstream in(sourceFilePath, std::ios::binary);
+        if (!in)
+            return Result::failure("소리 파일을 읽지 못했습니다: " + sourceFilePath);
+
+        std::vector<std::uint8_t> contents((std::istreambuf_iterator<char>(in)),
+                                            std::istreambuf_iterator<char>());
+        if (contents.empty())
+            return Result::failure("소리 파일이 비어 있습니다: " + sourceFilePath);
+
+        impl_->pendingFileRemovals.erase(
+            std::remove(impl_->pendingFileRemovals.begin(), impl_->pendingFileRemovals.end(),
+                        destination),
+            impl_->pendingFileRemovals.end());
+
+        auto existing = std::find_if(impl_->pendingFileAdds.begin(), impl_->pendingFileAdds.end(),
+            [&destination](const auto & entry) { return entry.first == destination; });
+        if (existing != impl_->pendingFileAdds.end())
+            existing->second = std::move(contents);
+        else
+            impl_->pendingFileAdds.emplace_back(destination, std::move(contents));
+
+        // 파일과 문자열을 함께 건드리므로 실행 취소 단위를 셀 수 없다.
+        impl_->undoSteps.clear();
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("소리를 넣지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::removeSound(std::size_t soundIndex, bool removeIfUsed)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    try
+    {
+        if (soundIndex >= Chk::TotalSounds)
+            return Result::failure("소리 번호가 범위를 벗어났습니다.");
+
+        // 빼기 전에 경로를 봐 둔다 — 빼고 나면 문자열이 사라진다.
+        std::string path;
+        const std::size_t stringId = impl_->mapFile->getSoundStringId(soundIndex);
+        if (stringId != 0 && stringId != Chk::StringId::UnusedSound)
+        {
+            if (auto stored = impl_->mapFile->getString<RawString>(stringId))
+                path = *stored;
+        }
+
+        if (!impl_->mapFile->removeSoundBySoundIndex(static_cast<std::uint16_t>(soundIndex),
+                                                     removeIfUsed))
+        {
+            return Result::failure(removeIfUsed
+                ? "소리를 빼지 못했습니다."
+                : "트리거가 쓰고 있는 소리입니다. 그래도 빼려면 '쓰는 중이어도 빼기'를 켜세요.");
+        }
+
+        if (!path.empty())
+        {
+            impl_->pendingFileAdds.erase(
+                std::remove_if(impl_->pendingFileAdds.begin(), impl_->pendingFileAdds.end(),
+                               [&path](const auto & entry) { return entry.first == path; }),
+                impl_->pendingFileAdds.end());
+
+            if (std::find(impl_->pendingFileRemovals.begin(), impl_->pendingFileRemovals.end(),
+                          path) == impl_->pendingFileRemovals.end())
+            {
+                impl_->pendingFileRemovals.push_back(path);
+            }
+        }
+
+        impl_->undoSteps.clear();
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("소리를 빼지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::extractSound(std::size_t soundIndex, const std::string & destFilePath) const
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    try
+    {
+        const MapFile & map = *impl_->mapFile;
+        const std::size_t stringId = map.getSoundStringId(soundIndex);
+        if (stringId == 0 || stringId == Chk::StringId::UnusedSound)
+            return Result::failure("그 자리에는 소리가 없습니다.");
+
+        auto contents = const_cast<MapFile &>(map).getSound(stringId);
+        if (!contents)
+            return Result::failure("맵 안에 소리 파일이 없습니다 (게임 기본 소리일 수 있습니다).");
+
+        std::ofstream out(destFilePath, std::ios::binary);
+        if (!out)
+            return Result::failure("파일을 쓰지 못했습니다: " + destFilePath);
+
+        out.write(reinterpret_cast<const char *>(contents->data()),
+                  static_cast<std::streamsize>(contents->size()));
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("소리를 꺼내지 못했습니다: ") + e.what());
+    }
     return Result::success();
 }
 
@@ -655,11 +872,26 @@ Result MapArchive::saveAs(const std::string & filePath) const
         std::stringstream finalChk(
             chkBytes, std::ios_base::in | std::ios_base::out | std::ios_base::binary);
         const bool added = map.MpqFile::addFile(kScenarioChkPath, finalChk);
+
+        // 시나리오 밖의 파일들(소리)을 여기서 손본다. 저장은 원본 MPQ 의
+        // 복사본 위에서 이뤄지므로, 넣고 뺀 것을 다시 적용해야 한다.
+        for (const std::string & path : impl_->pendingFileRemovals)
+            map.MpqFile::removeFile(path);
+
+        bool soundsOk = true;
+        for (const auto & [path, contents] : impl_->pendingFileAdds)
+        {
+            if (!map.MpqFile::addFile(path, contents, WavQuality::Uncompressed))
+                soundsOk = false;
+        }
+
         map.MpqFile::setUpdatingListFile(true);
         map.MpqFile::close();
 
         if (!added)
             return Result::failure("시나리오를 MPQ 에 넣지 못했습니다: " + filePath);
+        if (!soundsOk)
+            return Result::failure("소리 파일을 MPQ 에 넣지 못했습니다: " + filePath);
     }
     catch (const std::exception & e)
     {

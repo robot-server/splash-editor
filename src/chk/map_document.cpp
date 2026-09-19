@@ -715,6 +715,43 @@ bool MapDocument::moveAction(std::size_t triggerIndex, std::size_t from, std::si
     return true;
 }
 
+std::vector<io::MapArchive::MapSound> MapDocument::sounds() const
+{
+    return archive_.sounds();
+}
+
+bool MapDocument::addSound(const std::string & sourceFilePath, const std::string & mapPath)
+{
+    const io::Result result = archive_.addSound(sourceFilePath, mapPath);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    undoDepth_ = 0; redoDepth_ = 0; savedDepth_ = -1;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::removeSound(std::size_t soundIndex, bool removeIfUsed)
+{
+    const io::Result result = archive_.removeSound(soundIndex, removeIfUsed);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    undoDepth_ = 0; redoDepth_ = 0; savedDepth_ = -1;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::extractSound(std::size_t soundIndex, const std::string & destFilePath) const
+{
+    const io::Result result = archive_.extractSound(soundIndex, destFilePath);
+    if (!result)
+    {
+        // 꺼내기는 문서를 바꾸지 않으므로 const 다. 실패 사유만 남긴다.
+        const_cast<MapDocument *>(this)->lastError_ = result.message;
+        return false;
+    }
+    return true;
+}
+
 bool MapDocument::setFogTiles(const std::vector<std::pair<int, int>> & tiles,
                               std::uint8_t players)
 {

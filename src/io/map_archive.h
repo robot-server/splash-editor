@@ -506,6 +506,33 @@ public:
     /// 어느 플레이어가 이 브리핑을 보는지.
     Result setBriefingOwners(std::size_t index, const std::array<bool, 27> & owners);
 
+    // --- 소리 (WAV) ---
+
+    /// 맵에 등록된 소리 하나.
+    struct MapSound
+    {
+        std::size_t index = 0;    ///< WAV 구역에서의 자리
+        std::size_t stringId = 0; ///< 경로가 든 문자열 번호
+        std::string path;         ///< "staredit\\wav\\...".
+        bool inArchive = false;   ///< 맵 안에 파일이 실제로 들어 있는지
+        bool usedByTrigger = false;
+        std::size_t bytes = 0;    ///< 맵 안 파일 크기
+    };
+
+    /// 맵에 등록된 소리 목록.
+    std::vector<MapSound> sounds() const;
+
+    /// 바깥 WAV 파일을 맵에 넣고 소리 목록에 올린다.
+    ///
+    /// mapPath 를 비우면 "staredit\\wav\\<파일 이름>" 으로 넣는다.
+    Result addSound(const std::string & sourceFilePath, const std::string & mapPath = {});
+
+    /// 소리를 목록에서 빼고 맵 안 파일도 지운다.
+    Result removeSound(std::size_t soundIndex, bool removeIfUsed = false);
+
+    /// 맵 안 소리를 파일로 꺼낸다.
+    Result extractSound(std::size_t soundIndex, const std::string & destFilePath) const;
+
     // --- 시야 가리개 (MASK) ---
 
     /// 타일마다 어느 플레이어에게 가려져 있는지 (비트 0~7 = 플레이어 1~8).

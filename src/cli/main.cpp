@@ -47,6 +47,10 @@ int usage(const char * argv0)
         "      미션 브리핑을 텍스트로 옮긴다.\n\n"
         "  " << argv0 << " trigger-args <맵파일> <설치폴더> <번호>\n"
         "      트리거 하나의 조건·동작을 인자 단위로 풀어 보여 준다.\n\n"
+        "  " << argv0 << " sounds <맵파일>\n"
+        "      맵에 등록된 소리를 나열한다.\n\n"
+        "  " << argv0 << " add-sound <맵파일> <WAV파일> <출력맵>\n"
+        "      WAV 를 맵에 넣고 소리 목록에 올린다.\n\n"
         "  " << argv0 << " set-trigger-arg <맵파일> <설치폴더> <condition|action> <트리거> <줄> <인자> <값> <출력맵>\n"
         "      조건·동작의 인자 하나를 바꾼다. 값이 숫자가 아니면 문자열로 넣는다.\n\n"
         "  " << argv0 << " set-briefing <맵파일> <설치폴더> <텍스트파일> <출력맵>\n"
@@ -1088,6 +1092,55 @@ int cmdUnitClasses(const std::string & installPath)
     return 0;
 }
 
+int cmdSounds(const std::string & mapPath)
+{
+    splash::io::MapArchive archive;
+    if (auto r = archive.open(mapPath); !r)
+    {
+        std::cerr << "열기 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    const auto sounds = archive.sounds();
+    std::cout << "  소리 " << sounds.size() << "개\n";
+    for (const auto & sound : sounds)
+    {
+        std::cout << "    #" << sound.index << "  " << sound.path;
+        std::cout << (sound.inArchive ? "  [맵 안 " + std::to_string(sound.bytes) + "바이트]"
+                                      : "  [맵에 없음]");
+        if (sound.usedByTrigger)
+            std::cout << "  [트리거가 씀]";
+        std::cout << "\n";
+    }
+    return 0;
+}
+
+int cmdAddSound(const std::string & mapPath, const std::string & wavPath,
+                const std::string & outPath)
+{
+    splash::io::MapArchive archive;
+    if (auto r = archive.open(mapPath); !r)
+    {
+        std::cerr << "열기 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    if (auto r = archive.addSound(wavPath); !r)
+    {
+        std::cerr << "소리를 넣지 못했습니다: " << r.message << "\n";
+        return 1;
+    }
+
+    if (auto r = archive.saveAs(outPath); !r)
+    {
+        std::cerr << "저장 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    std::cout << "  소리 " << archive.sounds().size() << "개\n  -> " << outPath << "\n";
+    return 0;
+}
+
 int cmdIconHistogram(const std::string & installPath, std::uint16_t iconIndex)
 {
     splash::io::GameGraphics graphics;
@@ -1841,6 +1894,12 @@ int main(int argc, char ** argv)
                 args[7], args[8]);
         } catch (const std::exception &) { return usage(argv[0]); }
     }
+
+    if (command == "sounds" && args.size() == 2)
+        return cmdSounds(args[1]);
+
+    if (command == "add-sound" && args.size() == 4)
+        return cmdAddSound(args[1], args[2], args[3]);
 
     if (command == "icon-histogram" && args.size() == 3)
     {

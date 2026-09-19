@@ -248,6 +248,13 @@ public:
     bool moveCondition(std::size_t triggerIndex, std::size_t from, std::size_t to);
     bool moveAction(std::size_t triggerIndex, std::size_t from, std::size_t to);
 
+    // --- 소리 (WAV) ---
+
+    std::vector<io::MapArchive::MapSound> sounds() const;
+    bool addSound(const std::string & sourceFilePath, const std::string & mapPath = {});
+    bool removeSound(std::size_t soundIndex, bool removeIfUsed = false);
+    bool extractSound(std::size_t soundIndex, const std::string & destFilePath) const;
+
     // --- 시야 가리개 (MASK) ---
 
     /// 타일마다 어느 플레이어에게 가려져 있는지. 구역이 없으면 빈 벡터.
