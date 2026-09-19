@@ -36,6 +36,7 @@ public:
         Terrain,     ///< 지형 칠하기
         PlaceUnit,   ///< 유닛 놓기
         PlaceSprite, ///< 맵 장식 스프라이트 놓기
+        PlaceDoodad, ///< 두들(지형 장식) 놓기
         Fog          ///< 시야 가리개 칠하기
     };
 
@@ -142,6 +143,9 @@ public:
 
     /// 스프라이트 놓기 도구가 놓을 스프라이트.
     void setPlacementSprite(std::uint16_t spriteType, std::uint8_t owner);
+
+    /// 두들 놓기 도구가 놓을 두들 (dddata.bin 번호).
+    void setPlacementDoodad(std::uint16_t doodadId);
 
     /// 유닛·스프라이트를 놓을 때 좌표를 격자에 맞출지.
     ///
@@ -368,6 +372,7 @@ private:
     int lastNydusUnit_ = -1;
 
     std::uint16_t placeUnitType_ = 0;
+    std::uint16_t placeDoodadId_ = 0;
     std::uint8_t placeUnitOwner_ = 0;
     std::uint16_t placeSpriteType_ = 0;
     int brushSize_ = 1;

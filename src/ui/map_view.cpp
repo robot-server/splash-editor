@@ -872,7 +872,6 @@ void MapView::autoLinkPlaced(std::size_t placedIndex)
 
     int best = -1;
     QPoint bestSpot;
-    int bestDistance = std::numeric_limits<int>::max();
 
     for (std::size_t i = 0; i < units.size(); ++i)
     {
@@ -897,31 +896,18 @@ void MapView::autoLinkPlaced(std::size_t placedIndex)
 
         const QPoint spot(addonLeft + addonBox.width / 2, addonTop + addonBox.height / 2);
 
-        // 그 자리에서 얼마나 떨어져 놓았는지. 두 타일 넘게 벗어나면
-        // 붙이려던 것이 아니라고 본다.
-        const int dx = std::abs(spot.x() - static_cast<int>(placed.x));
-        const int dy = std::abs(spot.y() - static_cast<int>(placed.y));
-        if (dx > io::kTilePixels * 2 || dy > io::kTilePixels * 2)
+        // 애드온이 붙는 자리에 정확히 놓았을 때만 잇는다. 자리를 몰래
+        // 옮겨 주면 어디에 놓았는지와 저장되는 좌표가 달라진다.
+        if (spot.x() != static_cast<int>(placed.x) || spot.y() != static_cast<int>(placed.y))
             continue;
 
-        if (dx + dy < bestDistance)
-        {
-            bestDistance = dx + dy;
-            best = static_cast<int>(i);
-            bestSpot = spot;
-        }
+        best = static_cast<int>(i);
+        bestSpot = spot;
+        break;
     }
 
     if (best < 0)
         return;
-
-    // 자리를 정확히 맞춘 뒤 잇는다 — 어긋난 채로 이으면 게임에서 애드온이
-    // 붙지 않는다.
-    if (bestSpot.x() != static_cast<int>(placed.x) || bestSpot.y() != static_cast<int>(placed.y))
-    {
-        doc->moveUnit(placedIndex, static_cast<std::uint16_t>(std::max(0, bestSpot.x())),
-                      static_cast<std::uint16_t>(std::max(0, bestSpot.y())));
-    }
 
     if (doc->linkUnits(static_cast<std::size_t>(best), placedIndex, /*addon*/ true))
         emit documentEdited();
@@ -1342,7 +1328,9 @@ void MapView::paintPlacementPreview(QPainter & painter)
 
 void MapView::paintTerrainCursor(QPainter & painter)
 {
-    if (tool_ != Tool::Terrain || !hasHover_ || document_ == nullptr)
+    if (!hasHover_ || document_ == nullptr)
+        return;
+    if (tool_ != Tool::Terrain && tool_ != Tool::PlaceDoodad)
         return;
 
     const double tile = scaledTileSize();
@@ -1358,6 +1346,41 @@ void MapView::paintTerrainCursor(QPainter & painter)
 
     const QColor line(255, 236, 120, 220);
     const QColor fill(255, 236, 120, 40);
+
+    if (tool_ == Tool::PlaceDoodad)
+    {
+        // 두들이 덮을 타일 범위를 보여 준다.
+        if (tileset_ == nullptr)
+        {
+            painter.restore();
+            return;
+        }
+
+        const auto list = tileset_->doodads(document_->info().tilesetId);
+        const auto found = std::find_if(list.begin(), list.end(),
+            [this](const auto & entry) { return entry.id == placeDoodadId_; });
+
+        if (found == list.end())
+        {
+            painter.restore();
+            return;
+        }
+
+        const int centreX = static_cast<int>(hoverPos_.x()) / io::kTilePixels;
+        const int centreY = static_cast<int>(hoverPos_.y()) / io::kTilePixels;
+        const int left = centreX - found->tileWidth / 2;
+        const int top = centreY - found->tileHeight / 2;
+
+        const QRectF box(left * tile - originX, top * tile - originY,
+                         tile * found->tileWidth, tile * found->tileHeight);
+
+        painter.fillRect(box, fill);
+        painter.setPen(QPen(line, 2));
+        painter.drawRect(box);
+
+        painter.restore();
+        return;
+    }
 
     if (terrainMode_ == TerrainMode::Isometric)
     {
@@ -1496,6 +1519,11 @@ bool MapView::placeAt(const QPointF & screenPos)
         return true;
     }
     return false;
+}
+
+void MapView::setPlacementDoodad(std::uint16_t doodadId)
+{
+    placeDoodadId_ = doodadId;
 }
 
 void MapView::setBrushSize(int size)
@@ -1685,6 +1713,26 @@ void MapView::mousePressEvent(QMouseEvent * event)
         return;
     }
 
+    if (tool_ == Tool::PlaceDoodad)
+    {
+        const QPointF mapPos = screenToMap(event->position());
+        const int tileX = static_cast<int>(std::max(0.0, mapPos.x())) / io::kTilePixels;
+        const int tileY = static_cast<int>(std::max(0.0, mapPos.y())) / io::kTilePixels;
+
+        auto * doc = const_cast<chk::MapDocument *>(document_);
+        if (tileset_ != nullptr && doc->placeDoodad(*tileset_, placeDoodadId_, tileX, tileY))
+        {
+            refresh(); // 지형 타일이 바뀌므로 통째로 다시 그린다
+            emit documentEdited();
+        }
+        else
+        {
+            emit placementRejected(QString::fromStdString(document_->lastError()));
+        }
+        event->accept();
+        return;
+    }
+
     if (tool_ == Tool::PlaceSprite || tool_ == Tool::PlaceUnit)
     {
         // 누른 채 끌면 이어서 놓는다. 같은 자리에 겹쳐 놓지 않도록
@@ -1847,8 +1895,8 @@ void MapView::mouseMoveEvent(QMouseEvent * event)
         return;
     }
 
-    // 지형 도구는 브러시가 덮을 자리를 커서 둘레에 보여 준다.
-    if (tool_ == Tool::Terrain)
+    // 지형·두들 도구는 덮을 자리를 커서 둘레에 보여 준다.
+    if (tool_ == Tool::Terrain || tool_ == Tool::PlaceDoodad)
     {
         if (document_ != nullptr && document_->isOpen())
         {

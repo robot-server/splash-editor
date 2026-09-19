@@ -41,6 +41,10 @@ public:
     void setTerrainTypeMode(bool on);
     bool terrainTypeMode() const { return terrainTypeMode_; }
 
+    /// 두들 목록을 보여 줄지. 켜면 지형 종류 모드보다 우선한다.
+    void setDoodadMode(bool on);
+    bool doodadMode() const { return doodadMode_; }
+
 signals:
     /// 팔레트에서 타일을 골랐다.
     void tileSelected(std::uint16_t tileId);
@@ -48,12 +52,16 @@ signals:
     /// ISOM 모드에서 지형 종류를 골랐다 (brushIndex).
     void terrainTypeSelected(std::size_t brushIndex);
 
+    /// 두들을 골랐다 (dddata.bin 번호).
+    void doodadSelected(std::uint16_t doodadId);
+
 protected:
     void paintEvent(QPaintEvent * event) override;
     void resizeEvent(QResizeEvent * event) override;
     void mousePressEvent(QMouseEvent * event) override;
 
 private:
+    bool listMode() const; ///< 이름을 줄줄이 보여 주는 모드인지
     void rebuild();
     void updateScrollRange();
 
@@ -65,6 +73,7 @@ private:
     std::uint16_t selectedTile_ = 0;
 
     bool terrainTypeMode_ = false;
+    bool doodadMode_ = false;
     int selectedTerrainRow_ = 0;
     struct TerrainEntry
     {
@@ -72,6 +81,8 @@ private:
         QString name;
         std::uint16_t previewTileId = 0;
         bool hasPreview = false;
+        std::uint16_t doodadId = 0; ///< 두들 모드에서 쓴다
+        QString detail;             ///< "3 x 2" 처럼 크기를 적어 둔다
     };
     std::vector<TerrainEntry> terrainTypes_;
     std::vector<std::uint16_t> tiles_;

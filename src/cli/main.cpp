@@ -1146,6 +1146,30 @@ int cmdAddSound(const std::string & mapPath, const std::string & wavPath,
     return 0;
 }
 
+int cmdDoodads(const std::string & installPath, std::uint16_t tilesetId)
+{
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const auto list = graphics.doodads(tilesetId);
+    std::cout << "  두들 " << list.size() << "개\n";
+    std::size_t shown = 0;
+    for (const auto & doodad : list)
+    {
+        std::cout << "    #" << doodad.id << "  " << doodad.name
+                  << "  " << doodad.tileWidth << "x" << doodad.tileHeight
+                  << "  시작그룹 " << doodad.startTileGroup << "\n";
+        if (++shown >= 15)
+            break;
+    }
+    return 0;
+}
+
 int cmdIconHistogram(const std::string & installPath, std::uint16_t iconIndex)
 {
     splash::io::GameGraphics graphics;
@@ -1905,6 +1929,12 @@ int main(int argc, char ** argv)
 
     if (command == "add-sound" && args.size() == 4)
         return cmdAddSound(args[1], args[2], args[3]);
+
+    if (command == "doodads" && args.size() == 3)
+    {
+        try { return cmdDoodads(args[1], static_cast<std::uint16_t>(std::stoul(args[2]))); }
+        catch (const std::exception &) { return usage(argv[0]); }
+    }
 
     if (command == "icon-histogram" && args.size() == 3)
     {

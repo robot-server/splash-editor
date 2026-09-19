@@ -146,6 +146,23 @@ public:
     /// 이 유닛이 크립을 만드는 저그 건물인지 (units.dat 의 CreepBuilding 특성).
     bool isCreepBuilding(std::uint16_t unitType) const;
 
+    /// 타일셋이 가진 두들(나무·바위 같은 장식) 하나.
+    struct DoodadInfo
+    {
+        std::uint16_t id = 0;         ///< dddata.bin 번호 (CHK 의 DD2 에 들어간다)
+        std::string name;             ///< 사람이 읽는 이름
+        int tileWidth = 0;
+        int tileHeight = 0;
+        std::uint16_t startTileGroup = 0; ///< 두들 타일이 시작하는 CV5 그룹
+        std::uint16_t previewTileId = 0;  ///< 팔레트에 보일 타일
+    };
+
+    /// 그 타일셋의 두들 목록.
+    std::vector<DoodadInfo> doodads(std::uint16_t tilesetId) const;
+
+    /// 두들이 덮는 타일 값들 (왼쪽 위부터 가로 순서).
+    std::vector<std::uint16_t> doodadTiles(std::uint16_t tilesetId, std::uint16_t doodadId) const;
+
     /// 한 타일의 지형 성질. 크립이 퍼질 수 있는지 판단하는 데 쓴다.
     struct TileTerrain
     {

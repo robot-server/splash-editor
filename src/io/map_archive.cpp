@@ -428,6 +428,131 @@ Result MapArchive::open(const std::string & filePath)
 
 // ---------------------------------------------------------------- 소리
 
+// ---------------------------------------------------------------- 두들
+
+std::vector<MapArchive::RawDoodad> MapArchive::doodads() const
+{
+    std::vector<RawDoodad> out;
+    if (!impl_->isOpen())
+        return out;
+
+    const MapFile & map = *impl_->mapFile;
+    try
+    {
+        const std::size_t count = map.numDoodads();
+        out.reserve(count);
+        for (std::size_t i = 0; i < count; ++i)
+        {
+            const Chk::Doodad & doodad = map.getDoodad(i);
+
+            RawDoodad raw;
+            raw.index = i;
+            raw.type = static_cast<std::uint16_t>(doodad.type);
+            raw.x = doodad.xc;
+            raw.y = doodad.yc;
+            raw.owner = doodad.owner;
+            raw.enabled = (doodad.enabled == Chk::Doodad::Enabled::Enabled);
+            out.push_back(raw);
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+    return out;
+}
+
+Result MapArchive::placeDoodad(const GameGraphics & graphics, std::uint16_t doodadId,
+                               int tileX, int tileY, std::uint8_t owner)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        const auto tileset = static_cast<std::uint16_t>(map.getTileset());
+        const auto list = graphics.doodads(tileset);
+        const auto found = std::find_if(list.begin(), list.end(),
+            [doodadId](const auto & entry) { return entry.id == doodadId; });
+
+        if (found == list.end())
+            return Result::failure("이 타일셋에 없는 두들입니다.");
+
+        const auto tiles = graphics.doodadTiles(tileset, doodadId);
+        if (tiles.empty())
+            return Result::failure("두들 타일을 읽지 못했습니다.");
+
+        const int width = found->tileWidth;
+        const int height = found->tileHeight;
+
+        const int mapWidth = static_cast<int>(map.getTileWidth());
+        const int mapHeight = static_cast<int>(map.getTileHeight());
+
+        // 두들은 놓는 자리를 가운데로 삼는다.
+        const int left = tileX - width / 2;
+        const int top = tileY - height / 2;
+
+        if (left < 0 || top < 0 || left + width > mapWidth || top + height > mapHeight)
+            return Result::failure("두들이 맵 밖으로 나갑니다.");
+
+        // 지형 타일부터 바꾼다 — 두들은 타일로 그려진다.
+        int actions = 0;
+        for (int y = 0; y < height; ++y)
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                const std::uint16_t tile = tiles[static_cast<std::size_t>(y) * width + x];
+                if (tile == 0)
+                    continue;
+
+                map.setTile(static_cast<std::size_t>(left + x),
+                            static_cast<std::size_t>(top + y), tile, Chk::Scope::Both);
+                actions += map.hasSection(Chk::SectionName::TILE) ? 2 : 1;
+            }
+        }
+
+        // DD2 에 항목을 남긴다. 좌표는 두들 한가운데의 픽셀이다.
+        Chk::Doodad doodad {};
+        doodad.type = Sc::Terrain::Doodad::Type(doodadId);
+        doodad.xc = static_cast<std::uint16_t>((left + width / 2.0) * kTilePixels);
+        doodad.yc = static_cast<std::uint16_t>((top + height / 2.0) * kTilePixels);
+        doodad.owner = owner;
+        doodad.enabled = Chk::Doodad::Enabled::Enabled;
+
+        map.addDoodad(doodad);
+        ++actions;
+
+        impl_->undoSteps.push_back(actions);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("두들을 놓지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+Result MapArchive::removeDoodad(std::size_t index)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    try
+    {
+        if (index >= impl_->mapFile->numDoodads())
+            return Result::failure("두들 번호가 범위를 벗어났습니다.");
+
+        impl_->mapFile->deleteDoodad(index);
+        impl_->undoSteps.push_back(1);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("두들을 지우지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 std::vector<MapArchive::MapSound> MapArchive::sounds(bool checkArchive) const
 {
     std::vector<MapSound> out;

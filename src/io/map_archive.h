@@ -532,6 +532,29 @@ public:
     /// 어느 플레이어가 이 브리핑을 보는지.
     Result setBriefingOwners(std::size_t index, const std::array<bool, 27> & owners);
 
+    // --- 두들 (DD2) ---
+
+    /// 맵에 놓인 두들 하나.
+    struct RawDoodad
+    {
+        std::size_t index = 0;
+        std::uint16_t type = 0;   ///< dddata.bin 번호
+        std::uint16_t x = 0;      ///< 중심 픽셀
+        std::uint16_t y = 0;
+        std::uint8_t owner = 0;
+        bool enabled = true;
+    };
+
+    std::vector<RawDoodad> doodads() const;
+
+    /// 두들을 놓는다. 지형 타일도 함께 바꾼다 — 두들은 타일로 그려진다.
+    Result placeDoodad(const GameGraphics & graphics, std::uint16_t doodadId,
+                       int tileX, int tileY, std::uint8_t owner = 0);
+
+    /// 두들 항목을 지운다. 지형 타일은 그대로 둔다 (무엇으로 되돌릴지
+    /// 알 수 없으므로, 지형은 따로 칠해야 한다).
+    Result removeDoodad(std::size_t index);
+
     // --- 소리 (WAV) ---
 
     /// 맵에 등록된 소리 하나.

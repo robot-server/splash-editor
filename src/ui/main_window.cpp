@@ -170,6 +170,8 @@ void MainWindow::buildCentralWidget()
                      int(MapView::TerrainMode::Rectangular));
     modeBox->addItem(tr("Subtile — 한 칸씩 정밀하게"),
                      int(MapView::TerrainMode::Subtile));
+    // 두들은 지형 모드가 아니라 따로 놓는 물체라 -1 로 구분한다.
+    modeBox->addItem(tr("두들 — 나무·바위 같은 지형 장식"), -1);
     modeBox->setCurrentIndex(1); // Rectangular
 
     tilePalette_ = new TilePalette(terrainPanel);
@@ -179,12 +181,30 @@ void MainWindow::buildCentralWidget()
     terrainLayout->addWidget(tilePalette_, 1);
 
     connect(modeBox, &QComboBox::currentIndexChanged, this, [this, modeBox](int) {
-        const auto mode = static_cast<MapView::TerrainMode>(modeBox->currentData().toInt());
+        const int value = modeBox->currentData().toInt();
+
+        if (value < 0)
+        {
+            tilePalette_->setDoodadMode(true);
+            mapView_->setTool(MapView::Tool::PlaceDoodad);
+            statusBar()->showMessage(tr("두들 — 팔레트에서 고르고 맵을 클릭하세요"), 4000);
+            return;
+        }
+
+        tilePalette_->setDoodadMode(false);
+
+        const auto mode = static_cast<MapView::TerrainMode>(value);
         mapView_->setTerrainMode(mode);
         mapView_->setTool(MapView::Tool::Terrain);
 
         // ISOM 은 지형 종류를 고르고, 나머지는 타일을 고른다.
         tilePalette_->setTerrainTypeMode(mode == MapView::TerrainMode::Isometric);
+    });
+
+    connect(tilePalette_, &TilePalette::doodadSelected, this, [this](std::uint16_t doodadId) {
+        mapView_->setPlacementDoodad(doodadId);
+        mapView_->setTool(MapView::Tool::PlaceDoodad);
+        statusBar()->showMessage(tr("두들을 골랐습니다 — 맵을 클릭하세요"), 3000);
     });
 
     connect(tilePalette_, &TilePalette::terrainTypeSelected, this,

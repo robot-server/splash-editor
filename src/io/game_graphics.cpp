@@ -121,9 +121,13 @@ bool GameGraphics::load(const std::string & installPath, std::string * error)
         fresh->cluster = std::make_shared<ArchiveCluster>(std::move(sources));
         fresh->scData = std::make_unique<Sc::Data>();
 
-        // statTxt 는 생략한다(기본값 nullptr). 두들 이름 표시에만 쓰이며
-        // 지형 픽셀을 그리는 데는 필요 없다.
-        if (!fresh->scData->terrain.load(*fresh->cluster, nullptr))
+        // 두들 이름이 stat_txt.tbl 에 있으므로 함께 넘긴다. 없으면
+        // 이름 없이 번호로만 보인다.
+        std::shared_ptr<Sc::TblFile> statTxt = std::make_shared<Sc::TblFile>();
+        if (!statTxt->load(*fresh->cluster, "rez\\stat_txt.tbl"))
+            statTxt.reset();
+
+        if (!fresh->scData->terrain.load(*fresh->cluster, statTxt))
         {
             // 일부 타일셋만 실패해도 false 가 나올 수 있다.
             // 하나라도 쓸 수 있으면 계속 진행하는 편이 낫다 — 실패 판정은
@@ -135,8 +139,7 @@ bool GameGraphics::load(const std::string & installPath, std::string * error)
         // 나머지는 그대로 쓸 수 있으므로 조용히 넘어간다.
         try
         {
-            auto statTxt = std::make_shared<Sc::TblFile>();
-            if (statTxt->load(*fresh->cluster, "rez\\stat_txt.tbl"))
+            if (statTxt)
                 fresh->scData->ai.load(*fresh->cluster, statTxt);
             else
                 fresh->scData->ai.load(*fresh->cluster);
@@ -534,6 +537,110 @@ bool GameGraphics::isCreepBuilding(std::uint16_t unitType) const
 
     const auto & dat = units.getUnit(Sc::Unit::Type(unitType));
     return (dat.flags & Sc::Unit::Flags::CreepBuilding) != 0;
+}
+
+namespace {
+
+/// CV5 의 두들 영역은 타일 그룹과 크기가 같은 다른 구조다. 같은 자리를
+/// 두들로 읽어야 크기와 이름을 알 수 있다.
+const Sc::Terrain::DoodadCv5 & asDoodad(const Sc::Terrain::TileGroup & group)
+{
+    return reinterpret_cast<const Sc::Terrain::DoodadCv5 &>(group);
+}
+
+} // namespace
+
+std::vector<GameGraphics::DoodadInfo> GameGraphics::doodads(std::uint16_t tilesetId) const
+{
+    std::vector<DoodadInfo> out;
+    if (!impl_->loaded)
+        return out;
+
+    const Sc::Terrain::Tiles & tiles = impl_->tiles(tilesetId);
+
+    // doodadIdToTileGroup 이 두들 번호와 시작 그룹을 이어 준다.
+    for (const auto & [doodadId, tileGroupIndex] : tiles.doodadIdToTileGroup)
+    {
+        if (tileGroupIndex >= tiles.tileGroups.size())
+            continue;
+
+        const auto & doodad = asDoodad(tiles.tileGroups[tileGroupIndex]);
+
+        DoodadInfo info;
+        info.id = static_cast<std::uint16_t>(doodadId);
+        info.tileWidth = doodad.tileWidth;
+        info.tileHeight = doodad.tileHeight;
+        info.startTileGroup = tileGroupIndex;
+
+        // 팔레트에는 두들의 첫 타일을 보여 준다.
+        info.previewTileId = static_cast<std::uint16_t>(tileGroupIndex * 16);
+
+        // 이름은 stat_txt.tbl 에서 온다. 묶음 목록에 이름이 들어 있다.
+        for (const auto & group : tiles.doodadGroups)
+        {
+            if (std::find(group.doodadStartTileGroup.begin(), group.doodadStartTileGroup.end(),
+                          tileGroupIndex) != group.doodadStartTileGroup.end())
+            {
+                info.name = group.name;
+                break;
+            }
+        }
+
+        if (info.name.empty())
+            info.name = "Doodad " + std::to_string(info.id);
+
+        if (info.tileWidth > 0 && info.tileHeight > 0)
+            out.push_back(std::move(info));
+    }
+
+    std::sort(out.begin(), out.end(), [](const DoodadInfo & a, const DoodadInfo & b) {
+        if (a.name != b.name)
+            return a.name < b.name;
+        return a.id < b.id;
+    });
+    return out;
+}
+
+std::vector<std::uint16_t> GameGraphics::doodadTiles(std::uint16_t tilesetId,
+                                                     std::uint16_t doodadId) const
+{
+    std::vector<std::uint16_t> out;
+    if (!impl_->loaded)
+        return out;
+
+    const Sc::Terrain::Tiles & tiles = impl_->tiles(tilesetId);
+
+    const auto found = tiles.doodadIdToTileGroup.find(doodadId);
+    if (found == tiles.doodadIdToTileGroup.end())
+        return out;
+
+    const std::uint16_t startGroup = found->second;
+    if (startGroup >= tiles.tileGroups.size())
+        return out;
+
+    const auto & doodad = asDoodad(tiles.tileGroups[startGroup]);
+    const int width = doodad.tileWidth;
+    const int height = doodad.tileHeight;
+    if (width <= 0 || height <= 0)
+        return out;
+
+    // 두들 타일은 시작 그룹부터 열여섯 개씩 이어 담긴다.
+    out.reserve(static_cast<std::size_t>(width) * height);
+    for (int y = 0; y < height; ++y)
+    {
+        for (int x = 0; x < width; ++x)
+        {
+            const int n = y * width + x;
+            const std::size_t group = static_cast<std::size_t>(startGroup) + n / 16;
+            if (group >= tiles.tileGroups.size())
+            {
+                out.push_back(0);
+                continue;
+            }
+            out.push_back(static_cast<std::uint16_t>(group * 16 + (n % 16)));
+        }
+    }
+    return out;
 }
 
 GameGraphics::TileTerrain GameGraphics::tileTerrain(std::uint16_t tilesetId,

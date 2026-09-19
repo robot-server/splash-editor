@@ -44,7 +44,7 @@ void TilePalette::setTilesetId(std::uint16_t tilesetId)
 {
     // 같은 타일셋이라도 목록이 비어 있으면 다시 만든다. 게임 데이터가 나중에
     // 로드되는 경우가 있어 한 번 비었다고 그대로 두면 영영 비어 있게 된다.
-    const bool empty = terrainTypeMode_ ? terrainTypes_.empty() : tiles_.empty();
+    const bool empty = listMode() ? terrainTypes_.empty() : tiles_.empty();
     if (tilesetId_ == tilesetId && !empty)
         return;
     tilesetId_ = tilesetId;
@@ -57,6 +57,16 @@ void TilePalette::setSelectedTile(std::uint16_t tileId)
         return;
     selectedTile_ = tileId;
     viewport()->update();
+}
+
+void TilePalette::setDoodadMode(bool on)
+{
+    if (doodadMode_ == on)
+        return;
+
+    doodadMode_ = on;
+    selectedTerrainRow_ = 0;
+    rebuild();
 }
 
 void TilePalette::setTerrainTypeMode(bool on)
@@ -76,7 +86,20 @@ void TilePalette::rebuild()
 
     if (tileset_ != nullptr && tileset_->isLoaded())
     {
-        if (terrainTypeMode_)
+        if (doodadMode_)
+        {
+            for (const auto & doodad : tileset_->doodads(tilesetId_))
+            {
+                TerrainEntry entry;
+                entry.doodadId = doodad.id;
+                entry.name = QString::fromStdString(doodad.name);
+                entry.detail = QStringLiteral("%1 x %2").arg(doodad.tileWidth).arg(doodad.tileHeight);
+                entry.previewTileId = doodad.previewTileId;
+                entry.hasPreview = true;
+                terrainTypes_.push_back(std::move(entry));
+            }
+        }
+        else if (terrainTypeMode_)
         {
             for (const auto & type : tileset_->terrainTypes(tilesetId_))
             {
@@ -103,9 +126,14 @@ int TilePalette::columns() const
     return std::max(1, viewport()->width() / kCell);
 }
 
+bool TilePalette::listMode() const
+{
+    return doodadMode_ || terrainTypeMode_;
+}
+
 void TilePalette::updateScrollRange()
 {
-    if (terrainTypeMode_)
+    if (listMode())
     {
         // 지형 종류는 한 줄에 하나씩 이름으로 보여 준다.
         const int rowHeight = 52;
@@ -158,13 +186,15 @@ void TilePalette::paintEvent(QPaintEvent * event)
     QPainter painter(viewport());
     painter.fillRect(event->rect(), kBackground);
 
-    if (terrainTypeMode_)
+    if (listMode())
     {
         if (terrainTypes_.empty())
         {
             painter.setPen(QColor(200, 200, 205));
             painter.drawText(viewport()->rect(), Qt::AlignCenter,
-                             tr("지형 종류를 보려면\nStarCraft 설치 폴더가 필요합니다."));
+                             doodadMode_
+                                 ? tr("두들을 보려면\nStarCraft 설치 폴더가 필요합니다.")
+                                 : tr("지형 종류를 보려면\nStarCraft 설치 폴더가 필요합니다."));
             return;
         }
 
@@ -199,6 +229,14 @@ void TilePalette::paintEvent(QPaintEvent * event)
             painter.setPen(selected ? QColor(150, 255, 170) : QColor(215, 215, 220));
             painter.drawText(row.adjusted(56, 0, -4, 0), Qt::AlignVCenter | Qt::AlignLeft,
                              entry.name);
+
+            // 두들은 크기를 함께 적어 둔다 — 자리를 가늠하는 데 쓴다.
+            if (!entry.detail.isEmpty())
+            {
+                painter.setPen(QColor(150, 150, 158));
+                painter.drawText(row.adjusted(0, 0, -8, 0), Qt::AlignVCenter | Qt::AlignRight,
+                                 entry.detail);
+            }
         }
         return;
     }
@@ -247,7 +285,7 @@ void TilePalette::paintEvent(QPaintEvent * event)
 
 void TilePalette::mousePressEvent(QMouseEvent * event)
 {
-    if (terrainTypeMode_)
+    if (listMode())
     {
         if (event->button() != Qt::LeftButton || terrainTypes_.empty())
             return;
@@ -259,7 +297,11 @@ void TilePalette::mousePressEvent(QMouseEvent * event)
             return;
 
         selectedTerrainRow_ = index;
-        emit terrainTypeSelected(terrainTypes_[static_cast<std::size_t>(index)].brushIndex);
+        const auto & entry = terrainTypes_[static_cast<std::size_t>(index)];
+        if (doodadMode_)
+            emit doodadSelected(entry.doodadId);
+        else
+            emit terrainTypeSelected(entry.brushIndex);
         viewport()->update();
         event->accept();
         return;

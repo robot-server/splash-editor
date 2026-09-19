@@ -270,6 +270,13 @@ public:
     bool moveCondition(std::size_t triggerIndex, std::size_t from, std::size_t to);
     bool moveAction(std::size_t triggerIndex, std::size_t from, std::size_t to);
 
+    // --- 두들 (DD2) ---
+
+    std::vector<io::MapArchive::RawDoodad> doodads() const;
+    bool placeDoodad(const io::GameGraphics & graphics, std::uint16_t doodadId,
+                     int tileX, int tileY, std::uint8_t owner = 0);
+    bool removeDoodad(std::size_t index);
+
     // --- 소리 (WAV) ---
 
     std::vector<io::MapArchive::MapSound> sounds(bool checkArchive = true) const;

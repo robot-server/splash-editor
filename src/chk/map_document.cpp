@@ -838,6 +838,34 @@ bool MapDocument::moveAction(std::size_t triggerIndex, std::size_t from, std::si
     return true;
 }
 
+std::vector<io::MapArchive::RawDoodad> MapDocument::doodads() const
+{
+    return archive_.doodads();
+}
+
+bool MapDocument::placeDoodad(const io::GameGraphics & graphics, std::uint16_t doodadId,
+                              int tileX, int tileY, std::uint8_t owner)
+{
+    const io::Result result = archive_.placeDoodad(graphics, doodadId, tileX, tileY, owner);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::removeDoodad(std::size_t index)
+{
+    const io::Result result = archive_.removeDoodad(index);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
 std::vector<io::MapArchive::MapSound> MapDocument::sounds(bool checkArchive) const
 {
     return archive_.sounds(checkArchive);
