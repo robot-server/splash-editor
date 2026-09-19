@@ -337,6 +337,7 @@ void MapView::paintEvent(QPaintEvent * event)
 
     paintPlacementPreview(painter);
     paintTerrainCursor(painter);
+    paintSelectionBox(painter);
 }
 
 const QVector<QPixmap> & MapView::creepTiles()
@@ -649,7 +650,11 @@ void MapView::paintUnits(QPainter & painter, const QRect & dirty)
     for (std::size_t index = 0; index < units.size(); ++index)
     {
         const auto & unit = units[index];
-        const bool isSelected = (static_cast<int>(index) == selectedUnit_);
+        // 여럿 고른 것 가운데 하나여도 고른 것으로 그린다.
+        const bool isSelected =
+            std::find(selectedUnits_.begin(), selectedUnits_.end(),
+                      static_cast<int>(index)) != selectedUnits_.end() ||
+            static_cast<int>(index) == selectedUnit_;
 
         // 드래그 중인 유닛은 손을 따라 움직이는 위치에 그린다.
         const int drawX = (isSelected && hasPreview_) ? previewPos_.x() : unit.x;
@@ -1716,12 +1721,73 @@ void MapView::centerOnMap(const QPointF & mapPos)
 
 void MapView::clearSelection()
 {
-    if (selectedUnit_ == -1 && selectedLocation_ == -1)
+    if (selectedUnit_ == -1 && selectedLocation_ == -1 && selectedUnits_.empty())
         return;
+    selectedUnits_.clear();
     selectedUnit_ = -1;
     selectedLocation_ = -1;
     emit selectionChanged(-1);
     viewport()->update();
+}
+
+void MapView::selectUnitsInBox(const QPointF & fromMap, const QPointF & toMap, bool add)
+{
+    if (document_ == nullptr)
+        return;
+
+    const QRectF box = QRectF(fromMap, toMap).normalized();
+
+    if (!add)
+        selectedUnits_.clear();
+
+    const auto & units = document_->units();
+    for (std::size_t i = 0; i < units.size(); ++i)
+    {
+        const auto & unit = units[i];
+
+        // 유닛이 차지하는 자리가 사각형에 걸치면 고른다 — 가운데만 보면
+        // 큰 건물을 걸쳐 끌었을 때 빠진다.
+        io::GameGraphics::UnitBounds bounds;
+        if (tileset_ != nullptr)
+            bounds = tileset_->unitBounds(unit.type);
+
+        const QRectF area(unit.x - bounds.left, unit.y - bounds.up,
+                          bounds.width(), bounds.height());
+        if (!box.intersects(area))
+            continue;
+
+        const int index = static_cast<int>(i);
+        if (std::find(selectedUnits_.begin(), selectedUnits_.end(), index) == selectedUnits_.end())
+            selectedUnits_.push_back(index);
+    }
+
+    selectedUnit_ = selectedUnits_.empty() ? -1 : selectedUnits_.back();
+    selectedLocation_ = -1;
+    emit selectionChanged(selectedUnit_);
+}
+
+void MapView::paintSelectionBox(QPainter & painter)
+{
+    if (!boxSelecting_)
+        return;
+
+    const double tile = scaledTileSize();
+    if (tile <= 0)
+        return;
+
+    const double scale = tile / io::kTilePixels;
+    const int originX = horizontalScrollBar()->value();
+    const int originY = verticalScrollBar()->value();
+
+    const QRectF box = QRectF(boxStart_, boxEnd_).normalized();
+    const QRectF onScreen(box.left() * scale - originX, box.top() * scale - originY,
+                          box.width() * scale, box.height() * scale);
+
+    painter.save();
+    painter.fillRect(onScreen, QColor(120, 200, 255, 40));
+    painter.setPen(QPen(QColor(120, 200, 255, 220), 1, Qt::DashLine));
+    painter.drawRect(onScreen);
+    painter.restore();
 }
 
 int MapView::locationAt(const QPointF & screenPos) const
@@ -1814,14 +1880,34 @@ void MapView::mousePressEvent(QMouseEvent * event)
 
         if (wasPlacing)
         {
+            // 놓거나 칠하던 것을 그만두고 선택 도구로 돌아간다.
             tool_ = Tool::Select;
             emit toolChanged(tool_);
-        }
-        else
-        {
-            clearSelection();
+            viewport()->update();
+            event->accept();
+            return;
         }
 
+        // 선택 도구에서는 누른 것을 집고 맥락 메뉴를 띄운다.
+        if (document_ != nullptr && document_->isOpen())
+        {
+            const int unitHit = unitAt(event->position());
+            const int locationHit = (unitHit >= 0) ? -1 : locationAt(event->position());
+
+            if (unitHit != selectedUnit_ || locationHit != selectedLocation_)
+            {
+                selectedUnit_ = unitHit;
+                selectedLocation_ = locationHit;
+                emit selectionChanged(unitHit);
+            }
+
+            viewport()->update();
+            emit contextMenuRequested(event->globalPosition().toPoint(), unitHit, locationHit);
+            event->accept();
+            return;
+        }
+
+        clearSelection();
         viewport()->update();
         event->accept();
         return;
@@ -1915,18 +2001,60 @@ void MapView::mousePressEvent(QMouseEvent * event)
     const int unitHit = unitAt(event->position());
     const int locationHit = (unitHit >= 0) ? -1 : locationAt(event->position());
 
-    if (unitHit != selectedUnit_ || locationHit != selectedLocation_)
-    {
-        selectedUnit_ = unitHit;
-        selectedLocation_ = locationHit;
-        emit selectionChanged(unitHit);
-    }
+    const bool adding = (event->modifiers() & Qt::ShiftModifier) != 0;
 
     if (unitHit >= 0)
     {
+        const auto found = std::find(selectedUnits_.begin(), selectedUnits_.end(), unitHit);
+        const bool already = found != selectedUnits_.end();
+
+        if (adding)
+        {
+            // Shift 로 누르면 고른 것에 넣거나 뺀다.
+            if (already)
+                selectedUnits_.erase(found);
+            else
+                selectedUnits_.push_back(unitHit);
+        }
+        else if (!already)
+        {
+            // 고르지 않은 것을 누르면 그것만 고른다. 이미 고른 것을
+            // 누르면 여럿 고른 채로 두어 함께 끌 수 있게 한다.
+            selectedUnits_.assign(1, unitHit);
+        }
+
+        selectedUnit_ = selectedUnits_.empty() ? -1 : selectedUnits_.back();
+        selectedLocation_ = -1;
+        emit selectionChanged(selectedUnit_);
+    }
+    else if (locationHit >= 0)
+    {
+        selectedUnits_.clear();
+        selectedUnit_ = -1;
+        selectedLocation_ = locationHit;
+        emit selectionChanged(-1);
+    }
+    else
+    {
+        // 빈 곳에서 누르면 끌어서 여럿 고르기를 시작한다.
+        if (!adding)
+        {
+            selectedUnits_.clear();
+            selectedUnit_ = -1;
+            selectedLocation_ = -1;
+            emit selectionChanged(-1);
+        }
+
+        boxSelecting_ = true;
+        boxStart_ = screenToMap(event->position());
+        boxEnd_ = boxStart_;
+    }
+
+    if (unitHit >= 0 && selectedUnit_ >= 0)
+    {
         dragging_ = true;
         dragStartMap_ = screenToMap(event->position());
-        const auto & unit = document_->units()[static_cast<std::size_t>(unitHit)];
+        const auto & unit = document_->units()[static_cast<std::size_t>(selectedUnit_)];
         dragStartUnitPos_ = QPoint(unit.x, unit.y);
     }
     else if (locationHit >= 0)
@@ -1953,6 +2081,7 @@ void MapView::mouseDoubleClickEvent(QMouseEvent * event)
     const int hit = unitAt(event->position());
     if (hit >= 0)
     {
+        selectedUnits_.assign(1, hit);
         selectedUnit_ = hit;
         selectedLocation_ = -1;
         emit selectionChanged(hit);
@@ -2025,6 +2154,14 @@ void MapView::mouseMoveEvent(QMouseEvent * event)
         else
             paintTerrainAt(event->position());
 
+        viewport()->update();
+        event->accept();
+        return;
+    }
+
+    if (boxSelecting_ && (event->buttons() & Qt::LeftButton))
+    {
+        boxEnd_ = screenToMap(event->position());
         viewport()->update();
         event->accept();
         return;
@@ -2157,6 +2294,23 @@ void MapView::mouseReleaseEvent(QMouseEvent * event)
         return;
     }
 
+    if (boxSelecting_)
+    {
+        boxSelecting_ = false;
+
+        // 거의 제자리에서 뗐으면 고르기가 아니라 빈 곳을 누른 것이다.
+        const QPointF delta = boxEnd_ - boxStart_;
+        if (std::abs(delta.x()) >= 4 || std::abs(delta.y()) >= 4)
+        {
+            selectUnitsInBox(boxStart_, boxEnd_,
+                             (event->modifiers() & Qt::ShiftModifier) != 0);
+        }
+
+        viewport()->update();
+        event->accept();
+        return;
+    }
+
     if (fogPainting_)
     {
         fogPainting_ = false;
@@ -2182,18 +2336,44 @@ void MapView::mouseReleaseEvent(QMouseEvent * event)
         if (selectedUnit_ >= 0)
         {
             const auto & unit = document_->units()[static_cast<std::size_t>(selectedUnit_)];
-            if (unit.x != previewPos_.x() || unit.y != previewPos_.y())
+            const int dx = previewPos_.x() - static_cast<int>(unit.x);
+            const int dy = previewPos_.y() - static_cast<int>(unit.y);
+
+            if (dx != 0 || dy != 0)
             {
                 if (!allowStack_ && unitWouldOverlap(unit.type, previewPos_.x(), previewPos_.y(),
                                                      selectedUnit_))
                 {
                     emit placementRejected(tr("그 자리에는 다른 유닛이 있습니다."));
                 }
-                else if (doc->moveUnit(static_cast<std::size_t>(selectedUnit_),
-                                       static_cast<std::uint16_t>(previewPos_.x()),
-                                       static_cast<std::uint16_t>(previewPos_.y())))
+                else
                 {
-                    emit documentEdited();
+                    // 여럿을 골랐으면 같은 거리만큼 함께 옮긴다.
+                    std::vector<int> targets = selectedUnits_;
+                    if (targets.empty())
+                        targets.push_back(selectedUnit_);
+
+                    bool moved = false;
+                    const auto & units = document_->units();
+                    for (int index : targets)
+                    {
+                        if (index < 0 || index >= static_cast<int>(units.size()))
+                            continue;
+
+                        const auto & target = units[static_cast<std::size_t>(index)];
+                        const int nextX = std::max(0, static_cast<int>(target.x) + dx);
+                        const int nextY = std::max(0, static_cast<int>(target.y) + dy);
+
+                        if (doc->moveUnit(static_cast<std::size_t>(index),
+                                          static_cast<std::uint16_t>(nextX),
+                                          static_cast<std::uint16_t>(nextY)))
+                        {
+                            moved = true;
+                        }
+                    }
+
+                    if (moved)
+                        emit documentEdited();
                 }
             }
         }
@@ -2260,13 +2440,30 @@ bool MapView::pasteAtCentre()
 
 bool MapView::deleteSelectedUnit()
 {
-    if (selectedUnit_ < 0 || document_ == nullptr || !document_->isOpen())
+    if (document_ == nullptr || !document_->isOpen())
         return false;
+
+    // 고른 것을 모두 지운다. 뒤에서부터 지워야 앞 번호가 밀리지 않는다.
+    std::vector<int> targets = selectedUnits_;
+    if (targets.empty() && selectedUnit_ >= 0)
+        targets.push_back(selectedUnit_);
+    if (targets.empty())
+        return false;
+
+    std::sort(targets.begin(), targets.end(), std::greater<int>());
 
     auto * doc = const_cast<chk::MapDocument *>(document_);
-    if (!doc->removeUnit(static_cast<std::size_t>(selectedUnit_)))
+    int removed = 0;
+    for (int index : targets)
+    {
+        if (index >= 0 && doc->removeUnit(static_cast<std::size_t>(index)))
+            ++removed;
+    }
+
+    if (removed == 0)
         return false;
 
+    selectedUnits_.clear();
     selectedUnit_ = -1;
     emit selectionChanged(-1);
     emit documentEdited();

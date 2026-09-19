@@ -399,6 +399,65 @@ void MainWindow::buildCentralWidget()
         statusBar()->showMessage(tr("플레이어 %1").arg(owner + 1), 2000);
     });
 
+    connect(mapView_, &MapView::contextMenuRequested, this,
+            [this](const QPoint & globalPos, int unitIndex, int locationIndex) {
+        QMenu menu(this);
+
+        if (unitIndex >= 0)
+        {
+            QAction * properties = menu.addAction(tr("유닛 속성…"));
+            connect(properties, &QAction::triggered, this, &MainWindow::onUnitProperties);
+
+            QAction * copy = menu.addAction(tr("복사"));
+            connect(copy, &QAction::triggered, this, [this] {
+                if (mapView_->copySelection())
+                    statusBar()->showMessage(tr("유닛을 복사했습니다"), 2000);
+            });
+
+            QAction * unlink = menu.addAction(tr("연결 끊기"));
+            unlink->setToolTip(tr("애드온·나이더스 연결을 끊습니다."));
+            connect(unlink, &QAction::triggered, this, [this, unitIndex] {
+                if (document().unlinkUnit(static_cast<std::size_t>(unitIndex)))
+                {
+                    mapView_->refreshUnits();
+                    onDocumentEdited();
+                    statusBar()->showMessage(tr("연결을 끊었습니다"), 2000);
+                }
+            });
+
+            menu.addSeparator();
+
+            QAction * remove = menu.addAction(tr("삭제"));
+            connect(remove, &QAction::triggered, this, &MainWindow::onDeleteSelection);
+        }
+        else if (locationIndex >= 0)
+        {
+            QAction * locations = menu.addAction(tr("로케이션 편집…"));
+            connect(locations, &QAction::triggered, this, [this] {
+                auto * editor = new LocationEditor(document(), this);
+                editor->setAttribute(Qt::WA_DeleteOnClose);
+                connect(editor, &LocationEditor::documentEdited, this, [this] {
+                    mapView_->refresh();
+                    onDocumentEdited();
+                });
+                editor->show();
+            });
+        }
+        else
+        {
+            QAction * paste = menu.addAction(tr("붙여넣기"));
+            connect(paste, &QAction::triggered, this, [this] {
+                if (mapView_->pasteAtCentre())
+                    statusBar()->showMessage(tr("유닛을 붙였습니다"), 2000);
+                else
+                    statusBar()->showMessage(tr("붙일 유닛이 없습니다"), 2000);
+            });
+        }
+
+        if (!menu.isEmpty())
+            menu.exec(globalPos);
+    });
+
     connect(mapView_, &MapView::toolChanged, this, [this](MapView::Tool tool) {
         if (tool == MapView::Tool::Select && selectToolAction_ != nullptr)
         {
@@ -1077,9 +1136,8 @@ QComboBox * makeTilesetBox(QWidget * parent, std::uint16_t current)
 
 void MainWindow::onNewMap()
 {
-    if (!confirmDiscardChanges())
-        return;
-
+    // 새 맵은 새 탭에 만든다. 열어 둔 맵을 밀어내지 않으므로 저장을
+    // 물을 이유가 없다 — 닫을 때 묻는다.
     QDialog dialog(this);
     dialog.setWindowTitle(tr("새 맵"));
 
@@ -1330,10 +1388,7 @@ void MainWindow::rebuildRecentMenu()
         // 메뉴에는 파일 이름만 보이고, 전체 경로는 툴팁으로 둔다.
         QAction * action = recentMenu_->addAction(QFileInfo(path).fileName());
         action->setToolTip(path);
-        connect(action, &QAction::triggered, this, [this, path] {
-            if (confirmDiscardChanges())
-                openPath(path);
-        });
+        connect(action, &QAction::triggered, this, [this, path] { openPath(path); });
     }
 
     recentMenu_->addSeparator();

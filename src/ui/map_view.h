@@ -63,7 +63,11 @@ public:
     void focusLocation(std::size_t index);
 
     /// 선택된 유닛 번호. 없으면 -1.
+    /// 마지막으로 고른 유닛. 여럿을 골랐으면 그 가운데 하나다.
     int selectedUnit() const { return selectedUnit_; }
+
+    /// 고른 유닛 전부 (마지막 것을 포함한다).
+    const std::vector<int> & selectedUnits() const { return selectedUnits_; }
 
     /// 선택된 로케이션 번호(표시 목록 기준). 없으면 -1.
     int selectedLocation() const { return selectedLocation_; }
@@ -100,6 +104,11 @@ signals:
 
     /// 숫자 키로 소유자를 바꿔 달라는 뜻 (0 부터).
     void ownerRequested(std::uint8_t owner);
+
+    /// 무언가를 오른쪽 단추로 눌렀다 — 맥락 메뉴를 띄우라는 뜻.
+    ///
+    /// unitIndex·locationIndex 는 눌린 것이 없으면 -1 이다.
+    void contextMenuRequested(const QPoint & globalPos, int unitIndex, int locationIndex);
 
     /// 도구가 바뀌었다 (우클릭으로 배치를 그만두는 경우 등).
     void toolChanged(Tool tool);
@@ -350,6 +359,7 @@ private:
     /// 커서 자리에 미리보기를 그린다.
     void paintPlacementPreview(QPainter & painter);
 
+public:
     /// 유닛·스프라이트만 바뀌었을 때 다시 그린다.
     ///
     /// 타일과 유닛 그림 캐시는 그대로 두고 크립만 다시 셈한다. 유닛을
@@ -364,6 +374,12 @@ private:
 
     /// 픽셀 좌표판. ISOM 처럼 픽셀로 다루는 것에 쓴다.
     std::vector<QPoint> mirrorPixels(int pixelX, int pixelY) const;
+
+    /// 고르는 사각형을 그린다.
+    void paintSelectionBox(QPainter & painter);
+
+    /// 그 사각형 안의 유닛을 모두 고른다.
+    void selectUnitsInBox(const QPointF & fromMap, const QPointF & toMap, bool add);
 
     /// 지형 브러시가 덮을 자리를 커서 둘레에 그린다.
     void paintTerrainCursor(QPainter & painter);
@@ -410,6 +426,14 @@ private:
 
     int selectedUnit_ = -1;
     int selectedLocation_ = -1;
+
+    /// 여럿 고르기. selectedUnit_ 은 이 가운데 마지막 것이다.
+    std::vector<int> selectedUnits_;
+
+    // 빈 곳에서 끌면 고르는 사각형이 된다.
+    bool boxSelecting_ = false;
+    QPointF boxStart_;   ///< 맵 좌표
+    QPointF boxEnd_;
 
     // 복사해 둔 유닛. 맵 사이에서도 붙일 수 있도록 값으로 들고 있는다.
     bool clipboardValid_ = false;
