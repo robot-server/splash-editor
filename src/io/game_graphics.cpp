@@ -46,6 +46,10 @@ struct GameGraphics::Impl
     // 명령 카드 아이콘과 업그레이드·기술 표. 설정 창을 열 때 처음 읽는다.
     mutable std::unique_ptr<Sc::Sprite::Grp> icons;
     mutable bool iconsLoaded = false;
+
+    // 아이콘은 지형이 아니라 게임 콘솔 팔레트를 쓴다.
+    mutable std::vector<Sc::SystemColor> iconPalette;
+    mutable bool iconPaletteLoaded = false;
     mutable bool upgradesLoaded = false;
     mutable bool techsLoaded = false;
 
@@ -1124,11 +1128,14 @@ UnitImage GameGraphics::renderIcon(std::uint16_t iconIndex, std::uint16_t tilese
             // 조립 함수를 쓴다.
             const std::string kIconPaths[] {
                 makeArchiveFilePath("unit\\cmdbtns", "cmdicons.grp"),
-                makeArchiveFilePath("unit\\cmdbtns", "cmdicons.GRP"),
+                makeArchiveFilePath("unit\\cmdicons", "cmdicons.grp"),
                 makeArchiveFilePath("game", "cmdicons.grp"),
                 makeArchiveFilePath("unit\\cmdbtns", "icons.grp"),
                 "unit\\cmdbtns\\cmdicons.grp",
                 "unit/cmdbtns/cmdicons.grp",
+                "SD/unit/cmdbtns/cmdicons.grp",
+                "sd/unit/cmdbtns/cmdicons.grp",
+                "unit\\cmdbtns\\cmdicons.pcx",
             };
 
             // Grp::load 는 파일이 없어도 참을 돌려주므로(빈 데이터를 그대로
@@ -1153,8 +1160,34 @@ UnitImage GameGraphics::renderIcon(std::uint16_t iconIndex, std::uint16_t tilese
         if (iconIndex >= grp.numFrames)
             return out;
 
+        // 아이콘 색은 콘솔 팔레트에서 온다. 지형 팔레트로 그리면 보라빛이
+        // 도는 엉뚱한 색이 되므로, 콘솔 팔레트를 먼저 찾아보고 없을 때만
+        // 지형 팔레트로 물러선다.
+        if (!impl_->iconPaletteLoaded)
+        {
+            impl_->iconPaletteLoaded = true;
+            const std::string kPalettePaths[] {
+                makeArchiveFilePath("game", "tconsole.pcx"),
+                makeArchiveFilePath("game", "tunit.pcx"),
+                "game\\tconsole.pcx",
+            };
+            for (const std::string & path : kPalettePaths)
+            {
+                Sc::Pcx pcx;
+                if (pcx.load(*impl_->cluster, path) && pcx.bgraPalette.size() >= Sc::NumColors)
+                {
+                    impl_->iconPalette = pcx.bgraPalette;
+                    break;
+                }
+            }
+        }
+
         const Sc::Terrain::Tiles & tiles = impl_->scData->terrain.get(Sc::Terrain::Tileset(tilesetId & 7));
-        const auto & palette = tiles.systemColorPalette;
+        const std::vector<Sc::SystemColor> & palette =
+            impl_->iconPalette.size() >= Sc::NumColors
+                ? impl_->iconPalette
+                : std::vector<Sc::SystemColor>(tiles.systemColorPalette.begin(),
+                                               tiles.systemColorPalette.end());
 
         const Sc::Sprite::GrpFrameHeader & header = grp.frameHeaders[iconIndex];
         out.width = header.frameWidth;

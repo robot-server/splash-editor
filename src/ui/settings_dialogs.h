@@ -18,6 +18,7 @@ class QSpinBox;
 class QTableWidget;
 
 namespace splash::chk { class MapDocument; }
+namespace splash::io  { class GameGraphics; }
 
 namespace splash::ui {
 
@@ -27,7 +28,8 @@ class UnitSettingsDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit UnitSettingsDialog(chk::MapDocument & document, QWidget * parent = nullptr);
+    UnitSettingsDialog(chk::MapDocument & document, io::GameGraphics & graphics,
+                        QWidget * parent = nullptr);
 
 signals:
     void documentEdited();
@@ -39,6 +41,7 @@ private:
     void updateEnabled();
 
     chk::MapDocument & document_;
+    io::GameGraphics & graphics_;
 
     QLineEdit * filter_ = nullptr;
     QListWidget * list_ = nullptr;
@@ -62,7 +65,8 @@ class UpgradeSettingsDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit UpgradeSettingsDialog(chk::MapDocument & document, QWidget * parent = nullptr);
+    UpgradeSettingsDialog(chk::MapDocument & document, io::GameGraphics & graphics,
+                           QWidget * parent = nullptr);
 
 signals:
     void documentEdited();
@@ -73,6 +77,7 @@ private:
     void updateEnabled();
 
     chk::MapDocument & document_;
+    io::GameGraphics & graphics_;
 
     QListWidget * list_ = nullptr;
     QCheckBox * useDefault_ = nullptr;
@@ -96,7 +101,8 @@ class TechSettingsDialog : public QDialog
     Q_OBJECT
 
 public:
-    explicit TechSettingsDialog(chk::MapDocument & document, QWidget * parent = nullptr);
+    TechSettingsDialog(chk::MapDocument & document, io::GameGraphics & graphics,
+                        QWidget * parent = nullptr);
 
 signals:
     void documentEdited();
@@ -107,6 +113,7 @@ private:
     void updateEnabled();
 
     chk::MapDocument & document_;
+    io::GameGraphics & graphics_;
 
     QListWidget * list_ = nullptr;
     QCheckBox * useDefault_ = nullptr;

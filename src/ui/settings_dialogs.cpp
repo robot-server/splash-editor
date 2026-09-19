@@ -1,8 +1,12 @@
 #include "ui/settings_dialogs.h"
 
 #include "chk/map_document.h"
+#include "io/game_graphics.h"
 
 #include <QCheckBox>
+#include <QIcon>
+#include <QImage>
+#include <QPixmap>
 #include <QDialogButtonBox>
 #include <QFormLayout>
 #include <QGroupBox>
@@ -77,12 +81,30 @@ int levelOf(const QTableWidget * table, int row, int column, int maximum)
     return std::clamp(value, 0, maximum);
 }
 
+/// UnitImage 를 목록에 넣을 아이콘으로.
+QIcon toIcon(const io::UnitImage & image, int box = 32)
+{
+    if (image.width <= 0 || image.height <= 0 || image.rgba.empty())
+        return QIcon();
+
+    QImage picture(image.rgba.data(), image.width, image.height,
+                   image.width * 4, QImage::Format_RGBA8888);
+
+    // 원본을 그대로 두고 복사본을 쓴다 — rgba 는 곧 사라진다.
+    QPixmap pixmap = QPixmap::fromImage(picture.copy());
+    if (pixmap.width() > box || pixmap.height() > box)
+        pixmap = pixmap.scaled(box, box, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+    return QIcon(pixmap);
+}
+
 } // namespace
 
 // ---------------------------------------------------------------- 유닛
 
-UnitSettingsDialog::UnitSettingsDialog(chk::MapDocument & document, QWidget * parent)
-    : QDialog(parent), document_(document)
+UnitSettingsDialog::UnitSettingsDialog(chk::MapDocument & document, io::GameGraphics & graphics,
+                                        QWidget * parent)
+    : QDialog(parent), document_(document), graphics_(graphics)
 {
     setWindowTitle(tr("유닛 설정"));
     resize(860, 620);
@@ -96,6 +118,7 @@ UnitSettingsDialog::UnitSettingsDialog(chk::MapDocument & document, QWidget * pa
     filter_ = new QLineEdit(this);
     filter_->setPlaceholderText(tr("유닛 이름으로 거르기"));
     list_ = new QListWidget(this);
+    list_->setIconSize(QSize(32, 32));
     left->addWidget(filter_);
     left->addWidget(list_, 1);
     columns->addLayout(left, 1);
@@ -188,6 +211,11 @@ void UnitSettingsDialog::reloadList()
 
         auto * item = new QListWidgetItem(QStringLiteral("%1  %2").arg(type, 3).arg(name));
         item->setData(Qt::UserRole, type);
+
+        // 실제 유닛 그림을 보여 준다 — 아이콘보다 알아보기 쉽다.
+        if (graphics_.hasUnitGraphics())
+            item->setIcon(toIcon(graphics_.renderUnit(type, 0, 4, 1500)));
+
         list_->addItem(item);
     }
     loading_ = false;
@@ -265,8 +293,9 @@ void UnitSettingsDialog::commitPending()
 
 // ---------------------------------------------------------- 업그레이드
 
-UpgradeSettingsDialog::UpgradeSettingsDialog(chk::MapDocument & document, QWidget * parent)
-    : QDialog(parent), document_(document)
+UpgradeSettingsDialog::UpgradeSettingsDialog(chk::MapDocument & document, io::GameGraphics & graphics,
+                                              QWidget * parent)
+    : QDialog(parent), document_(document), graphics_(graphics)
 {
     setWindowTitle(tr("업그레이드 설정"));
     resize(860, 620);
@@ -276,12 +305,17 @@ UpgradeSettingsDialog::UpgradeSettingsDialog(chk::MapDocument & document, QWidge
     outer->addLayout(columns, 1);
 
     list_ = new QListWidget(this);
+    list_->setIconSize(QSize(32, 32));
     for (std::size_t type = 0; type < io::upgradeTypeCount(); ++type)
     {
+        const auto value = static_cast<std::uint16_t>(type);
         auto * item = new QListWidgetItem(QStringLiteral("%1  %2")
-            .arg(type, 2).arg(QString::fromStdString(io::upgradeTypeName(
-                static_cast<std::uint16_t>(type)))));
+            .arg(type, 2).arg(QString::fromStdString(io::upgradeTypeName(value))));
         item->setData(Qt::UserRole, static_cast<int>(type));
+
+        if (graphics_.isLoaded())
+            item->setIcon(toIcon(graphics_.renderIcon(graphics_.upgradeIcon(value), 4)));
+
         list_->addItem(item);
     }
     columns->addWidget(list_, 1);
@@ -436,8 +470,9 @@ void UpgradeSettingsDialog::commitPending()
 
 // ---------------------------------------------------------------- 기술
 
-TechSettingsDialog::TechSettingsDialog(chk::MapDocument & document, QWidget * parent)
-    : QDialog(parent), document_(document)
+TechSettingsDialog::TechSettingsDialog(chk::MapDocument & document, io::GameGraphics & graphics,
+                                        QWidget * parent)
+    : QDialog(parent), document_(document), graphics_(graphics)
 {
     setWindowTitle(tr("기술 설정"));
     resize(860, 560);
@@ -447,12 +482,17 @@ TechSettingsDialog::TechSettingsDialog(chk::MapDocument & document, QWidget * pa
     outer->addLayout(columns, 1);
 
     list_ = new QListWidget(this);
+    list_->setIconSize(QSize(32, 32));
     for (std::size_t type = 0; type < io::techTypeCount(); ++type)
     {
+        const auto value = static_cast<std::uint16_t>(type);
         auto * item = new QListWidgetItem(QStringLiteral("%1  %2")
-            .arg(type, 2).arg(QString::fromStdString(io::techTypeName(
-                static_cast<std::uint16_t>(type)))));
+            .arg(type, 2).arg(QString::fromStdString(io::techTypeName(value))));
         item->setData(Qt::UserRole, static_cast<int>(type));
+
+        if (graphics_.isLoaded())
+            item->setIcon(toIcon(graphics_.renderIcon(graphics_.techIcon(value), 4)));
+
         list_->addItem(item);
     }
     columns->addWidget(list_, 1);

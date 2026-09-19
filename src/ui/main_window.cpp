@@ -533,7 +533,7 @@ void MainWindow::buildMenus()
             statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
             return;
         }
-        UnitSettingsDialog dialog(document_, this);
+        UnitSettingsDialog dialog(document_, tileset_, this);
         connect(&dialog, &UnitSettingsDialog::documentEdited, this, [this] { onDocumentEdited(); });
         dialog.exec();
     });
@@ -545,7 +545,7 @@ void MainWindow::buildMenus()
             statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
             return;
         }
-        UpgradeSettingsDialog dialog(document_, this);
+        UpgradeSettingsDialog dialog(document_, tileset_, this);
         connect(&dialog, &UpgradeSettingsDialog::documentEdited, this, [this] { onDocumentEdited(); });
         dialog.exec();
     });
@@ -557,7 +557,7 @@ void MainWindow::buildMenus()
             statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
             return;
         }
-        TechSettingsDialog dialog(document_, this);
+        TechSettingsDialog dialog(document_, tileset_, this);
         connect(&dialog, &TechSettingsDialog::documentEdited, this, [this] { onDocumentEdited(); });
         dialog.exec();
     });
