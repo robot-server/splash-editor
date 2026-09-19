@@ -2236,7 +2236,9 @@ void MapView::mouseMoveEvent(QMouseEvent * event)
         return;
     }
 
-    if (!dragging_ || document_ == nullptr ||
+    // 왼쪽 단추를 누른 채일 때만 끈다. 단추를 뗀 뒤에도 끌리면 고른 것이
+    // 커서를 따라다닌다.
+    if (!dragging_ || !(event->buttons() & Qt::LeftButton) || document_ == nullptr ||
         (selectedUnit_ < 0 && selectedLocation_ < 0))
     {
         QAbstractScrollArea::mouseMoveEvent(event);
@@ -2295,12 +2297,6 @@ void MapView::mouseReleaseEvent(QMouseEvent * event)
         return;
     }
 
-    if (!dragging_)
-    {
-        QAbstractScrollArea::mouseReleaseEvent(event);
-        return;
-    }
-
     if (boxSelecting_)
     {
         boxSelecting_ = false;
@@ -2331,6 +2327,12 @@ void MapView::mouseReleaseEvent(QMouseEvent * event)
         dragSoundPlayed_ = false;
         lastPlaced_ = QPoint(-1, -1);
         event->accept();
+        return;
+    }
+
+    if (!dragging_)
+    {
+        QAbstractScrollArea::mouseReleaseEvent(event);
         return;
     }
 
@@ -2514,6 +2516,36 @@ bool MapView::deleteSelectedUnit()
     emit documentEdited();
     refreshUnits(); // 저그 건물을 지웠다면 크립도 달라진다
     return true;
+}
+
+void MapView::leaveEvent(QEvent * event)
+{
+    // 커서가 창을 벗어나면 미리보기를 지운다. 끌던 것은 단추를 뗄 때
+    // 정리되므로 건드리지 않는다.
+    if (hasHover_)
+    {
+        hasHover_ = false;
+        viewport()->update();
+    }
+
+    QAbstractScrollArea::leaveEvent(event);
+}
+
+void MapView::focusOutEvent(QFocusEvent * event)
+{
+    // 다른 창으로 옮겨 가면 끌던 것을 그만둔다 — 단추를 뗀 사건을
+    // 놓쳐 상태가 남으면 고른 것이 커서를 따라다닌다.
+    boxSelecting_ = false;
+    dragging_ = false;
+    painting_ = false;
+    isomPainting_ = false;
+    fogPainting_ = false;
+    placingDrag_ = false;
+    hasPreview_ = false;
+    hasHover_ = false;
+
+    viewport()->update();
+    QAbstractScrollArea::focusOutEvent(event);
 }
 
 void MapView::keyPressEvent(QKeyEvent * event)
