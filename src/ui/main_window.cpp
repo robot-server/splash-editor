@@ -6,6 +6,7 @@
 #include "ui/sound_player.h"
 #include "ui/briefing_editor.h"
 #include "ui/code_editor_pane.h"
+#include "ui/location_editor.h"
 #include "ui/settings_dialogs.h"
 #include "ui/sound_editor.h"
 #include "ui/string_editor.h"
@@ -197,7 +198,7 @@ void MainWindow::buildCentralWidget()
     paletteDock_->setWidget(terrainPanel);
     paletteDock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     addDockWidget(Qt::LeftDockWidgetArea, paletteDock_);
-    paletteDock_->hide(); // 지형 도구를 고를 때 열린다
+    paletteDock_->show(); // 타일을 고르는 곳이라 열어 둔다
 
     // 팔레트에서 타일을 고르면 브러시가 되고, 지형 도구로 넘어간다.
     connect(tilePalette_, &TilePalette::tileSelected, this, [this](std::uint16_t tileId) {
@@ -247,7 +248,8 @@ void MainWindow::buildCentralWidget()
     unitDock_->setWidget(unitPanel);
     unitDock_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
     addDockWidget(Qt::LeftDockWidgetArea, unitDock_);
-    unitDock_->hide();
+    // 팔레트는 열어 둔다 — 놓을 것을 고르는 곳이라 늘 쓰인다.
+    unitDock_->show();
 
     connect(ownerBox, &QComboBox::currentIndexChanged, this, [this, ownerBox](int) {
         const auto owner = static_cast<std::uint8_t>(ownerBox->currentData().toInt());
@@ -582,6 +584,27 @@ void MainWindow::buildMenus()
         TechSettingsDialog dialog(document_, tileset_, this);
         connect(&dialog, &TechSettingsDialog::documentEdited, this, [this] { onDocumentEdited(); });
         dialog.exec();
+    });
+
+    QAction * locationAction = scenarioMenu->addAction(tr("로케이션(&L)…"));
+    connect(locationAction, &QAction::triggered, this, [this] {
+        if (!document_.isOpen())
+        {
+            statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
+            return;
+        }
+        auto * editor = new LocationEditor(document_, this);
+        editor->setAttribute(Qt::WA_DeleteOnClose);
+        connect(editor, &LocationEditor::documentEdited, this, [this] {
+            mapView_->refresh();
+            onDocumentEdited();
+        });
+        connect(editor, &LocationEditor::locationFocused, this, [this](std::size_t index) {
+            // 고른 로케이션이 보이도록 화면을 옮기고 표시를 켠다.
+            mapView_->setLocationsVisible(true);
+            mapView_->focusLocation(index);
+        });
+        editor->show();
     });
 
     QAction * soundSettingsAction = scenarioMenu->addAction(tr("소리 설정(&S)…"));

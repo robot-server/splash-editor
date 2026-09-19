@@ -74,6 +74,7 @@ struct MapLocation
     std::uint32_t bottom = 0;
     std::string name;
     std::size_t index = 0;
+    std::uint16_t elevationFlags = 0; ///< Chk::Location::Elevation 비트
 };
 
 /// 플레이어 색 (0-11). 표준 8색 + 중립.

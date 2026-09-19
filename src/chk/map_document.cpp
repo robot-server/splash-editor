@@ -1193,6 +1193,7 @@ void MapDocument::refreshInfo()
         location.bottom = std::max(raw.top, raw.bottom);
         location.name   = raw.name;
         location.index  = raw.index;
+        location.elevationFlags = raw.elevationFlags;
         locations_.push_back(std::move(location));
     }
 

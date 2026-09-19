@@ -844,6 +844,25 @@ void MapView::autoLinkPlaced(std::size_t placedIndex)
     if (!placedClass.addon)
         return;
 
+    // 애드온마다 붙을 수 있는 건물이 정해져 있다. 게임 규칙이라 자료에
+    // 없어 표로 적어 둔다 — 아무 건물에나 붙이면 게임이 이상하게 읽는다.
+    const auto hostFor = [](std::uint16_t addonType) -> std::uint16_t {
+        switch (addonType)
+        {
+            case 107: return 106; // 콤샛 스테이션 <- 커맨드 센터
+            case 108: return 106; // 핵 사일로     <- 커맨드 센터
+            case 115: return 114; // 컨트롤 타워   <- 스타포트
+            case 117: return 116; // 코버트 옵스   <- 사이언스 퍼실리티
+            case 118: return 116; // 피직스 랩     <- 사이언스 퍼실리티
+            case 120: return 113; // 머신 숍       <- 팩토리
+            default:  return 0;
+        }
+    };
+
+    const std::uint16_t hostType = hostFor(placed.type);
+    if (hostType == 0)
+        return;
+
     const auto placedBounds = tileset_->unitBounds(placed.type);
     const int placedLeft = static_cast<int>(placed.x) - placedBounds.left;
     const int placedTop = static_cast<int>(placed.y) - placedBounds.up;
@@ -858,8 +877,7 @@ void MapView::autoLinkPlaced(std::size_t placedIndex)
             continue;
 
         const auto & other = units[i];
-        const auto otherClass = tileset_->unitClass(other.type);
-        if (!otherClass.building || otherClass.addon || other.relationFlags != 0)
+        if (other.type != hostType || other.relationFlags != 0)
             continue;
 
         const auto otherBounds = tileset_->unitBounds(other.type);
@@ -885,6 +903,25 @@ void MapView::autoLinkPlaced(std::size_t placedIndex)
 
     if (best >= 0 && doc->linkUnits(static_cast<std::size_t>(best), placedIndex, /*addon*/ true))
         emit documentEdited();
+}
+
+void MapView::focusLocation(std::size_t index)
+{
+    if (document_ == nullptr)
+        return;
+
+    const auto & locations = document_->locations();
+    if (index >= locations.size())
+        return;
+
+    const auto & location = locations[index];
+    centerOnMap(QPointF((location.left + location.right) / 2.0,
+                        (location.top + location.bottom) / 2.0));
+
+    selectedLocation_ = static_cast<int>(index);
+    selectedUnit_ = -1;
+    emit selectionChanged(-1);
+    viewport()->update();
 }
 
 void MapView::setUnitLinksVisible(bool visible)

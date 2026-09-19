@@ -58,6 +58,9 @@ public:
     /// 그 지점이 화면 가운데 오도록 옮긴다(맵 픽셀 좌표).
     void centerOnMap(const QPointF & mapPos);
 
+    /// 그 로케이션이 보이도록 화면을 옮기고 고른 상태로 만든다.
+    void focusLocation(std::size_t index);
+
     /// 선택된 유닛 번호. 없으면 -1.
     int selectedUnit() const { return selectedUnit_; }
 
