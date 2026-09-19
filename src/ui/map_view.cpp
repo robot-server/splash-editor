@@ -863,13 +863,16 @@ void MapView::autoLinkPlaced(std::size_t placedIndex)
     if (hostType == 0)
         return;
 
-    const auto placedBounds = tileset_->unitBounds(placed.type);
-    const int placedLeft = static_cast<int>(placed.x) - placedBounds.left;
-    const int placedTop = static_cast<int>(placed.y) - placedBounds.up;
-    const int placedBottom = static_cast<int>(placed.y) + placedBounds.down;
+    // 애드온이 붙는 자리는 정해져 있다 — 본체 배치 상자의 오른쪽에 붙고
+    // 바닥이 맞는다. units.dat 의 애드온 오프셋은 비어 있어(게임이 자리를
+    // 직접 안다) 배치 상자로 셈한다.
+    const auto addonBox = tileset_->placementBox(placed.type);
+    if (addonBox.width <= 0 || addonBox.height <= 0)
+        return;
 
     int best = -1;
-    int bestGap = std::numeric_limits<int>::max();
+    QPoint bestSpot;
+    int bestDistance = std::numeric_limits<int>::max();
 
     for (std::size_t i = 0; i < units.size(); ++i)
     {
@@ -880,28 +883,47 @@ void MapView::autoLinkPlaced(std::size_t placedIndex)
         if (other.type != hostType || other.relationFlags != 0)
             continue;
 
-        const auto otherBounds = tileset_->unitBounds(other.type);
-        const int otherRight = static_cast<int>(other.x) + otherBounds.right;
-        const int otherTop = static_cast<int>(other.y) - otherBounds.up;
-        const int otherBottom = static_cast<int>(other.y) + otherBounds.down;
-
-        // 애드온은 본체의 오른쪽에 붙는다. 세로로 겹치고 가로로 맞닿은
-        // 건물만 후보로 삼는다.
-        if (otherBottom < placedTop || otherTop > placedBottom)
+        const auto hostBox = tileset_->placementBox(other.type);
+        if (hostBox.width <= 0 || hostBox.height <= 0)
             continue;
 
-        const int gap = placedLeft - otherRight;
-        if (gap < -io::kTilePixels || gap > io::kTilePixels)
+        // 본체 배치 상자의 왼쪽 위.
+        const int hostLeft = static_cast<int>(other.x) - hostBox.width / 2;
+        const int hostTop = static_cast<int>(other.y) - hostBox.height / 2;
+
+        // 애드온 상자의 왼쪽 위는 본체 오른쪽, 바닥 맞춤이다.
+        const int addonLeft = hostLeft + hostBox.width;
+        const int addonTop = hostTop + (hostBox.height - addonBox.height);
+
+        const QPoint spot(addonLeft + addonBox.width / 2, addonTop + addonBox.height / 2);
+
+        // 그 자리에서 얼마나 떨어져 놓았는지. 두 타일 넘게 벗어나면
+        // 붙이려던 것이 아니라고 본다.
+        const int dx = std::abs(spot.x() - static_cast<int>(placed.x));
+        const int dy = std::abs(spot.y() - static_cast<int>(placed.y));
+        if (dx > io::kTilePixels * 2 || dy > io::kTilePixels * 2)
             continue;
 
-        if (std::abs(gap) < bestGap)
+        if (dx + dy < bestDistance)
         {
-            bestGap = std::abs(gap);
+            bestDistance = dx + dy;
             best = static_cast<int>(i);
+            bestSpot = spot;
         }
     }
 
-    if (best >= 0 && doc->linkUnits(static_cast<std::size_t>(best), placedIndex, /*addon*/ true))
+    if (best < 0)
+        return;
+
+    // 자리를 정확히 맞춘 뒤 잇는다 — 어긋난 채로 이으면 게임에서 애드온이
+    // 붙지 않는다.
+    if (bestSpot.x() != static_cast<int>(placed.x) || bestSpot.y() != static_cast<int>(placed.y))
+    {
+        doc->moveUnit(placedIndex, static_cast<std::uint16_t>(std::max(0, bestSpot.x())),
+                      static_cast<std::uint16_t>(std::max(0, bestSpot.y())));
+    }
+
+    if (doc->linkUnits(static_cast<std::size_t>(best), placedIndex, /*addon*/ true))
         emit documentEdited();
 }
 

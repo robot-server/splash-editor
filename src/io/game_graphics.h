@@ -142,6 +142,7 @@ public:
     };
     PlacementBox placementBox(std::uint16_t unitType) const;
 
+
     /// 이 유닛이 크립을 만드는 저그 건물인지 (units.dat 의 CreepBuilding 특성).
     bool isCreepBuilding(std::uint16_t unitType) const;
 
