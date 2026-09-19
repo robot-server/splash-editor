@@ -1027,6 +1027,56 @@ std::string describeOwners(const Chk::Trigger & trigger)
 
 } // namespace
 
+std::vector<MapString> MapArchive::strings() const
+{
+    std::vector<MapString> out;
+    if (!impl_->isOpen())
+        return out;
+
+    const MapFile & map = *impl_->mapFile;
+    try
+    {
+        const std::size_t capacity = map.getCapacity();
+        for (std::size_t id = 1; id <= capacity; ++id)
+        {
+            if (!map.stringStored(id))
+                continue;
+
+            auto text = map.getString<RawString>(id);
+            if (!text)
+                continue;
+
+            MapString entry;
+            entry.id = id;
+            entry.text = *text;
+            entry.used = map.stringUsed(id);
+            out.push_back(std::move(entry));
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+    return out;
+}
+
+Result MapArchive::setString(std::size_t stringId, const std::string & text)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    try
+    {
+        impl_->mapFile->replaceString(stringId, RawString(text));
+        impl_->undoSteps.push_back(1);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("문자열을 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 std::vector<PlayerSetting> MapArchive::playerSettings() const
 {
     std::vector<PlayerSetting> out;

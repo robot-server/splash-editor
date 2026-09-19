@@ -453,6 +453,20 @@ std::string MapDocument::fileName() const
     return std::filesystem::path(filePath_).filename().string();
 }
 
+std::vector<io::MapString> MapDocument::strings() const
+{
+    return archive_.strings();
+}
+
+bool MapDocument::setString(std::size_t stringId, const std::string & text)
+{
+    const io::Result result = archive_.setString(stringId, text);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true; ++undoDepth_; redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
 std::vector<io::PlayerSetting> MapDocument::playerSettings() const
 {
     return archive_.playerSettings();

@@ -184,6 +184,11 @@ public:
     /// 창 제목 등에 쓸 이름. 열려 있지 않으면 빈 문자열.
     std::string fileName() const;
 
+    // --- 문자열 ---
+
+    std::vector<io::MapString> strings() const;
+    bool setString(std::size_t stringId, const std::string & text);
+
     // --- 플레이어 ---
 
     std::vector<io::PlayerSetting> playerSettings() const;

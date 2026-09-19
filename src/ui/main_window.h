@@ -53,6 +53,7 @@ private slots:
     void onMapProperties();
     void onUnitProperties();
     void onPlayerSettings();
+    void onStringEditor();
 
 private:
     void buildMenus();

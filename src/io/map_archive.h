@@ -97,6 +97,14 @@ struct RawLocation
     std::size_t index = 0;        ///< MRGN 인덱스 (1-based 로 쓰이는 번호)
 };
 
+/// 맵에 든 문자열 하나.
+struct MapString
+{
+    std::size_t id = 0;
+    std::string text;
+    bool used = false; ///< 어딘가에서 쓰이고 있는지
+};
+
 /// 플레이어 슬롯 하나의 설정.
 struct PlayerSetting
 {
@@ -285,6 +293,12 @@ public:
     /// 유닛·업그레이드 이름표가 필요해서 게임 데이터(GameGraphics)를 받는다.
     /// 그것이 준비되지 않았으면 빈 값을 돌려준다.
     std::optional<std::string> triggerText(const GameGraphics & graphics) const;
+
+    /// 맵의 문자열 목록. 비어 있는 자리는 건너뛴다.
+    std::vector<MapString> strings() const;
+
+    /// 문자열 하나를 바꾼다.
+    Result setString(std::size_t stringId, const std::string & text);
 
     /// 플레이어 12칸의 설정.
     std::vector<PlayerSetting> playerSettings() const;
