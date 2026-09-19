@@ -25,6 +25,7 @@ StarCraft: Brood War / Remastered 맵 에디터. Windows · macOS · Linux.
 - **유닛 편집** — 클릭 선택, 드래그 이동, 삭제, 실행 취소/다시 실행
 - **로케이션 편집** — 클릭 선택, 드래그 이동
 - **지형 편집** — 타일 브러시(1~8칸), Alt+클릭으로 타일 집기
+- **트리거 보기** — SCMDraft 형식의 텍스트 트리거
 
 ## 아직 안 되는 것
 
@@ -131,6 +132,7 @@ cmake --build build --config RelWithDebInfo
 | 실행 취소 / 다시 실행 | `⌘Z` / `⇧⌘Z` |
 | 선택 도구 / 지형 도구 | `S` / `T` |
 | 타일 집기 (지형 도구) | `Alt`+클릭 |
+| 트리거 보기 | `⌃T` |
 
 ### CLI
 
@@ -170,6 +172,9 @@ CLI 는 GUI 없이 코어를 두드리는 도구이자 테스트 하네스다.
 
 # 유닛·로케이션 목록 보기
 ./build/src/cli/splash-cli units map.scx 30
+
+# 트리거를 텍스트로 (SCMDraft 형식)
+./build/src/cli/splash-cli triggers map.scx "/경로/StarCraft" triggers.txt
 ```
 
 ---

@@ -344,6 +344,11 @@ std::string MapDocument::fileName() const
     return std::filesystem::path(filePath_).filename().string();
 }
 
+std::optional<std::string> MapDocument::triggerText(const io::GameGraphics & graphics) const
+{
+    return archive_.triggerText(graphics);
+}
+
 const std::string & MapDocument::lastError() const
 {
     return lastError_;

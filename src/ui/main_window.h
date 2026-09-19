@@ -43,6 +43,7 @@ private slots:
     void onDeleteSelection();
     void onDocumentEdited();
     void onSelectionChanged(int unitIndex);
+    void onShowTriggers();
 
 private:
     void buildMenus();

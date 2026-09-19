@@ -61,6 +61,9 @@ add_library(splash_mappingcore STATIC
   "${MC_DIR}/scenario_undo.cpp"
   "${MC_DIR}/scenario_redo.cpp"
   "${MC_DIR}/map_file.cpp"
+
+  # --- 트리거를 사람이 읽는 텍스트로 (M5) ---
+  "${MC_DIR}/text_trig_generator.cpp"
 )
 
 target_include_directories(splash_mappingcore SYSTEM PUBLIC

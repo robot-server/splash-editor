@@ -92,6 +92,8 @@ struct Result
     static Result failure(std::string why) { return Result{false, std::move(why)}; }
 };
 
+class GameGraphics;
+
 /// 유닛 타입의 기본 표시 이름 (예: 12 -> "Terran Marine").
 /// 알 수 없는 번호면 "Unit <번호>" 를 돌려준다.
 std::string unitTypeName(std::uint16_t type);
@@ -192,6 +194,12 @@ public:
 
     /// 로케이션 전부. 비어 있는 슬롯은 건너뛴다.
     std::vector<RawLocation> locations() const;
+
+    /// 트리거 전체를 사람이 읽는 텍스트로 옮긴다.
+    ///
+    /// 유닛·업그레이드 이름표가 필요해서 게임 데이터(GameGraphics)를 받는다.
+    /// 그것이 준비되지 않았으면 빈 값을 돌려준다.
+    std::optional<std::string> triggerText(const GameGraphics & graphics) const;
 
     /// 지형 타일 값을 행 우선(row-major)으로 복사한다. 길이는 width*height.
     /// 에디터가 보는 값(TILE 섹션)을 쓴다 — 게임이 보는 MTXM 과 다를 수 있고,

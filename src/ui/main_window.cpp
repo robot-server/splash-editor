@@ -14,7 +14,9 @@
 #include <QFormLayout>
 #include <QLabel>
 #include <QMenuBar>
+#include <QDialog>
 #include <QMessageBox>
+#include <QPlainTextEdit>
 #include <QStatusBar>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -202,6 +204,11 @@ void MainWindow::buildMenus()
         });
     }
 
+    QMenu * triggerMenu = menuBar()->addMenu(tr("트리거(&R)"));
+    QAction * showTriggers = triggerMenu->addAction(tr("트리거 보기(&V)…"));
+    showTriggers->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_T));
+    connect(showTriggers, &QAction::triggered, this, &MainWindow::onShowTriggers);
+
     QMenu * viewMenu = menuBar()->addMenu(tr("보기(&V)"));
 
     zoomInAction_ = viewMenu->addAction(tr("확대(&I)"));
@@ -315,6 +322,48 @@ void MainWindow::onSelectionChanged(int unitIndex)
             .arg(unit.owner + 1)
             .arg(unit.x)
             .arg(unit.y));
+}
+
+void MainWindow::onShowTriggers()
+{
+    if (!document_.isOpen())
+        return;
+
+    if (!tileset_.hasUnitGraphics())
+    {
+        QMessageBox::information(this, tr("트리거"),
+            tr("트리거를 글로 옮기려면 StarCraft 설치 폴더가 필요합니다.\n"
+               "유닛과 업그레이드 이름표가 게임 데이터에 들어 있기 때문입니다.\n\n"
+               "파일 › StarCraft 설치 폴더 지정…"));
+        return;
+    }
+
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    const auto text = document_.triggerText(tileset_);
+    QApplication::restoreOverrideCursor();
+
+    if (!text)
+    {
+        QMessageBox::warning(this, tr("트리거"), tr("트리거를 글로 옮기지 못했습니다."));
+        return;
+    }
+
+    auto * dialog = new QDialog(this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->setWindowTitle(tr("트리거 — %1개").arg(document_.info().triggerCount));
+    dialog->resize(760, 560);
+
+    auto * layout = new QVBoxLayout(dialog);
+    auto * editor = new QPlainTextEdit(dialog);
+    editor->setReadOnly(true); // 편집은 아직 — 보기부터
+    editor->setPlainText(QString::fromStdString(*text));
+
+    QFont mono(QStringLiteral("Menlo"));
+    mono.setStyleHint(QFont::Monospace);
+    editor->setFont(mono);
+
+    layout->addWidget(editor);
+    dialog->show();
 }
 
 void MainWindow::onChooseInstallPath()

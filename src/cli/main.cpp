@@ -37,6 +37,8 @@ int usage(const char * argv0)
         "  " << argv0 << " render <맵파일> <설치폴더> <출력.ppm> [--units] [--locations]\n"
         "      맵 지형을 이미지로 그린다. 타일셋 디코딩 검증용이다.\n"
         "      --units / --locations / --creep 를 주면 함께 겹쳐 그린다.\n\n"
+        "  " << argv0 << " triggers <맵파일> <설치폴더> [출력.txt]\n"
+        "      트리거를 사람이 읽는 텍스트로 옮긴다.\n\n"
         "  " << argv0 << " units <맵파일> [개수]\n"
         "      맵에 놓인 유닛을 나열한다 (기본 20개).\n\n"
         "  " << argv0 << " unit-image <설치폴더> <유닛번호> <출력.ppm> [소유자] [타일셋]\n"
@@ -254,6 +256,53 @@ int cmdMoveUnit(const std::string & mapPath, std::size_t unitIndex,
         std::cout << "  저장본 위치: (" << saved[unitIndex].x << ", " << saved[unitIndex].y << ")\n";
     }
     std::cout << "  -> " << outPath << "\n";
+    return 0;
+}
+
+int cmdTriggers(const std::string & mapPath, const std::string & installPath,
+                const std::string & outPath)
+{
+    splash::io::MapArchive archive;
+    if (auto r = archive.open(mapPath); !r)
+    {
+        std::cerr << "열기 실패: " << r.message << "\n";
+        return 1;
+    }
+
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "게임 데이터 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const auto text = archive.triggerText(graphics);
+    if (!text)
+    {
+        std::cerr << "트리거를 텍스트로 옮기지 못했습니다.\n";
+        return 1;
+    }
+
+    std::cout << "  트리거 " << archive.info().triggerCount << "개, "
+              << text->size() << " 글자\n";
+
+    if (outPath.empty())
+    {
+        // 앞부분만 보여 준다 — 트리거가 많으면 화면을 덮는다.
+        constexpr std::size_t kPreview = 1200;
+        std::cout << "\n" << text->substr(0, std::min(kPreview, text->size()));
+        if (text->size() > kPreview)
+            std::cout << "\n... (" << (text->size() - kPreview) << " 글자 더)\n";
+        std::cout << "\n";
+    }
+    else
+    {
+        std::ofstream out(outPath, std::ios::trunc);
+        if (!out) { std::cerr << "출력 파일 열기 실패\n"; return 1; }
+        out << *text;
+        std::cout << "  -> " << outPath << "\n";
+    }
     return 0;
 }
 
@@ -1233,6 +1282,9 @@ int main(int argc, char ** argv)
                                args[5], thenUndo);
         } catch (const std::exception &) { return usage(argv[0]); }
     }
+
+    if (command == "triggers" && (args.size() == 3 || args.size() == 4))
+        return cmdTriggers(args[1], args[2], args.size() == 4 ? args[3] : std::string{});
 
     if (command == "units" && (args.size() == 2 || args.size() == 3))
     {

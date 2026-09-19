@@ -117,6 +117,13 @@ public:
     /// 타일셋의 메가타일 개수.
     std::size_t megaTileCount(std::uint16_t tilesetId) const;
 
+    /// 내부용. MappingCore 의 Sc::Data 를 가리킨다.
+    ///
+    /// 트리거를 사람이 읽는 텍스트로 옮기려면 유닛·업그레이드 이름표가 필요한데,
+    /// 그것을 들고 있는 것이 이 객체다. 헤더에 MappingCore 타입을 노출하지
+    /// 않으려고 불투명 포인터로 넘긴다 — io 계층 안에서만 쓴다.
+    const void * internalScData() const;
+
     /// images.tbl 에 든 GRP 파일 이름들. 게임 데이터에 어떤 그래픽이 있는지
     /// 직접 확인할 때 쓴다(추측 대신 데이터를 보기 위한 통로).
     std::vector<std::string> imageFileNames() const;

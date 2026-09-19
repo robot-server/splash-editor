@@ -1,9 +1,12 @@
 #include "io/map_archive.h"
 
+#include "io/game_graphics.h"
+
 // MappingCore 헤더는 이 번역 단위 안에만 존재한다.
 #include "cross_cut/logger.h"
 #include "mapping_core/map_file.h"
 #include "mapping_core/sc.h"
+#include "mapping_core/text_trig_generator.h"
 
 #include <algorithm>
 #include <cctype>
@@ -676,6 +679,36 @@ std::vector<RawLocation> MapArchive::locations() const
     }
 
     return out;
+}
+
+std::optional<std::string> MapArchive::triggerText(const GameGraphics & graphics) const
+{
+    if (!impl_->isOpen())
+        return std::nullopt;
+
+    const auto * scData = static_cast<const Sc::Data *>(graphics.internalScData());
+    if (scData == nullptr)
+        return std::nullopt;
+
+    try
+    {
+        // 인자 의미: 메모리를 주소로 표기할지, death table 오프셋, 빈 문자열 표기 방식.
+        // Chkdraft 기본값과 맞춘다.
+        TextTrigGenerator generator(false, 0);
+
+        std::string text;
+        // 템플릿은 Scenario 로만 인스턴스화되어 있다. MapFile 이 그것을
+        // 상속하므로 기반 클래스로 넘긴다.
+        const Scenario & scenario = *impl_->mapFile;
+        if (!generator.generateTextTrigs(scenario, text, *scData))
+            return std::nullopt;
+
+        return text;
+    }
+    catch (const std::exception &)
+    {
+        return std::nullopt;
+    }
 }
 
 std::vector<std::uint16_t> MapArchive::terrainTiles() const

@@ -5,7 +5,10 @@
 // 코어 경계 규칙: 이 헤더에는 Qt 타입도 MappingCore 타입도 등장하지 않는다.
 // UI 는 이 클래스만 알면 되고, 이 클래스는 UI 를 전혀 모른다.
 
+#include "io/game_graphics.h"
 #include "io/map_archive.h"
+
+#include <optional>
 
 #include <cstdint>
 #include <string>
@@ -146,6 +149,9 @@ public:
 
     /// 창 제목 등에 쓸 이름. 열려 있지 않으면 빈 문자열.
     std::string fileName() const;
+
+    /// 트리거를 사람이 읽는 텍스트로 옮긴다. 게임 데이터가 필요하다.
+    std::optional<std::string> triggerText(const io::GameGraphics & graphics) const;
 
     /// 마지막 실패 사유. 성공했다면 빈 문자열.
     const std::string & lastError() const;

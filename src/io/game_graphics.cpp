@@ -415,6 +415,11 @@ bool GameGraphics::renderMegaTile(std::uint16_t tilesetId, std::uint32_t megaTil
     return true;
 }
 
+const void * GameGraphics::internalScData() const
+{
+    return impl_->scData.get();
+}
+
 std::vector<std::string> GameGraphics::imageFileNames() const
 {
     std::vector<std::string> out;
