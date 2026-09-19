@@ -50,6 +50,7 @@ private slots:
     void onShowTriggers();
     void onNewMap();
     void onMapProperties();
+    void onUnitProperties();
 
 private:
     void buildMenus();

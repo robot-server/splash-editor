@@ -134,6 +134,12 @@ public:
     /// 유닛의 소유자를 바꾼다 (0-11).
     bool setUnitOwner(std::size_t unitIndex, std::uint8_t owner);
 
+    /// 유닛 속성을 한꺼번에 바꾼다.
+    bool setUnitProperties(std::size_t unitIndex, const io::UnitProperties & properties);
+
+    /// 유닛 하나의 현재 속성.
+    std::optional<io::UnitProperties> unitProperties(std::size_t unitIndex) const;
+
     /// 지형 타일 하나를 바꾼다. 좌표는 타일 단위.
     bool setTile(std::size_t tileX, std::size_t tileY, std::uint16_t tileValue);
 

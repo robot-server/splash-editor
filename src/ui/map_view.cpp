@@ -881,6 +881,28 @@ void MapView::mousePressEvent(QMouseEvent * event)
     event->accept();
 }
 
+void MapView::mouseDoubleClickEvent(QMouseEvent * event)
+{
+    if (tool_ != Tool::Select || document_ == nullptr || !document_->isOpen())
+    {
+        QAbstractScrollArea::mouseDoubleClickEvent(event);
+        return;
+    }
+
+    const int hit = unitAt(event->position());
+    if (hit >= 0)
+    {
+        selectedUnit_ = hit;
+        selectedLocation_ = -1;
+        emit selectionChanged(hit);
+        emit unitActivated(hit);
+        event->accept();
+        return;
+    }
+
+    QAbstractScrollArea::mouseDoubleClickEvent(event);
+}
+
 void MapView::mouseMoveEvent(QMouseEvent * event)
 {
     if (painting_)

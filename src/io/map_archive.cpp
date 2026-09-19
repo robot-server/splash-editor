@@ -644,6 +644,77 @@ void MapArchive::mergeLastEdits(int count)
         impl_->undoSteps.push_back(total);
 }
 
+std::optional<UnitProperties> MapArchive::unitProperties(std::size_t unitIndex) const
+{
+    if (!impl_->isOpen())
+        return std::nullopt;
+
+    const MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (unitIndex >= map.numUnits())
+            return std::nullopt;
+
+        const Chk::Unit & unit = map.getUnit(unitIndex);
+        UnitProperties properties;
+        properties.owner = unit.owner;
+        properties.hitpointPercent = unit.hitpointPercent;
+        properties.shieldPercent = unit.shieldPercent;
+        properties.energyPercent = unit.energyPercent;
+        properties.resourceAmount = unit.resourceAmount;
+        properties.hangarAmount = unit.hangarAmount;
+        properties.stateFlags = unit.stateFlags;
+        return properties;
+    }
+    catch (const std::exception &)
+    {
+        return std::nullopt;
+    }
+}
+
+Result MapArchive::setUnitProperties(std::size_t unitIndex,
+                                     const UnitProperties & properties)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (unitIndex >= map.numUnits())
+            return Result::failure("유닛 번호가 범위를 벗어났습니다.");
+
+        Chk::Unit unit = map.getUnit(unitIndex);
+        unit.owner = properties.owner;
+        unit.hitpointPercent = properties.hitpointPercent;
+        unit.shieldPercent = properties.shieldPercent;
+        unit.energyPercent = properties.energyPercent;
+        unit.resourceAmount = properties.resourceAmount;
+        unit.hangarAmount = properties.hangarAmount;
+        unit.stateFlags = properties.stateFlags;
+
+        // 바꾼 값이 실제로 쓰이도록 "이 필드는 유효하다" 표시를 켠다.
+        // 이 비트가 없으면 게임이 기본값을 쓴다.
+        unit.validFieldFlags |= Chk::Unit::ValidField::Owner
+                              | Chk::Unit::ValidField::Hitpoints
+                              | Chk::Unit::ValidField::Shields
+                              | Chk::Unit::ValidField::Energy
+                              | Chk::Unit::ValidField::Resources
+                              | Chk::Unit::ValidField::Hangar;
+        unit.validStateFlags |= properties.stateFlags;
+
+        map.deleteUnit(unitIndex);
+        map.insertUnit(unitIndex, unit);
+        impl_->undoSteps.push_back(2);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("유닛 속성을 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 Result MapArchive::undo()
 {
     if (!impl_->isOpen())
@@ -716,6 +787,10 @@ std::vector<RawUnit> MapArchive::units() const
             raw.owner      = unit.owner;
             raw.stateFlags = unit.stateFlags;
             raw.resourceAmount = unit.resourceAmount;
+            raw.hitpointPercent = unit.hitpointPercent;
+            raw.shieldPercent = unit.shieldPercent;
+            raw.energyPercent = unit.energyPercent;
+            raw.hangarAmount = unit.hangarAmount;
             out.push_back(raw);
         }
     }

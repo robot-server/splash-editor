@@ -368,6 +368,21 @@ bool MapDocument::setDimensions(std::uint16_t width, std::uint16_t height)
     return true;
 }
 
+bool MapDocument::setUnitProperties(std::size_t unitIndex,
+                                    const io::UnitProperties & properties)
+{
+    const io::Result result = archive_.setUnitProperties(unitIndex, properties);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true; ++undoDepth_; redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+std::optional<io::UnitProperties> MapDocument::unitProperties(std::size_t unitIndex) const
+{
+    return archive_.unitProperties(unitIndex);
+}
+
 bool MapDocument::canUndo() const { return undoDepth_ > 0; }
 bool MapDocument::canRedo() const { return redoDepth_ > 0; }
 

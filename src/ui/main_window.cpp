@@ -78,6 +78,8 @@ void MainWindow::buildCentralWidget()
 
     connect(mapView_, &MapView::documentEdited, this, &MainWindow::onDocumentEdited);
     connect(mapView_, &MapView::selectionChanged, this, &MainWindow::onSelectionChanged);
+    connect(mapView_, &MapView::unitActivated, this,
+            [this](int) { onUnitProperties(); });
     connect(mapView_, &MapView::brushTileChanged, this, [this](std::uint16_t tileId) {
         // 맵에서 스포이드로 집으면 팔레트 선택도 따라간다.
         if (tilePalette_ != nullptr)
@@ -266,6 +268,10 @@ void MainWindow::buildMenus()
     connect(redoAction_, &QAction::triggered, this, &MainWindow::onRedo);
 
     editMenu->addSeparator();
+
+    QAction * unitPropsAction = editMenu->addAction(tr("유닛 속성(&P)…"));
+    unitPropsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_E));
+    connect(unitPropsAction, &QAction::triggered, this, &MainWindow::onUnitProperties);
 
     deleteAction_ = editMenu->addAction(tr("선택 삭제(&D)"));
     deleteAction_->setShortcut(QKeySequence::Delete);
@@ -631,6 +637,117 @@ void MainWindow::onMapProperties()
         refreshFromDocument();
         statusBar()->showMessage(tr("맵 속성을 바꿨습니다"), 3000);
     }
+}
+
+void MainWindow::onUnitProperties()
+{
+    if (!document_.isOpen() || mapView_ == nullptr)
+        return;
+
+    const int index = mapView_->selectedUnit();
+    if (index < 0)
+    {
+        statusBar()->showMessage(tr("유닛을 먼저 고르세요."), 2000);
+        return;
+    }
+
+    const auto current = document_.unitProperties(static_cast<std::size_t>(index));
+    if (!current)
+        return;
+
+    const auto & units = document_.units();
+    const auto & unit = units[static_cast<std::size_t>(index)];
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("유닛 속성 — %1").arg(QString::fromStdString(unit.typeName)));
+
+    auto * form = new QFormLayout();
+
+    auto * ownerBox = new QComboBox(&dialog);
+    for (int player = 1; player <= 12; ++player)
+        ownerBox->addItem(tr("플레이어 %1").arg(player), player - 1);
+    ownerBox->setCurrentIndex(std::min<int>(current->owner, 11));
+
+    const auto makePercent = [&dialog](int value) {
+        auto * box = new QSpinBox(&dialog);
+        box->setRange(0, 100);
+        box->setSuffix(QStringLiteral(" %"));
+        box->setValue(value);
+        return box;
+    };
+
+    auto * hpBox = makePercent(current->hitpointPercent);
+    auto * shieldBox = makePercent(current->shieldPercent);
+    auto * energyBox = makePercent(current->energyPercent);
+
+    auto * resourceBox = new QSpinBox(&dialog);
+    resourceBox->setRange(0, 999999);
+    resourceBox->setValue(static_cast<int>(current->resourceAmount));
+
+    auto * hangarBox = new QSpinBox(&dialog);
+    hangarBox->setRange(0, 255);
+    hangarBox->setValue(current->hangarAmount);
+
+    // 상태 비트는 Chk::Unit::State 의 값들이다.
+    auto * cloakBox = new QCheckBox(tr("클로킹"), &dialog);
+    cloakBox->setChecked(current->stateFlags & 0x01);
+    auto * burrowBox = new QCheckBox(tr("버로우"), &dialog);
+    burrowBox->setChecked(current->stateFlags & 0x02);
+    auto * liftedBox = new QCheckBox(tr("떠 있음"), &dialog);
+    liftedBox->setChecked(current->stateFlags & 0x04);
+    auto * hallucinatedBox = new QCheckBox(tr("환영"), &dialog);
+    hallucinatedBox->setChecked(current->stateFlags & 0x08);
+    auto * invincibleBox = new QCheckBox(tr("무적"), &dialog);
+    invincibleBox->setChecked(current->stateFlags & 0x10);
+
+    form->addRow(tr("소유자"), ownerBox);
+    form->addRow(tr("체력"), hpBox);
+    form->addRow(tr("방어막"), shieldBox);
+    form->addRow(tr("에너지"), energyBox);
+    form->addRow(tr("자원"), resourceBox);
+    form->addRow(tr("격납고"), hangarBox);
+    form->addRow(tr("상태"), cloakBox);
+    form->addRow(QString(), burrowBox);
+    form->addRow(QString(), liftedBox);
+    form->addRow(QString(), hallucinatedBox);
+    form->addRow(QString(), invincibleBox);
+
+    auto * buttons = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    auto * layout = new QVBoxLayout(&dialog);
+    layout->addLayout(form);
+    layout->addWidget(buttons);
+
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    splash::io::UnitProperties next;
+    next.owner = static_cast<std::uint8_t>(ownerBox->currentData().toInt());
+    next.hitpointPercent = static_cast<std::uint8_t>(hpBox->value());
+    next.shieldPercent = static_cast<std::uint8_t>(shieldBox->value());
+    next.energyPercent = static_cast<std::uint8_t>(energyBox->value());
+    next.resourceAmount = static_cast<std::uint32_t>(resourceBox->value());
+    next.hangarAmount = static_cast<std::uint16_t>(hangarBox->value());
+    next.stateFlags = static_cast<std::uint16_t>(
+        (cloakBox->isChecked() ? 0x01 : 0) |
+        (burrowBox->isChecked() ? 0x02 : 0) |
+        (liftedBox->isChecked() ? 0x04 : 0) |
+        (hallucinatedBox->isChecked() ? 0x08 : 0) |
+        (invincibleBox->isChecked() ? 0x10 : 0));
+
+    if (!document_.setUnitProperties(static_cast<std::size_t>(index), next))
+    {
+        QMessageBox::warning(this, tr("유닛 속성 실패"),
+                             QString::fromStdString(document_.lastError()));
+        return;
+    }
+
+    mapView_->refresh();
+    refreshFromDocument();
+    statusBar()->showMessage(tr("유닛 속성을 바꿨습니다"), 3000);
 }
 
 void MainWindow::onShowTriggers()

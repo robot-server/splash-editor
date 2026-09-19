@@ -52,6 +52,22 @@ struct RawUnit
     std::uint8_t  owner = 0;      ///< 0-11 (11 은 중립)
     std::uint16_t stateFlags = 0;
     std::uint32_t resourceAmount = 0; ///< 자원 유닛의 남은 양 (그래픽 단계를 가른다)
+    std::uint8_t hitpointPercent = 100;
+    std::uint8_t shieldPercent = 100;
+    std::uint8_t energyPercent = 100;
+    std::uint16_t hangarAmount = 0;
+};
+
+/// 유닛 하나의 고칠 수 있는 값들. setUnitProperties 에 넘긴다.
+struct UnitProperties
+{
+    std::uint8_t owner = 0;
+    std::uint8_t hitpointPercent = 100;
+    std::uint8_t shieldPercent = 100;
+    std::uint8_t energyPercent = 100;
+    std::uint32_t resourceAmount = 0;
+    std::uint16_t hangarAmount = 0;
+    std::uint16_t stateFlags = 0;
 };
 
 /// 맵에 배치된 스프라이트(THG2). 나무·바위 같은 장식이거나,
@@ -171,6 +187,12 @@ public:
 
     /// 유닛의 소유자를 바꾼다 (0-11).
     Result setUnitOwner(std::size_t unitIndex, std::uint8_t owner);
+
+    /// 유닛의 속성을 한꺼번에 바꾼다.
+    Result setUnitProperties(std::size_t unitIndex, const UnitProperties & properties);
+
+    /// 유닛 하나의 현재 속성.
+    std::optional<UnitProperties> unitProperties(std::size_t unitIndex) const;
 
     /// 지형 타일 하나를 바꾼다. 좌표는 타일 단위.
     ///

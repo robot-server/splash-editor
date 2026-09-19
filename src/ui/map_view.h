@@ -77,6 +77,9 @@ signals:
     /// 선택이 바뀌었다 (없으면 -1).
     void selectionChanged(int unitIndex);
 
+    /// 유닛을 두 번 눌렀다 — 속성 창을 열라는 뜻.
+    void unitActivated(int unitIndex);
+
     /// 지형 브러시가 집은 타일이 바뀌었다.
     void brushTileChanged(std::uint16_t tileId);
 
@@ -117,6 +120,7 @@ protected:
     void resizeEvent(QResizeEvent * event) override;
     void wheelEvent(QWheelEvent * event) override;
     void mousePressEvent(QMouseEvent * event) override;
+    void mouseDoubleClickEvent(QMouseEvent * event) override;
     void mouseMoveEvent(QMouseEvent * event) override;
     void mouseReleaseEvent(QMouseEvent * event) override;
     void keyPressEvent(QKeyEvent * event) override;
