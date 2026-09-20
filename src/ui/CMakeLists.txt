@@ -1,4 +1,7 @@
-# Qt Widgets GUI. 단일 QMainWindow — 도킹/멀티맵은 M2 이후.
+# Qt Widgets GUI.
+#
+# 화면 코드는 라이브러리로 두고 실행 파일은 main.cpp 만 갖는다 — 테스트가
+# 화면 위젯을 직접 두드려 볼 수 있어야 하기 때문이다.
 #
 # Qt 는 LGPLv3 로 사용하므로 반드시 동적 링크한다(정적 링크 금지).
 # 자세한 내용은 README 의 라이선스 절을 참고.
@@ -7,8 +10,7 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets Multimedia)
 
 qt_standard_project_setup()
 
-qt_add_executable(splash-editor
-  main.cpp
+qt_add_library(splash_ui_lib STATIC
   main_window.cpp
   main_window.h
   map_view.cpp
@@ -51,11 +53,23 @@ qt_add_executable(splash-editor
   sound_player.h
 )
 
-target_link_libraries(splash-editor PRIVATE splash_core Qt6::Widgets Qt6::Multimedia)
+target_link_libraries(splash_ui_lib PUBLIC splash_core Qt6::Widgets Qt6::Multimedia)
 
-target_compile_definitions(splash-editor PRIVATE
+target_include_directories(splash_ui_lib PUBLIC "${CMAKE_SOURCE_DIR}/src")
+
+target_compile_definitions(splash_ui_lib PUBLIC
   SPLASH_VERSION="${PROJECT_VERSION}"
 )
+
+if(NOT MSVC)
+  target_compile_options(splash_ui_lib PRIVATE -Wall -Wextra)
+endif()
+
+qt_add_executable(splash-editor
+  main.cpp
+)
+
+target_link_libraries(splash-editor PRIVATE splash_ui_lib)
 
 set_target_properties(splash-editor PROPERTIES
   MACOSX_BUNDLE FALSE

@@ -34,3 +34,21 @@ if(NOT MSVC)
 endif()
 
 add_test(NAME unit COMMAND splash_unit_test)
+
+# 화면을 실제로 두드려 보는 스모크 테스트. Qt 가 있어야 하므로 GUI 를
+# 빌드할 때만 넣는다. 화면 없는 곳에서도 돌도록 offscreen 으로 띄운다.
+
+find_package(Qt6 QUIET COMPONENTS Widgets)
+
+if(Qt6Widgets_FOUND)
+  qt_add_executable(splash_gui_smoke_test
+    gui_smoke_test.cpp
+    test_support.h
+  )
+
+  target_link_libraries(splash_gui_smoke_test PRIVATE splash_ui_lib Qt6::Widgets)
+  target_include_directories(splash_gui_smoke_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}" "${CMAKE_SOURCE_DIR}/src")
+
+  add_test(NAME gui_smoke COMMAND splash_gui_smoke_test -platform offscreen)
+endif()
