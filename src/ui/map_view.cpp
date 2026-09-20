@@ -342,6 +342,7 @@ void MapView::paintEvent(QPaintEvent * event)
     paintSelectionBox(painter);
     paintTerrainSelection(painter);
     paintTileValues(painter, dirty);
+    paintUnitRanges(painter);
 }
 
 const QVector<QPixmap> & MapView::creepTiles()
@@ -1167,6 +1168,69 @@ void MapView::paintTerrainOverlay(QPainter & painter, const QRect & dirty)
 
             painter.fillRect(QRectF(tx * tile - originX, ty * tile - originY, tile, tile), shade);
         }
+    }
+
+    painter.restore();
+}
+
+void MapView::setUnitRangesVisible(bool visible)
+{
+    showRanges_ = visible;
+    viewport()->update();
+}
+
+void MapView::paintUnitRanges(QPainter & painter)
+{
+    if (!showRanges_ || document_ == nullptr || tileset_ == nullptr)
+        return;
+
+    // 고른 유닛만 보여 준다 — 맵에 있는 모든 유닛에 원을 그리면 아무것도
+    // 알아볼 수 없다.
+    std::vector<int> targets = selectedUnits_;
+    if (targets.empty() && selectedUnit_ >= 0)
+        targets.push_back(selectedUnit_);
+    if (targets.empty())
+        return;
+
+    const double tile = scaledTileSize();
+    if (tile <= 0)
+        return;
+
+    const double scale = tile / io::kTilePixels;
+    const int originX = horizontalScrollBar()->value();
+    const int originY = verticalScrollBar()->value();
+
+    const auto & units = document_->units();
+
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    painter.setBrush(Qt::NoBrush);
+
+    for (int index : targets)
+    {
+        if (index < 0 || index >= static_cast<int>(units.size()))
+            continue;
+
+        const auto & unit = units[static_cast<std::size_t>(index)];
+        const auto ranges = tileset_->unitRanges(unit.type);
+
+        const QPointF centre(unit.x * scale - originX, unit.y * scale - originY);
+
+        const auto circle = [&](int radius, const QColor & colour, Qt::PenStyle style) {
+            if (radius <= 0)
+                return;
+            painter.setPen(QPen(colour, 1.5, style));
+            painter.drawEllipse(centre, radius * scale, radius * scale);
+        };
+
+        // 시야는 옅게, 사거리는 진하게. 탐지는 따로 색을 준다.
+        circle(ranges.sight, QColor(120, 200, 255, 120), Qt::DotLine);
+        circle(ranges.detection, QColor(255, 220, 90, 150), Qt::DashDotLine);
+        circle(ranges.groundWeapon, QColor(255, 120, 120, 200), Qt::SolidLine);
+
+        // 공중 사거리가 지상과 같으면 겹쳐 그릴 필요가 없다.
+        if (ranges.airWeapon != ranges.groundWeapon)
+            circle(ranges.airWeapon, QColor(150, 255, 150, 190), Qt::DashLine);
     }
 
     painter.restore();

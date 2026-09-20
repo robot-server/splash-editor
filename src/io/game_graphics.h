@@ -119,6 +119,16 @@ public:
     };
     UnitClass unitClass(std::uint16_t unitType) const;
 
+    /// 유닛의 사거리·시야 (픽셀). 화면에 원으로 그려 자리를 가늠한다.
+    struct UnitRanges
+    {
+        int sight = 0;        ///< 시야
+        int groundWeapon = 0; ///< 지상 공격 사거리 (없으면 0)
+        int airWeapon = 0;    ///< 공중 공격 사거리
+        int detection = 0;    ///< 탐지 범위 (탐지기만)
+    };
+    UnitRanges unitRanges(std::uint16_t unitType) const;
+
     /// 유닛이 차지하는 자리. 유닛 좌표에서 각 방향으로 몇 픽셀인지다
     /// (units.dat 의 unitSize*). 겹침 검사와 격자 맞춤에 쓴다.
     struct UnitBounds

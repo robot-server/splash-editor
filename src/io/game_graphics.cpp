@@ -49,6 +49,7 @@ struct GameGraphics::Impl
 
     mutable bool upgradesLoaded = false;
     mutable bool techsLoaded = false;
+    mutable bool weaponsLoaded = false;
 
     const Sc::Terrain::Tiles & tiles(std::uint16_t tilesetId) const
     {
@@ -454,6 +455,51 @@ std::vector<std::uint8_t> GameGraphics::unitSound(std::uint16_t unitType) const
     }
 
     return out;
+}
+
+GameGraphics::UnitRanges GameGraphics::unitRanges(std::uint16_t unitType) const
+{
+    UnitRanges ranges;
+    if (!hasUnitGraphics())
+        return ranges;
+
+    const Sc::Unit & units = impl_->scData->units;
+    if (unitType >= units.numUnitTypes())
+        return ranges;
+
+    try
+    {
+        // 무기 자료는 따로 읽어야 한다. 한 번만 읽고 들고 있는다.
+        if (!impl_->weaponsLoaded)
+        {
+            impl_->weaponsLoaded = true;
+            impl_->scData->weapons.load(*impl_->cluster);
+        }
+
+        const auto & dat = units.getUnit(Sc::Unit::Type(unitType));
+
+        // 시야·탐지 범위는 타일 단위로 적혀 있다.
+        ranges.sight = dat.sightRange * kTilePixels;
+
+        // 탐지기는 시야만큼 탐지한다.
+        if ((dat.flags & Sc::Unit::Flags::Detector) != 0)
+            ranges.detection = ranges.sight;
+
+        const auto weaponRange = [&](std::uint8_t weaponId) -> int {
+            if (weaponId >= Sc::Weapon::Total)
+                return 0;
+            const auto & weapon = impl_->scData->weapons.get(Sc::Weapon::Type(weaponId));
+            return static_cast<int>(weapon.maximumRange);
+        };
+
+        ranges.groundWeapon = weaponRange(dat.groundWeapon);
+        ranges.airWeapon = weaponRange(dat.airWeapon);
+    }
+    catch (const std::exception &)
+    {
+    }
+
+    return ranges;
 }
 
 GameGraphics::UnitBounds GameGraphics::unitBounds(std::uint16_t unitType) const

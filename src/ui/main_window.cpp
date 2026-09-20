@@ -1162,6 +1162,13 @@ void MainWindow::buildMenus()
         });
     }
 
+    QAction * showRanges = viewMenu->addAction(tr("고른 유닛의 사거리·시야(&R)"));
+    showRanges->setCheckable(true);
+    showRanges->setToolTip(
+        tr("고른 유닛에 시야(점선)·탐지(일점쇄선)·지상 사거리(실선)·"
+           "공중 사거리(파선)를 원으로 그립니다."));
+    connect(showRanges, &QAction::toggled, mapView_, &MapView::setUnitRangesVisible);
+
     QAction * showTileValues = viewMenu->addAction(tr("타일 번호 표시(&T)"));
     showTileValues->setCheckable(true);
     showTileValues->setToolTip(tr("칸마다 타일 번호를 적습니다. 많이 확대해야 보입니다."));

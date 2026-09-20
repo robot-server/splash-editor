@@ -280,6 +280,10 @@ public:
     TerrainOverlay terrainOverlay() const { return overlay_; }
     void setTerrainOverlay(TerrainOverlay overlay);
 
+    /// 고른 유닛의 사거리·시야를 원으로 보여 줄지.
+    bool unitRangesVisible() const { return showRanges_; }
+    void setUnitRangesVisible(bool visible);
+
     /// 타일 값을 칸마다 적어 보여 줄지 (지형을 맞출 때 쓴다).
     bool tileValuesVisible() const { return showTileValues_; }
     void setTileValuesVisible(bool visible);
@@ -425,6 +429,9 @@ private:
     /// 지형 성질을 색으로 겹쳐 그린다.
     void paintTerrainOverlay(QPainter & painter, const QRect & dirty);
 
+    /// 고른 유닛의 사거리·시야를 원으로 그린다.
+    void paintUnitRanges(QPainter & painter);
+
     /// 타일 값을 칸마다 적는다.
     void paintTileValues(QPainter & painter, const QRect & dirty);
 
@@ -485,6 +492,7 @@ public:
     bool showLinks_ = true;
     TerrainOverlay overlay_ = TerrainOverlay::None;
     bool showTileValues_ = false;
+    bool showRanges_ = false;
     std::uint8_t fogPlayers_ = 0x01; ///< 기본은 플레이어 1
     bool fogErase_ = false;
     bool fogPainting_ = false;
