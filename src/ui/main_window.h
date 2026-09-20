@@ -128,6 +128,9 @@ private:
     void addViewport();
     void tileViewports();
     void onManageModArchives();
+    void rebuildProfileMenu();
+    void applyProfile(const QString & name);
+    QMenu * profileMenu_ = nullptr;
     void announceSaveWarning();
     void forEachView(const std::function<void(MapView *)> & apply);
     MiniMap * miniMap_ = nullptr;

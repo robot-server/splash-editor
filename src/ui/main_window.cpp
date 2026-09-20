@@ -660,6 +660,12 @@ void MainWindow::buildMenus()
     QAction * installAction = fileMenu->addAction(tr("StarCraft 설치 폴더 지정(&I)…"));
     connect(installAction, &QAction::triggered, this, &MainWindow::onChooseInstallPath);
 
+    // 프로필 — 설치 폴더와 모드 자료 묶음에 이름을 붙여 오간다.
+    profileMenu_ = fileMenu->addMenu(tr("프로필(&F)"));
+    profileMenu_->setToolTip(
+        tr("설치 폴더와 모드 자료 묶음에 이름을 붙여 두고 오갑니다."));
+    rebuildProfileMenu();
+
     QAction * modAction = fileMenu->addAction(tr("모드 자료(MPQ) 관리(&M)…"));
     modAction->setToolTip(
         tr("유닛이나 지형을 갈아 끼운 MPQ 를 얹습니다. 위에 있는 것이 먼저 "
@@ -1811,6 +1817,95 @@ void MainWindow::addViewport()
     // 주 화면이 보고 있는 자리에서 시작한다.
     if (mapView_ != nullptr)
         view->centerOnMap(mapView_->visibleMapRect().center());
+}
+
+void MainWindow::rebuildProfileMenu()
+{
+    if (profileMenu_ == nullptr)
+        return;
+
+    profileMenu_->clear();
+
+    QSettings settings;
+    const QStringList names = settings.value(QStringLiteral("profileNames")).toStringList();
+
+    if (names.isEmpty())
+    {
+        QAction * empty = profileMenu_->addAction(tr("(없음)"));
+        empty->setEnabled(false);
+    }
+    else
+    {
+        for (const QString & name : names)
+        {
+            QAction * choice = profileMenu_->addAction(name);
+            connect(choice, &QAction::triggered, this, [this, name] { applyProfile(name); });
+        }
+    }
+
+    profileMenu_->addSeparator();
+
+    QAction * save = profileMenu_->addAction(tr("지금 설정을 프로필로 저장…"));
+    connect(save, &QAction::triggered, this, [this] {
+        bool accepted = false;
+        const QString name = QInputDialog::getText(
+            this, tr("프로필 저장"), tr("이름"), QLineEdit::Normal, QString(), &accepted);
+        if (!accepted || name.trimmed().isEmpty())
+            return;
+
+        QSettings settings;
+        QStringList names = settings.value(QStringLiteral("profileNames")).toStringList();
+        if (!names.contains(name))
+            names << name;
+        settings.setValue(QStringLiteral("profileNames"), names);
+        settings.setValue(QStringLiteral("profile/%1/install").arg(name),
+                          settings.value(kInstallPathKey));
+        settings.setValue(QStringLiteral("profile/%1/mods").arg(name),
+                          settings.value(QStringLiteral("modArchives")));
+
+        rebuildProfileMenu();
+        statusBar()->showMessage(tr("프로필 '%1' 을 저장했습니다").arg(name), 3000);
+    });
+
+    if (!names.isEmpty())
+    {
+        QMenu * removeMenu = profileMenu_->addMenu(tr("프로필 지우기"));
+        for (const QString & name : names)
+        {
+            QAction * choice = removeMenu->addAction(name);
+            connect(choice, &QAction::triggered, this, [this, name] {
+                QSettings settings;
+                QStringList names = settings.value(QStringLiteral("profileNames")).toStringList();
+                names.removeAll(name);
+                settings.setValue(QStringLiteral("profileNames"), names);
+                settings.remove(QStringLiteral("profile/%1").arg(name));
+
+                rebuildProfileMenu();
+                statusBar()->showMessage(tr("프로필 '%1' 을 지웠습니다").arg(name), 3000);
+            });
+        }
+    }
+}
+
+void MainWindow::applyProfile(const QString & name)
+{
+    QSettings settings;
+    const QString install =
+        settings.value(QStringLiteral("profile/%1/install").arg(name)).toString();
+    const QStringList mods =
+        settings.value(QStringLiteral("profile/%1/mods").arg(name)).toStringList();
+
+    settings.setValue(QStringLiteral("modArchives"), mods);
+
+    if (install.isEmpty())
+    {
+        statusBar()->showMessage(tr("프로필 '%1' 에 설치 폴더가 없습니다").arg(name), 3000);
+        return;
+    }
+
+    loadTilesetFrom(install, /*announce*/ true);
+    statusBar()->showMessage(
+        tr("프로필 '%1' 로 바꿨습니다 (모드 자료 %2개)").arg(name).arg(mods.size()), 3000);
 }
 
 void MainWindow::onManageModArchives()
