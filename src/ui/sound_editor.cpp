@@ -212,7 +212,7 @@ void SoundEditor::extractSelected()
     if (target.isEmpty())
         return;
 
-    if (!document_.extractSound(sound.index, target.toStdString()))
+    if (!document_.extractSoundByStringId(sound.stringId, target.toStdString()))
     {
         QMessageBox::warning(this, tr("꺼내지 못했습니다"),
                              QString::fromStdString(document_.lastError()));
@@ -239,7 +239,7 @@ void SoundEditor::playSelected()
     const std::filesystem::path temporary =
         std::filesystem::temp_directory_path() / "splash-sound-preview.wav";
 
-    if (!document_.extractSound(sound.index, temporary.string()))
+    if (!document_.extractSoundByStringId(sound.stringId, temporary.string()))
     {
         status_->setText(QString::fromStdString(document_.lastError()));
         return;

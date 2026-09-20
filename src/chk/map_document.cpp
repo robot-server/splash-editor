@@ -1099,9 +1099,34 @@ bool MapDocument::placeDoodad(const io::GameGraphics & graphics, std::uint16_t d
     return true;
 }
 
-bool MapDocument::convertDoodadsToTerrain(std::size_t * outCount)
+std::vector<std::size_t> MapDocument::findBrokenDoodads(const io::GameGraphics & graphics) const
 {
-    const std::size_t converted = archive_.convertDoodadsToTerrain();
+    return archive_.findBrokenDoodads(graphics);
+}
+
+bool MapDocument::repairDoodads(const io::GameGraphics & graphics, std::size_t * outCount)
+{
+    const std::size_t repaired = archive_.repairDoodads(graphics);
+    if (outCount != nullptr)
+        *outCount = repaired;
+
+    if (repaired == 0)
+    {
+        lastError_ = "고칠 두들이 없습니다.";
+        return false;
+    }
+
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::convertDoodadsToTerrain(const io::GameGraphics & graphics,
+                                          std::size_t * outCount)
+{
+    const std::size_t converted = archive_.convertDoodadsToTerrain(graphics);
     if (outCount != nullptr)
         *outCount = converted;
 
@@ -1118,9 +1143,9 @@ bool MapDocument::convertDoodadsToTerrain(std::size_t * outCount)
     return true;
 }
 
-bool MapDocument::removeDoodad(std::size_t index)
+bool MapDocument::removeDoodad(const io::GameGraphics & graphics, std::size_t index)
 {
-    const io::Result result = archive_.removeDoodad(index);
+    const io::Result result = archive_.removeDoodad(graphics, index);
     if (!result) { lastError_ = result.message; return false; }
     modified_ = true;
     ++undoDepth_;
@@ -1151,6 +1176,19 @@ bool MapDocument::removeSound(std::size_t soundIndex, bool removeIfUsed)
     modified_ = true;
     undoDepth_ = 0; redoDepth_ = 0; savedDepth_ = -1;
     refreshInfo();
+    return true;
+}
+
+bool MapDocument::extractSoundByStringId(std::size_t stringId,
+                                         const std::string & destFilePath) const
+{
+    const io::Result result = archive_.extractSoundByStringId(stringId, destFilePath);
+    if (!result)
+    {
+        // 꺼내기는 문서를 바꾸지 않으므로 const 다. 실패 사유만 남긴다.
+        const_cast<MapDocument *>(this)->lastError_ = result.message;
+        return false;
+    }
     return true;
 }
 

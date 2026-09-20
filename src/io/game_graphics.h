@@ -65,10 +65,14 @@ public:
 
     /// 맵에 배치된 스프라이트(THG2)를 그린다.
     /// drawnAsSprite 가 false 면 유닛 그래픽으로 그려야 하는 항목이다.
+    ///
+    /// colorIndex 는 COLR 이 정한 색 번호다. 0xFF 면 플레이어 번호를 그대로
+    /// 색 번호로 쓴다 (맵이 색을 따로 정하지 않았을 때의 기본값).
     UnitImage renderSprite(std::uint16_t spriteType,
                            std::uint8_t owner,
                            std::uint16_t tilesetId,
-                           bool drawnAsSprite) const;
+                           bool drawnAsSprite,
+                           std::uint8_t colorIndex = 0xFF) const;
 
     /// ISOM 브러시로 놓을 수 있는 지형 종류.
     struct TerrainType
@@ -165,13 +169,39 @@ public:
         int tileHeight = 0;
         std::uint16_t startTileGroup = 0; ///< 두들 타일이 시작하는 CV5 그룹
         std::uint16_t previewTileId = 0;  ///< 팔레트에 보일 타일
+
+        /// 두들에 딸린 그림 조각. 0 이면 없다.
+        ///
+        /// 불타는 잔해나 깜빡이는 불빛처럼 움직이는 두들은 타일만으로는
+        /// 표현되지 않아 스프라이트를 하나 더 얹는다.
+        std::uint16_t overlayIndex = 0;
+        bool spriteOverlay = false; ///< 참이면 sprites.dat, 거짓이면 units.dat
     };
 
     /// 그 타일셋의 두들 목록.
     std::vector<DoodadInfo> doodads(std::uint16_t tilesetId) const;
 
+    /// 그 두들을 그 자리에 놓을 수 있는지 (dddata.bin 의 배치 가능 표).
+    ///
+    /// 표는 칸마다 "여기에 이 타일 그룹이 있어야 한다"를 적어 둔다. 0 이면
+    /// 어떤 지형이든 좋다.
+    bool doodadFits(std::uint16_t tilesetId, std::uint16_t doodadId,
+                    const std::vector<std::uint16_t> & mapTiles,
+                    int mapWidth, int mapHeight, int tileX, int tileY) const;
+
     /// 두들이 덮는 타일 값들 (왼쪽 위부터 가로 순서).
     std::vector<std::uint16_t> doodadTiles(std::uint16_t tilesetId, std::uint16_t doodadId) const;
+
+    /// 두들이 덮는 칸들의 메가타일 번호 (왼쪽 위부터 가로 순서).
+    ///
+    /// 타일 값은 에디터마다 다르게 적히지만 — StarEdit 는 두들을 일반 타일로
+    /// 구워 넣고 SCMDraft 는 두들 그룹 타일을 그대로 남긴다 — 화면에 보이는
+    /// 그림은 메가타일이 정한다. 두들이 멀쩡한지 따질 때는 이쪽을 본다.
+    std::vector<std::uint16_t> doodadMegaTiles(std::uint16_t tilesetId,
+                                               std::uint16_t doodadId) const;
+
+    /// 한 타일 값이 가리키는 메가타일 번호.
+    std::uint16_t tileMegaTile(std::uint16_t tilesetId, std::uint16_t tileId) const;
 
     /// 한 타일의 지형 성질. 크립이 퍼질 수 있는지 판단하는 데 쓴다.
     struct TileTerrain
@@ -298,11 +328,29 @@ public:
                          std::uint16_t tilesetId,
                          std::uint32_t resourceAmount = 0,
                          std::uint16_t stateFlags = 0,
-                         std::uint16_t relationFlags = 0) const;
+                         std::uint16_t relationFlags = 0,
+                         std::uint8_t colorIndex = 0xFF) const;
 
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;
 };
+
+
+/// 두들 가운데 픽셀에서 왼쪽 위 타일 좌표를 구한다.
+///
+/// 칸 수가 짝수인 두들은 타일 경계에, 홀수인 두들은 타일 한가운데에 중심이
+/// 온다. 두 경우를 섞어 쓰면 한 칸씩 밀린다.
+inline int doodadOriginTile(int centerPixel, int tileCount)
+{
+    return tileCount % 2 == 0 ? (centerPixel + 16) / 32 - tileCount / 2
+                              : centerPixel / 32 - (tileCount - 1) / 2;
+}
+
+/// 왼쪽 위 타일에서 DD2 에 적을 가운데 픽셀을 구한다.
+inline int doodadCenterPixel(int originTile, int tileCount)
+{
+    return originTile * 32 + tileCount * 16;
+}
 
 } // namespace splash::io

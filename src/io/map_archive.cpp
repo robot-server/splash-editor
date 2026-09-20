@@ -1018,7 +1018,8 @@ Result MapArchive::placeDoodad(const GameGraphics & graphics, std::uint16_t dood
         if (left < 0 || top < 0 || left + width > mapWidth || top + height > mapHeight)
             return Result::failure("두들이 맵 밖으로 나갑니다.");
 
-        // 지형 타일부터 바꾼다 — 두들은 타일로 그려진다.
+        // 타일은 MTXM(게임용)에만 쓴다. TILE(에디터용)은 두들을 걷어낸 밑
+        // 지형으로 남겨 둬야 나중에 두들을 지울 때 원래 땅이 돌아온다.
         int actions = 0;
         for (int y = 0; y < height; ++y)
         {
@@ -1026,24 +1027,39 @@ Result MapArchive::placeDoodad(const GameGraphics & graphics, std::uint16_t dood
             {
                 const std::uint16_t tile = tiles[static_cast<std::size_t>(y) * width + x];
                 if (tile == 0)
-                    continue;
+                    continue; // 두들에 속하지 않는 빈 칸
 
                 map.setTile(static_cast<std::size_t>(left + x),
-                            static_cast<std::size_t>(top + y), tile, Chk::Scope::Both);
-                actions += map.hasSection(Chk::SectionName::TILE) ? 2 : 1;
+                            static_cast<std::size_t>(top + y), tile, Chk::Scope::Game);
+                ++actions;
             }
         }
 
-        // DD2 에 항목을 남긴다. 좌표는 두들 한가운데의 픽셀이다.
+        const auto centerX = static_cast<std::uint16_t>(doodadCenterPixel(left, width));
+        const auto centerY = static_cast<std::uint16_t>(doodadCenterPixel(top, height));
+
         Chk::Doodad doodad {};
         doodad.type = Sc::Terrain::Doodad::Type(doodadId);
-        doodad.xc = static_cast<std::uint16_t>((left + width / 2.0) * kTilePixels);
-        doodad.yc = static_cast<std::uint16_t>((top + height / 2.0) * kTilePixels);
+        doodad.xc = centerX;
+        doodad.yc = centerY;
         doodad.owner = owner;
         doodad.enabled = Chk::Doodad::Enabled::Enabled;
 
         map.addDoodad(doodad);
         ++actions;
+
+        // 움직이는 두들은 타일 위에 그림 조각을 하나 더 얹는다.
+        if (found->overlayIndex != 0)
+        {
+            Chk::Sprite sprite {};
+            sprite.type = Sc::Sprite::Type(found->overlayIndex);
+            sprite.xc = centerX;
+            sprite.yc = centerY;
+            sprite.owner = owner;
+            sprite.flags = found->spriteOverlay ? Chk::Sprite::SpriteFlags::DrawAsSprite : 0;
+            map.addSprite(sprite);
+            ++actions;
+        }
 
         impl_->undoSteps.push_back(actions);
         impl_->redoSteps.clear();
@@ -1055,7 +1071,154 @@ Result MapArchive::placeDoodad(const GameGraphics & graphics, std::uint16_t dood
     return Result::success();
 }
 
-std::size_t MapArchive::convertDoodadsToTerrain()
+std::vector<std::size_t> MapArchive::findBrokenDoodads(const GameGraphics & graphics) const
+{
+    std::vector<std::size_t> out;
+    if (!impl_->isOpen())
+        return out;
+
+    const MapFile & map = *impl_->mapFile;
+    try
+    {
+        const auto tileset = static_cast<std::uint16_t>(map.getTileset());
+        const auto list = graphics.doodads(tileset);
+        const int width = static_cast<int>(map.getTileWidth());
+        const int height = static_cast<int>(map.getTileHeight());
+
+        for (std::size_t i = 0; i < map.numDoodads(); ++i)
+        {
+            const Chk::Doodad & doodad = map.getDoodad(i);
+            const auto doodadId = static_cast<std::uint16_t>(doodad.type);
+
+            const auto info = std::find_if(list.begin(), list.end(),
+                [doodadId](const auto & entry) { return entry.id == doodadId; });
+            if (info == list.end())
+                continue;
+
+            const auto expected = graphics.doodadTiles(tileset, doodadId);
+            const auto expectedGraphics = graphics.doodadMegaTiles(tileset, doodadId);
+            if (expected.empty() || expectedGraphics.empty())
+                continue;
+
+            const int left = doodadOriginTile(doodad.xc, info->tileWidth);
+            const int top = doodadOriginTile(doodad.yc, info->tileHeight);
+
+            // 타일 번호가 아니라 눈에 보이는 그림으로 따진다. 같은 그림을
+            // 가리키는 타일은 에디터마다 번호가 달라, 번호로 재면 멀쩡한
+            // 두들까지 어긋났다고 하게 된다.
+            bool broken = false;
+            for (int y = 0; y < info->tileHeight && !broken; ++y)
+            {
+                for (int x = 0; x < info->tileWidth; ++x)
+                {
+                    const std::size_t slot = static_cast<std::size_t>(y) * info->tileWidth + x;
+                    if (expected[slot] == 0)
+                        continue; // 두들에 속하지 않는 빈 칸
+
+                    const int mapX = left + x;
+                    const int mapY = top + y;
+                    if (mapX < 0 || mapY < 0 || mapX >= width || mapY >= height)
+                    {
+                        broken = true;
+                        break;
+                    }
+
+                    const auto tile = map.getTile(static_cast<std::size_t>(mapX),
+                                                  static_cast<std::size_t>(mapY),
+                                                  Chk::Scope::Game);
+                    if (graphics.tileMegaTile(tileset, tile) != expectedGraphics[slot])
+                    {
+                        broken = true;
+                        break;
+                    }
+                }
+            }
+
+            if (broken)
+                out.push_back(i);
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+    return out;
+}
+
+std::size_t MapArchive::repairDoodads(const GameGraphics & graphics)
+{
+    if (!impl_->isOpen())
+        return 0;
+
+    const auto broken = findBrokenDoodads(graphics);
+    if (broken.empty())
+        return 0;
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        const auto tileset = static_cast<std::uint16_t>(map.getTileset());
+        const auto list = graphics.doodads(tileset);
+
+        const int width = static_cast<int>(map.getTileWidth());
+        const int height = static_cast<int>(map.getTileHeight());
+
+        int actions = 0;
+        std::size_t repaired = 0;
+
+        for (std::size_t index : broken)
+        {
+            const Chk::Doodad & doodad = map.getDoodad(index);
+            const auto doodadId = static_cast<std::uint16_t>(doodad.type);
+
+            const auto info = std::find_if(list.begin(), list.end(),
+                [doodadId](const auto & entry) { return entry.id == doodadId; });
+            if (info == list.end())
+                continue;
+
+            const auto tiles = graphics.doodadTiles(tileset, doodadId);
+            if (tiles.empty())
+                continue;
+
+            const int left = doodadOriginTile(doodad.xc, info->tileWidth);
+            const int top = doodadOriginTile(doodad.yc, info->tileHeight);
+
+            for (int y = 0; y < info->tileHeight; ++y)
+            {
+                for (int x = 0; x < info->tileWidth; ++x)
+                {
+                    const std::uint16_t value =
+                        tiles[static_cast<std::size_t>(y) * info->tileWidth + x];
+                    if (value == 0)
+                        continue;
+
+                    const int mapX = left + x;
+                    const int mapY = top + y;
+                    if (mapX < 0 || mapY < 0 || mapX >= width || mapY >= height)
+                        continue;
+
+                    map.setTile(static_cast<std::size_t>(mapX), static_cast<std::size_t>(mapY),
+                                value, Chk::Scope::Game);
+                    ++actions;
+                }
+            }
+
+            ++repaired;
+        }
+
+        if (actions > 0)
+        {
+            impl_->undoSteps.push_back(actions);
+            impl_->redoSteps.clear();
+        }
+        return repaired;
+    }
+    catch (const std::exception &)
+    {
+    }
+    return 0;
+}
+
+std::size_t MapArchive::convertDoodadsToTerrain(const GameGraphics & graphics)
 {
     if (!impl_->isOpen())
         return 0;
@@ -1067,11 +1230,69 @@ std::size_t MapArchive::convertDoodadsToTerrain()
         if (count == 0)
             return 0;
 
+        const auto tileset = static_cast<std::uint16_t>(map.getTileset());
+        const auto list = graphics.doodads(tileset);
+        const int width = static_cast<int>(map.getTileWidth());
+        const int height = static_cast<int>(map.getTileHeight());
+
+        int actions = 0;
+
+        // 두들 타일을 TILE(에디터용)에도 적어 굳힌다. 이렇게 해야 DD2 를
+        // 지운 뒤에도 그 자리가 그냥 지형으로 남는다.
+        for (std::size_t i = 0; i < count; ++i)
+        {
+            const Chk::Doodad & doodad = map.getDoodad(i);
+            const auto doodadId = static_cast<std::uint16_t>(doodad.type);
+
+            const auto info = std::find_if(list.begin(), list.end(),
+                [doodadId](const auto & entry) { return entry.id == doodadId; });
+            if (info == list.end())
+                continue;
+
+            const auto tiles = graphics.doodadTiles(tileset, doodadId);
+            if (tiles.empty())
+                continue;
+
+            const int left = doodadOriginTile(doodad.xc, info->tileWidth);
+            const int top = doodadOriginTile(doodad.yc, info->tileHeight);
+
+            for (int y = 0; y < info->tileHeight; ++y)
+            {
+                for (int x = 0; x < info->tileWidth; ++x)
+                {
+                    const std::uint16_t value =
+                        tiles[static_cast<std::size_t>(y) * info->tileWidth + x];
+                    if (value == 0)
+                        continue;
+
+                    const int mapX = left + x;
+                    const int mapY = top + y;
+                    if (mapX < 0 || mapY < 0 || mapX >= width || mapY >= height)
+                        continue;
+
+                    const auto tileXc = static_cast<std::size_t>(mapX);
+                    const auto tileYc = static_cast<std::size_t>(mapY);
+
+                    if (map.getTile(tileXc, tileYc, Chk::Scope::Editor) != value)
+                    {
+                        map.setTile(tileXc, tileYc, value, Chk::Scope::Editor);
+                        ++actions;
+                    }
+                    if (map.getTile(tileXc, tileYc, Chk::Scope::Game) != value)
+                    {
+                        map.setTile(tileXc, tileYc, value, Chk::Scope::Game);
+                        ++actions;
+                    }
+                }
+            }
+        }
+
         // 뒤에서부터 지워야 앞 번호가 밀리지 않는다.
         for (std::size_t i = count; i-- > 0;)
             map.deleteDoodad(i);
+        actions += static_cast<int>(count);
 
-        impl_->undoSteps.push_back(static_cast<int>(count));
+        impl_->undoSteps.push_back(actions);
         impl_->redoSteps.clear();
         return count;
     }
@@ -1081,18 +1302,85 @@ std::size_t MapArchive::convertDoodadsToTerrain()
     return 0;
 }
 
-Result MapArchive::removeDoodad(std::size_t index)
+Result MapArchive::removeDoodad(const GameGraphics & graphics, std::size_t index)
 {
     if (!impl_->isOpen())
         return Result::failure("열린 맵이 없습니다.");
 
+    MapFile & map = *impl_->mapFile;
     try
     {
-        if (index >= impl_->mapFile->numDoodads())
+        if (index >= map.numDoodads())
             return Result::failure("두들 번호가 범위를 벗어났습니다.");
 
-        impl_->mapFile->deleteDoodad(index);
-        impl_->undoSteps.push_back(1);
+        const Chk::Doodad doodad = map.getDoodad(index);
+        const auto doodadId = static_cast<std::uint16_t>(doodad.type);
+
+        const auto tileset = static_cast<std::uint16_t>(map.getTileset());
+        const auto list = graphics.doodads(tileset);
+        const auto info = std::find_if(list.begin(), list.end(),
+            [doodadId](const auto & entry) { return entry.id == doodadId; });
+
+        int actions = 0;
+
+        if (info != list.end())
+        {
+            const auto tiles = graphics.doodadTiles(tileset, doodadId);
+            const int width = static_cast<int>(map.getTileWidth());
+            const int height = static_cast<int>(map.getTileHeight());
+
+            const int left = doodadOriginTile(doodad.xc, info->tileWidth);
+            const int top = doodadOriginTile(doodad.yc, info->tileHeight);
+
+            // 아직 두들 타일이 깔려 있는 칸만 밑 지형으로 되돌린다. 그 뒤에
+            // 다른 지형을 덧그렸다면 그 편집을 지우지 않는다.
+            for (int y = 0; y < info->tileHeight && !tiles.empty(); ++y)
+            {
+                for (int x = 0; x < info->tileWidth; ++x)
+                {
+                    const std::uint16_t value =
+                        tiles[static_cast<std::size_t>(y) * info->tileWidth + x];
+                    if (value == 0)
+                        continue;
+
+                    const int mapX = left + x;
+                    const int mapY = top + y;
+                    if (mapX < 0 || mapY < 0 || mapX >= width || mapY >= height)
+                        continue;
+
+                    const auto tileXc = static_cast<std::size_t>(mapX);
+                    const auto tileYc = static_cast<std::size_t>(mapY);
+
+                    const auto current = map.getTile(tileXc, tileYc, Chk::Scope::Game);
+                    const auto underlying = map.getTile(tileXc, tileYc, Chk::Scope::Editor);
+                    if (current == value && current != underlying)
+                    {
+                        map.setTile(tileXc, tileYc, underlying, Chk::Scope::Game);
+                        ++actions;
+                    }
+                }
+            }
+
+            // 같은 자리에 얹어 둔 그림 조각도 함께 걷는다.
+            if (info->overlayIndex != 0)
+            {
+                for (std::size_t i = map.numSprites(); i-- > 0;)
+                {
+                    const Chk::Sprite & sprite = map.getSprite(i);
+                    if (static_cast<std::uint16_t>(sprite.type) == info->overlayIndex &&
+                        sprite.xc == doodad.xc && sprite.yc == doodad.yc)
+                    {
+                        map.deleteSprite(i);
+                        ++actions;
+                    }
+                }
+            }
+        }
+
+        map.deleteDoodad(index);
+        ++actions;
+
+        impl_->undoSteps.push_back(actions);
         impl_->redoSteps.clear();
     }
     catch (const std::exception & e)
@@ -1388,10 +1676,32 @@ Result MapArchive::extractSound(std::size_t soundIndex, const std::string & dest
     if (!impl_->isOpen())
         return Result::failure("열린 맵이 없습니다.");
 
+    if (soundIndex >= Chk::TotalSounds)
+        return Result::failure("소리 번호가 범위를 벗어났습니다.");
+
+    try
+    {
+        const std::size_t stringId = impl_->mapFile->getSoundStringId(soundIndex);
+        if (stringId == 0 || stringId == Chk::StringId::UnusedSound)
+            return Result::failure("그 자리에는 소리가 없습니다.");
+
+        return extractSoundByStringId(stringId, destFilePath);
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("소리를 꺼내지 못했습니다: ") + e.what());
+    }
+}
+
+Result MapArchive::extractSoundByStringId(std::size_t stringId,
+                                          const std::string & destFilePath) const
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
     try
     {
         const MapFile & map = *impl_->mapFile;
-        const std::size_t stringId = map.getSoundStringId(soundIndex);
         if (stringId == 0 || stringId == Chk::StringId::UnusedSound)
             return Result::failure("그 자리에는 소리가 없습니다.");
 
@@ -5189,22 +5499,25 @@ std::vector<std::uint16_t> MapArchive::terrainTiles() const
         if (width == 0 || height == 0)
             return {};
 
-        // TILE(에디터용)을 우선 쓰고, 없으면 MTXM(게임용)으로 내려간다.
-        // 보호된 맵은 TILE 을 비워 두거나 잘라 놓는 경우가 흔하다.
+        // MTXM(게임용)이 화면에 실제로 나오는 지형이다. TILE(에디터용)은
+        // 두들을 걷어낸 밑 지형이라, 그쪽을 그리면 캠페인 맵의 절벽이며
+        // 바위가 통째로 사라진다.
         //
-        // TILE 이 아예 없는 맵에서도 MappingCore 는 자리만 0 으로 채워 둔다.
-        // 크기만 보고 고르면 지형이 통째로 검게 나오므로, 섹션이 실제로
-        // 들어 있는지와 내용이 비어 있지 않은지를 함께 본다.
+        // 섹션이 없는 맵에서도 MappingCore 는 자리만 0 으로 채워 두므로,
+        // 크기만 보고 고르면 지형이 검게 나온다. 섹션이 실제로 들어 있는지와
+        // 내용이 비어 있지 않은지를 함께 보고 다른 쪽으로 내려간다.
         const auto & editorTiles = map.read.editorTiles;
         const auto & gameTiles   = map.read.tiles;
 
-        const bool editorUsable =
-            map.hasSection(Chk::SectionName::TILE) &&
-            editorTiles.size() >= width * height &&
-            std::any_of(editorTiles.begin(), editorTiles.end(),
-                        [](std::uint16_t tile) { return tile != 0; });
+        const auto usable = [&](const std::vector<std::uint16_t> & tiles,
+                                Chk::SectionName section) {
+            return map.hasSection(section) && tiles.size() >= width * height &&
+                   std::any_of(tiles.begin(), tiles.end(),
+                               [](std::uint16_t tile) { return tile != 0; });
+        };
 
-        const auto & source = editorUsable ? editorTiles : gameTiles;
+        const auto & source = usable(gameTiles, Chk::SectionName::MTXM) ? gameTiles
+                                                                       : editorTiles;
 
         std::vector<std::uint16_t> out(width * height, 0);
         const std::size_t available = std::min(source.size(), out.size());

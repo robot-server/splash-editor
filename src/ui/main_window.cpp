@@ -605,6 +605,14 @@ void MainWindow::buildMenus()
             return;
         }
 
+        // 스프라이트를 골랐으면 그것을 담는다.
+        if (mapView_->selectedSprite() >= 0)
+        {
+            if (mapView_->copySelectedSprite())
+                statusBar()->showMessage(tr("스프라이트를 복사했습니다"), 2000);
+            return;
+        }
+
         // 가리개 도구에서는 고른 네모의 가리개를 담는다.
         if (mapView_->tool() == MapView::Tool::Fog)
         {
@@ -689,6 +697,13 @@ void MainWindow::buildMenus()
     QAction * pasteAction = editMenu->addAction(tr("붙여넣기(&V)"));
     pasteAction->setShortcut(QKeySequence::Paste);
     connect(pasteAction, &QAction::triggered, this, [this] {
+        if (mapView_->tool() == MapView::Tool::PlaceSprite && mapView_->hasSpriteClipboard())
+        {
+            if (mapView_->pasteSpriteAtCentre())
+                statusBar()->showMessage(tr("스프라이트를 붙였습니다"), 2000);
+            return;
+        }
+
         if (mapView_->tool() == MapView::Tool::Fog && mapView_->hasFogClipboard())
         {
             if (mapView_->pasteFogAtCentre())
@@ -1147,6 +1162,41 @@ void MainWindow::buildMenus()
 
     batchMenu->addSeparator();
 
+    QAction * repairDoodads = batchMenu->addAction(tr("어긋난 두들 고치기"));
+    repairDoodads->setToolTip(
+        tr("지형을 고치다 타일이 지워진 두들을 찾아 다시 깝니다."));
+    connect(repairDoodads, &QAction::triggered, this, [this] {
+        if (!document().isOpen() || !tileset_.isLoaded())
+        {
+            statusBar()->showMessage(tr("StarCraft 설치 폴더가 필요합니다"), 3000);
+            return;
+        }
+
+        const auto broken = document().findBrokenDoodads(tileset_);
+        if (broken.empty())
+        {
+            statusBar()->showMessage(tr("어긋난 두들이 없습니다"), 2500);
+            return;
+        }
+
+        const auto answer = QMessageBox::question(this, tr("어긋난 두들"),
+            tr("두들 %1개가 자리와 맞지 않습니다. 타일을 다시 깔까요?").arg(broken.size()),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+        if (answer != QMessageBox::Yes)
+            return;
+
+        std::size_t repaired = 0;
+        if (!document().repairDoodads(tileset_, &repaired))
+        {
+            statusBar()->showMessage(QString::fromStdString(document().lastError()), 3000);
+            return;
+        }
+
+        mapView_->refresh();
+        onDocumentEdited();
+        statusBar()->showMessage(tr("두들 %1개를 고쳤습니다").arg(repaired), 3000);
+    });
+
     QAction * convertDoodads = batchMenu->addAction(tr("두들을 지형으로 풀기"));
     convertDoodads->setToolTip(
         tr("두들 항목을 지우고 지형 타일만 남깁니다. 게임에서 보이는 모습은 "
@@ -1156,7 +1206,7 @@ void MainWindow::buildMenus()
             return;
 
         std::size_t converted = 0;
-        if (!document().convertDoodadsToTerrain(&converted))
+        if (!document().convertDoodadsToTerrain(tileset_, &converted))
         {
             statusBar()->showMessage(QString::fromStdString(document().lastError()), 3000);
             return;

@@ -192,6 +192,15 @@ public:
     /// 화면 한가운데에 붙인다.
     bool pasteLocationAtCentre();
 
+    /// 고른 스프라이트를 담는다. 담았으면 참.
+    bool copySelectedSprite();
+
+    /// 담아 둔 스프라이트를 커서 자리에 놓는다.
+    bool pasteSpriteAt(const QPointF & screenPos);
+    bool pasteSpriteAtCentre();
+
+    bool hasSpriteClipboard() const { return spriteClipboard_.valid; }
+
     /// 고른 네모 안의 가리개를 담는다. 담았으면 참.
     bool copyFogSelection();
 
@@ -472,6 +481,9 @@ private:
 
     QHash<std::uint16_t, QPixmap> tileCache_;
     QHash<std::uint32_t, UnitSprite> unitCache_;
+
+    /// 플레이어별 색 번호 (COLR). 맵이 정하지 않으면 플레이어 번호와 같다.
+    std::array<std::uint8_t, 12> playerColors_ { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
     QHash<std::uint32_t, UnitSprite> spriteCache_;
     double zoom_ = 1.0;
     QVector<QPixmap> creepTiles_;
@@ -550,6 +562,9 @@ public:
     /// 놓을 때마다 통째로 비우면 그림을 다시 그리느라 느리기도 하고,
     /// 방향이 정해지지 않은 유닛이 매번 다른 쪽을 보게 된다.
     void refreshUnits();
+
+    /// 그 플레이어의 색 번호 (COLR). 그림을 칠할 때 쓴다.
+    std::uint8_t unitColorIndex(std::uint8_t owner) const;
 
     /// 대칭이 켜져 있을 때 함께 칠할 자리들 (자기 자신을 포함한다).
     ///
@@ -649,6 +664,16 @@ public:
     bool boxSelecting_ = false;
     QPointF boxStart_;   ///< 맵 좌표
     QPointF boxEnd_;
+
+    /// 담아 둔 스프라이트.
+    struct SpriteClipboard
+    {
+        bool valid = false;
+        std::uint16_t type = 0;
+        std::uint8_t owner = 0;
+        bool drawnAsSprite = false;
+    };
+    SpriteClipboard spriteClipboard_;
 
     /// 담아 둔 로케이션. 크기와 이름·높이를 그대로 베낀다.
     struct LocationClipboard

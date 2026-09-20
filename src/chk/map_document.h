@@ -331,10 +331,15 @@ public:
     std::vector<io::MapArchive::RawDoodad> doodads() const;
     bool placeDoodad(const io::GameGraphics & graphics, std::uint16_t doodadId,
                      int tileX, int tileY, std::uint8_t owner = 0);
-    bool removeDoodad(std::size_t index);
+    bool removeDoodad(const io::GameGraphics & graphics, std::size_t index);
+
+    /// 자리와 맞지 않는 두들을 찾고 고친다.
+    std::vector<std::size_t> findBrokenDoodads(const io::GameGraphics & graphics) const;
+    bool repairDoodads(const io::GameGraphics & graphics, std::size_t * outCount = nullptr);
 
     /// 두들 항목을 모두 지우고 지형만 남긴다.
-    bool convertDoodadsToTerrain(std::size_t * outCount = nullptr);
+    bool convertDoodadsToTerrain(const io::GameGraphics & graphics,
+                                 std::size_t * outCount = nullptr);
 
     // --- 소리 (WAV) ---
 
@@ -342,6 +347,7 @@ public:
     bool addSound(const std::string & sourceFilePath, const std::string & mapPath = {});
     bool removeSound(std::size_t soundIndex, bool removeIfUsed = false);
     bool extractSound(std::size_t soundIndex, const std::string & destFilePath) const;
+    bool extractSoundByStringId(std::size_t stringId, const std::string & destFilePath) const;
 
     // --- 시야 가리개 (MASK) ---
 

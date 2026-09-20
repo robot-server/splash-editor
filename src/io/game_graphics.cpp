@@ -617,6 +617,8 @@ std::vector<GameGraphics::DoodadInfo> GameGraphics::doodads(std::uint16_t tilese
         info.tileWidth = doodad.tileWidth;
         info.tileHeight = doodad.tileHeight;
         info.startTileGroup = tileGroupIndex;
+        info.overlayIndex = doodad.overlayIndex;
+        info.spriteOverlay = (doodad.flags & 0x1000) != 0;
 
         // 팔레트에는 두들의 첫 타일을 보여 준다.
         info.previewTileId = static_cast<std::uint16_t>(tileGroupIndex * 16);
@@ -647,6 +649,74 @@ std::vector<GameGraphics::DoodadInfo> GameGraphics::doodads(std::uint16_t tilese
     return out;
 }
 
+bool GameGraphics::doodadFits(std::uint16_t tilesetId, std::uint16_t doodadId,
+                              const std::vector<std::uint16_t> & mapTiles,
+                              int mapWidth, int mapHeight, int tileX, int tileY) const
+{
+    if (!impl_->loaded)
+        return true;
+
+    const Sc::Terrain::Tiles & tiles = impl_->tiles(tilesetId);
+
+    const auto found = tiles.doodadIdToTileGroup.find(doodadId);
+    if (found == tiles.doodadIdToTileGroup.end())
+        return true;
+
+    const std::uint16_t startGroup = found->second;
+    if (startGroup >= tiles.tileGroups.size())
+        return true;
+
+    const auto & doodad = asDoodad(tiles.tileGroups[startGroup]);
+    const int width = doodad.tileWidth;
+    const int height = doodad.tileHeight;
+    if (width <= 0 || height <= 0)
+        return true;
+
+    // 배치 가능 표가 없으면 따질 것이 없다.
+    if (doodad.ddDataIndex >= tiles.doodadPlacibility.size())
+        return true;
+
+    const auto & placibility = tiles.doodadPlacibility[doodad.ddDataIndex];
+
+    const int left = tileX - width / 2;
+    const int top = tileY - height / 2;
+
+    for (int y = 0; y < height; ++y)
+    {
+        const std::size_t group = static_cast<std::size_t>(startGroup) + y;
+        for (int x = 0; x < width; ++x)
+        {
+            const std::size_t slot = static_cast<std::size_t>(y) * width + x;
+            if (slot >= 256)
+                continue;
+
+            // 두들에 속하지 않는 빈 칸은 어떤 지형이든 상관없다.
+            if (group >= tiles.tileGroups.size() || x >= 16 ||
+                tiles.tileGroups[group].megaTileIndex[x] == 0)
+                continue;
+
+            const std::uint16_t required = placibility.tileGroup[slot];
+            if (required == 0)
+                continue; // 아무 지형이나 좋다
+
+            const int mapX = left + x;
+            const int mapY = top + y;
+            if (mapX < 0 || mapY < 0 || mapX >= mapWidth || mapY >= mapHeight)
+                return false;
+
+            const std::size_t index = static_cast<std::size_t>(mapY) * mapWidth + mapX;
+            if (index >= mapTiles.size())
+                return false;
+
+            // 타일 값 위쪽이 그룹 번호다.
+            if (static_cast<std::uint16_t>(mapTiles[index] / 16) != required)
+                return false;
+        }
+    }
+
+    return true;
+}
+
 std::vector<std::uint16_t> GameGraphics::doodadTiles(std::uint16_t tilesetId,
                                                      std::uint16_t doodadId) const
 {
@@ -670,23 +740,76 @@ std::vector<std::uint16_t> GameGraphics::doodadTiles(std::uint16_t tilesetId,
     if (width <= 0 || height <= 0)
         return out;
 
-    // 두들 타일은 시작 그룹부터 열여섯 개씩 이어 담긴다.
+    // 두들은 줄 하나가 CV5 그룹 하나다. 그룹 안에서 칸 번호가 곧 x 이고,
+    // 그 자리의 메가타일이 0 이면 그 칸은 두들에 속하지 않는다 — 바위
+    // 그림의 네 귀퉁이처럼 뚫린 자리라 원래 지형을 그대로 둬야 한다.
     out.reserve(static_cast<std::size_t>(width) * height);
     for (int y = 0; y < height; ++y)
     {
+        const std::size_t group = static_cast<std::size_t>(startGroup) + y;
         for (int x = 0; x < width; ++x)
         {
-            const int n = y * width + x;
-            const std::size_t group = static_cast<std::size_t>(startGroup) + n / 16;
-            if (group >= tiles.tileGroups.size())
+            if (group >= tiles.tileGroups.size() || x >= 16 ||
+                tiles.tileGroups[group].megaTileIndex[x] == 0)
             {
                 out.push_back(0);
                 continue;
             }
-            out.push_back(static_cast<std::uint16_t>(group * 16 + (n % 16)));
+            out.push_back(static_cast<std::uint16_t>(group * 16 + x));
         }
     }
     return out;
+}
+
+std::vector<std::uint16_t> GameGraphics::doodadMegaTiles(std::uint16_t tilesetId,
+                                                         std::uint16_t doodadId) const
+{
+    std::vector<std::uint16_t> out;
+    if (!impl_->loaded)
+        return out;
+
+    const Sc::Terrain::Tiles & tiles = impl_->tiles(tilesetId);
+
+    const auto found = tiles.doodadIdToTileGroup.find(doodadId);
+    if (found == tiles.doodadIdToTileGroup.end())
+        return out;
+
+    const std::uint16_t startGroup = found->second;
+    if (startGroup >= tiles.tileGroups.size())
+        return out;
+
+    const auto & doodad = asDoodad(tiles.tileGroups[startGroup]);
+    const int width = doodad.tileWidth;
+    const int height = doodad.tileHeight;
+    if (width <= 0 || height <= 0)
+        return out;
+
+    out.reserve(static_cast<std::size_t>(width) * height);
+    for (int y = 0; y < height; ++y)
+    {
+        const std::size_t group = static_cast<std::size_t>(startGroup) + y;
+        for (int x = 0; x < width; ++x)
+        {
+            if (group >= tiles.tileGroups.size() || x >= 16)
+                out.push_back(0);
+            else
+                out.push_back(tiles.tileGroups[group].megaTileIndex[x]);
+        }
+    }
+    return out;
+}
+
+std::uint16_t GameGraphics::tileMegaTile(std::uint16_t tilesetId, std::uint16_t tileId) const
+{
+    if (!impl_->loaded)
+        return 0;
+
+    const Sc::Terrain::Tiles & tiles = impl_->tiles(tilesetId);
+    const std::size_t group = tileId / 16;
+    if (group >= tiles.tileGroups.size())
+        return 0;
+
+    return tiles.tileGroups[group].megaTileIndex[tileId % 16];
 }
 
 GameGraphics::TileTerrain GameGraphics::tileTerrain(std::uint16_t tilesetId,
@@ -1075,19 +1198,29 @@ UnitImage composeActor(Sc::Data & sc,
                        AnimContext & anim,
                        MapActor & actor,
                        const Sc::Terrain::Tiles & tiles,
-                       std::uint8_t owner)
+                       std::uint8_t colorIndex)
 {
     UnitImage out;
     // --- 팔레트 두 벌 ---
     // 일반 이미지는 지형 팔레트를 쓰되 8-15 구간을 플레이어 색으로 바꾼다.
     // 그림자는 dark.pcx 팔레트로 그린다(Chkdraft 도 shadowPalette 로 같은 것을 쓴다).
     std::array<Sc::SystemColor, Sc::NumColors> palette = tiles.systemColorPalette;
-    const auto & ramp = sc.tunit.bgraPalette;
-    const std::size_t rampBase = static_cast<std::size_t>(owner) * 8;
+    // 색 번호는 플레이어 번호가 아니라 COLR 이 정한다. tunit.pcx 는 색마다
+    // 여덟 단계 램프를 담고 있고, 그 여덟 칸이 팔레트 8-15 를 덮는다.
+    //
+    // 램프에 든 것은 색이 아니라 팔레트 자리 번호라, 실제 색은 타일셋
+    // 팔레트에서 꺼내야 한다. 그래서 같은 색 번호라도 지형에 따라 다르게
+    // 보인다 — 얼음 지형의 흰색이 초록빛인 것이 그 예다.
+    const auto & rampIndex = sc.tunit.paletteIndex;
+    const std::size_t rampBase = static_cast<std::size_t>(colorIndex % 16) * 8;
     for (std::size_t i = 0; i < 8; ++i)
     {
-        if (rampBase + i < ramp.size())
-            palette[8 + i] = ramp[rampBase + i];
+        if (rampBase + i >= rampIndex.size())
+            continue;
+
+        const std::size_t slot = rampIndex[rampBase + i];
+        if (slot < tiles.systemColorPalette.size())
+            palette[8 + i] = tiles.systemColorPalette[slot];
     }
     // 그림자는 색을 칠하는 것이 아니라 배경을 어둡게 하는 효과다.
     // dark.pcx 는 "배경색 -> 어두운 색" 매핑표라 배경을 알아야 정확한데,
@@ -1582,7 +1715,8 @@ UnitImage GameGraphics::renderUnit(std::uint16_t unitType,
                                    std::uint16_t tilesetId,
                                    std::uint32_t resourceAmount,
                                    std::uint16_t stateFlags,
-                                   std::uint16_t relationFlags) const
+                                   std::uint16_t relationFlags,
+                                   std::uint8_t colorIndex) const
 {
     if (!hasUnitGraphics())
         return UnitImage{};
@@ -1631,8 +1765,8 @@ UnitImage GameGraphics::renderUnit(std::uint16_t unitType,
                 actor.animate(++tick, /*isUnit*/ true, *impl_->anim);
         }
 
-        return composeActor(*impl_->scData, *impl_->anim, actor,
-                            impl_->tiles(tilesetId), owner);
+        return composeActor(*impl_->scData, *impl_->anim, actor, impl_->tiles(tilesetId),
+                            colorIndex == 0xFF ? owner : colorIndex);
     }
     catch (const std::exception &)
     {
@@ -1643,7 +1777,8 @@ UnitImage GameGraphics::renderUnit(std::uint16_t unitType,
 UnitImage GameGraphics::renderSprite(std::uint16_t spriteType,
                                      std::uint8_t owner,
                                      std::uint16_t tilesetId,
-                                     bool drawnAsSprite) const
+                                     bool drawnAsSprite,
+                                     std::uint8_t colorIndex) const
 {
     if (!hasUnitGraphics())
         return UnitImage{};
@@ -1668,8 +1803,8 @@ UnitImage GameGraphics::renderSprite(std::uint16_t spriteType,
         impl_->anim->initializeSpriteActor(actor, /*isClipboard*/ false, /*spriteIndex*/ 0,
                                            chkSprite, 0, 0);
 
-        return composeActor(*impl_->scData, *impl_->anim, actor,
-                            impl_->tiles(tilesetId), owner);
+        return composeActor(*impl_->scData, *impl_->anim, actor, impl_->tiles(tilesetId),
+                            colorIndex == 0xFF ? owner : colorIndex);
     }
     catch (const std::exception &)
     {

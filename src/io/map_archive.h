@@ -677,16 +677,26 @@ public:
     Result placeDoodad(const GameGraphics & graphics, std::uint16_t doodadId,
                        int tileX, int tileY, std::uint8_t owner = 0);
 
+    /// 자리와 맞지 않는 두들을 찾는다. 두들 번호(DD2 자리)를 돌려준다.
+    ///
+    /// 지형을 고치다 보면 두들이 깔아 둔 타일이 지워져 DD2 항목만 남는 일이
+    /// 생긴다. 게임은 DD2 를 읽지 않으므로 화면에는 표가 안 나지만, 편집기가
+    /// 두들로 다루려 하면 어긋난다.
+    std::vector<std::size_t> findBrokenDoodads(const GameGraphics & graphics) const;
+
+    /// 어긋난 두들의 타일을 다시 깐다. 고친 개수를 돌려준다.
+    std::size_t repairDoodads(const GameGraphics & graphics);
+
     /// 두들 항목을 모두 지우고 지형만 남긴다.
     ///
     /// 두들은 지형 타일 + DD2 항목으로 이뤄진다. 항목을 지우면 편집기가
     /// 두들로 다루지 않고 보통 지형처럼 고칠 수 있게 된다. 게임에서 보이는
     /// 모습은 그대로다 — 타일은 건드리지 않는다.
-    std::size_t convertDoodadsToTerrain();
+    std::size_t convertDoodadsToTerrain(const GameGraphics & graphics);
 
     /// 두들 항목을 지운다. 지형 타일은 그대로 둔다 (무엇으로 되돌릴지
     /// 알 수 없으므로, 지형은 따로 칠해야 한다).
-    Result removeDoodad(std::size_t index);
+    Result removeDoodad(const GameGraphics & graphics, std::size_t index);
 
     // --- 소리 (WAV) ---
 
@@ -718,6 +728,13 @@ public:
 
     /// 맵 안 소리를 파일로 꺼낸다.
     Result extractSound(std::size_t soundIndex, const std::string & destFilePath) const;
+
+    /// 문자열 번호로 소리를 꺼낸다.
+    ///
+    /// WAV 구역에 등록하지 않고 트리거가 경로만으로 부르는 소리는 자리
+    /// 번호가 없다. 그런 소리는 이쪽으로만 꺼낼 수 있다.
+    Result extractSoundByStringId(std::size_t stringId,
+                                  const std::string & destFilePath) const;
 
     // --- 시야 가리개 (MASK) ---
 

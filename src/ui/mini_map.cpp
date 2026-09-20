@@ -122,9 +122,15 @@ void MiniMap::paintEvent(QPaintEvent *)
     const double sx = target.width() / (info.width * double(kTilePixels));
     const double sy = target.height() / (info.height * double(kTilePixels));
 
+    // 색 번호는 맵이 COLR 로 정한다. 플레이어 번호를 그대로 쓰면 색을
+    // 바꾼 맵에서 미니맵만 딴 색이 된다.
+    const auto settings = document_->playerSettings();
+
     for (const auto & unit : document_->units())
     {
-        const chk::PlayerColor color = chk::playerColor(unit.owner);
+        const std::uint8_t colorIndex =
+            unit.owner < settings.size() ? settings[unit.owner].color : unit.owner;
+        const chk::PlayerColor color = chk::playerColor(colorIndex);
         painter.fillRect(QRectF(target.left() + unit.x * sx - 1,
                                 target.top() + unit.y * sy - 1, 2.5, 2.5),
                          QColor(color.r, color.g, color.b));

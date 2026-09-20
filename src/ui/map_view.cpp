@@ -65,6 +65,16 @@ void MapView::setTileset(const io::GameGraphics * tileset)
 
 void MapView::refresh()
 {
+    // 플레이어 색은 맵마다 다르다. 유닛 그림 캐시를 비우는 이 자리에서
+    // 함께 읽어 둔다 — 색만 바뀌어도 그림이 전부 달라지기 때문이다.
+    playerColors_ = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+    if (document_ != nullptr && document_->isOpen())
+    {
+        const auto settings = document_->playerSettings();
+        for (std::size_t i = 0; i < settings.size() && i < playerColors_.size(); ++i)
+            playerColors_[i] = settings[i].color;
+    }
+
     fogPreviewReady_ = false;
     pathAreasReady_ = false;
     aiTownsReady_ = false;
@@ -596,7 +606,7 @@ const MapView::UnitSprite * MapView::unitSprite(std::uint16_t type, std::uint8_t
 
     const io::UnitImage image =
         tileset_->renderUnit(type, owner, document_->info().tilesetId, resourceAmount,
-                             stateFlags, relationFlags);
+                             stateFlags, relationFlags, unitColorIndex(owner));
 
     UnitSprite sprite;
     if (image.width > 0 && image.height > 0)
@@ -610,6 +620,11 @@ const MapView::UnitSprite * MapView::unitSprite(std::uint16_t type, std::uint8_t
 
     auto inserted = unitCache_.insert(key, sprite);
     return inserted.value().pixmap.isNull() ? nullptr : &inserted.value();
+}
+
+std::uint8_t MapView::unitColorIndex(std::uint8_t owner) const
+{
+    return owner < playerColors_.size() ? playerColors_[owner] : owner;
 }
 
 const MapView::UnitSprite * MapView::mapSprite(std::uint16_t type, std::uint8_t owner,
@@ -627,7 +642,8 @@ const MapView::UnitSprite * MapView::mapSprite(std::uint16_t type, std::uint8_t 
         return found.value().pixmap.isNull() ? nullptr : &found.value();
 
     const io::UnitImage image =
-        tileset_->renderSprite(type, owner, document_->info().tilesetId, drawnAsSprite);
+        tileset_->renderSprite(type, owner, document_->info().tilesetId, drawnAsSprite,
+                               unitColorIndex(owner));
 
     UnitSprite sprite;
     if (image.width > 0 && image.height > 0)
@@ -743,7 +759,7 @@ void MapView::paintUnits(QPainter & painter, const QRect & dirty)
         if (!dirty.intersects(bounds.toAlignedRect().adjusted(-2, -2, 2, 2)))
             continue;
 
-        const chk::PlayerColor color = chk::playerColor(unit.owner);
+        const chk::PlayerColor color = chk::playerColor(unitColorIndex(unit.owner));
         painter.setRenderHint(QPainter::Antialiasing, true);
         painter.setBrush(QColor(color.r, color.g, color.b));
         painter.setPen(isSelected ? QPen(QColor(90, 255, 120), 1.5)
@@ -2689,6 +2705,50 @@ bool MapView::pasteLocationAt(const QPointF & screenPos)
 bool MapView::pasteLocationAtCentre()
 {
     return pasteLocationAt(QPointF(viewport()->width() / 2.0, viewport()->height() / 2.0));
+}
+
+bool MapView::copySelectedSprite()
+{
+    if (document_ == nullptr || selectedSprite_ < 0)
+        return false;
+
+    const auto & sprites = document_->sprites();
+    if (selectedSprite_ >= static_cast<int>(sprites.size()))
+        return false;
+
+    const auto & sprite = sprites[static_cast<std::size_t>(selectedSprite_)];
+
+    spriteClipboard_.valid = true;
+    spriteClipboard_.type = sprite.type;
+    spriteClipboard_.owner = sprite.owner;
+    spriteClipboard_.drawnAsSprite = sprite.drawnAsSprite;
+    return true;
+}
+
+bool MapView::pasteSpriteAt(const QPointF & screenPos)
+{
+    if (!spriteClipboard_.valid || document_ == nullptr || !document_->isOpen())
+        return false;
+
+    const QPointF mapPos = screenToMap(screenPos);
+    auto * doc = const_cast<chk::MapDocument *>(document_);
+
+    if (!doc->addSprite(spriteClipboard_.type, spriteClipboard_.owner,
+                        static_cast<std::uint16_t>(std::max(0.0, mapPos.x())),
+                        static_cast<std::uint16_t>(std::max(0.0, mapPos.y())),
+                        spriteClipboard_.drawnAsSprite))
+    {
+        return false;
+    }
+
+    refreshUnits();
+    emit documentEdited();
+    return true;
+}
+
+bool MapView::pasteSpriteAtCentre()
+{
+    return pasteSpriteAt(QPointF(viewport()->width() / 2.0, viewport()->height() / 2.0));
 }
 
 bool MapView::copyFogSelection()
