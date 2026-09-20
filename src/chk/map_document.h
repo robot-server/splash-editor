@@ -332,7 +332,8 @@ public:
 
     // --- 두들 (DD2) ---
 
-    std::vector<io::MapArchive::RawDoodad> doodads() const;
+    /// 맵에 놓인 두들. 편집할 때마다 다시 읽어 두고 그대로 돌려준다.
+    const std::vector<io::MapArchive::RawDoodad> & doodads() const;
     bool placeDoodad(const io::GameGraphics & graphics, std::uint16_t doodadId,
                      int tileX, int tileY, std::uint8_t owner = 0);
     bool removeDoodad(const io::GameGraphics & graphics, std::size_t index);
@@ -443,6 +444,7 @@ private:
     std::vector<MapUnit> units_;
     std::vector<MapSprite> sprites_;
     std::vector<MapLocation> locations_;
+    std::vector<io::MapArchive::RawDoodad> doodads_;
     std::string filePath_;
     std::string lastError_;
     bool modified_ = false;

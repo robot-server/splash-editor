@@ -1099,9 +1099,9 @@ bool MapDocument::unprotect(std::string * report)
     return true;
 }
 
-std::vector<io::MapArchive::RawDoodad> MapDocument::doodads() const
+const std::vector<io::MapArchive::RawDoodad> & MapDocument::doodads() const
 {
-    return archive_.doodads();
+    return doodads_;
 }
 
 bool MapDocument::placeDoodad(const io::GameGraphics & graphics, std::uint16_t doodadId,
@@ -1503,6 +1503,7 @@ void MapDocument::refreshInfo()
 {
     tiles_ = archive_.terrainTiles();
     fog_ = archive_.fogTiles();
+    doodads_ = archive_.doodads();
 
     units_.clear();
     for (const io::RawUnit & raw : archive_.units())
