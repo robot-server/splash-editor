@@ -94,6 +94,29 @@ void UnitPalette::setOwner(std::uint8_t owner)
     viewport()->update();
 }
 
+void UnitPalette::setFilter(const QString & text)
+{
+    if (filter_ == text.trimmed())
+        return;
+
+    filter_ = text.trimmed();
+    rebuild();
+}
+
+namespace {
+
+/// 그 항목이 찾는 글자와 맞는지. 이름과 번호 둘 다로 찾을 수 있다.
+bool matchesFilter(const QString & filter, const QString & name, std::uint16_t type)
+{
+    if (filter.isEmpty())
+        return true;
+    if (name.contains(filter, Qt::CaseInsensitive))
+        return true;
+    return QString::number(type) == filter;
+}
+
+} // namespace
+
 void UnitPalette::rebuild()
 {
     units_.clear();
@@ -102,7 +125,10 @@ void UnitPalette::rebuild()
     {
         units_.reserve(kSpriteTypes);
         for (std::uint16_t type = 0; type < kSpriteTypes; ++type)
-            units_.push_back(type);
+        {
+            if (matchesFilter(filter_, tr("스프라이트 %1").arg(type), type))
+                units_.push_back(type);
+        }
 
         updateScrollRange();
         viewport()->update();
@@ -115,6 +141,10 @@ void UnitPalette::rebuild()
 
     for (std::uint16_t type = 0; type < kRealUnitTypes; ++type)
     {
+        if (!matchesFilter(filter_,
+                           QString::fromStdString(splash::io::unitTypeName(type)), type))
+            continue;
+
         if (category_ == Category::All)
         {
             units_.push_back(type);
@@ -255,6 +285,40 @@ void UnitPalette::paintEvent(QPaintEvent * event)
                 const QPoint at(cell.center().x() - pixmap->width() / 2,
                                 cell.center().y() - pixmap->height() / 2);
                 painter.drawPixmap(at, *pixmap);
+            }
+            // 그림이 없는 항목은 빈 칸으로만 보여서는 찾을 수가 없다.
+            // 찾는 중에는 어느 것이 걸렸는지 알아야 하므로 이름을 함께
+            // 적는다.
+            if (pixmap == nullptr || !filter_.isEmpty())
+            {
+                const QString name = category_ == Category::Sprites
+                    ? tr("스프라이트 %1").arg(unitType)
+                    : QString::fromStdString(splash::io::unitTypeName(unitType));
+
+                painter.save();
+                QFont small = painter.font();
+                small.setPointSizeF(std::max(7.0, small.pointSizeF() - 2.5));
+                painter.setFont(small);
+
+                if (pixmap != nullptr)
+                {
+                    // 그림 위에 겹치므로 글자가 묻히지 않게 띠를 깐다.
+                    const QRect strip(cell.left() + 1, cell.bottom() - 15,
+                                      cell.width() - 2, 14);
+                    painter.fillRect(strip, QColor(24, 24, 28, 210));
+                    painter.setPen(QColor(220, 222, 228));
+                    painter.drawText(strip.adjusted(2, 0, -2, 0),
+                                     Qt::AlignCenter,
+                                     painter.fontMetrics().elidedText(
+                                         name, Qt::ElideRight, strip.width() - 4));
+                }
+                else
+                {
+                    painter.setPen(QColor(168, 172, 180));
+                    painter.drawText(cell.adjusted(3, 3, -3, -3),
+                                     Qt::AlignCenter | Qt::TextWordWrap, name);
+                }
+                painter.restore();
             }
 
             if (unitType == selectedUnit_)

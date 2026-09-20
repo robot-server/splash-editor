@@ -388,9 +388,20 @@ void MainWindow::buildCentralWidget()
     unitPalette_ = new UnitPalette(unitPanel);
     unitPalette_->setTileset(&tileset_);
 
+    // 이름으로 찾기 — 맵 리빌러처럼 그림이 없는 항목은 눈으로 훑어서는
+    // 찾기 어렵다. 번호로도 찾을 수 있다.
+    auto * searchBox = new QLineEdit(unitPanel);
+    searchBox->setPlaceholderText(tr("이름이나 번호로 찾기"));
+    searchBox->setClearButtonEnabled(true);
+
     unitLayout->addWidget(categoryBox);
     unitLayout->addWidget(ownerBox);
+    unitLayout->addWidget(searchBox);
     unitLayout->addWidget(unitPalette_, 1);
+
+    connect(searchBox, &QLineEdit::textChanged, this, [this](const QString & text) {
+        unitPalette_->setFilter(text);
+    });
 
     connect(categoryBox, &QComboBox::currentIndexChanged, this, [this, categoryBox](int) {
         unitPalette_->setCategory(

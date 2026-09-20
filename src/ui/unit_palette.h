@@ -53,6 +53,9 @@ public:
     /// 지금 고른 것이 스프라이트인지(유닛이 아니라).
     bool spriteMode() const { return category_ == Category::Sprites; }
 
+    /// 이름에 이 글자가 든 것만 보여 준다. 빈 문자열이면 모두 보여 준다.
+    void setFilter(const QString & text);
+
 signals:
     void unitSelected(std::uint16_t unitType);
     void spriteSelected(std::uint16_t spriteType);
@@ -64,6 +67,7 @@ protected:
 
 private:
     void rebuild();
+    QString filter_;
     void updateScrollRange();
     int columns() const;
     const QPixmap * unitPixmap(std::uint16_t unitType);
