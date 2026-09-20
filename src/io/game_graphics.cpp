@@ -875,7 +875,10 @@ GameGraphics::TileTerrain GameGraphics::tileTerrain(std::uint16_t tilesetId,
             for (std::size_t x = 0; x < 4; ++x)
             {
                 if (tileFlags.miniTileFlags[y][x].isWalkable())
+                {
                     ++walkableCount;
+                    terrain.walkMask |= static_cast<std::uint16_t>(1u << (y * 4 + x));
+                }
                 if (tileFlags.miniTileFlags[y][x].blocksView())
                     ++blockingCount;
                 if (tileFlags.miniTileFlags[y][x].isRamp())

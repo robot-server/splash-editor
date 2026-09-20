@@ -2055,6 +2055,23 @@ Result MapArchive::createNew(MapFormat format,
         fresh->mapFile = std::make_unique<MapFile>(
             Sc::Terrain::Tileset(tilesetId), width, height,
             terrainTypeIndex, triggers, saveType, tilesetData);
+
+        // 요청한 포맷의 버전으로 맞춘다.
+        //
+        // saveAs() 는 버전을 바꾸지 않는다 — 기존 맵에서 changeVersionTo() 가
+        // deleteUnusedStrings 를 불러 문자열을 지우기 때문이다. 하지만 **갓
+        // 만든 맵**에는 잃을 문자열이 없다. 여기서 맞추지 않으면 .scx 로
+        // 만들어도 VER 이 63(하이브리드)으로 남아, 브루드워 전용 유닛
+        // (럴커·메딕·커세어…)을 놓을 수 없는 맵이 나온다.
+        Chk::Version version = Chk::Version::StarCraft_Hybrid;
+        switch (format)
+        {
+            case MapFormat::HybridScm:     version = Chk::Version::StarCraft_Hybrid;     break;
+            case MapFormat::ExpansionScx:  version = Chk::Version::StarCraft_BroodWar;   break;
+            case MapFormat::RemasteredScx: version = Chk::Version::StarCraft_Remastered; break;
+        }
+        if (!fresh->mapFile->changeVersionTo(version))
+            return Result::failure("새 맵의 버전을 맞추지 못했습니다.");
     }
     catch (const std::exception & e)
     {
@@ -2424,6 +2441,17 @@ Result MapArchive::addUnit(std::uint16_t unitType, std::uint8_t owner,
             default:
                 break;
         }
+
+        // 채워 넣은 값이 실제로 쓰이도록 "이 필드는 유효하다" 표시를 켠다.
+        // 이 비트가 없으면 게임과 다른 에디터는 값을 무시하고 기본값을 쓴다 —
+        // 미네랄을 놓고 남은 양을 1500 으로 적어도 0 으로 보인다.
+        // setUnitProperties() 와 같은 잣대를 쓴다.
+        unit.validFieldFlags |= Chk::Unit::ValidField::Owner
+                              | Chk::Unit::ValidField::Hitpoints
+                              | Chk::Unit::ValidField::Shields
+                              | Chk::Unit::ValidField::Energy
+                              | Chk::Unit::ValidField::Resources
+                              | Chk::Unit::ValidField::Hangar;
 
         // classId 는 맵 안에서 유닛을 가리키는 번호다. 겹치지 않게 뒤에서 잇는다.
         std::uint32_t nextClassId = 0;

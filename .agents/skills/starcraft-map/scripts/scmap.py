@@ -165,6 +165,18 @@ class Cli:
 
         return [rows[k] for k in sorted(rows)]
 
+    def doodad_catalogue(self) -> list[dict]:
+        """이 맵 타일셋의 두들 목록. (번호, 가로, 세로, 갈래)"""
+        out = self.run("doodad", "list", self.path, "--catalogue",
+                       "--install", self.install)
+        items = []
+        for line in out.splitlines():
+            m = re.match(r"^\s*(\d+)\s+(\d+)x\s*(\d+)\s+(.+?)\s*$", line)
+            if m:
+                items.append({"id": int(m.group(1)), "w": int(m.group(2)),
+                              "h": int(m.group(3)), "kind": m.group(4).strip()})
+        return items
+
     def terrain_types(self) -> dict[str, int]:
         """이 맵 타일셋의 ISOM 지형 이름 → 브러시 번호."""
         out = self.run("terrain", "types", self.path, "--install", self.install)
@@ -349,12 +361,26 @@ def symmetric_points(x: float, y: float, symmetry: str, count: int,
 # 밖 타일까지 건드려 검게 깨졌다 — 크기를 꼭 함께 쓴다.
 #
 # (이름, 기준값, 가로, 세로)
-RAMPS = {
-    0: [("Badlands", 0x4AB0, 6, 6), ("Badlands 다른 갈래", 0x4A50, 6, 6)],
-    3: [("Ashworld", 0x4540, 6, 6), ("Ashworld 다른 갈래", 0x44E0, 6, 6)],
-    4: [("Jungle", 0x4300, 6, 6), ("Jungle 다른 갈래", 0x4360, 6, 6)],
-    7: [("Twilight", 0x4040, 6, 4), ("Twilight 다른 갈래", 0x4000, 6, 4)],
+# 방향마다 다른 기준값을 쓴다 (공식 맵 57개에서 둘레 높이로 갈라 셌다).
+# "down" 은 고지대가 위에 있고 아래로 내려가는 램프, "up" 은 그 반대다.
+# 동·서 변종은 표본이 얇아 못 넣었다 — 그래서 place_ramp_checked 가
+# 찍어 보고 검사한다.
+#
+# (이름, 블록 기준값, 가로, 세로)
+RAMPS_BY_DIR = {
+    0: {"down": [("Badlands 아래로", 0x4AB0, 6, 6), ("Badlands 갈래2", 0x4A50, 6, 6)],
+        "up":   [("Badlands 위로", 0x02C2, 6, 6), ("Badlands 갈래2", 0x4A50, 6, 6)]},
+    3: {"down": [("Ashworld 아래로", 0x4540, 6, 6), ("Ashworld 갈래2", 0x44E0, 6, 6)],
+        "up":   [("Ashworld 위로", 0x0854, 6, 6), ("Ashworld 갈래2", 0x44E0, 6, 6)]},
+    4: {"down": [("Jungle 아래로", 0x4300, 6, 6), ("Jungle 갈래2", 0x4360, 6, 6)],
+        "up":   [("Jungle 위로", 0x022C, 6, 6), ("Jungle 위로2", 0x024C, 6, 6),
+                 ("Jungle 위로3", 0x05E2, 6, 6)]},
+    7: {"down": [("Twilight 아래로", 0x4040, 6, 4), ("Twilight 갈래2", 0x4000, 6, 4)],
+        "up":   [("Twilight 위로", 0x3F60, 6, 4), ("Twilight 갈래2", 0x4000, 6, 4)]},
 }
+
+# 옛 이름 — 방향을 가리지 않는다. 새 코드는 RAMPS_BY_DIR 을 쓴다.
+RAMPS = {ts: d["down"] for ts, d in RAMPS_BY_DIR.items()}
 
 
 def ramp_rows(base: int, width: int, height: int, first_row: int = 0):
@@ -378,9 +404,17 @@ def place_ramp(cli: Cli, tile_x: int, tile_y: int, base: int,
         cli.paste_tiles(tile_x, tile_y + 1, ramp_rows(base, width, height - 1, 1))
 
 
+def ramp_candidates(tileset_id: int, downward: bool = True):
+    """그 타일셋·방향에서 시도해 볼 램프 목록."""
+    d = RAMPS_BY_DIR.get(tileset_id & 7)
+    if not d:
+        return []
+    return d["down" if downward else "up"]
+
+
 def default_ramp(tileset_id: int):
-    """그 타일셋에서 기본으로 쓸 램프. (기준값, 가로, 세로) 또는 None."""
-    entries = RAMPS.get(tileset_id & 7)
+    """옛 이름. (기준값, 가로, 세로) 또는 None."""
+    entries = ramp_candidates(tileset_id, True)
     if not entries:
         return None
     _, base, width, height = entries[0]
@@ -405,6 +439,7 @@ MAIN_GAS_OFFSET = (0, -176)
 
 def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
                minerals: int = 9, gas: int = 1,
+               out_x: int = -1, out_y: int = -1,
                facing: int = 0, width: int = 128, height: int = 128,
                mineral_amount: int = MINERAL_AMOUNT,
                gas_amount: int = GAS_AMOUNT,
@@ -418,9 +453,12 @@ def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
         cli.place(START_LOCATION, tile_x, tile_y, owner)
 
     def turn(dx, dy):
-        for _ in range(facing % 4):
-            dx, dy = -dy, dx
-        return dx, dy
+        """자원을 본진 **바깥쪽**으로 보낸다.
+
+        돌리지 않고 뒤집기만 한다. 90도로 돌리면 자원이 램프 쪽으로
+        가서 입구를 막는다 — 실제로 베스핀이 램프 위에 얹힌 적이 있다.
+        """
+        return dx * (1 if out_x < 0 else -1), dy * (1 if out_y < 0 else -1)
 
     placed = []
     kinds = (MINERAL_1, MINERAL_2, MINERAL_3)
@@ -438,6 +476,50 @@ def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
         placed.append(("gas", dx, dy))
 
     return placed
+
+
+def setup_melee_players(cli: Cli, players: int):
+    """밀리맵 플레이어 슬롯을 스타팅 수에 맞춘다.
+
+    **스타팅보다 슬롯이 많으면 안 된다.** 대기실에서 자리를 받았는데
+    스타팅이 없는 사람이 생긴다. 공식 리그 맵은 예외 없이 쓰는 만큼만
+    열어 두고 나머지를 "사용 안 함" 으로 막는다 (투혼 4인용: P1~4 열림
+    + 선택 가능, P5~8 사용 안 함).
+    """
+    for p in range(1, 9):
+        if p <= players:
+            cli.edit("player", "set", cli.path, str(p),
+                     "--race", "userselect", "--slot", "open", "--force", "1")
+        else:
+            cli.edit("player", "set", cli.path, str(p),
+                     "--race", "inactive", "--slot", "inactive")
+    # 공식 맵은 세력 1 에 "시작 위치 섞기" 를 켜 둔다.
+    cli.edit("force", "set", cli.path, "1", "--name", "Players",
+             "--randomize-start", "on")
+
+
+def setup_usemap_players(cli: Cli, humans: int, computers: list[int]):
+    """유즈맵 플레이어 슬롯을 정한다.
+
+    유즈맵에서 트리거가 적으로 쓰는 플레이어는 **컴퓨터**여야 한다.
+    "열림" 으로 두면 사람이 앉을 수 있는 빈 자리가 되고, 아무도 앉지
+    않으면 그 플레이어의 유닛이 아예 생기지 않는다.
+    """
+    for p in range(1, 9):
+        if p <= humans:
+            cli.edit("player", "set", cli.path, str(p),
+                     "--race", "userselect", "--slot", "open", "--force", "1")
+        elif p in computers:
+            cli.edit("player", "set", cli.path, str(p),
+                     "--race", "zerg", "--slot", "computer", "--force", "2")
+        else:
+            cli.edit("player", "set", cli.path, str(p),
+                     "--race", "inactive", "--slot", "inactive")
+    # 사람끼리는 한 편 — 협동 유즈맵의 기본이다.
+    cli.edit("force", "set", cli.path, "1", "--name", "Players",
+             "--allied-victory", "on", "--shared-vision", "on")
+    cli.edit("force", "set", cli.path, "2", "--name", "Enemy",
+             "--allied-victory", "on", "--shared-vision", "on")
 
 
 def set_all_resources(cli: Cli, mineral_amount: int = MINERAL_AMOUNT,
@@ -469,3 +551,193 @@ if __name__ == "__main__":
         c = Cli(sys.argv[1])
         for key, value in c.info().items():
             print(f"  {key:12} {value}")
+
+
+# --- 높이로 지형 읽기 ---
+#
+# 타일 값만으로는 그 자리가 고지대인지 알 수 없다. 타일 그룹(값/16)마다
+# 높이·걷기가 정해져 있고, `splash-cli tileset-groups` 가 그 표를 낸다.
+# 절벽 줄을 "타일 값이 크게 바뀌는 곳" 으로 추측했다가 램프가 고지대
+# 한가운데 파묻힌 적이 있다. 반드시 높이로 판정한다.
+
+_GROUP_CACHE: dict[int, dict[int, tuple]] = {}
+
+
+def terrain_groups(cli: Cli, tileset_id: int) -> dict[int, tuple]:
+    """타일 그룹 → (높이, 걷기, 모두걷기, 짓기, 램프)."""
+    key = tileset_id & 7
+    if key in _GROUP_CACHE:
+        return _GROUP_CACHE[key]
+    out = cli.run("tileset-groups", cli.install, str(key))
+    table = {}
+    for line in out.splitlines():
+        if line.startswith("#"):
+            continue
+        f = line.split()
+        if len(f) == 7:
+            table[int(f[0])] = (int(f[1]), int(f[2]), int(f[3]),
+                                int(f[4]), int(f[5]), int(f[6], 16))
+        elif len(f) == 6:      # 걷기비트가 없던 옛 형식
+            table[int(f[0])] = tuple(int(v) for v in f[1:]) + (0xFFFF,)
+    _GROUP_CACHE[key] = table
+    return table
+
+
+class Terrain:
+    """맵 한 구역의 타일과 그 높이를 함께 들고 있는 것."""
+
+    def __init__(self, cli: Cli, x: int, y: int, w: int, h: int, tileset_id: int):
+        self.x, self.y, self.w, self.h = x, y, w, h
+        self.tiles = cli.tiles(x, y, w, h)
+        self.groups = terrain_groups(cli, tileset_id)
+
+    def _prop(self, tx: int, ty: int, index: int, default=0):
+        ix, iy = tx - self.x, ty - self.y
+        if not (0 <= ix < self.w and 0 <= iy < self.h):
+            return default
+        return self.groups.get(self.tiles[iy][ix] >> 4, (0, 0, 0, 0, 0))[index]
+
+    def elevation(self, tx: int, ty: int) -> int:
+        return self._prop(tx, ty, 0)
+
+    def walkable(self, tx: int, ty: int) -> int:
+        return self._prop(tx, ty, 1)
+
+
+def find_elevation_edge(cli: Cli, tileset_id: int, tx: int, y_from: int, y_to: int,
+                        vertical: bool = True):
+    """높은 땅이 끝나고 낮은 땅이 되는 첫 줄(또는 칸)을 찾는다.
+
+    (tx, y_from) 에서 y_to 쪽으로 훑는다. vertical=False 면 tx 가 세로
+    좌표이고 y_from~y_to 가 가로 범위다.
+    """
+    lo, hi = (y_from, y_to) if y_from <= y_to else (y_to, y_from)
+    if vertical:
+        t = Terrain(cli, tx, lo, 1, hi - lo + 1, tileset_id)
+        seq = range(y_from, y_to + (1 if y_to >= y_from else -1),
+                    1 if y_to >= y_from else -1)
+        prev = None
+        for ty in seq:
+            e = t.elevation(tx, ty)
+            if prev is not None and prev >= 1 and e == 0:
+                return ty
+            prev = e
+        return None
+    t = Terrain(cli, lo, tx, hi - lo + 1, 1, tileset_id)
+    seq = range(y_from, y_to + (1 if y_to >= y_from else -1),
+                1 if y_to >= y_from else -1)
+    prev = None
+    for cx in seq:
+        e = t.elevation(cx, tx)
+        if prev is not None and prev >= 1 and e == 0:
+            return cx
+        prev = e
+    return None
+
+
+def place_ramp_checked(cli: Cli, tileset_id: int, x: int, edge_row: int,
+                       high_point, low_point, downward: bool = True,
+                       candidates=None, shifts=range(-5, 3)):
+    """램프를 찍고 **실제로 걸어서 통하는지** 확인한다.
+
+    타일 단위 "걸을 수 있는 칸이 하나라도 있는가" 로는 판정할 수 없다.
+    게임은 미니타일 단위로 길을 찾으므로 그 격자에서 high_point 에서
+    low_point 까지 물길을 따라가 본다. 눈으로만 보고 "이어졌다"고 판단했다가
+    막힌 램프를 놓은 적이 있다.
+
+    edge_row 는 고지대가 끝나는 줄이다. 블록을 그 언저리에서 위아래로 밀어
+    보며 통하는 자리를 찾는다 — 절벽 두께가 지형마다 달라 한 번에 맞지 않는다.
+    """
+    if candidates is None:
+        candidates = (ramp_candidates(tileset_id, downward) +
+                      ramp_candidates(tileset_id, not downward))
+    if not candidates:
+        return None
+
+    hx, hy = high_point
+    lx, ly = low_point
+    rx0 = max(0, min(hx, lx) - 12)
+    ry0 = max(0, min(hy, ly) - 6)
+    rw = abs(hx - lx) + 24
+    rh = abs(hy - ly) + 12
+
+    width = max(c[2] for c in candidates)
+    height = max(c[3] for c in candidates)
+
+    for shift in shifts:
+        ry = edge_row + shift
+        if ry < 0:
+            continue
+        before = cli.tiles(x, ry, width, height)
+        for name, base, w, h in candidates:
+            try:
+                place_ramp(cli, x, ry, base, w, h)
+            except CliError:
+                continue
+            grid = walk_grid(cli, tileset_id, rx0, ry0, rw, rh)
+            a = nearest_walkable(grid, (hx - rx0) * 4 + 2, (hy - ry0) * 4 + 2)
+            b = nearest_walkable(grid, (lx - rx0) * 4 + 2, (ly - ry0) * 4 + 2)
+            if a and b and walk_reachable(grid, a, b):
+                return base, ry
+            cli.paste_tiles(x, ry, before)      # 되돌린다
+    return None
+
+
+
+# --- 미니타일 단위 길찾기 ---
+#
+# 게임은 타일이 아니라 **미니타일**(타일당 4x4) 단위로 길을 찾는다.
+# "이 타일에 걸을 수 있는 칸이 하나라도 있는가" 로는 연결성을 판정할 수
+# 없다 — 그 잣대로 램프가 이어졌다고 잘못 판단한 적이 있다.
+
+def walk_grid(cli: Cli, tileset_id: int, x: int, y: int, w: int, h: int):
+    """구역을 미니타일 격자(4배 해상도)의 걷기 여부로 편다."""
+    t = Terrain(cli, x, y, w, h, tileset_id)
+    grid = [[0] * (w * 4) for _ in range(h * 4)]
+    for ty in range(h):
+        for tx in range(w):
+            mask = t.groups.get(t.tiles[ty][tx] >> 4, (0, 0, 0, 0, 0, 0))[5]
+            for my in range(4):
+                for mx in range(4):
+                    if mask & (1 << (my * 4 + mx)):
+                        grid[ty * 4 + my][tx * 4 + mx] = 1
+    return grid
+
+
+def walk_reachable(grid, start, goal) -> bool:
+    """미니타일 격자에서 start 에서 goal 까지 걸어갈 수 있는지 (4방향)."""
+    from collections import deque
+    H, W = len(grid), len(grid[0])
+    sx, sy = start
+    gx, gy = goal
+    if not (0 <= sx < W and 0 <= sy < H and grid[sy][sx]):
+        return False
+    if not (0 <= gx < W and 0 <= gy < H and grid[gy][gx]):
+        return False
+    seen = [[False] * W for _ in range(H)]
+    q = deque([(sx, sy)])
+    seen[sy][sx] = True
+    while q:
+        cx, cy = q.popleft()
+        if (cx, cy) == (gx, gy):
+            return True
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nx, ny = cx + dx, cy + dy
+            if 0 <= nx < W and 0 <= ny < H and not seen[ny][nx] and grid[ny][nx]:
+                seen[ny][nx] = True
+                q.append((nx, ny))
+    return False
+
+
+def nearest_walkable(grid, mx: int, my: int, radius: int = 24):
+    """(mx, my) 근처에서 걸을 수 있는 미니타일을 찾는다."""
+    H, W = len(grid), len(grid[0])
+    for r in range(radius):
+        for dy in range(-r, r + 1):
+            for dx in range(-r, r + 1):
+                if max(abs(dx), abs(dy)) != r:
+                    continue
+                nx, ny = mx + dx, my + dy
+                if 0 <= nx < W and 0 <= ny < H and grid[ny][nx]:
+                    return (nx, ny)
+    return None

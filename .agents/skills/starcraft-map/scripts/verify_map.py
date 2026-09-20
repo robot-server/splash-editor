@@ -23,6 +23,7 @@ import argparse
 import json
 import math
 import os
+import re
 import statistics
 import sys
 
@@ -79,6 +80,56 @@ def point_symmetry(points, width, height, tol=4.0):
         "mirror_h": score(lambda x, y: (2 * cx - x, y)),
         "mirror_v": score(lambda x, y: (x, 2 * cy - y)),
     }
+
+
+PLAYABLE_SLOTS = ("열림", "사람(게임)", "컴퓨터", "컴퓨터(게임)")
+
+
+def read_players(cli: Cli):
+    """플레이어 12칸을 읽는다. (번호, 종족, 슬롯) 목록."""
+    out = cli.run("player", "list", cli.path)
+    rows = []
+    for line in out.splitlines():
+        m = re.match(r"^\s*P\s*(\d+)\s+(\S+(?:\s\S+)?)\s+(\S+(?:\s\S+)?)", line)
+        if m:
+            rows.append({"player": int(m.group(1)),
+                         "race": m.group(2).strip(),
+                         "slot": m.group(3).strip()})
+    return rows
+
+
+def read_unit_flags(cli: Cli):
+    """CHK 의 UNIT 구역을 직접 읽어 '이 값이 유효하다' 비트를 본다.
+
+    자원량을 1500 으로 적어도 validFieldFlags 의 Resources 비트(0x10)가
+    꺼져 있으면 게임과 에디터는 0 으로 본다. 실제로 겪었다.
+    """
+    import struct, tempfile
+    with tempfile.NamedTemporaryFile(suffix=".chk", delete=False) as f:
+        tmp = f.name
+    try:
+        cli.run("chk", cli.path, tmp)
+        data = open(tmp, "rb").read()
+    finally:
+        try: os.unlink(tmp)
+        except OSError: pass
+    i = 0
+    body = b""
+    while i + 8 <= len(data):
+        name = data[i:i+4]
+        size = struct.unpack("<I", data[i+4:i+8])[0]
+        if name == b"UNIT":
+            body = data[i+8:i+8+size]
+            break
+        i += 8 + size
+    fmt = "<IHHHHHHBBBBIHHII"
+    out = []
+    for k in range(len(body) // 36):
+        (cid, x, y, ut, rel, vState, vField,
+         owner, hp, sh, en, res, hangar, state, unused, link) = struct.unpack(
+            fmt, body[k*36:(k+1)*36])
+        out.append({"type": ut, "resource": res, "valid_field": vField})
+    return out
 
 
 def measure(cli: Cli) -> dict:
@@ -143,6 +194,7 @@ def measure(cli: Cli) -> dict:
         "version": info["version"], "protected": info["protected"],
         "n_units": info["units"], "n_triggers": info["triggers"],
         "n_starts": len(starts),
+        "n_start_units": len(starts_raw),
         "n_mineral_patches": len(minerals), "n_geysers": len(geysers),
         "n_clusters": len(clusters),
         "clusters_per_start": (round(len(clusters) / len(starts), 2) if starts else None),
@@ -155,6 +207,112 @@ def measure(cli: Cli) -> dict:
         "resource_symmetry": point_symmetry([(c["x"], c["y"]) for c in clusters],
                                             width, height, tol=5.0),
     }
+
+
+def check_basics(cli: Cli, m: dict) -> list[tuple[str, str]]:
+    """맵이 **열리기는 하는지**. 여기서 걸리면 밸런스는 따질 것도 없다."""
+    out = []
+
+    # 1) 스타팅이 있는가
+    if m["n_start_units"] == 0:
+        out.append(("!!", "스타팅 포인트(유닛 214)가 하나도 없습니다. "
+                          "사람 플레이어마다 하나씩 있어야 게임이 시작됩니다."))
+
+    # 2) 쓸 수 있는 슬롯 수와 스타팅 수가 맞는가
+    players = read_players(cli)
+    playable = [p for p in players
+                if p["player"] <= 8 and p["slot"] in PLAYABLE_SLOTS]
+    human = [p for p in playable if p["slot"] in ("열림", "사람(게임)")]
+    computer = [p for p in playable if p["slot"] in ("컴퓨터", "컴퓨터(게임)")]
+    # 스타팅은 **합치지 않은 원래 개수**로 센다. 관측자 판본을 가리려고
+    # 가까운 것을 합치는데, 유즈맵은 사람들이 서로 붙어 시작하는 것이
+    # 정상이라 그 잣대를 쓰면 안 된다.
+    n_starts = m["n_start_units"]
+    # 컴퓨터는 스타팅 없이도 트리거로 유닛을 받을 수 있다. 사람 수만 맞으면 된다.
+    if n_starts and len(human) != n_starts:
+        out.append(("!!", f"사람이 앉을 슬롯 {len(human)}개와 스타팅 {n_starts}개가 "
+                          f"다릅니다. 스타팅 없는 자리를 받는 사람이 생깁니다."))
+    else:
+        out.append(("ok", f"사람 슬롯 {len(human)}개 = 스타팅 {n_starts}개"
+                          f" (컴퓨터 {len(computer)})."))
+
+    # 3) 확장자와 버전이 맞는가
+    ext = os.path.splitext(cli.path)[1].lower()
+    version = m["version"]
+    if ext == ".scx" and "Brood War" not in version and "Remastered" not in version:
+        out.append(("!!", f"확장자는 .scx 인데 버전이 {version} 입니다. "
+                          f"브루드워 전용 유닛(럴커·메딕·커세어)을 쓸 수 없습니다."))
+    elif ext == ".scm" and ("Brood War" in version or "Remastered" in version):
+        out.append(("?", f"확장자는 .scm 인데 버전이 {version} 입니다."))
+    else:
+        out.append(("ok", f"버전 {version} — 확장자와 맞습니다."))
+
+    # 4) 자원 유닛의 '유효' 비트가 켜져 있는가
+    try:
+        flags = read_unit_flags(cli)
+    except Exception as e:
+        flags = None
+        out.append(("?", f"CHK 를 읽지 못해 자원 유효 비트를 못 봤습니다: {e}"))
+    if flags:
+        RESOURCES_BIT = 0x10
+        res_units = [u for u in flags
+                     if u["type"] in (176, 177, 178, 188)]
+        bad = [u for u in res_units if not (u["valid_field"] & RESOURCES_BIT)]
+        if bad:
+            out.append(("!!", f"자원 유닛 {len(res_units)}개 중 {len(bad)}개가 "
+                              f"'자원량 유효' 비트(0x10)가 꺼져 있습니다. "
+                              f"남은 양을 적어도 게임과 에디터가 0 으로 봅니다."))
+        elif res_units:
+            out.append(("ok", f"자원 유닛 {len(res_units)}개 모두 자원량이 유효합니다."))
+
+    # 5) 스타팅끼리 걸어서 닿는가 — 갇힌 본진은 맵을 못 쓰게 만든다
+    starts = [(p["x"], p["y"]) for p in m["per_start"]]
+    if len(starts) >= 2:
+        try:
+            grid = scmap.walk_grid(cli, m["tileset_id"], 0, 0, m["width"], m["height"])
+            pts = []
+            for (sx, sy) in starts:
+                pt = scmap.nearest_walkable(grid, sx * 4 + 2, sy * 4 + 2, radius=40)
+                pts.append(pt)
+            if any(p is None for p in pts):
+                out.append(("!!", "스타팅 자리에 걸을 수 있는 땅이 없습니다."))
+            else:
+                unreachable = []
+                for i in range(1, len(pts)):
+                    if not scmap.walk_reachable(grid, pts[0], pts[i]):
+                        unreachable.append(i + 1)
+                if unreachable:
+                    out.append(("!!", f"1번 스타팅에서 {unreachable} 번 스타팅으로 "
+                                      f"걸어갈 수 없습니다. 지상 유닛이 갇힙니다."))
+                else:
+                    out.append(("ok", f"스타팅 {len(pts)}곳이 모두 걸어서 이어집니다."))
+        except Exception as e:
+            out.append(("?", f"길찾기 검사를 못 했습니다: {e}"))
+
+    # 6) 유즈맵인데 트리거가 없는가
+    if m["n_triggers"] == 0:
+        out.append(("?", "트리거가 없습니다. 유즈맵이라면 아무 일도 일어나지 않습니다."))
+
+    # 7) 지형이 충분한가 (밀리 기준: 공식 57개 전수 중앙값)
+    try:
+        t = scmap.Terrain(cli, 0, 0, m["width"], m["height"], m["tileset_id"])
+        total = m["width"] * m["height"]
+        groups_used = {t.tiles[y][x] >> 4 for y in range(m["height"])
+                       for x in range(m["width"])}
+        walk = sum(1 for y in range(m["height"]) for x in range(m["width"])
+                   if t.walkable(x, y))
+        high = sum(1 for y in range(m["height"]) for x in range(m["width"])
+                   if t.elevation(x, y) >= 1)
+        wpct, hpct = 100*walk/total, 100*high/total
+        out.append(("i", f"지형: 걷기 {wpct:.0f}% (공식 79%), 높은 땅 {hpct:.0f}% "
+                         f"(공식 36%), 타일 그룹 {len(groups_used)} (공식 484)"))
+        if len(groups_used) < 150 and m["n_starts"] >= 2:
+            out.append(("?", "타일 그룹이 공식 맵의 3분의 1도 안 됩니다 — "
+                             "지형이 거의 없는 벌판입니다."))
+    except Exception as e:
+        out.append(("?", f"지형을 못 쟀습니다: {e}"))
+
+    return out
 
 
 def check_fairness(m: dict) -> list[tuple[str, str]]:
@@ -290,6 +448,9 @@ def check_race_balance(m: dict) -> list[tuple[str, str, str]]:
     return out
 
 
+_CLI = [None]
+
+
 def report(m: dict) -> int:
     print(f"== {m['name'] or m['file']} ==")
     print(f"  {m['width']}x{m['height']} {m['tileset']}  {m['version']}")
@@ -299,8 +460,14 @@ def report(m: dict) -> int:
     if m["start_distances"]:
         print(f"  스타팅 사이 거리: {m['start_distances']}")
 
-    print("\n-- 자리 밸런스 --")
+    print("\n-- 기본 (열리는 맵인가) --")
     problems = 0
+    for mark, text in check_basics(_CLI[0], m):
+        if mark == "!!":
+            problems += 1
+        print(f"  [{mark:2}] {text}")
+
+    print("\n-- 자리 밸런스 --")
     for mark, text in check_fairness(m):
         if mark == "!!":
             problems += 1
@@ -332,8 +499,10 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     cli = Cli(args.map, args.install)
+    _CLI[0] = cli
     m = measure(cli)
     if args.json:
+        m["basics"] = [{"mark": a, "text": b} for a, b in check_basics(cli, m)]
         m["fairness"] = [{"mark": a, "text": b} for a, b in check_fairness(m)]
         m["race_balance"] = [{"race": a, "dir": b, "text": c}
                              for a, b, c in check_race_balance(m)]

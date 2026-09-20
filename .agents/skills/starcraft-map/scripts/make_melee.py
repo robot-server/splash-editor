@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import math
 import os
+import random
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -149,8 +150,18 @@ def main(argv=None):
                     choices=["even", "terran", "zerg", "protoss"],
                     help="자원 배치를 어느 종족 쪽으로 기울일지. "
                          "지형까지 기울이지는 않는다 — references/melee-balance.md 참고")
+    ap.add_argument("--no-center", action="store_true",
+                    help="가운데 지형을 얹지 않는다")
+    ap.add_argument("--features", type=int, default=4,
+                    help="대칭으로 얹을 지형 덩이 수 (고지대·다른 바닥 지형)")
+    ap.add_argument("--doodads", type=int, default=120,
+                    help="놓을 두들 수 (공식 맵 중앙값 135). 0 이면 놓지 않는다")
+    ap.add_argument("--seed", type=int, default=1, help="두들 자리 난수 씨앗")
+    ap.add_argument("--plateau", action="store_true",
+                    help="본진을 고지대에 올리고 램프를 낸다. 걸어서 통하는 "
+                         "램프를 못 찾으면 그 본진은 평지로 되돌린다")
     ap.add_argument("--no-plateau", action="store_true",
-                    help="본진 고지대를 만들지 않는다 (평지 맵)")
+                    help="(옛 이름) 기본이 평지라 아무 일도 하지 않는다")
     ap.add_argument("--install", default=None)
     args = ap.parse_args(argv)
 
@@ -200,48 +211,70 @@ def main(argv=None):
             high_name = highs[0]
             print(f"  고지대 지형을 {high_name} 로 잡습니다.")
     high_terrain = types.get(high_name, 0)
+    low_terrain = types.get(low_name, 0)
 
     starts = start_positions(args.players, symmetry, width, height, args.inset)
     print("스타팅 자리:", starts)
 
     # 1) 본진 고지대 — 대칭 자리마다 같은 붓질을 되풀이한다.
+    #    기본은 평지다. 고지대는 램프가 실제로 통해야 뜻이 있는데, 아직
+    #    모든 지형에서 통하는 램프를 찾지 못한다 (references/melee-terrain.md).
+    args.no_plateau = not args.plateau
     if not args.no_plateau:
         print("본진 고지대를 칠합니다...")
         for i, (sx, sy) in enumerate(starts):
             paint_plateau(cli, sx, sy, half_w=11, half_h=7,
                           terrain=high_terrain, width=width, height=height)
 
-    # 2) 램프 — 맵 가운데를 보는 쪽에 건다.
-    ramp = scmap.default_ramp(tileset_id)
-    if ramp is not None and not args.no_plateau:
-        ramp_base, ramp_w, ramp_h = ramp
+    # 2) 램프 — 맵 가운데를 보는 세로 방향에 건다.
+    #
+    # 절벽 줄은 **높이**로 찾고, 찍은 뒤에는 **미니타일 길찾기**로 실제로
+    # 통하는지 확인한다. 눈으로만 보고 판단하면 막힌 램프를 놓게 된다.
+    ramp_at = {}
+    if not args.no_plateau:
         print("램프를 놓습니다...")
-        cx, cy = (width - 1) / 2.0, (height - 1) / 2.0
+        cy_mid = (height - 1) / 2.0
         for (sx, sy) in starts:
-            # 가운데를 향한 세로 방향으로 고지대가 끝나는 줄을 찾는다.
-            toward = 1 if sy < cy else -1
-            y_from = sy
-            y_to = sy + toward * 12
-            y_to = max(2, min(height - 8, y_to))
-            row = find_cliff_row(cli, sx, y_from, y_to)
-            if row is None:
+            downward = sy < cy_mid          # 위쪽 본진은 아래로 내려간다
+            y_end = min(height - 6, sy + 16) if downward else max(4, sy - 16)
+            edge = scmap.find_elevation_edge(cli, tileset_id, sx, sy, y_end,
+                                             vertical=True)
+            if edge is None:
+                print(f"  ({sx},{sy}) 절벽 줄을 못 찾아 건너뜁니다")
                 continue
-            rx = sx - ramp_w // 2
-            rx -= rx % 2                    # 짝수 칸에 맞춘다
-            rx = max(0, min(width - ramp_w, rx))
-            ry = max(0, min(height - ramp_h, row))
-            try:
-                scmap.place_ramp(cli, rx, ry, ramp_base, ramp_w, ramp_h)
-            except CliError as e:
-                print(f"  램프 건너뜀 ({rx},{ry}): {e}")
+            low_y = edge + 8 if downward else edge - 8
+            low_y = max(2, min(height - 3, low_y))
+            cands = (scmap.ramp_candidates(tileset_id, downward) +
+                     scmap.ramp_candidates(tileset_id, not downward))
+            rw = max((c[2] for c in cands), default=6)
+            rx = sx - rw // 2
+            rx -= rx % 2                    # 마름모 격자에 맞춰 짝수로
+            rx = max(0, min(width - rw, rx))
+            got = scmap.place_ramp_checked(
+                cli, tileset_id, rx, edge,
+                high_point=(sx, sy), low_point=(sx, low_y),
+                downward=downward, candidates=cands)
+            if got is None:
+                # 램프를 못 놓으면 그 본진은 갇힌다. 고지대를 걷어내
+                # 평지로 되돌린다 — 막힌 맵보다는 평지가 낫다.
+                print(f"  ({sx},{sy}) 통하는 램프를 못 찾아 고지대를 걷어냅니다")
+                paint_plateau(cli, sx, sy, half_w=12, half_h=8,
+                              terrain=low_terrain, width=width, height=height)
+            else:
+                base, ry = got
+                ramp_at[(sx, sy)] = (rx, ry, downward)
+                print(f"  ({sx},{sy}) → 램프 ({rx},{ry}) 0x{base:04x} [길찾기 통과]")
 
     # 3) 스타팅 표시와 본진 자원
     print("본진 자원을 놓습니다...")
+    cx_mid, cy_mid = (width - 1) / 2.0, (height - 1) / 2.0
     for i, (sx, sy) in enumerate(starts):
-        facing = quadrant_facing(sx, sy, width, height)
+        # 자원은 맵 바깥쪽으로 — 안쪽(램프 쪽)을 비워 둔다.
+        out_x = -1 if sx <= cx_mid else 1
+        out_y = -1 if sy <= cy_mid else 1
         scmap.place_base(cli, sx, sy, owner=i + 1,
                          minerals=args.main_minerals, gas=args.main_gas,
-                         facing=facing, width=width, height=height)
+                         out_x=out_x, out_y=out_y, width=width, height=height)
 
     # 4) 앞마당 — 본진에서 가운데 쪽으로 한 걸음.
     if args.natural_minerals > 0:
@@ -254,11 +287,12 @@ def main(argv=None):
             ny = int(round(sy + vy / length * args.natural_distance))
             nx = max(8, min(width - 9, nx))
             ny = max(8, min(height - 9, ny))
-            facing = quadrant_facing(sx, sy, width, height)
             scmap.place_base(cli, nx, ny, owner=12,
                              minerals=args.natural_minerals,
                              gas=args.natural_gas,
-                             facing=facing, width=width, height=height,
+                             out_x=-1 if nx <= cx else 1,
+                             out_y=-1 if ny <= cy else 1,
+                             width=width, height=height,
                              start_location=False)
 
     # 5) 바깥 멀티 — 스타팅마다 같은 상대 위치에 놓아 대칭을 지킨다.
@@ -286,8 +320,111 @@ def main(argv=None):
                                  facing=facing, width=width, height=height,
                                  start_location=False)
 
+    # 6) 가운데 지형 — 본진 언덕만 있으면 맵이 아니라 벌판이다.
+    if not args.no_center and not args.no_plateau:
+        print("가운데 지형을 얹습니다...")
+        cx, cy = (width - 1) / 2.0, (height - 1) / 2.0
+        # 한가운데 섬 하나 + 스타팅마다 같은 상대 위치의 능선 하나.
+        for ty in range(int(cy) - 6, int(cy) + 7):
+            for tx in range(int(cx) - 9, int(cx) + 10, 2):
+                if 2 <= tx < width - 2 and 2 <= ty < height - 2:
+                    cli.isom(tx, ty, high_terrain)
+        for (sx, sy) in starts:
+            vx, vy = cx - sx, cy - sy
+            length = math.hypot(vx, vy) or 1.0
+            # 본진과 가운데 사이 절반 지점에 옆으로 누운 능선을 놓는다.
+            mx = int(round(sx + vx / length * (length * 0.5)))
+            my = int(round(sy + vy / length * (length * 0.5)))
+            px, py = -vy / length, vx / length      # 직각 방향
+            for t in range(-7, 8):
+                tx = int(round(mx + px * t))
+                ty = int(round(my + py * t))
+                for d in (-1, 0, 1):
+                    if 2 <= tx + d < width - 2 and 2 <= ty < height - 2:
+                        cli.isom(tx + d - ((tx + d) % 2), ty, high_terrain)
+
+    # 6b) 지형 무늬 — 고지대 덩이와 다른 바닥 지형을 섞는다.
+    #     공식 맵은 타일 그룹을 484개(중앙값) 쓴다. 한 가지 지형으로만
+    #     칠하면 서른 개도 안 나온다.
+    if args.features > 0:
+        print(f"지형 덩이를 얹습니다 ({args.features}곳씩)...")
+        rng2 = random.Random(args.seed + 7)
+        alt_names = [n for n in types
+                     if not n.lower().startswith("high") and n != low_name]
+        cxm, cym = (width - 1) / 2.0, (height - 1) / 2.0
+        for k in range(args.features):
+            # 가운데에서 적당히 떨어진 자리에 하나 잡고 대칭으로 되풀이한다
+            ang = rng2.uniform(0, 2 * math.pi)
+            rad = rng2.uniform(0.18, 0.40) * min(width, height)
+            bx = int(cxm + rad * math.cos(ang))
+            by = int(cym + rad * math.sin(ang))
+            bw = rng2.randrange(5, 10)
+            bh = rng2.randrange(4, 8)
+            # 절반은 고지대, 절반은 다른 바닥 지형으로
+            if k % 2 == 0 or not alt_names:
+                terrain = high_terrain
+            else:
+                terrain = types[rng2.choice(alt_names)]
+            for (px, py) in scmap.symmetric_points(bx, by, symmetry,
+                                                   args.players, width, height):
+                px, py = int(round(px)), int(round(py))
+                for ty in range(py - bh // 2, py + bh // 2 + 1):
+                    if not (3 <= ty < height - 3):
+                        continue
+                    for tx in range(px - bw // 2, px + bw // 2 + 1, 2):
+                        if not (3 <= tx < width - 3):
+                            continue
+                        # 스타팅 언저리는 건드리지 않는다
+                        if any(abs(tx - sx) < 14 and abs(ty - sy) < 10
+                               for (sx, sy) in starts):
+                            continue
+                        cli.isom(tx, ty, terrain)
+
+    # 7) 지형지물 — 두들. 공식 맵 57개 중앙값이 135개다. 없으면 벌판이다.
+    if args.doodads > 0:
+        print(f"두들을 놓습니다 (목표 {args.doodads}개)...")
+        cat = cli.doodad_catalogue()
+        # 길을 막지 않는 작은 장식만 고른다 (4x4 이하, 절벽·다리 제외)
+        picks = [d for d in cat
+                 if d["w"] <= 4 and d["h"] <= 4
+                 and d["kind"] not in ("Cliff", "Bridges", "Wall")]
+        if not picks:
+            print("  놓을 만한 두들이 없어 건너뜁니다")
+        else:
+            rng = random.Random(args.seed)
+            placed = 0
+            tries = 0
+            per_sector = max(1, args.doodads // max(1, len(starts)))
+            while placed < args.doodads and tries < args.doodads * 6:
+                tries += 1
+                d = rng.choice(picks)
+                bx = rng.randrange(4, width - 8)
+                by = rng.randrange(4, height - 8)
+                # 대칭 자리마다 같은 두들을 놓는다
+                spots = scmap.symmetric_points(bx, by, symmetry, args.players,
+                                               width, height)
+                ok = True
+                for (px, py) in spots:
+                    px, py = int(round(px)), int(round(py))
+                    if not (2 <= px < width - 6 and 2 <= py < height - 6):
+                        ok = False
+                        break
+                    try:
+                        cli.edit("doodad", "place", cli.path, str(d["id"]),
+                                 str(px), str(py), "--install", cli.install)
+                        placed += 1
+                    except CliError:
+                        ok = False
+                        break
+            print(f"  두들 {placed}개")
+
     # 자원량은 다 놓은 뒤 한 번에 맞춘다.
     scmap.set_all_resources(cli)
+
+    # 플레이어 슬롯을 스타팅 수에 맞춘다. 남는 슬롯을 열어 두면 대기실에서
+    # 스타팅 없는 자리를 받는 사람이 생긴다.
+    print("플레이어 슬롯을 맞춥니다...")
+    scmap.setup_melee_players(cli, args.players)
 
     if args.name:
         cli.set_map_name(args.name)

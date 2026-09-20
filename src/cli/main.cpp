@@ -60,6 +60,7 @@ int usage(const char * argv0)
         "  " << argv0 << " images-tbl <설치폴더> [찾을글자]\n"
         "  " << argv0 << " has-asset <설치폴더> <아카이브경로>\n"
         "  " << argv0 << " icon-histogram <설치폴더> <아이콘번호>\n"
+        "  " << argv0 << " tileset-groups <설치폴더> <타일셋>\n"
         "  " << argv0 << " tileset-ramps <설치폴더> <타일셋>\n"
         "  " << argv0 << " find-creep <설치폴더> <타일셋>\n"
         "  " << argv0 << " creep-kin <설치폴더> <타일셋> <메가타일> <개수>\n"
@@ -1087,6 +1088,37 @@ int cmdTilesetRamps(const std::string & installPath, std::uint16_t tilesetId)
               << "개, 타일 " << tileCount << "개\n";
     if (groupCount == 0)
         std::cout << "  (이 타일셋에는 램프가 없습니다 — 높이 차이가 없는 타일셋입니다)\n";
+    return 0;
+}
+
+/// 타일 그룹마다 높이·걷기·짓기·램프 여부를 한 줄씩 낸다.
+///
+/// 지형을 수로 재려면 "이 타일이 고지대인가, 걸을 수 있는가" 를 알아야
+/// 하는데 타일 값만으로는 알 수 없다. 맵의 지형을 훑을 때 이 표를 옆에
+/// 놓고 타일 값 / 16 으로 찾아본다.
+int cmdTilesetGroups(const std::string & installPath, std::uint16_t tilesetId)
+{
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const auto info = graphics.describeTileset(tilesetId);
+    std::cout << "# 그룹 높이 걷기 모두걷기 짓기 램프 걷기비트16진\n";
+    for (std::size_t group = 0; group < info.tileGroupCount; ++group)
+    {
+        // 그룹의 대표로 첫 칸을 본다. 같은 그룹은 성질이 같다.
+        const auto tileId = static_cast<std::uint16_t>(group * 16);
+        const auto t = graphics.tileTerrain(tilesetId, tileId);
+        std::cout << group << " " << t.elevation << " " << (t.walkable ? 1 : 0)
+                  << " " << (t.fullyWalkable ? 1 : 0) << " " << (t.buildable ? 1 : 0)
+                  << " " << (t.ramp ? 1 : 0) << " " << std::hex << t.walkMask
+                  << std::dec << "\n";
+    }
+    std::cout << "# 타일셋 " << tilesetId << " 그룹 " << info.tileGroupCount << "개\n";
     return 0;
 }
 
@@ -2175,6 +2207,12 @@ int main(int argc, char ** argv)
     if (command == "find-creep" && args.size() == 3)
     {
         try { return cmdFindCreep(args[1], static_cast<std::uint16_t>(std::stoul(args[2]))); }
+        catch (const std::exception &) { return usage(argv[0]); }
+    }
+
+    if (command == "tileset-groups" && args.size() == 3)
+    {
+        try { return cmdTilesetGroups(args[1], static_cast<std::uint16_t>(std::stoul(args[2]))); }
         catch (const std::exception &) { return usage(argv[0]); }
     }
 
