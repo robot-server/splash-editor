@@ -94,6 +94,15 @@ void UnitPalette::setOwner(std::uint8_t owner)
     viewport()->update();
 }
 
+void UnitPalette::setPlayerColor(std::uint8_t colorIndex)
+{
+    if (colorIndex_ == colorIndex)
+        return;
+    colorIndex_ = colorIndex;
+    cache_.clear(); // 색이 바뀌면 그림도 달라진다
+    viewport()->update();
+}
+
 void UnitPalette::setFilter(const QString & text)
 {
     if (filter_ == text.trimmed())
@@ -224,8 +233,9 @@ const QPixmap * UnitPalette::unitPixmap(std::uint16_t unitType)
         resource = 5000;
 
     const io::UnitImage image = (category_ == Category::Sprites)
-        ? tileset_->renderSprite(unitType, owner_, tilesetId_, /*drawnAsSprite*/ true)
-        : tileset_->renderUnit(unitType, owner_, tilesetId_, resource);
+        ? tileset_->renderSprite(unitType, owner_, tilesetId_, /*drawnAsSprite*/ true,
+                                 colorIndex_)
+        : tileset_->renderUnit(unitType, owner_, tilesetId_, resource, 0, 0, colorIndex_);
 
     QPixmap pixmap;
     if (image.width > 0 && image.height > 0)

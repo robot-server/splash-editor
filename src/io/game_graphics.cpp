@@ -1766,7 +1766,8 @@ UnitImage GameGraphics::renderUnit(std::uint16_t unitType,
         }
 
         return composeActor(*impl_->scData, *impl_->anim, actor, impl_->tiles(tilesetId),
-                            colorIndex == 0xFF ? owner : colorIndex);
+                            tilesetPlayerColor(tilesetId,
+                                               colorIndex == 0xFF ? owner : colorIndex));
     }
     catch (const std::exception &)
     {
@@ -1804,7 +1805,8 @@ UnitImage GameGraphics::renderSprite(std::uint16_t spriteType,
                                            chkSprite, 0, 0);
 
         return composeActor(*impl_->scData, *impl_->anim, actor, impl_->tiles(tilesetId),
-                            colorIndex == 0xFF ? owner : colorIndex);
+                            tilesetPlayerColor(tilesetId,
+                                               colorIndex == 0xFF ? owner : colorIndex));
     }
     catch (const std::exception &)
     {

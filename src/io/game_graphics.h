@@ -337,6 +337,31 @@ private:
 };
 
 
+/// 그 지형에서 실제로 보이는 색 번호.
+///
+/// 초록은 원래 고를 수 있는 색이 아니라 두 자리를 메우려고 있는 색이다.
+/// 얼음 지형에서는 흰색이 눈밭에 묻히고, 사막 지형에서는 갈색이 모래에
+/// 묻혀 미니맵에서 분간이 안 된다. 그래서 게임이 그 두 경우에만 초록으로
+/// 바꿔 그린다. 색 번호(COLR) 자체는 그대로고 보이는 색만 달라진다.
+///
+/// 이 규칙은 게임 실행 파일 안에 있어 자료 파일에는 없다 — 여덟 지형의
+/// 팔레트를 다 비교해 봤지만 플레이어 색 자리는 모두 같았다.
+inline std::uint8_t tilesetPlayerColor(std::uint16_t tilesetId, std::uint8_t colorIndex)
+{
+    constexpr std::uint16_t kDesert = 5;
+    constexpr std::uint16_t kArctic = 6; // 얼음
+    constexpr std::uint8_t kBrown = 5;
+    constexpr std::uint8_t kWhite = 6;
+    constexpr std::uint8_t kGreen = 8;
+
+    switch (tilesetId % 8)
+    {
+        case kArctic: return colorIndex == kWhite ? kGreen : colorIndex;
+        case kDesert: return colorIndex == kBrown ? kGreen : colorIndex;
+        default:      return colorIndex;
+    }
+}
+
 /// 두들 가운데 픽셀에서 왼쪽 위 타일 좌표를 구한다.
 ///
 /// 칸 수가 짝수인 두들은 타일 경계에, 홀수인 두들은 타일 한가운데에 중심이

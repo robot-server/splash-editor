@@ -50,6 +50,9 @@ public:
     std::uint8_t owner() const { return owner_; }
     void setOwner(std::uint8_t owner);
 
+    /// 그 플레이어를 칠할 색 번호 (COLR). 0xFF 면 플레이어 번호를 쓴다.
+    void setPlayerColor(std::uint8_t colorIndex);
+
     /// 지금 고른 것이 스프라이트인지(유닛이 아니라).
     bool spriteMode() const { return category_ == Category::Sprites; }
 
@@ -76,6 +79,7 @@ private:
     std::uint16_t tilesetId_ = 0;
     std::uint16_t selectedUnit_ = 0;
     std::uint8_t owner_ = 0;
+    std::uint8_t colorIndex_ = 0xFF;
 
     Category category_ = Category::All;
     std::vector<std::uint16_t> units_;

@@ -128,8 +128,9 @@ void MiniMap::paintEvent(QPaintEvent *)
 
     for (const auto & unit : document_->units())
     {
-        const std::uint8_t colorIndex =
-            unit.owner < settings.size() ? settings[unit.owner].color : unit.owner;
+        const std::uint8_t colorIndex = io::tilesetPlayerColor(
+            info.tilesetId,
+            unit.owner < settings.size() ? settings[unit.owner].color : unit.owner);
         const chk::PlayerColor color = chk::playerColor(colorIndex);
         painter.fillRect(QRectF(target.left() + unit.x * sx - 1,
                                 target.top() + unit.y * sy - 1, 2.5, 2.5),

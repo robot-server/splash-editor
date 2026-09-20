@@ -624,7 +624,10 @@ const MapView::UnitSprite * MapView::unitSprite(std::uint16_t type, std::uint8_t
 
 std::uint8_t MapView::unitColorIndex(std::uint8_t owner) const
 {
-    return owner < playerColors_.size() ? playerColors_[owner] : owner;
+    const std::uint8_t color = owner < playerColors_.size() ? playerColors_[owner] : owner;
+    return document_ != nullptr && document_->isOpen()
+        ? io::tilesetPlayerColor(document_->info().tilesetId, color)
+        : color;
 }
 
 const MapView::UnitSprite * MapView::mapSprite(std::uint16_t type, std::uint8_t owner,

@@ -418,6 +418,7 @@ void MainWindow::buildCentralWidget()
     connect(ownerBox, &QComboBox::currentIndexChanged, this, [this, ownerBox](int) {
         const auto owner = static_cast<std::uint8_t>(ownerBox->currentData().toInt());
         unitPalette_->setOwner(owner);
+        refreshPaletteColor();
         mapView_->setPlacementUnit(unitPalette_->selectedUnit(), owner);
     });
 
@@ -2022,11 +2023,25 @@ void MainWindow::onPlayerSettings()
 
         // 색 — 목록에 실제 색을 칠해 둔다. 9번부터는 색 구역이 없다.
         auto * colorBox = new QComboBox(&dialog);
+        const auto tilesetId = document().info().tilesetId;
         for (const auto & entry : splash::io::playerColors())
         {
+            // 얼음·사막 지형은 묻히는 색을 초록으로 바꿔 그린다. 고른 색과
+            // 화면에 보이는 색이 다르면 그 자리에서 알려 준다.
+            const auto shown = splash::io::tilesetPlayerColor(tilesetId, entry.value);
+            const auto & real = shown == entry.value
+                ? entry : splash::io::playerColors()[shown];
+
             QPixmap swatch(14, 14);
-            swatch.fill(QColor(entry.red, entry.green, entry.blue));
-            colorBox->addItem(QIcon(swatch), QString::fromStdString(entry.name), entry.value);
+            swatch.fill(QColor(real.red, real.green, real.blue));
+
+            const QString label = shown == entry.value
+                ? QString::fromStdString(entry.name)
+                : tr("%1 (이 지형에서는 %2)")
+                      .arg(QString::fromStdString(entry.name),
+                           QString::fromStdString(real.name));
+
+            colorBox->addItem(QIcon(swatch), label, entry.value);
         }
         const int colorIndex = colorBox->findData(settings[player].color);
         colorBox->setCurrentIndex(colorIndex >= 0 ? colorIndex : 0);
@@ -2675,9 +2690,29 @@ void MainWindow::closeEvent(QCloseEvent * event)
     event->accept();
 }
 
+void MainWindow::refreshPaletteColor()
+{
+    if (unitPalette_ == nullptr)
+        return;
+
+    // 팔레트에 보이는 색도 맵이 정한 색이어야 한다. 맵이 닫혀 있으면
+    // 플레이어 번호를 그대로 쓴다.
+    if (!document().isOpen())
+    {
+        unitPalette_->setPlayerColor(0xFF);
+        return;
+    }
+
+    const auto owner = unitPalette_->owner();
+    const auto settings = document().playerSettings();
+    const std::uint8_t color = owner < settings.size() ? settings[owner].color : owner;
+    unitPalette_->setPlayerColor(color);
+}
+
 void MainWindow::refreshFromDocument()
 {
     refreshTabText(currentDocument_);
+    refreshPaletteColor();
 
     const bool open = document().isOpen();
 

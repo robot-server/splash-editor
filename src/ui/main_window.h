@@ -69,6 +69,9 @@ private:
     void buildMenus();
     void buildCentralWidget();
     void refreshFromDocument();
+
+    /// 팔레트에 보일 색을 맵 설정에서 다시 읽는다.
+    void refreshPaletteColor();
     void updateWindowTitle();
 
     /// 저장된 설치 경로로 타일셋을 읽는다. 경로가 없거나 실패하면 조용히 넘어간다
