@@ -30,6 +30,9 @@ public:
     /// 미리보기에 쓸 타일셋(팔레트 색이 지형을 따른다).
     void setTilesetId(std::uint16_t tilesetId);
 
+    /// 담아 둔 그림을 버리고 다시 그린다.
+    void clearCache();
+
     /// 팔레트에 무엇을 늘어놓을지.
     enum class Category
     {

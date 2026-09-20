@@ -40,6 +40,12 @@ void TilePalette::setTileset(const io::GameGraphics * tileset)
     rebuild();
 }
 
+void TilePalette::clearCache()
+{
+    cache_.clear();
+    viewport()->update();
+}
+
 void TilePalette::setTilesetId(std::uint16_t tilesetId)
 {
     // 같은 타일셋이라도 목록이 비어 있으면 다시 만든다. 게임 데이터가 나중에

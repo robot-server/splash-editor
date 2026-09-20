@@ -1286,7 +1286,8 @@ void MainWindow::buildMenus()
 
     QAction * repairDoodads = batchMenu->addAction(tr("어긋난 두들 고치기"));
     repairDoodads->setToolTip(
-        tr("지형을 고치다 타일이 지워진 두들을 찾아 다시 깝니다."));
+        tr("지형을 고치다 타일이 지워진 두들을 찾아 다시 깝니다. 일부러 겹쳐 "
+           "놓은 두들도 되돌려지니 미리 살펴보세요."));
     connect(repairDoodads, &QAction::triggered, this, [this] {
         if (!document().isOpen() || !tileset_.isLoaded())
         {
@@ -1302,8 +1303,11 @@ void MainWindow::buildMenus()
         }
 
         const auto answer = QMessageBox::question(this, tr("어긋난 두들"),
-            tr("두들 %1개가 자리와 맞지 않습니다. 타일을 다시 깔까요?").arg(broken.size()),
-            QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+            tr("두들 %1개가 자리와 맞지 않습니다. 타일을 다시 깔까요?\n\n"
+               "두들을 일부러 겹쳐 놓았거나 위에 지형을 덧그렸다면 그것도 "
+               "되돌아갑니다. 마음에 안 들면 실행 취소로 되돌릴 수 있습니다.")
+                .arg(broken.size()),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
         if (answer != QMessageBox::Yes)
             return;
 
@@ -1550,6 +1554,21 @@ void MainWindow::buildMenus()
     connect(zoomResetAction_, &QAction::triggered, mapView_, &MapView::zoomReset);
 
     viewMenu->addSeparator();
+
+    QAction * clearCaches = viewMenu->addAction(tr("그림 버퍼 비우기"));
+    clearCaches->setToolTip(
+        tr("지형·유닛 그림을 담아 둔 것을 버리고 다시 그립니다. 모드 자료를 "
+           "바꿔 끼웠는데 옛 그림이 남아 있을 때 씁니다."));
+    connect(clearCaches, &QAction::triggered, this, [this] {
+        forEachView([](MapView * view) { view->refresh(); });
+        if (tilePalette_ != nullptr)
+            tilePalette_->clearCache();
+        if (unitPalette_ != nullptr)
+            unitPalette_->clearCache();
+        if (miniMap_ != nullptr)
+            miniMap_->refresh();
+        statusBar()->showMessage(tr("그림을 다시 그렸습니다"), 2500);
+    });
 
     if (objectTree_ != nullptr)
     {

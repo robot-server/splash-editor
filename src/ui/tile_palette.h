@@ -33,6 +33,9 @@ public:
     /// 어떤 타일셋의 타일을 늘어놓을지 (CHK 의 ERA 원시값).
     void setTilesetId(std::uint16_t tilesetId);
 
+    /// 담아 둔 그림을 버리고 다시 그린다.
+    void clearCache();
+
     /// 지금 고른 타일. 없으면 0.
     std::uint16_t selectedTile() const { return selectedTile_; }
     void setSelectedTile(std::uint16_t tileId);

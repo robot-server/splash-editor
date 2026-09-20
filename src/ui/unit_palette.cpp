@@ -76,6 +76,12 @@ QString UnitPalette::categoryName(Category category)
     return {};
 }
 
+void UnitPalette::clearCache()
+{
+    cache_.clear();
+    viewport()->update();
+}
+
 void UnitPalette::setTilesetId(std::uint16_t tilesetId)
 {
     if (tilesetId_ == tilesetId)
