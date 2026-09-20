@@ -1,6 +1,7 @@
 #include "cli_common.h"
 
 #include "io/game_graphics.h"
+#include "io/text_encoding.h"
 
 #include <algorithm>
 #include <cctype>
@@ -232,12 +233,31 @@ SaveTarget takeSaveTarget(Args & args)
     throw CliError("저장할 곳을 정해야 합니다: -o <출력맵> 또는 --in-place");
 }
 
+std::optional<io::TextEncoding> takeEncodingOption(Args & args)
+{
+    const auto text = args.option("--encoding");
+    if (!text)
+        return std::nullopt;
+
+    std::string want = lower(*text);
+    if (want == "cp949"  || want == "949"  || want == "euc-kr")    return io::TextEncoding::Cp949;
+    if (want == "cp932"  || want == "932"  || want == "shift-jis") return io::TextEncoding::Cp932;
+    if (want == "cp936"  || want == "936"  || want == "gbk")       return io::TextEncoding::Cp936;
+    if (want == "cp1252" || want == "1252")                        return io::TextEncoding::Cp1252;
+    if (want == "utf8"   || want == "utf-8")                       return io::TextEncoding::Utf8;
+    if (want == "ascii")                                           return io::TextEncoding::Ascii;
+
+    throw CliError("모르는 코드 페이지입니다: " + *text +
+                   " (cp949/cp932/cp936/cp1252/utf8/ascii)");
+}
+
 int editMap(const std::string & mapPath, const SaveTarget & requested, Args & args,
             const std::function<bool(io::MapArchive &)> & body)
 {
     SaveTarget target = requested;
     if (target.inPlace)
         target.path = mapPath;
+    const auto encoding = takeEncodingOption(args);
     args.finish();
 
     io::MapArchive archive;
@@ -245,6 +265,14 @@ int editMap(const std::string & mapPath, const SaveTarget & requested, Args & ar
     {
         std::cerr << "열기 실패: " << r.message << "\n";
         return 1;
+    }
+
+    // 자동 판별이 틀린 맵은 손으로 정해 줘야 글자가 제대로 쓰인다.
+    if (encoding)
+    {
+        std::cout << "  글자      : " << io::encodingName(archive.textEncoding())
+                  << " 대신 " << io::encodingName(*encoding) << " 로 읽고 씁니다.\n";
+        archive.setTextEncoding(*encoding);
     }
 
     if (!body(archive))

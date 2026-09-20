@@ -348,6 +348,9 @@ public:
                      int tileX, int tileY, std::uint8_t owner = 0);
     bool removeDoodad(const io::GameGraphics & graphics, std::size_t index);
 
+    /// 두들을 켜고 끈다 (DD2 의 enabled 칸).
+    bool setDoodadEnabled(std::size_t index, bool enabled);
+
     /// 자리와 맞지 않는 두들을 찾고 고친다.
     std::vector<std::size_t> findBrokenDoodads(const io::GameGraphics & graphics) const;
     bool repairDoodads(const io::GameGraphics & graphics, std::size_t * outCount = nullptr);

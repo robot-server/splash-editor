@@ -4,6 +4,7 @@
 #include "cli_common.h"
 
 #include "chk/map_document.h"
+#include "io/text_encoding.h"
 
 #include <algorithm>
 #include <array>
@@ -171,6 +172,47 @@ int mapTileset(Args & args)
                   << " (" << tilesetId << ")\n";
         std::cout << "  알림      : 지형 타일 값은 그대로라 그림이 달라집니다.\n";
         return true;
+    });
+}
+
+int mapEncoding(Args & args)
+{
+    // CHK 에는 코드 페이지 칸이 없다. 그러니 여기서 "바꿔 저장" 하는 것은
+    // 뜻이 없다 — 보여 주기만 하고, 실제로 쓰는 쪽은 글자를 고치는 명령에
+    // `--encoding` 을 함께 주는 길이다.
+    const auto as = takeEncodingOption(args);
+    const auto limit = args.number("--limit");
+    args.finish();
+
+    return readMap(args.at(0), [&](io::MapArchive & archive) {
+        const auto detected = archive.textEncoding();
+        std::cout << "  가려낸 값 : " << io::encodingName(detected) << "\n";
+        if (as)
+        {
+            archive.setTextEncoding(*as);
+            std::cout << "  이렇게 읽으면: " << io::encodingName(*as) << "\n";
+        }
+
+        const auto strings = archive.strings();
+        const std::size_t cap = limit ? static_cast<std::size_t>(*limit) : 8;
+        std::size_t shown = 0;
+        for (const auto & entry : strings)
+        {
+            if (shown >= cap)
+                break;
+            std::string flat = entry.text;
+            for (char & c : flat)
+                if (c == '\n' || c == '\r') c = ' ';
+            std::cout << "  " << std::setw(5) << entry.id << "  " << flat << "\n";
+            ++shown;
+        }
+
+        std::cout << "\n  글자가 깨져 보이면 --encoding 으로 다시 읽어 보세요:\n"
+                     "    splash-cli map encoding <맵> --encoding cp949\n"
+                     "  맞는 것을 찾았으면, 글자를 고치는 명령에도 같은 --encoding 을\n"
+                     "  함께 줘야 그 코드 페이지로 쓰입니다 (CHK 에는 저장되지 않습니다):\n"
+                     "    splash-cli string set <맵> 1 \"새 글자\" --encoding cp949 -o out.scx\n";
+        return 0;
     });
 }
 
@@ -910,6 +952,9 @@ std::vector<Group> settingsGroups()
             {"description", "<맵> <설명> -o <출력맵>", "시나리오 설명을 바꾼다.", mapDescription},
             {"size",        "<맵> <가로> <세로> -o <출력맵>", "맵 크기를 바꾼다.", mapSize},
             {"tileset",     "<맵> <타일셋ID> -o <출력맵>", "타일셋을 바꾼다.", mapTileset},
+            {"encoding",    "<맵> [--encoding cp949|cp932|cp936|cp1252|utf8|ascii] [--limit N]",
+                            "맵 문자열의 코드 페이지를 보여 준다. --encoding 을 주면 "
+                            "그것으로 읽어 본다 (저장하지 않는다).", mapEncoding},
         }},
         Group{"player", "플레이어 슬롯 (OWNR·SIDE·COLR)", {
             {"list", "<맵>", "플레이어 12칸을 보여 준다.", playerList},

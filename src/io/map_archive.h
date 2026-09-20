@@ -780,6 +780,13 @@ public:
     /// 알 수 없으므로, 지형은 따로 칠해야 한다).
     Result removeDoodad(const GameGraphics & graphics, std::size_t index);
 
+    /// 두들을 켜고 끈다 (DD2 의 enabled 칸).
+    ///
+    /// 꺼진 두들은 타일은 그대로 두고 항목만 죽은 것으로 표시된다. 놓을
+    /// 때(placeDoodad)만 켜짐으로 박혀 있어 나중에 바꿀 길이 없었다 —
+    /// 오려 붙일 때 꺼진 상태를 되살리려면 필요하다.
+    Result setDoodadEnabled(std::size_t index, bool enabled);
+
     // --- 소리 (WAV) ---
 
     /// 맵에 등록된 소리 하나.

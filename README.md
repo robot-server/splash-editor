@@ -199,6 +199,7 @@ CLI 는 GUI 없이 코어를 두드리는 도구이자 테스트 하네스다. *
 | `map` | 이름·설명·크기·타일셋 |
 | `player` `force` | 종족·슬롯·세력·색, 동맹·시야 공유 |
 | `string` `switch` `preset` | 문자열·스위치·CUWP |
+| `map encoding` | 코드 페이지를 보고, `--encoding` 으로 다시 읽기 |
 | `unitdef` `upgrade` `tech` | 맵이 정하는 능력치·비용 |
 | `scenario` | 리빌러·자원 섞기·맵 밖 치우기·보호 해제·맵 그림 |
 | `sound` | 넣기·빼기·꺼내기 |
@@ -243,6 +244,14 @@ splash-cli trigger line-enabled map.scx action 0 0 off -o out.scx
 
 지형·유닛을 갈아 끼운 모드 맵은 `--mod <mpq>` 를 여러 번 주면 설치본보다
 먼저 뒤집니다 — 앞에 적은 것이 우선합니다.
+
+글자가 깨져 보이면 코드 페이지 자동 판별이 틀린 것입니다. **CHK 에는 코드
+페이지 칸이 없어서** 맵에 저장해 둘 수 없고, 읽고 쓸 때마다 알려 줘야 합니다.
+
+```sh
+splash-cli map encoding map.scx --encoding cp949        # 이렇게 읽으면 맞는지 본다
+splash-cli string set map.scx 1 "새 글자" --encoding cp949 -o out.scx
+```
 
 진단·검증 명령은 갈래 없이 그대로 쓴다.
 

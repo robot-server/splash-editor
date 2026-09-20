@@ -590,7 +590,10 @@ int objectPaste(Args & args)
         {
             overlaysBefore = archive.sprites();
             const auto & catalogue = graphics.doodads(info.tilesetId);
-            std::size_t disabledSkipped = 0;
+
+            // 꺼져 있던 두들은 놓은 다음 다시 꺼 준다 — placeDoodad 는 늘
+            // 켜진 채로 놓는다.
+            std::vector<std::size_t> toDisable;
 
             for (const auto & doodad : clip->doodads)
             {
@@ -623,13 +626,21 @@ int objectPaste(Args & args)
                     continue;
                 }
                 if (!doodad.enabled)
-                    ++disabledSkipped;
+                    toDisable.push_back(archive.doodads().size() - 1);
                 ++placedDoodads;
             }
 
-            if (disabledSkipped != 0)
-                std::cout << "  알림      : 꺼져 있던 두들 " << disabledSkipped
-                          << "개는 켜진 채로 붙습니다 (끄는 API 가 없습니다).\n";
+            for (std::size_t at : toDisable)
+            {
+                if (auto r = archive.setDoodadEnabled(at, false); !r)
+                {
+                    std::cerr << "두들을 끄지 못했습니다(" << at << "): " << r.message << "\n";
+                    return false;
+                }
+            }
+            if (!toDisable.empty())
+                std::cout << "  알림      : 꺼져 있던 두들 " << toDisable.size()
+                          << "개를 그대로 꺼 두었습니다.\n";
         }
 
         // placeDoodad 는 움직이는 두들에 그림 조각을 하나 더 얹는다.

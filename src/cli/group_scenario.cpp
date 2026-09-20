@@ -446,6 +446,97 @@ int briefingArgs(Args & args)
                                static_cast<std::size_t>(args.integer(1)));
 }
 
+/// `1,3,5` / `all` / `none` 을 트리거·브리핑의 27칸 표로.
+/// 1~12 는 플레이어, 그 뒤는 세력·All players 같은 묶음 자리다.
+std::array<bool, 27> parseOwnerTable(const std::string & list)
+{
+    std::array<bool, 27> owners {};
+    if (list == "all" || list == "모두")
+    {
+        for (std::size_t i = 0; i < 12; ++i)
+            owners[i] = true;
+        return owners;
+    }
+    if (list == "none" || list == "없음")
+        return owners;
+
+    std::stringstream stream(list);
+    std::string token;
+    while (std::getline(stream, token, ','))
+    {
+        if (token.empty())
+            continue;
+        const long long number = std::stoll(token);
+        if (number < 1 || number > 27)
+            throw CliError("플레이어 번호는 1~27 입니다: " + token);
+        owners[static_cast<std::size_t>(number - 1)] = true;
+    }
+    return owners;
+}
+
+int briefingOwners(Args & args)
+{
+    const SaveTarget target = takeSaveTarget(args);
+    args.finish();
+
+    const std::string mapPath = args.at(0);
+    const auto index = static_cast<std::size_t>(args.integer(1));
+    const auto owners = parseOwnerTable(args.at(2));
+
+    return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
+        if (auto r = archive.setBriefingOwners(index, owners); !r)
+        {
+            std::cerr << "실행 플레이어 바꾸기 실패: " << r.message << "\n";
+            return false;
+        }
+        std::string text;
+        for (std::size_t i = 0; i < owners.size(); ++i)
+        {
+            if (!owners[i]) continue;
+            if (!text.empty()) text += ",";
+            text += std::to_string(i + 1);
+        }
+        std::cout << "  브리핑 " << index << " -> "
+                  << (text.empty() ? "(없음)" : text) << "\n";
+        return true;
+    });
+}
+
+int briefingDetail(Args & args)
+{
+    io::GameGraphics graphics;
+    if (!loadGraphics(args, graphics))
+        return 1;
+    args.finish();
+
+    const auto index = static_cast<std::size_t>(args.integer(1));
+
+    return readMap(args.at(0), [&](io::MapArchive & archive) {
+        const auto detail = archive.briefingDetail(index, graphics);
+        if (!detail)
+        {
+            std::cerr << "그런 브리핑이 없습니다: " << index << "\n";
+            return 1;
+        }
+
+        std::string owners;
+        for (std::size_t i = 0; i < detail->owners.size(); ++i)
+        {
+            if (!detail->owners[i]) continue;
+            if (!owners.empty()) owners += ",";
+            owners += std::to_string(i + 1);
+        }
+        std::cout << "  브리핑 " << index << "\n"
+                  << "  실행      : " << (owners.empty() ? "(없음)" : owners) << "\n"
+                  << "  동작      : " << detail->actions.size() << "줄\n";
+        for (std::size_t i = 0; i < detail->actions.size(); ++i)
+            std::cout << "    [" << i << "] " << detail->actions[i] << "\n";
+        if (!detail->text.empty())
+            std::cout << "\n" << detail->text << "\n";
+        return 0;
+    });
+}
+
 // --- 조건·동작을 낱개로 ---
 //
 // 텍스트로 통째로 갈아 끼우는 길(trigger apply)과 인자 하나만 고치는
@@ -915,6 +1006,11 @@ std::vector<Group> scenarioGroups()
                        "브리핑 동작 줄을 지운다.", briefingRemoveLine},
             {"move-line", "<맵> <번호> <from> <to> -o <출력맵>",
                        "브리핑 동작 줄의 차례를 바꾼다.", briefingMoveLine},
+            {"owners", "<맵> <번호> <1,3,5|all|none> -o <출력맵>",
+                       "그 브리핑을 볼 플레이어를 정한다.", briefingOwners},
+            {"detail", "<맵> <번호> --install 설치폴더",
+                       "브리핑 하나의 실행 플레이어·동작·텍스트를 함께 보여 준다.",
+                       briefingDetail},
         }},
     };
 }

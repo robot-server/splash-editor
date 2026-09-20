@@ -706,6 +706,28 @@ int doodadRepair(Args & args)
     });
 }
 
+int doodadEnabled(Args & args)
+{
+    const SaveTarget target = takeSaveTarget(args);
+    args.finish();
+
+    const std::string mapPath = args.at(0);
+    const auto index = static_cast<std::size_t>(args.integer(1));
+    const std::string state = args.at(2);
+    if (state != "on" && state != "off")
+        throw CliError("on 이나 off 를 적으세요: " + state);
+
+    return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
+        if (auto r = archive.setDoodadEnabled(index, state == "on"); !r)
+        {
+            std::cerr << "켜고 끄기 실패: " << r.message << "\n";
+            return false;
+        }
+        std::cout << "  두들 " << index << " -> " << (state == "on" ? "켜짐" : "꺼짐") << "\n";
+        return true;
+    });
+}
+
 // --- 로케이션 ---
 
 int locationList(Args & args)
@@ -949,6 +971,28 @@ int locationInvert(Args & args)
     });
 }
 
+int locationAiTowns(Args & args)
+{
+    args.finish();
+    return readMap(args.at(0), [&](io::MapArchive & archive) {
+        const auto towns = archive.aiTownLocations();
+        const auto locations = archive.locations();
+        for (std::size_t index : towns)
+        {
+            std::cout << "  " << std::setw(4) << index;
+            const auto it = std::find_if(locations.begin(), locations.end(),
+                [&](const auto & entry) { return entry.index == index; });
+            if (it != locations.end())
+                std::cout << "  (" << it->left << ", " << it->top << ") - ("
+                          << it->right << ", " << it->bottom << ")  "
+                          << (it->name.empty() ? "(이름 없음)" : it->name);
+            std::cout << "\n";
+        }
+        std::cout << "  AI 스크립트가 타운으로 쓰는 로케이션 " << towns.size() << "개\n";
+        return 0;
+    });
+}
+
 } // namespace
 
 std::vector<Group> objectGroups()
@@ -988,6 +1032,8 @@ std::vector<Group> objectGroups()
                            "두들 항목을 지우고 지형만 남긴다.", doodadToTerrain},
             {"check",      "<맵> --install 설치폴더", "자리와 어긋난 두들을 찾는다.", doodadCheck},
             {"repair",     "<맵> --install 설치폴더 -o <출력맵>", "어긋난 두들을 고친다.", doodadRepair},
+            {"enabled",    "<맵> <번호> <on|off> -o <출력맵>",
+                           "두들을 켜고 끈다 (DD2 의 enabled 칸).", doodadEnabled},
         }},
         Group{"location", "로케이션 (MRGN)", {
             {"list",      "<맵>", "로케이션을 나열한다.", locationList},
@@ -1002,6 +1048,8 @@ std::vector<Group> objectGroups()
                           "높이 조건을 정한다.", locationElevation},
             {"invert",    "<맵> <번호> [on|off] -o <출력맵>",
                           "안팎을 뒤집는다 (\"이 네모 바깥\").", locationInvert},
+            {"ai-towns",  "<맵>", "AI 스크립트가 타운으로 쓰는 로케이션을 나열한다.",
+                          locationAiTowns},
         }},
     };
 }

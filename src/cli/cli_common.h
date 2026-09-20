@@ -6,6 +6,7 @@
 #pragma once
 
 #include "io/map_archive.h"
+#include "io/text_encoding.h"
 
 #include <functional>
 #include <optional>
@@ -102,6 +103,15 @@ int editMap(const std::string & mapPath, const SaveTarget & target, Args & args,
 /// 맵을 열어 읽기만 한다.
 int readMap(const std::string & mapPath,
             const std::function<int(io::MapArchive &)> & body);
+
+/// `--encoding <cp949|cp932|cp936|cp1252|utf8|ascii>` 를 꺼낸다.
+///
+/// CHK 에는 코드 페이지 칸이 없다. 그래서 인코딩은 **저장되지 않고**, 이
+/// 실행 동안 글자를 읽고 쓰는 방식만 정한다. 자동 판별이 틀린 맵에서
+/// 글자를 고칠 때 이것을 함께 줘야 제대로 쓰인다.
+///
+/// 위치 인자를 읽기 전에 불러야 한다.
+std::optional<io::TextEncoding> takeEncodingOption(Args & args);
 
 /// 게임 자료를 읽는다. `--install <경로>` 가 없으면 CliError.
 /// 비용이 크므로 필요한 명령에서만 부른다.

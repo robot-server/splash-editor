@@ -1470,6 +1470,40 @@ std::size_t MapArchive::convertDoodadsToTerrain(const GameGraphics & graphics)
     return 0;
 }
 
+Result MapArchive::setDoodadEnabled(std::size_t index, bool enabled)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (index >= map.numDoodads())
+            return Result::failure("두들 번호가 범위를 벗어났습니다.");
+
+        Chk::Doodad doodad = map.getDoodad(index);
+        const auto want = enabled ? Chk::Doodad::Enabled::Enabled
+                                  : Chk::Doodad::Enabled::Disabled;
+        if (doodad.enabled == want)
+            return Result::success();
+
+        doodad.enabled = want;
+
+        // 항목 하나를 통째로 갈아 끼운다 — 지우고 넣는 두 액션이 한 편집이다.
+        // 자리를 지켜야 번호로 가리키던 것이 어긋나지 않는다.
+        map.deleteDoodad(index);
+        map.insertDoodad(index, doodad);
+
+        impl_->undoSteps.push_back(2);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("두들을 켜고 끄지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 Result MapArchive::removeDoodad(const GameGraphics & graphics, std::size_t index)
 {
     if (!impl_->isOpen())

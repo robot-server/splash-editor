@@ -1202,6 +1202,18 @@ bool MapDocument::removeDoodad(const io::GameGraphics & graphics, std::size_t in
     return true;
 }
 
+bool MapDocument::setDoodadEnabled(std::size_t index, bool enabled)
+{
+    const io::Result result = archive_.setDoodadEnabled(index, enabled);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    doodads_ = archive_.doodads();
+    refreshInfo();
+    return true;
+}
+
 std::vector<io::MapArchive::MapSound> MapDocument::sounds(bool checkArchive) const
 {
     return archive_.sounds(checkArchive);
