@@ -413,7 +413,21 @@ Result MapArchive::open(const std::string & filePath)
     {
         auto candidate = std::make_unique<MapFile>();
         if (!candidate->load(filePath) && !loadArchiveDirectly(*candidate, filePath))
+        {
+            // 아카이브 자체가 열리지 않는 것과 시나리오가 이상한 것은 다른
+            // 일이다. 헤더를 손질해 MPQ 로 보이지 않게 만든 맵이 있다.
+            if (!hasChkExtension(filePath) &&
+                !candidate->MpqFile::open(filePath, /*readOnly*/ true,
+                                          /*createIfNotFound*/ false))
+            {
+                return Result::failure(
+                    "맵 아카이브를 열지 못했습니다. MPQ 머리말을 손질해 둔 맵일 "
+                    "수 있습니다: " + filePath);
+            }
+            candidate->MpqFile::close();
+
             return Result::failure("맵을 파싱하지 못했습니다: " + filePath);
+        }
         fresh->mapFile = std::move(candidate);
     }
     catch (const std::exception & e)
