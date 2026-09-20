@@ -39,8 +39,12 @@ int usage(const char * argv0)
         "  " << argv0 << " chk <맵파일> <출력.chk>\n"
         "      맵 안의 시나리오 청크(CHK)를 그대로 꺼낸다.\n\n"
         "  " << argv0 << " new <출력파일> [가로] [세로] [타일셋ID] [--melee]\n"
+        "          [--install 설치폴더] [--terrain 지형]\n"
         "      빈 맵을 만든다. 확장자로 포맷을 고른다(.scm=하이브리드, .scx=브루드워).\n"
-        "      기본값: 64 64 4(Jungle)\n\n"
+        "      기본값: 64 64 4(Jungle)\n"
+        "      --install 을 주면 고른 지형으로 바닥을 채운다. 주지 않으면 타일이\n"
+        "      0 으로 남아 terrain isom 이 아무것도 놓지 못한다.\n"
+        "      --terrain 은 terrain types 가 내는 번호나 이름이다(기본: 첫 지형).\n\n"
         "  " << argv0 << " assets <StarCraft 설치폴더>\n"
         "      설치본을 조사한다. 아카이브를 열고 타일셋 데이터가 읽히는지 확인한다.\n\n"
         "  " << argv0 << " render <맵파일> <설치폴더> <출력.ppm> [--units] [--locations] [--creep]\n"
@@ -56,6 +60,7 @@ int usage(const char * argv0)
         "  " << argv0 << " images-tbl <설치폴더> [찾을글자]\n"
         "  " << argv0 << " has-asset <설치폴더> <아카이브경로>\n"
         "  " << argv0 << " icon-histogram <설치폴더> <아이콘번호>\n"
+        "  " << argv0 << " tileset-ramps <설치폴더> <타일셋>\n"
         "  " << argv0 << " find-creep <설치폴더> <타일셋>\n"
         "  " << argv0 << " creep-kin <설치폴더> <타일셋> <메가타일> <개수>\n"
         "      설치본 자료를 들여다본다.\n\n"
@@ -131,6 +136,43 @@ std::size_t firstDifference(const std::vector<std::uint8_t> & a,
     return (a.size() == b.size()) ? std::string::npos : shared;
 }
 
+/// 지형을 브러시 번호나 이름으로 고른다. 이름은 빈칸·대소문자를 가리지
+/// 않고, 딱 하나만 걸리면 부분 일치도 받는다 (parseUnitType 과 같은 잣대).
+std::optional<std::size_t> findTerrainType(
+    const std::vector<splash::io::GameGraphics::TerrainType> & types,
+    const std::string & text)
+{
+    if (!text.empty() && text.find_first_not_of("0123456789") == std::string::npos)
+    {
+        const auto want = static_cast<std::size_t>(std::stoull(text));
+        for (const auto & type : types)
+        {
+            if (type.brushIndex == want)
+                return type.brushIndex;
+        }
+        return std::nullopt;
+    }
+
+    const std::string want = splash::cli::squashName(text);
+    for (const auto & type : types)
+    {
+        if (splash::cli::squashName(type.name) == want)
+            return type.brushIndex;
+    }
+
+    std::optional<std::size_t> partial;
+    std::size_t hits = 0;
+    for (const auto & type : types)
+    {
+        if (splash::cli::squashName(type.name).find(want) != std::string::npos)
+        {
+            partial = type.brushIndex;
+            ++hits;
+        }
+    }
+    return (hits == 1) ? partial : std::nullopt;
+}
+
 int cmdNew(const std::vector<std::string> & args)
 {
     const std::string & outPath = args[1];
@@ -139,12 +181,18 @@ int cmdNew(const std::vector<std::string> & args)
     std::uint16_t height = 64;
     std::uint16_t tilesetId = 4; // Jungle
     bool melee = false;
+    std::string installPath;
+    std::string terrainArg;
 
     std::vector<std::string> positional;
     for (std::size_t i = 2; i < args.size(); ++i)
     {
         if (args[i] == "--melee")
             melee = true;
+        else if (args[i] == "--install" && i + 1 < args.size())
+            installPath = args[++i];
+        else if (args[i] == "--terrain" && i + 1 < args.size())
+            terrainArg = args[++i];
         else
             positional.push_back(args[i]);
     }
@@ -168,10 +216,48 @@ int cmdNew(const std::vector<std::string> & args)
     const auto format = (ext == ".scx") ? splash::io::MapFormat::ExpansionScx
                                         : splash::io::MapFormat::HybridScm;
 
+    // 설치본을 주면 고른 지형으로 바닥을 제대로 채운다. 주지 않으면 타일이
+    // 0 으로 남아 ISOM 브러시가 아무것도 놓지 못한다 — 빈 칸 위에는 절벽·
+    // 경계를 이을 수 없기 때문이다.
+    splash::io::GameGraphics graphics;
+    const splash::io::GameGraphics * graphicsPtr = nullptr;
+    std::size_t terrainBrush = 0;
+    if (!installPath.empty())
+    {
+        std::string error;
+        if (!graphics.load(installPath, &error))
+        {
+            std::cerr << "게임 데이터 로드 실패: " << error << "\n";
+            return 1;
+        }
+        graphicsPtr = &graphics;
+
+        const auto types = graphics.terrainTypes(tilesetId);
+        if (!terrainArg.empty())
+        {
+            const auto found = findTerrainType(types, terrainArg);
+            if (!found)
+            {
+                std::cerr << "지형을 찾지 못했습니다: " << terrainArg << "\n";
+                std::cerr << "고를 수 있는 것:\n";
+                for (const auto & type : types)
+                    std::cerr << "  " << type.brushIndex << "  " << type.name << "\n";
+                return 2;
+            }
+            terrainBrush = *found;
+        }
+    }
+    else if (!terrainArg.empty())
+    {
+        std::cerr << "--terrain 은 --install 과 함께 써야 합니다.\n";
+        return 2;
+    }
+
     splash::io::MapArchive archive;
     if (auto r = archive.createNew(format, tilesetId, width, height,
             melee ? splash::io::MapArchive::DefaultTriggers::Melee
-                  : splash::io::MapArchive::DefaultTriggers::None); !r)
+                  : splash::io::MapArchive::DefaultTriggers::None,
+            graphicsPtr, terrainBrush); !r)
     {
         std::cerr << "생성 실패: " << r.message << "\n";
         return 1;
@@ -946,6 +1032,61 @@ int cmdImagesTbl(const std::string & installPath, const std::string & needle)
     }
     if (shown == 0)
         std::cout << "    (일치하는 항목 없음)\n";
+    return 0;
+}
+
+/// 램프 타일을 그룹별로 모아 보여 준다.
+///
+/// ISOM 브러시에는 램프가 없다 — 지형 종류 표(`terrain types`)에 램프
+/// 항목이 없고, 고지대를 칠하면 절벽만 생긴다. 램프는 VF4 의 램프 비트가
+/// 선 타일로만 놓을 수 있어서, 그 타일 번호를 알아야 한다.
+int cmdTilesetRamps(const std::string & installPath, std::uint16_t tilesetId)
+{
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const auto info = graphics.describeTileset(tilesetId);
+
+    // 같은 그룹의 타일은 같은 램프의 조각들이다. 그룹째 묶어 내야 어느
+    // 타일을 나란히 놓아야 비탈이 되는지 보인다.
+    std::size_t groupCount = 0;
+    std::size_t tileCount = 0;
+    for (std::size_t group = 0; group < info.tileGroupCount; ++group)
+    {
+        std::vector<std::uint16_t> rampTiles;
+        int elevation = 0;
+        for (std::uint16_t sub = 0; sub < 16; ++sub)
+        {
+            const auto tileId = static_cast<std::uint16_t>(group * 16 + sub);
+            const auto terrain = graphics.tileTerrain(tilesetId, tileId);
+            if (terrain.ramp)
+            {
+                rampTiles.push_back(tileId);
+                elevation = terrain.elevation;
+            }
+        }
+        if (rampTiles.empty())
+            continue;
+
+        ++groupCount;
+        tileCount += rampTiles.size();
+        std::cout << "  그룹 " << std::setw(4) << group
+                  << "  높이 " << elevation
+                  << "  타일 " << rampTiles.size() << "개 :";
+        for (const auto tileId : rampTiles)
+            std::cout << " " << tileId;
+        std::cout << "\n";
+    }
+
+    std::cout << "  타일셋 " << tilesetId << " 의 램프 그룹 " << groupCount
+              << "개, 타일 " << tileCount << "개\n";
+    if (groupCount == 0)
+        std::cout << "  (이 타일셋에는 램프가 없습니다 — 높이 차이가 없는 타일셋입니다)\n";
     return 0;
 }
 
@@ -2034,6 +2175,12 @@ int main(int argc, char ** argv)
     if (command == "find-creep" && args.size() == 3)
     {
         try { return cmdFindCreep(args[1], static_cast<std::uint16_t>(std::stoul(args[2]))); }
+        catch (const std::exception &) { return usage(argv[0]); }
+    }
+
+    if (command == "tileset-ramps" && args.size() == 3)
+    {
+        try { return cmdTilesetRamps(args[1], static_cast<std::uint16_t>(std::stoul(args[2]))); }
         catch (const std::exception &) { return usage(argv[0]); }
     }
 

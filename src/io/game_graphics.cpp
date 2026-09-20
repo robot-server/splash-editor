@@ -869,6 +869,7 @@ GameGraphics::TileTerrain GameGraphics::tileTerrain(std::uint16_t tilesetId,
 
         std::size_t walkableCount = 0;
         std::size_t blockingCount = 0;
+        std::size_t rampCount = 0;
         for (std::size_t y = 0; y < 4; ++y)
         {
             for (std::size_t x = 0; x < 4; ++x)
@@ -877,12 +878,15 @@ GameGraphics::TileTerrain GameGraphics::tileTerrain(std::uint16_t tilesetId,
                     ++walkableCount;
                 if (tileFlags.miniTileFlags[y][x].blocksView())
                     ++blockingCount;
+                if (tileFlags.miniTileFlags[y][x].isRamp())
+                    ++rampCount;
             }
         }
 
         terrain.walkable = walkableCount > 0;
         terrain.fullyWalkable = walkableCount == 16;
         terrain.blocksView = blockingCount > 0;
+        terrain.ramp = rampCount > 0;
     }
 
     return terrain;

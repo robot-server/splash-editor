@@ -9,3 +9,6 @@ CMakeUserPresets.json
 tests/maps/*.scm
 tests/maps/*.scx
 tests/maps/*.chk
+
+# 파이썬 캐시
+__pycache__/

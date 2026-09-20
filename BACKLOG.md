@@ -241,3 +241,39 @@ EUD(Memory·Memory Masked 조건·동작을 주소로 편집, 주소 계산기�
 맵 밖으로 나간 것 치우기(열 때 자동으로도).
 
 CLI 쪽으로는: 갈래별 명령(unit·sprite·doodad·location·terrain·fog·map·player·force·string·switch·preset·unitdef·upgrade·tech·scenario·sound·trigger·briefing·eud), 유닛을 이름으로 고르기, 지형·가리개를 파일로 오려 붙이기, 지형 대칭, 트리거 더하기·지우기·베끼기·실행 플레이어, EUD 주소 셈·오프셋 표·맵 훑기·조건과 동작 넣기·euddraft 빌드, 저장 전 원본 지키기(--in-place 는 바꿔치기), 저장본 다시 열어 확인, 유닛·스프라이트·두들·로케이션을 네모째 오려 붙이기(`object copy/paste`, 애드온·나이더스 연결과 로케이션 높이·안팎 뒤집힘까지 따라온다).
+
+## 맵 생성 (AI 로 맵 만들기)
+
+`.agents/skills/starcraft-map` 에 프롬프트로 맵을 만드는 스킬을 두었다.
+그 작업에서 드러난, 아직 못 고친 것들.
+
+### `terrain mirror` 가 절벽을 뒤집지 못한다
+
+`terrain mirror` 는 타일 값을 그대로 옮긴다. 타일 그림에는 방향이 있어서
+남향 절벽 타일은 북쪽으로 옮겨도 남향 그림 그대로 남는다. 베낀 쪽의
+절벽이 뒤집혀 보이고 걸을 수 있는 자리도 어긋난다. 64x64 맵에 고지대를
+칠하고 `rot90` 을 걸어 그려 보고 확인했다 — 평지 무늬는 멀쩡하지만
+절벽은 못 쓴다.
+
+**막고 있는 것**: 타일을 90도·180도 돌렸을 때 어느 타일이 짝인지 하는
+표가 타일셋 데이터에 없다. cv5 의 지형 종류만으로는 방향을 알 수 없다.
+
+**다시 붙는다면**: 타일이 아니라 **ISOM 섹션을 돌린 뒤
+`updateTilesFromIsom()` 으로 다시 펼치면** 된다. ISOM 은 지형 종류를
+담은 마름모 격자라 방향이 없다. `MapArchive::placeIsomTerrain` 이 쓰는
+`ScenarioIsomCache` 를 그대로 쓸 수 있다. 당장은 스킬 쪽에서 같은 ISOM
+붓질을 회전 좌표에 다시 놓는 것으로 우회했다.
+
+### ISOM 브러시에 램프가 없다
+
+`terrain types` 가 내는 지형 종류에 램프가 없다. 고지대를 좁고 길게 빼도
+절벽만 길어질 뿐 비탈이 생기지 않는다 (그려서 확인).
+
+MappingCore 의 `Sc::Isom::TerrainTypeInfo` 표에도 램프 항목이 없다.
+램프는 VF4 의 램프 비트(`MiniTileFlags::Ramp`)가 선 타일이며, 연속한
+타일 그룹 여러 줄 x 서브타일 여러 칸의 직사각 블록으로 놓인다.
+
+지금은 `tileset-ramps` 명령으로 그 타일을 찾고 스킬이 직접 찍는다.
+**다시 붙는다면**: 지형 팔레트에 램프 브러시를 더해 GUI 에서도 놓을 수
+있게 하는 것이 남았다. 어느 램프가 어느 지형 짝을 잇는지는 공식 맵을
+훑어 세는 방법으로 알아냈다 (`.agents/skills/starcraft-map/references/melee-terrain.md`).
