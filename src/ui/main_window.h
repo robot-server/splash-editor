@@ -126,6 +126,7 @@ private:
     /// 고른 것은 각자 따로 기억한다.
     std::vector<QDockWidget *> extraViews_;
     void addViewport();
+    void tileViewports();
     void forEachView(const std::function<void(MapView *)> & apply);
     MiniMap * miniMap_ = nullptr;
     SoundPlayer * soundPlayer_ = nullptr;

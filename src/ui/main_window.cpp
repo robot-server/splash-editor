@@ -33,6 +33,9 @@
 #include <QDir>
 #include <QUrl>
 #include <QSettings>
+
+#include <algorithm>
+#include <cmath>
 #include <QSplitter>
 #include <QApplication>
 #include <QCloseEvent>
@@ -1495,6 +1498,17 @@ void MainWindow::buildMenus()
         statusBar()->showMessage(tr("보기 창을 열었습니다"), 2500);
     });
 
+    QAction * tileViews = windowMenu->addAction(tr("보기 창 늘어놓기(&T)"));
+    tileViews->setToolTip(tr("띄워 둔 보기 창을 화면에 겹치지 않게 늘어놓습니다."));
+    connect(tileViews, &QAction::triggered, this, [this] {
+        if (extraViews_.empty())
+        {
+            statusBar()->showMessage(tr("늘어놓을 보기 창이 없습니다"), 2500);
+            return;
+        }
+        tileViewports();
+    });
+
     windowMenu->addSeparator();
 
     QAction * nextTab = windowMenu->addAction(tr("다음 맵"));
@@ -1771,6 +1785,38 @@ void MainWindow::addViewport()
     // 주 화면이 보고 있는 자리에서 시작한다.
     if (mapView_ != nullptr)
         view->centerOnMap(mapView_->visibleMapRect().center());
+}
+
+void MainWindow::tileViewports()
+{
+    // 떠 있는 창만 옮긴다 — 가장자리에 붙인 창은 Qt 가 자리를 맡고 있다.
+    std::vector<QDockWidget *> floating;
+    for (QDockWidget * dock : extraViews_)
+    {
+        if (dock != nullptr && dock->isFloating() && dock->isVisible())
+            floating.push_back(dock);
+    }
+
+    if (floating.empty())
+        return;
+
+    // 주 창 오른쪽·아래로 격자를 이룬다. 화면 밖으로 나가지 않게 가둔다.
+    const QRect area = geometry();
+    const int columns = static_cast<int>(std::ceil(std::sqrt(double(floating.size()))));
+    const int rows = static_cast<int>(std::ceil(double(floating.size()) / columns));
+
+    const int cellWidth = std::max(320, area.width() / columns);
+    const int cellHeight = std::max(240, area.height() / rows);
+
+    for (std::size_t i = 0; i < floating.size(); ++i)
+    {
+        const int column = static_cast<int>(i) % columns;
+        const int row = static_cast<int>(i) / columns;
+
+        floating[i]->setGeometry(area.left() + column * cellWidth,
+                                 area.top() + row * cellHeight,
+                                 cellWidth - 8, cellHeight - 8);
+    }
 }
 
 void MainWindow::onDocumentEdited()
