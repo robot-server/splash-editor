@@ -450,6 +450,22 @@ void MainWindow::buildCentralWidget()
             QAction * remove = menu.addAction(tr("삭제"));
             connect(remove, &QAction::triggered, this, &MainWindow::onDeleteSelection);
         }
+        else if (mapView_->selectedSprite() >= 0)
+        {
+            QAction * properties = menu.addAction(tr("스프라이트 속성…"));
+            connect(properties, &QAction::triggered, this, &MainWindow::onSpriteProperties);
+
+            QAction * remove = menu.addAction(tr("삭제"));
+            connect(remove, &QAction::triggered, this, [this] {
+                const int index = mapView_->selectedSprite();
+                if (index >= 0 && document().removeSprite(static_cast<std::size_t>(index)))
+                {
+                    mapView_->refreshUnits();
+                    onDocumentEdited();
+                    statusBar()->showMessage(tr("스프라이트를 지웠습니다"), 2000);
+                }
+            });
+        }
         else if (locationIndex >= 0)
         {
             QAction * locations = menu.addAction(tr("로케이션 편집…"));
@@ -1965,6 +1981,83 @@ void MainWindow::onPlayerSettings()
         refreshFromDocument();
         statusBar()->showMessage(tr("플레이어 설정을 바꿨습니다"), 3000);
     }
+}
+
+void MainWindow::onSpriteProperties()
+{
+    if (!document().isOpen() || mapView_ == nullptr)
+        return;
+
+    const int index = mapView_->selectedSprite();
+    if (index < 0)
+    {
+        statusBar()->showMessage(tr("스프라이트를 먼저 고르세요."), 2000);
+        return;
+    }
+
+    const auto current = document().spriteProperties(static_cast<std::size_t>(index));
+    if (!current)
+        return;
+
+    const auto & sprites = document().sprites();
+    if (index >= static_cast<int>(sprites.size()))
+        return;
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("스프라이트 속성 — %1")
+                              .arg(sprites[static_cast<std::size_t>(index)].type));
+
+    auto * form = new QFormLayout();
+
+    auto * ownerBox = new QComboBox(&dialog);
+    for (int player = 1; player <= 12; ++player)
+        ownerBox->addItem(tr("플레이어 %1").arg(player), player - 1);
+    const int ownerIndex = ownerBox->findData(current->owner);
+    ownerBox->setCurrentIndex(ownerIndex >= 0 ? ownerIndex : 0);
+    form->addRow(tr("소유자"), ownerBox);
+
+    auto * pureBox = new QCheckBox(tr("순수 스프라이트로 그리기"), &dialog);
+    pureBox->setChecked(current->drawnAsSprite);
+    pureBox->setToolTip(
+        tr("끄면 유닛 그래픽으로 그립니다. 둘은 게임에서 다루는 방식이 다릅니다."));
+
+    auto * disabledBox = new QCheckBox(tr("꺼 둠 (유닛 스프라이트만)"), &dialog);
+    disabledBox->setChecked(current->disabled);
+    disabledBox->setEnabled(!current->drawnAsSprite);
+
+    connect(pureBox, &QCheckBox::toggled, disabledBox, [disabledBox](bool pure) {
+        disabledBox->setEnabled(!pure);
+    });
+
+    auto * buttons = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    auto * layout = new QVBoxLayout(&dialog);
+    layout->addLayout(form);
+    layout->addWidget(pureBox);
+    layout->addWidget(disabledBox);
+    layout->addWidget(buttons);
+
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    splash::io::MapArchive::SpriteProperties next;
+    next.owner = static_cast<std::uint8_t>(ownerBox->currentData().toInt());
+    next.drawnAsSprite = pureBox->isChecked();
+    next.disabled = disabledBox->isChecked();
+
+    if (!document().setSpriteProperties(static_cast<std::size_t>(index), next))
+    {
+        QMessageBox::warning(this, tr("스프라이트 속성 실패"),
+                             QString::fromStdString(document().lastError()));
+        return;
+    }
+
+    mapView_->refreshUnits();
+    onDocumentEdited();
+    statusBar()->showMessage(tr("스프라이트 속성을 바꿨습니다"), 3000);
 }
 
 void MainWindow::onUnitProperties()

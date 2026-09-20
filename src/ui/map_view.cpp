@@ -661,6 +661,15 @@ void MapView::paintUnits(QPainter & painter, const QRect & dirty)
 
         painter.drawPixmap(bounds, pixmap->pixmap,
                            QRectF(0, 0, pixmap->pixmap.width(), pixmap->pixmap.height()));
+
+        // 고른 스프라이트는 테두리로 알린다.
+        if (&sprite == &sprites[static_cast<std::size_t>(std::max(0, selectedSprite_))] &&
+            selectedSprite_ >= 0)
+        {
+            painter.setPen(QPen(QColor(120, 200, 255), 1.5, Qt::DashLine));
+            painter.setBrush(Qt::NoBrush);
+            painter.drawRect(bounds);
+        }
     }
 
     // 스프라이트가 없는 유닛(또는 그래픽 미로드)을 위한 대체 표시 크기.
@@ -2889,6 +2898,33 @@ int MapView::unitAt(const QPointF & screenPos)
     return -1;
 }
 
+int MapView::spriteAt(const QPointF & screenPos)
+{
+    if (document_ == nullptr || !document_->isOpen())
+        return -1;
+
+    const auto & sprites = document_->sprites();
+
+    // 뒤에서부터 본다 — 나중에 그려진 것이 먼저 잡혀야 한다.
+    for (int i = static_cast<int>(sprites.size()) - 1; i >= 0; --i)
+    {
+        const auto & sprite = sprites[static_cast<std::size_t>(i)];
+        const UnitSprite * pixmap = mapSprite(sprite.type, sprite.owner, sprite.drawnAsSprite);
+        if (pixmap == nullptr)
+            continue;
+
+        const QPointF topLeft =
+            mapToScreen(sprite.x - pixmap->anchorX, sprite.y - pixmap->anchorY);
+        const QRectF bounds(topLeft.x(), topLeft.y(),
+                            pixmap->pixmap.width() * zoom_,
+                            pixmap->pixmap.height() * zoom_);
+
+        if (bounds.contains(screenPos))
+            return i;
+    }
+    return -1;
+}
+
 void MapView::mousePressEvent(QMouseEvent * event)
 {
     // 오른쪽 단추는 "그만두기"다. 놓거나 칠하던 것을 멈추고 선택 도구로
@@ -3142,23 +3178,41 @@ void MapView::mousePressEvent(QMouseEvent * event)
 
         selectedUnit_ = selectedUnits_.empty() ? -1 : selectedUnits_.back();
         selectedLocation_ = -1;
+        selectedSprite_ = -1;
         emit selectionChanged(selectedUnit_);
     }
     else if (locationHit >= 0)
     {
         selectedUnits_.clear();
         selectedUnit_ = -1;
+        selectedSprite_ = -1;
         selectedLocation_ = locationHit;
         emit selectionChanged(-1);
     }
     else
     {
+        // 유닛도 로케이션도 없으면 스프라이트를 본다 — 나무·바위 장식이다.
+        const int spriteHit = spriteAt(event->position());
+        if (spriteHit >= 0)
+        {
+            selectedUnits_.clear();
+            selectedUnit_ = -1;
+            selectedLocation_ = -1;
+            selectedSprite_ = spriteHit;
+            emit selectionChanged(-1);
+            emit spriteSelected(spriteHit);
+            viewport()->update();
+            event->accept();
+            return;
+        }
+
         // 빈 곳에서 누르면 끌어서 여럿 고르기를 시작한다.
         if (!adding)
         {
             selectedUnits_.clear();
             selectedUnit_ = -1;
             selectedLocation_ = -1;
+            selectedSprite_ = -1;
             emit selectionChanged(-1);
         }
 

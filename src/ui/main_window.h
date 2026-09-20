@@ -59,6 +59,7 @@ private slots:
     void onNewMap();
     void onMapProperties();
     void onUnitProperties();
+    void onSpriteProperties();
     void onPlayerSettings();
     void onStringEditor();
     void rememberRecentFile(const QString & path);

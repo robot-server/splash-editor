@@ -146,6 +146,12 @@ public:
     /// 스프라이트를 지운다.
     bool removeSprite(std::size_t spriteIndex);
 
+    /// 스프라이트 하나의 소유자·그리기 방식·꺼짐.
+    std::optional<io::MapArchive::SpriteProperties> spriteProperties(
+        std::size_t spriteIndex) const;
+    bool setSpriteProperties(std::size_t spriteIndex,
+                             const io::MapArchive::SpriteProperties & properties);
+
     /// 유닛을 새로 놓는다. 좌표는 픽셀.
     bool addUnit(std::uint16_t unitType, std::uint8_t owner,
                  std::uint16_t x, std::uint16_t y);

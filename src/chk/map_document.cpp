@@ -236,6 +236,24 @@ bool MapDocument::removeSprite(std::size_t spriteIndex)
     return true;
 }
 
+std::optional<io::MapArchive::SpriteProperties> MapDocument::spriteProperties(
+    std::size_t spriteIndex) const
+{
+    return archive_.spriteProperties(spriteIndex);
+}
+
+bool MapDocument::setSpriteProperties(std::size_t spriteIndex,
+                                      const io::MapArchive::SpriteProperties & properties)
+{
+    const io::Result result = archive_.setSpriteProperties(spriteIndex, properties);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
 bool MapDocument::addUnit(std::uint16_t unitType, std::uint8_t owner,
                           std::uint16_t x, std::uint16_t y)
 {

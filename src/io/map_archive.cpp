@@ -1818,6 +1818,71 @@ Result MapArchive::removeSprite(std::size_t spriteIndex)
     return Result::success();
 }
 
+std::optional<MapArchive::SpriteProperties> MapArchive::spriteProperties(
+    std::size_t spriteIndex) const
+{
+    if (!impl_->isOpen())
+        return std::nullopt;
+
+    const MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (spriteIndex >= map.numSprites())
+            return std::nullopt;
+
+        const Chk::Sprite & sprite = map.getSprite(spriteIndex);
+
+        SpriteProperties properties;
+        properties.owner = sprite.owner;
+        properties.drawnAsSprite = (sprite.flags & Chk::Sprite::SpriteFlags::DrawAsSprite) != 0;
+        properties.disabled =
+            (sprite.flags & Chk::Sprite::SpriteFlags::SpriteUnitDiabled) != 0;
+        return properties;
+    }
+    catch (const std::exception &)
+    {
+        return std::nullopt;
+    }
+}
+
+Result MapArchive::setSpriteProperties(std::size_t spriteIndex,
+                                       const SpriteProperties & properties)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (spriteIndex >= map.numSprites())
+            return Result::failure("스프라이트 번호가 범위를 벗어났습니다.");
+
+        Chk::Sprite sprite = map.getSprite(spriteIndex);
+        sprite.owner = properties.owner;
+
+        // 순수 스프라이트와 유닛 스프라이트는 플래그 묶음이 다르다.
+        // MappingCore 의 변환기를 써서 짝이 맞게 만든다.
+        sprite.flags = properties.drawnAsSprite
+            ? Chk::Sprite::toPureSpriteFlags(sprite.flags)
+            : Chk::Sprite::toSpriteUnitFlags(sprite.flags);
+
+        // "꺼 둠"은 유닛 스프라이트에만 뜻이 있다.
+        if (!properties.drawnAsSprite && properties.disabled)
+            sprite.flags |= Chk::Sprite::SpriteFlags::SpriteUnitDiabled;
+
+        map.deleteSprite(spriteIndex);
+        map.insertSprite(spriteIndex, sprite);
+
+        impl_->undoSteps.push_back(2);
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("스프라이트를 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 Result MapArchive::setUnitOwner(std::size_t unitIndex, std::uint8_t owner)
 {
     if (!impl_->isOpen())

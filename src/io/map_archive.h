@@ -404,6 +404,16 @@ public:
     /// 스프라이트를 지운다.
     Result removeSprite(std::size_t spriteIndex);
 
+    /// 스프라이트 하나의 값을 바꾼다 (소유자·그리기 방식·꺼짐).
+    struct SpriteProperties
+    {
+        std::uint8_t owner = 0;
+        bool drawnAsSprite = false; ///< 참이면 순수 스프라이트, 거짓이면 유닛 그래픽
+        bool disabled = false;      ///< 유닛 스프라이트를 꺼 둔 상태
+    };
+    std::optional<SpriteProperties> spriteProperties(std::size_t spriteIndex) const;
+    Result setSpriteProperties(std::size_t spriteIndex, const SpriteProperties & properties);
+
     /// 유닛을 새로 놓는다. 좌표는 픽셀.
     ///
     /// 자원 유닛(미네랄·베스핀)은 기본 자원량을 함께 넣는다 — 0 으로 두면

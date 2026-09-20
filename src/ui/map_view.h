@@ -69,6 +69,9 @@ public:
     /// 마지막으로 고른 유닛. 여럿을 골랐으면 그 가운데 하나다.
     int selectedUnit() const { return selectedUnit_; }
 
+    /// 고른 맵 스프라이트 (없으면 -1).
+    int selectedSprite() const { return selectedSprite_; }
+
     /// 고른 유닛 전부 (마지막 것을 포함한다).
     const std::vector<int> & selectedUnits() const { return selectedUnits_; }
 
@@ -101,6 +104,9 @@ signals:
 
     /// 선택이 바뀌었다 (없으면 -1).
     void selectionChanged(int unitIndex);
+
+    /// 스프라이트를 눌렀다 — 속성 창에서 쓸 수 있도록 알린다.
+    void spriteSelected(int spriteIndex);
 
     /// 유닛을 두 번 눌렀다 — 속성 창을 열라는 뜻.
     void unitActivated(int unitIndex);
@@ -524,6 +530,9 @@ public:
     /// 픽셀 좌표판. ISOM 처럼 픽셀로 다루는 것에 쓴다.
     std::vector<QPoint> mirrorPixels(int pixelX, int pixelY) const;
 
+    /// 그 자리의 맵 스프라이트 (없으면 -1).
+    int spriteAt(const QPointF & screenPos);
+
     /// 커서가 로케이션의 어느 모서리에 닿았는지 (Edge 비트, 없으면 0).
     int locationEdgeAt(const QPointF & screenPos, int locationIndex) const;
 
@@ -602,6 +611,7 @@ public:
 
     int selectedUnit_ = -1;
     int selectedLocation_ = -1;
+    int selectedSprite_ = -1;
 
     /// 여럿 고르기. selectedUnit_ 은 이 가운데 마지막 것이다.
     std::vector<int> selectedUnits_;
