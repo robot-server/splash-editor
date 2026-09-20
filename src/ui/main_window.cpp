@@ -2928,6 +2928,15 @@ void MainWindow::onOpen()
     openPath(path);
 }
 
+void MainWindow::announceSaveWarning()
+{
+    const QString warning = QString::fromStdString(document().lastSaveWarning());
+    if (warning.isEmpty())
+        return;
+
+    QMessageBox::information(this, tr("저장했습니다"), warning);
+}
+
 void MainWindow::onSave()
 {
     if (!document().isOpen())
@@ -2948,6 +2957,7 @@ void MainWindow::onSave()
     }
 
     refreshFromDocument();
+    announceSaveWarning();
     statusBar()->showMessage(
         tr("저장했습니다: %1").arg(QString::fromStdString(document().filePath())), 4000);
 }
@@ -2971,6 +2981,7 @@ void MainWindow::onSaveAs()
     }
 
     refreshFromDocument();
+    announceSaveWarning();
     statusBar()->showMessage(tr("저장했습니다: %1").arg(path), 4000);
 }
 

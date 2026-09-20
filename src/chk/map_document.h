@@ -415,6 +415,10 @@ public:
     /// 마지막 실패 사유. 성공했다면 빈 문자열.
     const std::string & lastError() const;
 
+    /// 마지막 저장에서 알려 둘 것. 실패는 아니지만 사용자가 알아야 하는
+    /// 일을 담는다. 없으면 빈 문자열.
+    const std::string & lastSaveWarning() const;
+
     /// 맵에 놓인 유닛. 열 때 한 번 읽어 둔다.
     const std::vector<MapUnit> & units() const;
 

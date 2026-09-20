@@ -393,6 +393,18 @@ public:
     /// "아는 섹션만 수정, 나머지 바이트 보존" 제약을 지키기 위한 선택.
     Result saveAs(const std::string & filePath) const;
 
+    /// 마지막 저장에서 알려 둘 것이 있으면 그 내용. 없으면 빈 문자열.
+    ///
+    /// 저장은 됐지만 원본에 있던 것을 다 옮기지 못한 경우처럼, 실패는
+    /// 아니어도 사용자가 알아야 하는 일을 담는다.
+    const std::string & lastSaveWarning() const;
+
+private:
+    /// 맵 안 소리를 메모리로 챙기고, 저장할 때 아카이브를 새로 쓰게 한다.
+    void collectArchiveSounds() const;
+
+public:
+
     bool isOpen() const;
     void close();
 

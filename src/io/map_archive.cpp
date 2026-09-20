@@ -342,6 +342,7 @@ struct MapArchive::Impl
     // 보호된 맵은 MPQ 자체도 조작되어 덮어쓸 수 없다. 보호를 풀면 원본을
     // 베끼지 않고 새 MPQ 를 만들어 쓴다.
     bool rebuildArchive = false;
+    mutable std::string saveWarning;
 
     // 맵 문자열이 쓰는 코드 페이지. 열 때 가려내고, 저장할 때 그대로
     // 되돌린다 — 다른 인코딩으로 쓰면 게임에서 글자가 깨진다.
@@ -361,6 +362,40 @@ MapArchive::~MapArchive() = default;
 MapArchive::MapArchive(MapArchive &&) noexcept = default;
 MapArchive & MapArchive::operator=(MapArchive &&) noexcept = default;
 
+namespace {
+
+/// MPQ 를 직접 열어 시나리오만 읽는다.
+///
+/// MappingCore 는 파일 확장자를 소문자로만 알아본다. ".SCX" 처럼 대문자로
+/// 된 맵은 그대로는 열리지 않는데, 게임은 잘 연다. 이름 때문에 못 여는
+/// 일은 없어야 하므로 같은 일을 직접 한다.
+bool loadArchiveDirectly(MapFile & map, const std::string & filePath)
+{
+    try
+    {
+        if (!map.MpqFile::open(filePath, /*readOnly*/ true, /*createIfNotFound*/ false))
+            return false;
+
+        auto contents = map.MpqFile::getFile(kScenarioChkPath);
+        map.MpqFile::close();
+
+        if (!contents || contents->empty())
+            return false;
+
+        std::stringstream chk(std::ios_base::in | std::ios_base::out | std::ios_base::binary);
+        chk.write(reinterpret_cast<const char *>(contents->data()),
+                  static_cast<std::streamsize>(contents->size()));
+
+        return map.Scenario::parse(chk, /*fromMpq*/ true);
+    }
+    catch (const std::exception &)
+    {
+        return false;
+    }
+}
+
+} // namespace
+
 Result MapArchive::open(const std::string & filePath)
 {
     if (filePath.empty())
@@ -377,7 +412,7 @@ Result MapArchive::open(const std::string & filePath)
     try
     {
         auto candidate = std::make_unique<MapFile>();
-        if (!candidate->load(filePath))
+        if (!candidate->load(filePath) && !loadArchiveDirectly(*candidate, filePath))
             return Result::failure("맵을 파싱하지 못했습니다: " + filePath);
         fresh->mapFile = std::move(candidate);
     }
@@ -901,28 +936,7 @@ Result MapArchive::unprotect()
         // 5) 저장은 새 MPQ 를 만들어 한다. 보호된 맵은 아카이브 자체가
         //    조작되어 있어 덮어쓸 수 없다. 그 전에 맵 안 소리를 챙겨 둬야
         //    새 아카이브에도 함께 들어간다.
-        for (const MapSound & sound : sounds(/*checkArchive*/ true))
-        {
-            if (!sound.inArchive || sound.path.empty())
-                continue;
-
-            const auto already = std::find_if(
-                impl_->pendingFileAdds.begin(), impl_->pendingFileAdds.end(),
-                [&sound](const auto & entry) { return entry.first == sound.path; });
-            if (already != impl_->pendingFileAdds.end())
-                continue;
-
-            MapFile & mutableMap = map;
-            if (!mutableMap.MpqFile::open(impl_->sourcePath, /*readOnly*/ true,
-                                          /*createIfNotFound*/ false))
-                break;
-
-            auto contents = mutableMap.MpqFile::getFile(sound.path);
-            mutableMap.MpqFile::close();
-
-            if (contents && !contents->empty())
-                impl_->pendingFileAdds.emplace_back(sound.path, std::move(*contents));
-        }
+        collectArchiveSounds();
 
         if (!impl_->pendingFileAdds.empty())
             fixed.push_back("소리 " + std::to_string(impl_->pendingFileAdds.size()) + "개를 챙겼습니다");
@@ -1861,8 +1875,49 @@ Result MapArchive::createNew(MapFormat format,
     return Result::success();
 }
 
+const std::string & MapArchive::lastSaveWarning() const
+{
+    return impl_->saveWarning;
+}
+
+void MapArchive::collectArchiveSounds() const
+{
+    // 맵 안에 들어 있는 소리를 메모리로 옮겨 둔다. 아카이브를 새로 쓸 때
+    // 함께 넣기 위해서다 — 그러지 않으면 소리가 사라진 맵이 나온다.
+    if (!impl_->isOpen() || impl_->sourcePath.empty())
+        return;
+
+    MapFile & map = *impl_->mapFile;
+
+    for (const MapSound & sound : sounds(/*checkArchive*/ true))
+    {
+        if (!sound.inArchive || sound.path.empty())
+            continue;
+
+        const auto already = std::find_if(
+            impl_->pendingFileAdds.begin(), impl_->pendingFileAdds.end(),
+            [&sound](const auto & entry) { return entry.first == sound.path; });
+        if (already != impl_->pendingFileAdds.end())
+            continue;
+
+        if (!map.MpqFile::open(impl_->sourcePath, /*readOnly*/ true,
+                               /*createIfNotFound*/ false))
+            break;
+
+        auto contents = map.MpqFile::getFile(sound.path);
+        map.MpqFile::close();
+
+        if (contents && !contents->empty())
+            impl_->pendingFileAdds.emplace_back(sound.path, std::move(*contents));
+    }
+
+    impl_->rebuildArchive = true;
+}
+
 Result MapArchive::saveAs(const std::string & filePath) const
 {
+    impl_->saveWarning.clear();
+
     if (!impl_->isOpen())
         return Result::failure("열린 맵이 없습니다.");
     if (filePath.empty())
@@ -1904,8 +1959,17 @@ Result MapArchive::saveAs(const std::string & filePath) const
     // 구체적 사유는 MappingCore 가 stderr 로 남긴다.
     if (!chk.good())
     {
+        // 보호된 맵은 문자열 칸을 한계 너머로 부풀려 두는 수법을 쓴다.
+        // 그 상태로는 CHK 를 쓸 수 없으니 먼저 보호를 풀어야 한다.
+        if (map.isProtected())
+        {
+            return Result::failure(
+                "보호된 맵이라 그대로 저장할 수 없습니다. '보호 풀기'를 먼저 "
+                "하세요 — 문자열 칸을 한계 너머로 부풀려 둔 맵이 흔합니다.");
+        }
+
         return Result::failure(
-            "CHK 를 직렬화하지 못했습니다. 맵이 보호되었거나 CHK 가 유효하지 않을 수 있습니다"
+            "CHK 를 직렬화하지 못했습니다. CHK 가 유효하지 않을 수 있습니다"
             " (자세한 사유는 stderr 의 MappingCore 진단 참고).");
     }
 
@@ -1952,29 +2016,62 @@ Result MapArchive::saveAs(const std::string & filePath) const
         }
     }
 
-    try
-    {
+    // 한 번의 쓰기. 시나리오가 들어갔는지, 소리가 다 들어갔는지 알려 준다.
+    const auto writeArchive = [&](bool * scenarioIn, bool * soundsIn) -> Result {
         if (!map.MpqFile::open(filePath, /*readOnly*/ false, /*createIfNotFound*/ true))
             return Result::failure("MPQ 를 열지 못했습니다: " + filePath);
 
         std::stringstream finalChk(
             chkBytes, std::ios_base::in | std::ios_base::out | std::ios_base::binary);
-        const bool added = map.MpqFile::addFile(kScenarioChkPath, finalChk);
+        *scenarioIn = map.MpqFile::addFile(kScenarioChkPath, finalChk);
 
         // 시나리오 밖의 파일들(소리)을 여기서 손본다. 저장은 원본 MPQ 의
         // 복사본 위에서 이뤄지므로, 넣고 뺀 것을 다시 적용해야 한다.
         for (const std::string & path : impl_->pendingFileRemovals)
             map.MpqFile::removeFile(path);
 
-        bool soundsOk = true;
+        *soundsIn = true;
         for (const auto & [path, contents] : impl_->pendingFileAdds)
         {
             if (!map.MpqFile::addFile(path, contents, WavQuality::Uncompressed))
-                soundsOk = false;
+                *soundsIn = false;
         }
 
         map.MpqFile::setUpdatingListFile(true);
         map.MpqFile::close();
+        return Result::success();
+    };
+
+    try
+    {
+        bool added = false;
+        bool soundsOk = false;
+        if (const Result opened = writeArchive(&added, &soundsOk); !opened)
+            return opened;
+
+        if (!added)
+        {
+            // 파일 목록을 지우고 자리를 딱 맞춰 둔 맵이 있다. 그런 아카이브는
+            // StormLib 이 읽기 전용으로 붙잡아 시나리오를 갈아 끼울 수 없다.
+            // 맵 안 소리를 챙긴 뒤 빈 아카이브에 다시 쓴다.
+            collectArchiveSounds();
+
+            std::error_code removeError;
+            std::filesystem::remove(filePath, removeError);
+
+            if (const Result retried = writeArchive(&added, &soundsOk); !retried)
+                return retried;
+
+            // 새 아카이브에는 시나리오와 트리거가 이름으로 찾는 소리만
+            // 담긴다. 원본에 그 밖의 파일이 있었다면 이름을 알 수 없어
+            // 옮기지 못한다 — 게임도 이름으로 찾으므로 쓰이지 않던
+            // 파일이겠지만, 그래도 알려 줘야 한다.
+            impl_->saveWarning =
+                "이 맵은 아카이브가 손질되어 있어 통째로 새로 써서 "
+                "저장했습니다. 시나리오와 트리거가 쓰는 소리는 그대로 "
+                "옮겼지만, 이름을 알 수 없는 파일이 원본에 있었다면 "
+                "옮기지 못했습니다.";
+        }
 
         if (!added)
             return Result::failure("시나리오를 MPQ 에 넣지 못했습니다: " + filePath);

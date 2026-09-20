@@ -1474,6 +1474,11 @@ const std::string & MapDocument::lastError() const
     return lastError_;
 }
 
+const std::string & MapDocument::lastSaveWarning() const
+{
+    return archive_.lastSaveWarning();
+}
+
 const std::vector<std::uint16_t> & MapDocument::tiles() const
 {
     return tiles_;
