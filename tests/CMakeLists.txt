@@ -35,12 +35,15 @@ endif()
 
 add_test(NAME unit COMMAND splash_unit_test)
 
-# 화면을 실제로 두드려 보는 스모크 테스트. Qt 가 있어야 하므로 GUI 를
-# 빌드할 때만 넣는다. 화면 없는 곳에서도 돌도록 offscreen 으로 띄운다.
+# 화면을 실제로 두드려 보는 스모크 테스트. 화면 위젯을 링크하므로 GUI 를
+# 빌드할 때만 넣는다 — Qt 가 깔려 있어도 SPLASH_BUILD_GUI 가 꺼져 있으면
+# splash_ui_lib 자체가 없다. 화면 없는 곳에서도 돌도록 offscreen 으로 띄운다.
 
-find_package(Qt6 QUIET COMPONENTS Widgets)
+if(SPLASH_BUILD_GUI)
+  find_package(Qt6 QUIET COMPONENTS Widgets)
+endif()
 
-if(Qt6Widgets_FOUND)
+if(SPLASH_BUILD_GUI AND Qt6Widgets_FOUND)
   qt_add_executable(splash_gui_smoke_test
     gui_smoke_test.cpp
     test_support.h
