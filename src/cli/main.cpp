@@ -638,13 +638,29 @@ int cmdSetTriggerArg(const std::string & mapPath, const std::string & installPat
     const bool isCondition = (which == "condition" || which == "조건");
 
     // 숫자면 원시 값으로, 아니면 문자열 인자로 본다.
+    //
+    // 16진도 받는다 — EUD 비트마스크는 0x00FF0000 처럼 쓰는 편이 읽기 쉽고,
+    // 갈래 명령들도 0x 를 받으므로 여기만 십진이면 걸린다.
     splash::io::Result result = splash::io::Result::failure("알 수 없는 인자");
-    bool numeric = !value.empty() &&
-        value.find_first_not_of("0123456789") == std::string::npos;
+    std::uint32_t raw = 0;
+    bool numeric = false;
+    if (!value.empty())
+    {
+        try
+        {
+            std::size_t used = 0;
+            const unsigned long long parsed = std::stoull(value, &used, 0);
+            numeric = used == value.size() && parsed <= 0xFFFFFFFFull;
+            raw = static_cast<std::uint32_t>(parsed);
+        }
+        catch (const std::exception &)
+        {
+            numeric = false;
+        }
+    }
 
     if (numeric)
     {
-        const auto raw = static_cast<std::uint32_t>(std::stoul(value));
         result = isCondition ? archive.setConditionArg(triggerIndex, slot, argIndex, raw)
                              : archive.setActionArg(triggerIndex, slot, argIndex, raw);
     }
@@ -654,7 +670,7 @@ int cmdSetTriggerArg(const std::string & mapPath, const std::string & installPat
     }
     else
     {
-        std::cerr << "조건 인자에는 숫자만 넣을 수 있습니다.\n";
+        std::cerr << "조건 인자에는 수만 넣을 수 있습니다 (십진 또는 0x 16진).\n";
         return 1;
     }
 
