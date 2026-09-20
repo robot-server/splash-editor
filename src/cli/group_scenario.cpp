@@ -882,6 +882,14 @@ int briefingSetArg(Args & args)
                         std::cout << "  알림      : 같은 이름이 " << chosen.count
                                   << "개입니다. 첫 번째를 썼습니다.\n";
                 }
+                else if (!argSlot.choices.empty())
+                {
+                    // 고를 수 있는 자리인데 못 찾았다 — 오타로 새 문자열이
+                    // 하나 생기는 것이라 알린다. 자유 글자 자리는 잠자코.
+                    std::cout << "  알림      : 목록에 없는 이름이라 새 값으로"
+                                 " 넣었습니다.\n              고를 수 있는 것: "
+                              << choiceListText(argSlot) << "\n";
+                }
             }
         }
 

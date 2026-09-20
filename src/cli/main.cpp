@@ -692,6 +692,15 @@ int cmdSetTriggerArg(const std::string & mapPath, const std::string & installPat
     }
     else if (!isCondition)
     {
+        // 고를 수 있는 목록이 있는 자리인데 이름으로 못 찾았다면, 오타로
+        // 새 문자열이 하나 생기는 것이다. 자유 글자 자리(Text Message 등)
+        // 에서는 그게 정상이므로 그때는 잠자코 넘어간다.
+        if (argSlot != nullptr && !argSlot->choices.empty())
+        {
+            std::cout << "  알림      : 목록에 없는 이름이라 새 값으로 넣었습니다.\n"
+                      << "              고를 수 있는 것: "
+                      << splash::cli::choiceListText(*argSlot) << "\n";
+        }
         result = archive.setActionArgText(triggerIndex, slot, argIndex, value);
     }
     else
