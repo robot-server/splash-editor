@@ -139,9 +139,17 @@ PR #178("freeze MPQ ... fix 64-bit memory bugs", 2026-09-15 머지)이 릴리스
 
 - epScript 자동 완성. EUD Editor 3 이 동봉하는 `epsFunctions.txt` 는 함수
   4,839줄을 한/영 설명과 함께 담고 있다(MIT). 형식을 읽어 붙이면 된다.
+  지금은 구문 강조만 있다.
 - `MemoryEPD` 표기(주소 대신 EPD 로 직접 적기). MappingCore 의 텍스트
   트리거는 EPD 를 그대로 쓰므로 표기만 고르면 된다.
 - 조건·동작을 낱개로 더하는 일반 명령 — 지금은 EUD 만 통째로 넣는다.
+- EUD Editor 3 의 EUD 아닌 부분 — DAT 편집기(유닛 능력치를 직접), Firegraft
+  버튼셋, iscript, SCArchive 올리기. EUD 가 아니라 별개 갈래라 손대지 않았다.
+- euddraft 데몬 모드(`.edd` 로 파일을 지켜보며 다시 굽기). 프로세스가 끝나지
+  않아 다루기 까다롭다. 우리는 `.eds` 한 번 실행만 쓴다.
+
+**하지 않기로 한 것**: epTrace 급 인게임 디버거. 리마스터에 메모리 스캐너를
+붙이는 일이라 계정이 위험하다.
 
 ### CLI 에서 아직 안 되는 것
 

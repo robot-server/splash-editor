@@ -22,6 +22,15 @@ struct Plugin
     std::vector<std::pair<std::string, std::string>> settings;
 };
 
+/// 플러그인 한 줄을 읽는다. 화면과 CLI 가 같은 표기를 쓰도록 여기 모았다.
+///
+///     eudTurbo
+///     SCBank: bank=mybank, size=100
+///
+/// 이름만 있으면 설정 없는 플러그인이다. 콜론 뒤는 쉼표로 나눈 `키=값` 이고,
+/// 값이 없는 키(`freeze` 처럼 있기만 하면 되는 것)도 받는다.
+Plugin parsePlugin(const std::string & line);
+
 /// 빌드 한 번에 필요한 것.
 struct BuildRequest
 {

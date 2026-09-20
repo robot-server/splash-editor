@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <mutex>
 #include <sstream>
@@ -201,6 +203,27 @@ private:
     const std::string & text_;
     std::size_t pos_ = 0;
 };
+
+/// 웹에서 긁어 모은 설명에는 HTML 문자 참조가 섞여 있다. 흔한 것만 푼다.
+std::string decodeHtmlEntities(std::string text)
+{
+    static const std::pair<const char *, const char *> kEntities[] {
+        {"&#039;", "'"}, {"&#39;", "'"}, {"&quot;", "\""}, {"&lt;", "<"},
+        {"&gt;", ">"}, {"&nbsp;", " "}, {"&amp;", "&"}, // & 는 마지막에 — 먼저 풀면 겹친다
+    };
+
+    for (const auto & [from, to] : kEntities)
+    {
+        const std::string needle = from;
+        std::size_t at = 0;
+        while ((at = text.find(needle, at)) != std::string::npos)
+        {
+            text.replace(at, needle.size(), to);
+            at += std::strlen(to);
+        }
+    }
+    return text;
+}
 
 /// 바깥에서 읽어 들인 표. 읽기는 여러 곳에서 하므로 잠금으로 감싼다.
 struct Database
@@ -402,7 +425,7 @@ bool loadOffsetDatabase(const std::string & path, std::string * error)
                     }
                     else if (lowerKey == "description")
                     {
-                        entry.description = value;
+                        entry.description = decodeHtmlEntities(value);
                     }
 
                     if (reader.eat(','))
@@ -435,6 +458,14 @@ bool loadOffsetDatabase(const std::string & path, std::string * error)
     db.path = path;
     rebuildMerged(db);
     return true;
+}
+
+bool loadOffsetDatabaseFromEnvironment(std::string * error)
+{
+    const char * path = std::getenv("SPLASH_EUD_OFFSETS");
+    if (path == nullptr || *path == '\0')
+        return false;
+    return loadOffsetDatabase(path, error);
 }
 
 void clearOffsetDatabase()

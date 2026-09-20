@@ -67,7 +67,7 @@ private:
     QLineEdit * inputMap_ = nullptr;
     QLineEdit * outputMap_ = nullptr;
     QListWidget * scripts_ = nullptr;
-    QLineEdit * plugins_ = nullptr;
+    QPlainTextEdit * plugins_ = nullptr;
     QCheckBox * freeze_ = nullptr;
     QLineEdit * executable_ = nullptr;
     QPlainTextEdit * log_ = nullptr;

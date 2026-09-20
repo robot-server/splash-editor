@@ -123,7 +123,51 @@ std::string sanitizeSection(const std::string & name)
     return out;
 }
 
+/// 앞뒤 공백을 턴다.
+std::string trimmed(const std::string & text)
+{
+    const std::size_t first = text.find_first_not_of(" \t\r\n");
+    if (first == std::string::npos)
+        return {};
+    const std::size_t last = text.find_last_not_of(" \t\r\n");
+    return text.substr(first, last - first + 1);
+}
+
 } // namespace
+
+Plugin parsePlugin(const std::string & line)
+{
+    Plugin plugin;
+
+    const std::size_t colon = line.find(':');
+    if (colon == std::string::npos)
+    {
+        plugin.name = trimmed(line);
+        return plugin;
+    }
+
+    plugin.name = trimmed(line.substr(0, colon));
+
+    std::stringstream rest(line.substr(colon + 1));
+    std::string entry;
+    while (std::getline(rest, entry, ','))
+    {
+        const std::string pair = trimmed(entry);
+        if (pair.empty())
+            continue;
+
+        const std::size_t equals = pair.find('=');
+        if (equals == std::string::npos)
+        {
+            // 값 없는 키. euddraft 의 [freeze] 처럼 "있기만 하면 되는" 것들.
+            plugin.settings.emplace_back(pair, std::string {});
+            continue;
+        }
+        plugin.settings.emplace_back(trimmed(pair.substr(0, equals)),
+                                     trimmed(pair.substr(equals + 1)));
+    }
+    return plugin;
+}
 
 std::string findExecutable()
 {
@@ -197,7 +241,14 @@ std::string settingsText(const BuildRequest & request)
             continue;
         out << "\n[" << sanitizeSection(plugin.name) << "]\n";
         for (const auto & [key, value] : plugin.settings)
-            out << key << ": " << value << "\n";
+        {
+            // euddraft 의 readconfig 는 키만 있는 줄도 받는다. 값이 비었으면
+            // 콜론을 붙이지 않는다 — 빈 값을 넘기면 플러그인이 그것을 값으로 읽는다.
+            if (value.empty())
+                out << key << "\n";
+            else
+                out << key << ": " << value << "\n";
+        }
     }
 
     // euddraft 는 freeze(맵 보호)를 기본으로 켠다. 끄려면 [freeze] 안에

@@ -172,11 +172,17 @@ EudBuildDialog::EudBuildDialog(chk::MapDocument & document, QWidget * parent)
     scriptButtons->addStretch();
     scriptLayout->addLayout(scriptButtons);
 
-    plugins_ = new QLineEdit(scriptBox);
-    plugins_->setPlaceholderText(tr("동봉 플러그인, 쉼표로 (보기: eudTurbo, unlimiter)"));
+    scriptLayout->addWidget(new QLabel(tr("동봉 플러그인 (한 줄에 하나)"), scriptBox));
+
+    plugins_ = new QPlainTextEdit(scriptBox);
+    plugins_->setMaximumHeight(90);
+    plugins_->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    plugins_->setPlaceholderText(tr("eudTurbo\nSCBank: bank=mybank, size=100"));
     plugins_->setToolTip(
-        tr("euddraft 가 들고 다니는 플러그인 이름입니다.\n"
-           "eudTurbo, unlimiter, MSQC, chatEvent, bgmplayer, noAirCollision 등."));
+        tr("euddraft 가 들고 다니는 플러그인입니다 — eudTurbo, unlimiter, MSQC,\n"
+           "chatEvent, bgmplayer, noAirCollision 등.\n\n"
+           "설정이 필요한 플러그인은 콜론 뒤에 `키=값` 을 쉼표로 잇습니다.\n"
+           "CLI 의 --plugin 과 같은 표기입니다."));
     scriptLayout->addWidget(plugins_);
 
     freeze_ = new QCheckBox(tr("맵 보호(freeze) 켜기"), scriptBox);
@@ -361,11 +367,13 @@ void EudBuildDialog::startBuild()
     for (const QString & script : listItems(scripts_))
         request.scripts.push_back(script.toStdString());
 
-    for (const QString & name : plugins_->text().split(QLatin1Char(','), Qt::SkipEmptyParts))
+    for (const QString & line :
+         plugins_->toPlainText().split(QLatin1Char('\n'), Qt::SkipEmptyParts))
     {
-        const QString trimmed = name.trimmed();
-        if (!trimmed.isEmpty())
-            request.plugins.push_back(io::euddraft::Plugin{trimmed.toStdString(), {}});
+        // 표기를 읽는 일은 io 쪽에 있다 — CLI 와 화면이 같은 글을 받는다.
+        io::euddraft::Plugin plugin = io::euddraft::parsePlugin(line.toStdString());
+        if (!plugin.name.empty())
+            request.plugins.push_back(std::move(plugin));
     }
 
     if (request.scripts.empty() && request.plugins.empty())

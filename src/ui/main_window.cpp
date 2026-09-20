@@ -74,6 +74,10 @@ constexpr const char * kAppName = "Splash Editor";
 /// StarCraft 설치 경로를 기억해 두는 설정 키.
 constexpr const char * kInstallPathKey = "installPath";
 
+/// 지난번에 불러온 EUD 오프셋 표. 그 파일은 라이선스 표기가 없어 함께
+/// 배포하지 않으므로, 어디에 두었는지만 기억해 둔다.
+constexpr const char * kEudOffsetDatabaseKey = "eudOffsetDatabase";
+
 /// 열기/저장 대화상자에서 쓸 필터.
 QString mapFilter()
 {
@@ -104,6 +108,19 @@ MainWindow::MainWindow(QWidget * parent) : QMainWindow(parent)
 
     // 지난번에 지정한 설치 폴더가 있으면 조용히 읽는다.
     loadTilesetFrom(QSettings().value(kInstallPathKey).toString(), /*announce*/ false);
+
+    // EUD 오프셋 표도 마찬가지다. 파일이 없어졌으면 설정을 지우고 넘어간다 —
+    // 시작할 때마다 경고를 내밀 일은 아니다.
+    if (const QString path = QSettings().value(kEudOffsetDatabaseKey).toString();
+        !path.isEmpty())
+    {
+        if (!io::eud::loadOffsetDatabase(path.toStdString()))
+            QSettings().remove(kEudOffsetDatabaseKey);
+    }
+    else
+    {
+        io::eud::loadOffsetDatabaseFromEnvironment();
+    }
 }
 
 MainWindow::~MainWindow() = default;

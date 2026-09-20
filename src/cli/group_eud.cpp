@@ -28,7 +28,13 @@ void takeOffsetDatabase(Args & args)
 {
     const auto path = args.option("--db");
     if (!path)
+    {
+        // 명령마다 --db 를 적지 않아도 되게 환경 변수를 본다.
+        // 못 읽으면 조용히 지나간다 — 붙박이 표만으로도 대부분 된다.
+        if (!eud::hasOffsetDatabase())
+            eud::loadOffsetDatabaseFromEnvironment();
         return;
+    }
 
     std::string error;
     if (!eud::loadOffsetDatabase(*path, &error))
@@ -36,6 +42,30 @@ void takeOffsetDatabase(Args & args)
 
     std::cout << "  오프셋 표  : " << *path << " (" << eud::offsets().size()
               << "개 자리)\n";
+}
+
+/// 여러 줄짜리 설명을 한 줄로 눌러 담는다. 표 설명은 꽤 길 수 있다.
+std::string oneLine(const std::string & text, std::size_t limit = 220)
+{
+    std::string out;
+    bool space = false;
+    for (const char c : text)
+    {
+        if (c == '\n' || c == '\r' || c == '\t' || c == ' ')
+        {
+            space = !out.empty();
+            continue;
+        }
+        if (space)
+        {
+            out.push_back(' ');
+            space = false;
+        }
+        out.push_back(c);
+    }
+    if (out.size() > limit)
+        out = out.substr(0, limit) + "…";
+    return out;
 }
 
 std::string hex(std::uint32_t value, int width = 8)
@@ -157,7 +187,7 @@ int eudAddr(Args & args)
         std::cout << "\n";
         std::cout << "  SCR       : " << eud::scrSupportName(entry->scr) << "\n";
         if (!entry->description.empty())
-            std::cout << "  설명      : " << entry->description << "\n";
+            std::cout << "  설명      : " << oneLine(entry->description) << "\n";
     }
     else
     {
@@ -442,7 +472,13 @@ int eudBuild(Args & args)
 
     std::vector<io::euddraft::Plugin> plugins;
     while (const auto plugin = args.option("--plugin"))
-        plugins.push_back(io::euddraft::Plugin{*plugin, {}});
+    {
+        // `이름` 또는 `이름: 키=값, 키=값`. 화면 쪽과 같은 표기다.
+        io::euddraft::Plugin parsed = io::euddraft::parsePlugin(*plugin);
+        if (parsed.name.empty())
+            throw CliError("--plugin 에 이름이 없습니다: " + *plugin);
+        plugins.push_back(std::move(parsed));
+    }
 
     std::vector<std::pair<std::string, std::string>> mainOptions;
     while (const auto option = args.option("--main"))
@@ -527,7 +563,9 @@ std::vector<Group> eudGroups()
                               "주소를 EPD·Deaths 자리·이름으로 푼다.", eudAddr},
             {"epd",           "<EPD> [--db api.json]", "EPD 를 주소로 되돌린다.", eudEpd},
             {"offsets",       "[검색어] [--db api.json] [--limit N]",
-                              "이름 붙은 메모리 자리를 찾아본다.", eudOffsets},
+                              "이름 붙은 메모리 자리를 찾아본다. "
+                              "--db 대신 환경 변수 SPLASH_EUD_OFFSETS 도 된다.",
+                              eudOffsets},
             {"list",          "<맵> [--db api.json]",
                               "맵 안의 EUD 조건·동작을 모두 보여 준다.", eudList},
             {"check",         "<맵> [--db api.json]",
@@ -536,7 +574,8 @@ std::vector<Group> eudGroups()
                               "EUD 조건 한 줄을 넣는다.", eudSetCondition},
             {"set-action",    "<맵> <트리거> <줄> <주소> <수정> <값> [--mask M] -o <출력맵>",
                               "EUD 동작 한 줄을 넣는다.", eudSetAction},
-            {"build",         "<맵> -o <출력맵> [--script a.eps]... [--plugin 이름]... "
+            {"build",         "<맵> -o <출력맵> [--script a.eps]... "
+                              "[--plugin '이름: 키=값']... [--main 키=값]... "
                               "[--freeze] [--euddraft 경로] [--dry-run]",
                               "euddraft 로 epScript 를 맵에 얹는다.", eudBuild},
             {"which",         "", "euddraft 를 어디서 찾았는지 보여 준다.", eudWhich},

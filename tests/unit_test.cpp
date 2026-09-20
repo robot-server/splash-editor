@@ -234,6 +234,38 @@ void testEuddraftSettings()
     SPLASH_CHECK(io::euddraft::settingsText(request).find("[freeze]") ==
                  std::string::npos);
 
+    // 플러그인 한 줄 읽기 — 화면과 CLI 가 같은 표기를 쓴다.
+    {
+        const auto plain = io::euddraft::parsePlugin("  eudTurbo  ");
+        SPLASH_CHECK_EQ(plain.name, std::string("eudTurbo"));
+        SPLASH_CHECK(plain.settings.empty());
+
+        const auto tuned = io::euddraft::parsePlugin("SCBank: bank=mybank, size = 100");
+        SPLASH_CHECK_EQ(tuned.name, std::string("SCBank"));
+        SPLASH_CHECK_EQ(tuned.settings.size(), std::size_t(2));
+        if (tuned.settings.size() == 2)
+        {
+            SPLASH_CHECK_EQ(tuned.settings[0].first, std::string("bank"));
+            SPLASH_CHECK_EQ(tuned.settings[0].second, std::string("mybank"));
+            SPLASH_CHECK_EQ(tuned.settings[1].first, std::string("size"));
+            SPLASH_CHECK_EQ(tuned.settings[1].second, std::string("100"));
+        }
+
+        // 값 없는 키. euddraft 의 readconfig 는 키만 있는 줄도 받으므로
+        // 콜론을 붙이면 안 된다 — 붙이면 빈 글자가 값이 된다.
+        const auto flagOnly = io::euddraft::parsePlugin("freeze: freeze");
+        SPLASH_CHECK_EQ(flagOnly.settings.size(), std::size_t(1));
+
+        io::euddraft::BuildRequest withSettings;
+        withSettings.inputMap = "/a.scx";
+        withSettings.outputMap = "/b.scx";
+        withSettings.plugins = { io::euddraft::parsePlugin("SCBank: bank=mybank"),
+                                 io::euddraft::parsePlugin("MSQC: quiet") };
+        const std::string rendered = io::euddraft::settingsText(withSettings);
+        SPLASH_CHECK(rendered.find("[SCBank]\nbank: mybank") != std::string::npos);
+        SPLASH_CHECK(rendered.find("[MSQC]\nquiet\n") != std::string::npos);
+    }
+
     // 로그에서 눈에 띄어야 할 줄만 추린다.
     const auto lines = io::euddraft::importantLines(
         " - Allocating objects..\nRuntimeError: bad thing\n - done\n");

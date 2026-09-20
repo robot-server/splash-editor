@@ -163,6 +163,13 @@ const std::vector<OffsetEntry> & builtinOffsets();
 /// 이미 읽어 둔 표는 그대로 둔다.
 bool loadOffsetDatabase(const std::string & path, std::string * error = nullptr);
 
+/// 환경 변수 `SPLASH_EUD_OFFSETS` 가 가리키는 표를 읽어 둔다.
+///
+/// CLI 는 설정 파일이 없으므로 명령마다 `--db` 를 적는 대신 이 길을 쓴다.
+/// 가리키는 것이 없으면 아무 일도 하지 않고 거짓을 돌린다 — 시작할 때마다
+/// 없다고 나무랄 일은 아니다.
+bool loadOffsetDatabaseFromEnvironment(std::string * error = nullptr);
+
 /// 읽어 들인 바깥 표를 비운다.
 void clearOffsetDatabase();
 

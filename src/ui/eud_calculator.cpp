@@ -13,6 +13,7 @@
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QSettings>
 #include <QSpinBox>
 #include <QTreeWidget>
 #include <QVBoxLayout>
@@ -98,6 +99,7 @@ EudCalculator::EudCalculator(QWidget * parent)
 
     auto * copyAddress = new QPushButton(tr("주소 복사"), this);
     auto * copyEpd = new QPushButton(tr("EPD 복사"), this);
+    auto * clearDb = new QPushButton(tr("표 비우기"), this);
     auto * loadDb = new QPushButton(tr("오프셋 표 불러오기…"), this);
     loadDb->setToolTip(
         tr("EUD Book(armoha/eud-book) 의 api.json 을 읽어 900개가 넘는 자리를\n"
@@ -106,8 +108,10 @@ EudCalculator::EudCalculator(QWidget * parent)
 
     auto * buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
     buttons->addButton(loadDb, QDialogButtonBox::ActionRole);
+    buttons->addButton(clearDb, QDialogButtonBox::ActionRole);
     buttons->addButton(copyAddress, QDialogButtonBox::ActionRole);
     buttons->addButton(copyEpd, QDialogButtonBox::ActionRole);
+    clearDb->setEnabled(eud::hasOffsetDatabase());
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     layout->addWidget(buttons);
 
@@ -117,7 +121,7 @@ EudCalculator::EudCalculator(QWidget * parent)
     connect(copyEpd, &QPushButton::clicked, this, [this] {
         QGuiApplication::clipboard()->setText(epd_->text());
     });
-    connect(loadDb, &QPushButton::clicked, this, [this] {
+    connect(loadDb, &QPushButton::clicked, this, [this, clearDb] {
         const QString path = QFileDialog::getOpenFileName(
             this, tr("오프셋 표 (api.json)"), QString(), tr("JSON (*.json);;모든 파일 (*)"));
         if (path.isEmpty())
@@ -131,6 +135,15 @@ EudCalculator::EudCalculator(QWidget * parent)
                                      .arg(QString::fromStdString(error)));
             return;
         }
+        // 다음에 켤 때 다시 고르지 않아도 되게 어디 두었는지 기억한다.
+        QSettings().setValue(QStringLiteral("eudOffsetDatabase"), path);
+        clearDb->setEnabled(true);
+        reloadOffsets();
+    });
+    connect(clearDb, &QPushButton::clicked, this, [this, clearDb] {
+        eud::clearOffsetDatabase();
+        QSettings().remove(QStringLiteral("eudOffsetDatabase"));
+        clearDb->setEnabled(false);
         reloadOffsets();
     });
 

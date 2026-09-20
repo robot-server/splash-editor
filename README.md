@@ -313,11 +313,14 @@ euddraft·SCMDraft 의 Memory 표기와도 같다.
 
 ```sh
 # 화면: 트리거 › EUD 주소 계산기… › 오프셋 표 불러오기…
-# CLI:  --db 로 그때그때 가리킨다
-splash-cli eud offsets "hyper" --db ~/eud-book/api.json
+#       (한 번 고르면 다음에 켤 때도 그대로 쓴다. '표 비우기' 로 되돌린다)
+# CLI:  --db 로 그때그때 가리키거나, 환경 변수로 붙박아 둔다
+export SPLASH_EUD_OFFSETS=~/eud-book/api.json
+
+splash-cli eud offsets "hyper"
 splash-cli eud addr 0x57F0F0
 splash-cli eud list map.scx
-splash-cli eud check map.scx --db ~/eud-book/api.json
+splash-cli eud check map.scx --db ~/eud-book/api.json   # 이때만 다른 표를 쓰기
 ```
 
 `eud check` 는 맵이 건드리는 자리 가운데 리마스터에서 **안 되는 것**과
@@ -330,11 +333,17 @@ epScript 를 컴파일해 맵에 얹는 일은 [euddraft](https://github.com/arm
 가 한다. 그것을 다시 만들지 않고 바깥 프로그램으로 부른다.
 
 ```sh
-splash-cli eud build base.scx -o out.scx --script hello.eps --plugin eudTurbo
+splash-cli eud build base.scx -o out.scx \
+    --script hello.eps \
+    --plugin eudTurbo \
+    --plugin "SCBank: bank=mybank, size=100"
 ```
 
-화면에서는 **트리거 › EUD 빌드 (euddraft)…** 다. 스크립트를 새로 만들고
-고치는 것까지 창 안에서 된다.
+플러그인은 `이름` 또는 `이름: 키=값, 키=값` 이다. 화면에서는 **트리거 ›
+EUD 빌드 (euddraft)…** 이고 플러그인 상자에 **한 줄에 하나씩** 같은 표기로
+적는다. 스크립트를 새로 만들고 고치는 것까지 창 안에서 된다.
+
+`--dry-run` 을 주면 돌리지 않고 만들어질 `.eds` 를 그대로 찍는다.
 
 알아 둘 것:
 
@@ -353,6 +362,13 @@ splash-cli eud build base.scx -o out.scx --script hello.eps --plugin eudTurbo
 
 찾는 곳은 환경 변수 `SPLASH_EUDDRAFT`, `PATH`, 그리고 홈·응용 프로그램
 폴더의 `euddraft*` 순이다. `splash-cli eud which` 로 확인한다.
+
+### 환경 변수 정리
+
+| 변수 | 쓰임 |
+|---|---|
+| `SPLASH_EUDDRAFT` | euddraft 실행 파일이나 그것이 든 폴더 |
+| `SPLASH_EUD_OFFSETS` | EUD Book `api.json` 경로 (CLI 에서 `--db` 대신) |
 
 ---
 
