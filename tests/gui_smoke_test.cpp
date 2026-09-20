@@ -11,6 +11,7 @@
 #include "chk/map_document.h"
 #include "io/eud.h"
 #include "io/game_graphics.h"
+#include "io/text_encoding.h"
 #include "io/map_archive.h"
 #include "ui/main_window.h"
 #include "ui/map_view.h"
@@ -255,6 +256,14 @@ int main(int argc, char ** argv)
             // 디스크에서 다시 열어야 MPQ 를 뒤져 확인할 수 있다.
             chk::MapDocument reopenedSounds;
             SPLASH_CHECK(reopenedSounds.open(soundMapPath.string()));
+
+            // 맵 글자를 CP949 로 읽게 해 둔다.
+            //
+            // 꼬리표("맵에 없음")는 이미 UTF-8 인 우리말이라, 맵의 코드
+            // 페이지로 한 번 더 옮기면 깨진다. 새 맵은 대개 ASCII 로 잡혀
+            // 그 길이 안 드러나므로 여기서 일부러 CP949 로 세운다 —
+            // 한국 유즈맵이 실제로 그 인코딩이다.
+            reopenedSounds.setTextEncoding(io::TextEncoding::Cp949);
 
             const auto soundActions = reopenedSounds.triggerActions(0, graphics);
             bool sawSoundArg = false;

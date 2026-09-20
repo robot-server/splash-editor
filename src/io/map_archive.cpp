@@ -4682,7 +4682,14 @@ namespace {
 
 /// 소리 인자에 맵에 든 소리를 고를 수 있게 채운다. 목록에 없는 경로를
 /// 직접 적는 길도 열어 두어야 하므로 kind 는 Sound 로 남긴다.
-void fillSoundChoices(TriggerArg & arg, const std::vector<MapArchive::MapSound> & sounds)
+///
+/// **부르는 차례가 중요하다** — 다른 선택지를 글자 옮김(decode)에 통과시킨
+/// **뒤에** 불러야 한다. 여기서 붙이는 꼬리표는 이미 UTF-8 인 우리말이라,
+/// 맵의 코드 페이지(CP949 등)로 한 번 더 옮기면 깨진다. 그래서 경로만
+/// 여기서 옮기고 꼬리표는 그 뒤에 붙인다.
+template <typename Decode>
+void fillSoundChoices(TriggerArg & arg, const std::vector<MapArchive::MapSound> & sounds,
+                      const Decode & decode)
 {
     if (arg.kind != TriggerArgKind::Sound)
         return;
@@ -4692,7 +4699,7 @@ void fillSoundChoices(TriggerArg & arg, const std::vector<MapArchive::MapSound> 
         if (sound.path.empty())
             continue;
 
-        std::string label = sound.path;
+        std::string label = decode(sound.path);
         // 확인하지 않았으면 아무 말도 하지 않는다. 없는 것과 모르는 것은
         // 다르다 — 모르면서 "맵에 없음" 이라고 적으면 뜻이 정반대가 된다.
         if (sound.archiveChecked && !sound.inArchive)
@@ -4861,10 +4868,14 @@ std::vector<TriggerElement> MapArchive::triggerActions(std::size_t index,
                     if (arg.kind == TriggerArgKind::None)
                         continue;
 
-                    fillSoundChoices(arg, mapSounds);
                     arg.text = impl_->decode(arg.text);
                     for (auto & choice : arg.choices)
                         choice.text = impl_->decode(choice.text);
+
+                    // 소리 선택지는 글자 옮김을 마친 뒤에 붙인다 (위 주석 참고).
+                    fillSoundChoices(arg, mapSounds, [this](const std::string & text) {
+                        return impl_->decode(text);
+                    });
 
                     if (!first)
                         text += ", ";
@@ -5734,10 +5745,14 @@ std::vector<TriggerElement> MapArchive::briefingActions(std::size_t index,
                     if (arg.kind == TriggerArgKind::None)
                         continue;
 
-                    fillSoundChoices(arg, mapSounds);
                     arg.text = impl_->decode(arg.text);
                     for (auto & choice : arg.choices)
                         choice.text = impl_->decode(choice.text);
+
+                    // 소리 선택지는 글자 옮김을 마친 뒤에 붙인다 (위 주석 참고).
+                    fillSoundChoices(arg, mapSounds, [this](const std::string & text) {
+                        return impl_->decode(text);
+                    });
 
                     if (!first)
                         text += ", ";
