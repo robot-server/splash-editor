@@ -1738,13 +1738,19 @@ std::vector<MapArchive::MapSound> MapArchive::sounds(bool checkArchive) const
 
             if (pending != impl_->pendingFileAdds.end())
             {
+                // 아직 저장하지 않았어도 우리가 넣은 것은 안다.
+                sound.archiveChecked = true;
                 sound.inArchive = true;
                 sound.bytes = pending->second.size();
             }
-            else if (opened && mutableMap.MpqFile::findFile(sound.path))
+            else if (opened)
             {
-                sound.inArchive = true;
-                sound.bytes = mutableMap.MpqFile::getFileSize(sound.path);
+                sound.archiveChecked = true;
+                if (mutableMap.MpqFile::findFile(sound.path))
+                {
+                    sound.inArchive = true;
+                    sound.bytes = mutableMap.MpqFile::getFileSize(sound.path);
+                }
             }
         }
 
@@ -4687,7 +4693,9 @@ void fillSoundChoices(TriggerArg & arg, const std::vector<MapArchive::MapSound> 
             continue;
 
         std::string label = sound.path;
-        if (!sound.inArchive)
+        // 확인하지 않았으면 아무 말도 하지 않는다. 없는 것과 모르는 것은
+        // 다르다 — 모르면서 "맵에 없음" 이라고 적으면 뜻이 정반대가 된다.
+        if (sound.archiveChecked && !sound.inArchive)
             label += "  (맵에 없음)";
 
         arg.choices.push_back(TriggerChoice{static_cast<std::uint32_t>(sound.stringId),
@@ -4821,7 +4829,9 @@ std::vector<TriggerElement> MapArchive::triggerActions(std::size_t index,
         if (!generator.loadScenario(scenario, *scData))
             return out;
 
-        const auto mapSounds = sounds(/*checkArchive*/ false);
+        // 맵 안에 있는지까지 보여 주려면 확인해야 한다. MPQ 를 소리마다가
+        // 아니라 한 번만 열기 때문에 큰 맵에서도 값이 눈에 띄지 않는다.
+        const auto mapSounds = sounds(/*checkArchive*/ true);
 
         const Chk::Trigger & trigger = map.getTrigger(index);
         for (std::size_t slot = 0; slot < Chk::Trigger::MaxActions; ++slot)
@@ -5700,7 +5710,9 @@ std::vector<TriggerElement> MapArchive::briefingActions(std::size_t index,
         if (!generator.loadScenario(scenario, *scData))
             return out;
 
-        const auto mapSounds = sounds(/*checkArchive*/ false);
+        // 맵 안에 있는지까지 보여 주려면 확인해야 한다. MPQ 를 소리마다가
+        // 아니라 한 번만 열기 때문에 큰 맵에서도 값이 눈에 띄지 않는다.
+        const auto mapSounds = sounds(/*checkArchive*/ true);
 
         const Chk::Trigger & briefing = map.getBriefingTrigger(index);
         for (std::size_t slot = 0; slot < Chk::Trigger::MaxActions; ++slot)

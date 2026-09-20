@@ -797,6 +797,13 @@ public:
         std::string path;          ///< "staredit\\wav\\...".
         bool registered = false;   ///< WAV 구역에 올라 있는지
         bool inArchive = false;    ///< 맵 안에 파일이 실제로 들어 있는지
+
+        /// inArchive 를 실제로 확인했는지.
+        ///
+        /// 확인하지 않으면 inArchive 는 그냥 false 로 남는다. 그것을 "맵에
+        /// 없다"로 읽으면 표시가 거짓말을 한다 — 없는 것과 모르는 것은
+        /// 다르다. 보여 주는 쪽은 이 깃발을 먼저 봐야 한다.
+        bool archiveChecked = false;
         bool usedByTrigger = false;
         std::size_t bytes = 0;     ///< 맵 안 파일 크기
     };
@@ -804,7 +811,11 @@ public:
     /// 맵에 등록된 소리 목록.
     ///
     /// checkArchive 를 켜면 파일이 맵 안에 실제로 들어 있는지 MPQ 를 열어
-    /// 확인한다. 트리거 편집기처럼 경로만 필요할 때는 끄는 편이 빠르다.
+    /// 확인하고 archiveChecked 를 세운다. 끄면 경로만 채운다.
+    ///
+    /// 끄는 것이 눈에 띄게 빠르지는 않다 — 52MB 맵에서도 차이가 재지지
+    /// 않았다(MPQ 를 소리마다가 아니라 한 번만 열기 때문이다). 맵 안에
+    /// 있는지까지 보여 줄 자리라면 켜 두는 편이 낫다.
     std::vector<MapSound> sounds(bool checkArchive = true) const;
 
     /// 바깥 WAV 파일을 맵에 넣고 소리 목록에 올린다.

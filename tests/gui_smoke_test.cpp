@@ -25,6 +25,7 @@
 
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -45,12 +46,17 @@ void clickAt(QWidget * target, const QPointF & at)
     QApplication::sendEvent(target, &release);
 }
 
-fs::path newMapPath()
+fs::path workDir()
 {
     fs::path dir = fs::temp_directory_path() / "splash-gui-test";
     std::error_code ec;
     fs::create_directories(dir, ec);
-    return dir / "smoke.scm";
+    return dir;
+}
+
+fs::path newMapPath()
+{
+    return workDir() / "smoke.scm";
 }
 
 } // namespace
@@ -214,6 +220,77 @@ int main(int argc, char ** argv)
             SPLASH_CHECK(sheet.createNew(io::MapFormat::HybridScm, 0, 64, 64,
                                          io::MapArchive::DefaultTriggers::None));
             SPLASH_CHECK(sheet.applyTriggerText(text, graphics));
+        }
+
+        // --- 소리 선택지가 "맵에 없음" 을 제대로 말하는지 ---
+        //
+        // 트리거 편집기의 소리 고르개는 맵 안에 파일이 실제로 들어 있는지를
+        // 꼬리표로 알려 준다. 그런데 목록을 만들 때 맵 안을 확인하지 않으면
+        // inArchive 가 늘 false 로 남아 **모든** 소리에 "맵에 없음" 이 붙는다.
+        // 표시가 뜻을 정반대로 말하는 셈이라, 두 쪽을 다 못박아 둔다.
+        {
+            const fs::path soundMapPath = workDir() / "sound-label.scm";
+            const fs::path wavPath = workDir() / "probe.wav";
+
+            {
+                // 맵에 넣을 파일. 내용은 보지 않으므로 아무 바이트나 된다.
+                std::ofstream wav(wavPath, std::ios::binary);
+                wav << "RIFF....WAVEfmt ";
+            }
+
+            chk::MapDocument soundMap;
+            SPLASH_CHECK(soundMap.createNew(io::MapFormat::HybridScm, 0, 64, 64,
+                                            io::MapArchive::DefaultTriggers::None));
+            SPLASH_CHECK(soundMap.addSound(wavPath.string(), "staredit\\wav\\here.wav"));
+            SPLASH_CHECK(soundMap.applyTriggerText(
+                "Trigger(\"Player 1\"){\n"
+                "Conditions:\n\tAlways();\n"
+                "Actions:\n"
+                "\tPlay WAV(\"staredit\\\\wav\\\\here.wav\", 1000);\n"
+                "\tPlay WAV(\"staredit\\\\wav\\\\missing.wav\", 1000);\n"
+                "\tPreserve Trigger();\n}\n",
+                graphics));
+            SPLASH_CHECK(soundMap.saveAs(soundMapPath.string()));
+
+            // 디스크에서 다시 열어야 MPQ 를 뒤져 확인할 수 있다.
+            chk::MapDocument reopenedSounds;
+            SPLASH_CHECK(reopenedSounds.open(soundMapPath.string()));
+
+            const auto soundActions = reopenedSounds.triggerActions(0, graphics);
+            bool sawSoundArg = false;
+            bool sawPresent = false;
+            bool sawMissing = false;
+            for (const auto & action : soundActions)
+            {
+                for (const auto & arg : action.args)
+                {
+                    if (arg.kind != io::TriggerArgKind::Sound)
+                        continue;
+
+                    sawSoundArg = true;
+                    for (const auto & choice : arg.choices)
+                    {
+                        const bool tagged =
+                            choice.text.find("(맵에 없음)") != std::string::npos;
+                        if (choice.text.find("here.wav") != std::string::npos)
+                        {
+                            sawPresent = true;
+                            SPLASH_CHECK(!tagged);   // 넣어 둔 것에 붙으면 거짓말
+                        }
+                        if (choice.text.find("missing.wav") != std::string::npos)
+                        {
+                            sawMissing = true;
+                            SPLASH_CHECK(tagged);    // 없는 것에 안 붙으면 놓친 것
+                        }
+                    }
+                }
+            }
+
+            // 이름이 목록에 아예 없으면 위 단언이 한 번도 안 돈다. 그러면
+            // 그물이 있는 척만 하는 셈이라 둘 다 봤는지 못박아 둔다.
+            SPLASH_CHECK(sawSoundArg);
+            SPLASH_CHECK(sawPresent);
+            SPLASH_CHECK(sawMissing);
         }
 
         // --- EUD(메모리) 조건·동작이 편집기에 그렇게 보이는지 ---
