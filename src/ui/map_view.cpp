@@ -67,6 +67,7 @@ void MapView::refresh()
 {
     fogPreviewReady_ = false;
     pathAreasReady_ = false;
+    aiTownsReady_ = false;
     tileCache_.clear();
     unitCache_.clear();
     spriteCache_.clear();
@@ -349,6 +350,7 @@ void MapView::paintEvent(QPaintEvent * event)
     paintSelectionBox(painter);
     paintTerrainSelection(painter);
     paintTileValues(painter, dirty);
+    paintAiTowns(painter);
     paintPylonRanges(painter);
     paintUnitRanges(painter);
 }
@@ -1202,6 +1204,64 @@ void MapView::setPylonRangeVisible(bool visible)
 {
     showPylons_ = visible;
     viewport()->update();
+}
+
+void MapView::setAiTownsVisible(bool visible)
+{
+    showAiTowns_ = visible;
+    aiTownsReady_ = false;
+    viewport()->update();
+}
+
+void MapView::paintAiTowns(QPainter & painter)
+{
+    if (!showAiTowns_ || document_ == nullptr || !document_->isOpen())
+        return;
+
+    if (!aiTownsReady_)
+    {
+        aiTowns_ = document_->aiTownLocations();
+        aiTownsReady_ = true;
+    }
+
+    if (aiTowns_.empty())
+        return;
+
+    const double tile = scaledTileSize();
+    if (tile <= 0)
+        return;
+
+    const double scale = tile / io::kTilePixels;
+    const int originX = horizontalScrollBar()->value();
+    const int originY = verticalScrollBar()->value();
+
+    const auto & locations = document_->locations();
+
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing, true);
+
+    for (std::size_t townId : aiTowns_)
+    {
+        // 로케이션 번호(MRGN)로 목록에서 찾는다.
+        const auto found = std::find_if(locations.begin(), locations.end(),
+            [townId](const auto & entry) { return entry.index == townId; });
+        if (found == locations.end())
+            continue;
+
+        const QRectF box(found->left * scale - originX, found->top * scale - originY,
+                         (found->right - found->left) * scale,
+                         (found->bottom - found->top) * scale);
+
+        painter.fillRect(box, QColor(255, 140, 60, 40));
+        painter.setPen(QPen(QColor(255, 160, 80, 230), 2, Qt::DashDotLine));
+        painter.drawRect(box);
+
+        painter.setPen(QColor(255, 200, 150));
+        painter.drawText(box.adjusted(4, 4, -4, -4), Qt::AlignTop | Qt::AlignLeft,
+                         tr("AI 타운"));
+    }
+
+    painter.restore();
 }
 
 void MapView::setCreepTranslucent(bool translucent)

@@ -299,6 +299,9 @@ public:
 
     // --- 스위치 이름·맵 보호 ---
 
+    /// AI 스크립트가 타운으로 쓰는 로케이션 번호들.
+    std::vector<std::size_t> aiTownLocations() const;
+
     std::vector<std::string> switchNames() const;
     bool setSwitchName(std::size_t switchIndex, const std::string & name);
 

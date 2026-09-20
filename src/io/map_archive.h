@@ -588,6 +588,12 @@ public:
     /// 프리셋 하나를 바꾼다.
     Result setUnitPreset(std::size_t index, const UnitPreset & preset);
 
+    /// AI 스크립트가 타운으로 쓰는 로케이션 번호들.
+    ///
+    /// 트리거의 "Run AI Script At Location" 이 가리키는 자리다. 컴퓨터가
+    /// 어디를 거점으로 삼는지 한눈에 보려는 것이다.
+    std::vector<std::size_t> aiTownLocations() const;
+
     // --- 스위치 이름 (SWNM) ---
 
     /// 스위치 256개의 이름. 이름이 없으면 빈 문자열.

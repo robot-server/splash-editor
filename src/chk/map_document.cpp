@@ -949,6 +949,11 @@ bool MapDocument::setUnitPreset(std::size_t index, const io::MapArchive::UnitPre
     return true;
 }
 
+std::vector<std::size_t> MapDocument::aiTownLocations() const
+{
+    return archive_.aiTownLocations();
+}
+
 std::vector<std::string> MapDocument::switchNames() const
 {
     return archive_.switchNames();

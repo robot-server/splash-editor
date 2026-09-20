@@ -1162,6 +1162,13 @@ void MainWindow::buildMenus()
         });
     }
 
+    QAction * showAiTowns = viewMenu->addAction(tr("AI 타운 표시(&I)"));
+    showAiTowns->setCheckable(true);
+    showAiTowns->setToolTip(
+        tr("트리거의 \"Run AI Script At Location\" 이 가리키는 로케이션입니다. "
+           "컴퓨터가 어디를 거점으로 삼는지 보여 줍니다."));
+    connect(showAiTowns, &QAction::toggled, mapView_, &MapView::setAiTownsVisible);
+
     QAction * showPathAreas = viewMenu->addAction(tr("길 영역 나눠 보기(&A)"));
     showPathAreas->setCheckable(true);
     showPathAreas->setToolTip(

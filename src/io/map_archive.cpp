@@ -542,6 +542,38 @@ Result MapArchive::setUnitPreset(std::size_t index, const UnitPreset & preset)
 
 // ------------------------------------------------------- 스위치 이름·보호
 
+std::vector<std::size_t> MapArchive::aiTownLocations() const
+{
+    std::vector<std::size_t> out;
+    if (!impl_->isOpen())
+        return out;
+
+    const MapFile & map = *impl_->mapFile;
+    try
+    {
+        for (std::size_t i = 0; i < map.numTriggers(); ++i)
+        {
+            const Chk::Trigger & trigger = map.getTrigger(i);
+            for (const auto & action : trigger.actions)
+            {
+                if (action.actionType != Chk::Action::Type::RunAiScriptAtLocation)
+                    continue;
+                if (action.locationId == 0)
+                    continue;
+
+                if (std::find(out.begin(), out.end(), action.locationId) == out.end())
+                    out.push_back(action.locationId);
+            }
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+
+    std::sort(out.begin(), out.end());
+    return out;
+}
+
 std::vector<std::string> MapArchive::switchNames() const
 {
     std::vector<std::string> out;

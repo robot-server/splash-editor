@@ -280,6 +280,10 @@ public:
     TerrainOverlay terrainOverlay() const { return overlay_; }
     void setTerrainOverlay(TerrainOverlay overlay);
 
+    /// AI 타운으로 쓰이는 로케이션을 따로 표시할지.
+    bool aiTownsVisible() const { return showAiTowns_; }
+    void setAiTownsVisible(bool visible);
+
     /// 크립을 옅게 그릴지. 크립 아래 지형을 살필 때 쓴다.
     bool creepTranslucent() const { return creepTranslucent_; }
     void setCreepTranslucent(bool translucent);
@@ -462,6 +466,9 @@ private:
     /// 지형 성질을 색으로 겹쳐 그린다.
     void paintTerrainOverlay(QPainter & painter, const QRect & dirty);
 
+    /// AI 타운 로케이션을 표시한다.
+    void paintAiTowns(QPainter & painter);
+
     /// 걷기 플래그로 이어진 영역을 묶는다.
     void buildPathAreas();
 
@@ -544,6 +551,9 @@ public:
     bool showPylons_ = false;
     bool showFogPreview_ = false;
     bool creepTranslucent_ = false;
+    bool showAiTowns_ = false;
+    std::vector<std::size_t> aiTowns_;
+    bool aiTownsReady_ = false;
     bool hideRevealers_ = false;
     bool showPathAreas_ = false;
 
