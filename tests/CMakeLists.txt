@@ -17,3 +17,20 @@ endif()
 add_test(NAME roundtrip
   COMMAND splash_roundtrip_test "${CMAKE_CURRENT_SOURCE_DIR}/maps"
 )
+
+# 게임 자료 없이 도는 단위 테스트. 실제 맵에서 겪고 고친 일들을 다시 겪지
+# 않기 위한 그물이다.
+
+add_executable(splash_unit_test
+  unit_test.cpp
+  test_support.h
+)
+
+target_link_libraries(splash_unit_test PRIVATE splash_io)
+target_include_directories(splash_unit_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+
+if(NOT MSVC)
+  target_compile_options(splash_unit_test PRIVATE -Wall -Wextra)
+endif()
+
+add_test(NAME unit COMMAND splash_unit_test)

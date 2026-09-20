@@ -5,6 +5,10 @@ add_library(splash_io STATIC
   map_archive.h
   game_assets.cpp
   game_assets.h
+  chk_bytes.cpp
+  chk_bytes.h
+  eud.cpp
+  eud.h
   game_graphics.cpp
   game_graphics.h
   text_colors.cpp

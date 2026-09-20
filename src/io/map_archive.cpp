@@ -1,3 +1,4 @@
+#include "io/chk_bytes.h"
 #include "io/map_archive.h"
 
 #include "io/game_graphics.h"
@@ -364,41 +365,6 @@ MapArchive & MapArchive::operator=(MapArchive &&) noexcept = default;
 
 namespace {
 
-/// CHK 끝을 넘어가는 구역을 잘라 낸다.
-///
-/// 구역 머리말의 길이 칸을 파일 크기보다 훨씬 크게 적어 두는 맵이 있다 —
-/// 남은 바이트가 아홉인데 1.8GB 라고 적어 두는 식이다. 그 값을 믿고 자리를
-/// 잡으면 작은 맵 하나를 여는 데 기가바이트를 쓴다. 게임은 읽을 수 없는
-/// 그 뒤를 그냥 무시하므로 우리도 거기서 끊는다.
-///
-/// 길이가 음수인 구역은 MappingCore 가 "되감기"로 쓰므로 건드리지 않는다.
-void truncateOverlongSections(std::vector<std::uint8_t> & chk)
-{
-    constexpr std::size_t kHeaderSize = 8;
-
-    std::size_t position = 0;
-    while (position + kHeaderSize <= chk.size())
-    {
-        std::int32_t size = 0;
-        std::memcpy(&size, chk.data() + position + 4, sizeof(size));
-
-        if (size < 0)
-        {
-            position += kHeaderSize;
-            continue;
-        }
-
-        const std::size_t remaining = chk.size() - position - kHeaderSize;
-        if (static_cast<std::size_t>(size) > remaining)
-        {
-            chk.resize(position); // 이 구역 머리말부터 버린다
-            return;
-        }
-
-        position += kHeaderSize + static_cast<std::size_t>(size);
-    }
-}
-
 /// 문자열이 한 구역에 그대로는 들어가지 않는지.
 bool stringsOverflowSection(const MapFile & map)
 {
@@ -414,70 +380,6 @@ bool stringsOverflowSection(const MapFile & map)
             characters += text->size() + 1;
     }
     return 2 + 2 * count + characters > 0xFFFF;
-}
-
-/// 문자열 구역을 꼬리를 겹쳐 담아 만든다.
-///
-/// 한 구역은 65535 바이트까지고 자리표가 u16 이라, 글자가 많은 맵은 그대로
-/// 담으면 들어가지 않는다. "abc" 를 담아 두면 "bc" 는 한 칸 뒤를, "c" 는 두
-/// 칸 뒤를 가리키면 되므로 긴 것부터 담고 짧은 꼬리는 그 안을 가리키게 한다.
-/// 게임이 읽는 방식(자리표가 가리키는 곳부터 NUL 까지)은 그대로다.
-///
-/// 담지 못하면 빈 벡터를 돌려준다.
-std::vector<std::uint8_t> packStringsSharingTails(const std::vector<std::string> & strings)
-{
-    const std::size_t count = strings.size();
-    const std::size_t headerSize = 2 + 2 * count;
-    if (headerSize > 0xFFFF)
-        return {};
-
-    // 긴 것부터 담아야 짧은 꼬리가 그 안에 들어간다.
-    std::vector<std::size_t> order(count);
-    for (std::size_t i = 0; i < count; ++i)
-        order[i] = i;
-    std::sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) {
-        return strings[a].size() > strings[b].size();
-    });
-
-    std::string data(1, '\0'); // 첫 NUL — 빈 자리는 모두 여기를 가리킨다
-    std::vector<std::size_t> offsets(count, 0);
-
-    for (const std::size_t index : order)
-    {
-        const std::string & text = strings[index];
-        if (text.empty())
-        {
-            offsets[index] = 0; // 첫 NUL
-            continue;
-        }
-
-        const std::string needle = text + '\0';
-        const std::size_t found = data.find(needle);
-        if (found != std::string::npos)
-        {
-            offsets[index] = found;
-            continue;
-        }
-
-        offsets[index] = data.size();
-        data += needle;
-    }
-
-    if (headerSize + data.size() > 0xFFFF)
-        return {};
-
-    std::vector<std::uint8_t> out(headerSize + data.size(), 0);
-    const auto put16 = [&out](std::size_t at, std::uint16_t value) {
-        out[at] = static_cast<std::uint8_t>(value & 0xFF);
-        out[at + 1] = static_cast<std::uint8_t>(value >> 8);
-    };
-
-    put16(0, static_cast<std::uint16_t>(count));
-    for (std::size_t i = 0; i < count; ++i)
-        put16(2 + 2 * i, static_cast<std::uint16_t>(headerSize + offsets[i]));
-
-    std::memcpy(out.data() + headerSize, data.data(), data.size());
-    return out;
 }
 
 /// 구역을 하나씩 쓰되 STR 만 꼬리를 겹쳐 담은 것으로 바꿔 넣는다.
