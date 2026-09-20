@@ -261,6 +261,19 @@ int main(int argc, char ** argv)
                 for (const auto & arg : first.args)
                     sawMask = sawMask || arg.role == io::TriggerArgRole::MemoryBitmask;
                 SPLASH_CHECK(sawMask);
+
+                // 인자에 붙는 **글자**도 같은 자리표로 뽑아야 한다.
+                //
+                // 자리표만 가상 종류로 고르고 글자는 번호로 뽑으면, 생성기가
+                // Deaths(플레이어·유닛·비교·수량) 자리표를 다시 만들어 글자가
+                // 한 칸씩 밀린다 — 값과 이름표는 맞는데 비교 자리에 유닛
+                // 이름이 뜨는 꼴이 된다. 값을 글자로 되읽어 확인한다.
+                if (first.args.size() >= 3)
+                {
+                    SPLASH_CHECK_EQ(first.args[2].text,
+                                    std::to_string(condition.amount));
+                    SPLASH_CHECK(first.args[1].text.find("Marine") == std::string::npos);
+                }
             }
 
             const auto actions = eudMap.triggerActions(0, graphics);
@@ -281,6 +294,23 @@ int main(int argc, char ** argv)
             for (const auto & choice : eudMap.conditionTypes(graphics))
                 offersMemory = offersMemory || choice.value == io::kMemoryType;
             SPLASH_CHECK(offersMemory);
+
+            // 종류만 골라 만든 EUD 는 기본 자리가 채워져 있어야 하고, 그 값이
+            // 손으로 넣은 것과 같은 표기여야 한다. 부호를 놓치면 같은 주소를
+            // 가리키되 값이 다른 EPD 가 나와 글자가 갈린다.
+            SPLASH_CHECK(eudMap.setConditionType(0, 1, io::kMemoryType));
+            const auto fresh = eudMap.triggerConditions(0, graphics);
+            if (fresh.size() > 1)
+            {
+                SPLASH_CHECK(fresh[1].memory);
+                SPLASH_CHECK(!fresh[1].args.empty());
+                if (!fresh[1].args.empty())
+                {
+                    SPLASH_CHECK_EQ(fresh[1].args[0].value,
+                                    io::eud::epdFor(0x0057F0F0));
+                }
+            }
+            SPLASH_CHECK(eudMap.removeCondition(0, 1));
 
             // 텍스트로 뽑았다 다시 넣어도 그대로여야 한다.
             const auto text = eudMap.triggerText(graphics);

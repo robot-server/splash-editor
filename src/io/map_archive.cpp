@@ -4327,7 +4327,10 @@ TriggerArg describeConditionArg(const TextTrigGenerator & generator,
         return out;
 
     out.value = readField(condition, argument.field);
-    out.text = generator.getConditionArgument(condition, argIndex);
+    // 글자도 **우리가 고른 자리표**로 뽑아야 한다. 번호를 넘기는 오버로드는
+    // 생성기가 condition.conditionType 으로 자리표를 다시 만드는데, EUD 줄은
+    // 그것이 Deaths(플레이어·유닛·비교·수량) 라 한 칸씩 밀린다.
+    out.text = generator.getConditionArgument(condition, argument);
 
     const auto addChoice = [&out](std::uint32_t value, std::string text) {
         if (!namedValue(text))
@@ -4453,7 +4456,8 @@ TriggerArg describeActionArg(const TextTrigGenerator & generator,
         return out;
 
     out.value = readField(action, argument.field);
-    out.text = generator.getActionArgument(action, argIndex);
+    // 조건 쪽과 같은 까닭으로 자리표를 그대로 넘긴다.
+    out.text = generator.getActionArgument(action, argument);
 
     const auto addChoice = [&out](std::uint32_t value, std::string text) {
         if (!namedValue(text))
@@ -4987,8 +4991,12 @@ namespace {
 /// EUD 를 새로 만들 때 채워 둘 자리. 아무 자리나 넣으면 게임이 엉뚱한 곳을
 /// 건드리므로, 건드려도 탈이 없고 눈에 잘 보이는 곳을 고른다 —
 /// 플레이어 1 의 미네랄이다.
-inline constexpr std::uint32_t kDefaultMemoryEpd =
-    (0x0057F0F0u - 0x0058A364u) / 4u; // EPD -11421 (32비트로 감아 돈다)
+///
+/// 셈은 eud::epdFor 에 맡긴다. 여기서 직접 나눗셈을 쓰면 부호를 놓치기 쉽고,
+/// 그러면 같은 주소를 가리키되 값이 다른 EPD(1073730403 대 4294955875)가
+/// 나와 손으로 넣은 EUD 와 글자가 달라진다. 게임은 둘 다 같은 자리로 읽지만
+/// eudplib·EUD Book·SCMDraft 는 부호 있는 쪽(-11421)을 쓴다.
+inline constexpr std::uint32_t kDefaultMemoryEpd = eud::epdFor(0x0057F0F0u);
 
 } // namespace
 
