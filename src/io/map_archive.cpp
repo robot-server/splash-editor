@@ -448,21 +448,40 @@ Result MapArchive::open(const std::string & filePath)
         std::vector<std::string> samples;
         const MapFile & map = *fresh->mapFile;
 
+        // 문자열 하나에서 가져올 최대 길이와, 표본 전체의 최대 길이.
+        //
+        // 문자열 표를 망가뜨려 둔 맵에서는 한 칸이 파일 끝까지 이어진
+        // 것처럼 읽힌다. 그대로 모으면 작은 맵 하나를 여는 데 기가바이트를
+        // 쓴다. 코드 페이지를 가리는 데는 앞부분 몇 글자면 충분하다.
+        constexpr std::size_t kMaxSample = 4096;
+        constexpr std::size_t kMaxTotal = 256 * 1024;
+        std::size_t total = 0;
+
+        const auto addSample = [&](const std::string & text) {
+            if (total >= kMaxTotal || text.empty())
+                return false;
+
+            const std::size_t take = std::min({text.size(), kMaxSample, kMaxTotal - total});
+            samples.push_back(text.substr(0, take));
+            total += take;
+            return true;
+        };
+
         // 맵 이름·설명은 늘 있으므로 먼저 넣는다.
         if (auto name = map.getScenarioName<RawString>())
-            samples.push_back(*name);
+            addSample(*name);
         if (auto desc = map.getScenarioDescription<RawString>())
-            samples.push_back(*desc);
+            addSample(*desc);
 
         // 나머지 문자열도 모은다. 글자가 많을수록 판정이 정확해지지만,
         // 앞쪽 몇 백 개면 충분하고 보호된 맵에서는 읽다 실패할 수도 있다.
         const std::size_t capacity = std::min<std::size_t>(map.getCapacity(Chk::Scope::Either), 2048);
-        for (std::size_t id = 1; id <= capacity; ++id)
+        for (std::size_t id = 1; id <= capacity && total < kMaxTotal; ++id)
         {
             try
             {
                 if (auto text = map.getString<RawString>(id))
-                    samples.push_back(*text);
+                    addSample(*text);
             }
             catch (const std::exception &)
             {
