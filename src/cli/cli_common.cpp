@@ -320,8 +320,14 @@ bool loadGraphics(Args & args, io::GameGraphics & graphics)
     if (!installPath)
         throw CliError("게임 자료가 필요합니다: --install <StarCraft 설치폴더>");
 
+    // 모드 자료를 얹는다. 앞에 적은 것이 우선하므로 적은 차례를 지킨다 —
+    // 유닛이나 지형을 갈아 끼운 맵을 원래 모습대로 그리려면 필요하다.
+    std::vector<std::string> modArchives;
+    while (const auto mod = args.option("--mod"))
+        modArchives.push_back(*mod);
+
     std::string error;
-    if (!graphics.load(*installPath, &error))
+    if (!graphics.load(*installPath, &error, modArchives))
     {
         std::cerr << "게임 데이터 로드 실패: " << error << "\n";
         return false;

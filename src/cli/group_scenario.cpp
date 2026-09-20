@@ -2,6 +2,8 @@
 
 #include "cli_common.h"
 
+#include "io/game_graphics.h"
+
 #include <algorithm>
 #include <array>
 #include <functional>
@@ -444,6 +446,401 @@ int briefingArgs(Args & args)
                                static_cast<std::size_t>(args.integer(1)));
 }
 
+// --- 조건·동작을 낱개로 ---
+//
+// 텍스트로 통째로 갈아 끼우는 길(trigger apply)과 인자 하나만 고치는
+// 길(trigger set-arg) 사이가 비어 있었다. 코어에는 다 있으므로 잇기만 한다.
+
+/// `condition` / `action` 을 가려낸다. 조건이면 참.
+bool readWhich(const std::string & text)
+{
+    if (text == "condition" || text == "cond" || text == "조건")
+        return true;
+    if (text == "action" || text == "act" || text == "동작")
+        return false;
+    throw CliError("condition 이나 action 을 적으세요: " + text);
+}
+
+int triggerTypes(Args & args)
+{
+    const auto needle = args.option("--find");
+    io::GameGraphics graphics;
+    if (!loadGraphics(args, graphics))
+        return 1;
+    args.finish();
+
+    return readMap(args.at(0), [&](io::MapArchive & archive) {
+        const bool condition = args.count() > 1 ? readWhich(args.at(1)) : true;
+        const auto choices = condition ? archive.conditionTypes(graphics)
+                                       : archive.actionTypes(graphics);
+        std::size_t shown = 0;
+        for (const auto & choice : choices)
+        {
+            if (needle && choice.text.find(*needle) == std::string::npos)
+                continue;
+            std::cout << "  " << std::setw(5) << choice.value << "  " << choice.text << "\n";
+            ++shown;
+        }
+        std::cout << "  " << (condition ? "조건" : "동작") << " " << shown << "종";
+        if (needle) std::cout << " (전체 " << choices.size() << "종 가운데)";
+        std::cout << "\n";
+        return 0;
+    });
+}
+
+int triggerSetType(Args & args)
+{
+    const SaveTarget target = takeSaveTarget(args);
+    args.finish();
+
+    const std::string mapPath = args.at(0);
+    const bool condition = readWhich(args.at(1));
+    const auto index = static_cast<std::size_t>(args.integer(2));
+    const auto slot = static_cast<std::size_t>(args.integer(3));
+    // 종류는 32비트다. 0x100(Memory) · 0x101(Memory Masked) 은 고르는
+    // 자리에만 있는 가상 종류라 u8 로 자르면 닿지 못한다.
+    const auto type = static_cast<std::uint32_t>(args.integer(4));
+
+    return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
+        const auto result = condition ? archive.setConditionType(index, slot, type)
+                                      : archive.setActionType(index, slot, type);
+        if (!result)
+        {
+            std::cerr << "종류 바꾸기 실패: " << result.message << "\n";
+            return false;
+        }
+        std::cout << "  트리거 " << index << "  " << (condition ? "조건" : "동작")
+                  << " " << slot << " -> 종류 " << type;
+        if (type == io::kMemoryType)       std::cout << " (Memory, EUD)";
+        if (type == io::kMemoryMaskedType) std::cout << " (Memory Masked, EUD)";
+        std::cout << "\n";
+        return true;
+    });
+}
+
+int triggerLineEnabled(Args & args)
+{
+    const SaveTarget target = takeSaveTarget(args);
+    args.finish();
+
+    const std::string mapPath = args.at(0);
+    const bool condition = readWhich(args.at(1));
+    const auto index = static_cast<std::size_t>(args.integer(2));
+    const auto slot = static_cast<std::size_t>(args.integer(3));
+    const std::string state = args.at(4);
+    if (state != "on" && state != "off")
+        throw CliError("on 이나 off 를 적으세요: " + state);
+
+    // 코어는 "꺼짐"을 받는다. 사람이 읽기로는 켜고 끄는 쪽이 자연스럽다.
+    const bool disabled = state == "off";
+
+    return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
+        const auto result = condition ? archive.setConditionDisabled(index, slot, disabled)
+                                      : archive.setActionDisabled(index, slot, disabled);
+        if (!result)
+        {
+            std::cerr << "켜고 끄기 실패: " << result.message << "\n";
+            return false;
+        }
+        std::cout << "  트리거 " << index << "  " << (condition ? "조건" : "동작")
+                  << " " << slot << " -> " << (disabled ? "꺼짐" : "켜짐") << "\n";
+        return true;
+    });
+}
+
+int triggerRemoveLine(Args & args)
+{
+    const SaveTarget target = takeSaveTarget(args);
+    args.finish();
+
+    const std::string mapPath = args.at(0);
+    const bool condition = readWhich(args.at(1));
+    const auto index = static_cast<std::size_t>(args.integer(2));
+    const auto texts = args.from(3);
+
+    return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
+        std::vector<std::size_t> slots;
+        for (const auto & text : texts)
+            slots.push_back(static_cast<std::size_t>(std::stoll(text)));
+        if (slots.empty())
+            throw CliError("줄 번호를 하나 이상 적어야 합니다.");
+
+        // 큰 번호부터 지워야 앞 번호가 밀리지 않는다.
+        std::sort(slots.begin(), slots.end(), std::greater<>());
+        slots.erase(std::unique(slots.begin(), slots.end()), slots.end());
+
+        for (std::size_t slot : slots)
+        {
+            const auto result = condition ? archive.removeCondition(index, slot)
+                                          : archive.removeAction(index, slot);
+            if (!result)
+            {
+                std::cerr << "지우기 실패(" << slot << "): " << result.message << "\n";
+                return false;
+            }
+        }
+        std::cout << "  트리거 " << index << "  " << (condition ? "조건" : "동작")
+                  << " " << slots.size() << "줄을 지웠습니다.\n";
+        return true;
+    });
+}
+
+int triggerMoveLine(Args & args)
+{
+    const SaveTarget target = takeSaveTarget(args);
+    args.finish();
+
+    const std::string mapPath = args.at(0);
+    const bool condition = readWhich(args.at(1));
+    const auto index = static_cast<std::size_t>(args.integer(2));
+    const auto from = static_cast<std::size_t>(args.integer(3));
+    const auto to = static_cast<std::size_t>(args.integer(4));
+
+    return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
+        const auto result = condition ? archive.moveCondition(index, from, to)
+                                      : archive.moveAction(index, from, to);
+        if (!result)
+        {
+            std::cerr << "자리 옮기기 실패: " << result.message << "\n";
+            return false;
+        }
+        std::cout << "  트리거 " << index << "  " << (condition ? "조건" : "동작")
+                  << " " << from << " -> " << to << "\n";
+        return true;
+    });
+}
+
+int triggerEnabled(Args & args)
+{
+    const SaveTarget target = takeSaveTarget(args);
+    args.finish();
+
+    const std::string mapPath = args.at(0);
+    const auto index = static_cast<std::size_t>(args.integer(1));
+    const std::string state = args.at(2);
+    if (state != "on" && state != "off")
+        throw CliError("on 이나 off 를 적으세요: " + state);
+
+    return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
+        if (auto r = archive.setTriggerEnabled(index, state == "on"); !r)
+        {
+            std::cerr << "켜고 끄기 실패: " << r.message << "\n";
+            return false;
+        }
+        std::cout << "  트리거 " << index << " -> " << (state == "on" ? "켜짐" : "꺼짐") << "\n";
+        return true;
+    });
+}
+
+// --- 브리핑도 같은 만큼 ---
+
+int briefingAdd(Args & args)
+{
+    const SaveTarget target = takeSaveTarget(args);
+    const auto count = args.number("--count");
+    args.finish();
+
+    const std::string mapPath = args.at(0);
+    const long long howMany = count ? *count : 1;
+    if (howMany < 1)
+        throw CliError("--count 는 1 이상이어야 합니다.");
+
+    return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
+        for (long long i = 0; i < howMany; ++i)
+        {
+            if (auto r = archive.addBriefing(); !r)
+            {
+                std::cerr << "브리핑 더하기 실패: " << r.message << "\n";
+                return false;
+            }
+        }
+        std::cout << "  더함      : 브리핑 " << howMany << "개\n";
+        return true;
+    });
+}
+
+int briefingRemove(Args & args)
+{
+    const SaveTarget target = takeSaveTarget(args);
+    args.finish();
+
+    const std::string mapPath = args.at(0);
+    const auto texts = args.from(1);
+
+    return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
+        std::vector<std::size_t> indices;
+        for (const auto & text : texts)
+            indices.push_back(static_cast<std::size_t>(std::stoll(text)));
+        if (indices.empty())
+            throw CliError("브리핑 번호를 하나 이상 적어야 합니다.");
+
+        std::sort(indices.begin(), indices.end(), std::greater<>());
+        indices.erase(std::unique(indices.begin(), indices.end()), indices.end());
+
+        for (std::size_t index : indices)
+        {
+            if (auto r = archive.removeBriefing(index); !r)
+            {
+                std::cerr << "지우기 실패(" << index << "): " << r.message << "\n";
+                return false;
+            }
+        }
+        std::cout << "  지움      : 브리핑 " << indices.size() << "개\n";
+        return true;
+    });
+}
+
+int briefingMove(Args & args)
+{
+    const SaveTarget target = takeSaveTarget(args);
+    args.finish();
+
+    const std::string mapPath = args.at(0);
+    const auto from = static_cast<std::size_t>(args.integer(1));
+    const auto to = static_cast<std::size_t>(args.integer(2));
+
+    return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
+        if (auto r = archive.moveBriefing(from, to); !r)
+        {
+            std::cerr << "자리 옮기기 실패: " << r.message << "\n";
+            return false;
+        }
+        std::cout << "  브리핑 " << from << " -> " << to << "\n";
+        return true;
+    });
+}
+
+int briefingSetType(Args & args)
+{
+    const SaveTarget target = takeSaveTarget(args);
+    args.finish();
+
+    const std::string mapPath = args.at(0);
+    const auto index = static_cast<std::size_t>(args.integer(1));
+    const auto slot = static_cast<std::size_t>(args.integer(2));
+    const auto type = static_cast<std::uint8_t>(args.integer(3));
+
+    return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
+        if (auto r = archive.setBriefingActionType(index, slot, type); !r)
+        {
+            std::cerr << "종류 바꾸기 실패: " << r.message << "\n";
+            return false;
+        }
+        std::cout << "  브리핑 " << index << "  동작 " << slot
+                  << " -> 종류 " << int(type) << "\n";
+        return true;
+    });
+}
+
+int briefingSetArg(Args & args)
+{
+    const SaveTarget target = takeSaveTarget(args);
+    args.finish();
+
+    const std::string mapPath = args.at(0);
+    const auto index = static_cast<std::size_t>(args.integer(1));
+    const auto slot = static_cast<std::size_t>(args.integer(2));
+    const auto argIndex = static_cast<std::size_t>(args.integer(3));
+    const std::string value = args.at(4);
+
+    return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
+        // 숫자로 읽히면 값으로, 아니면 글자로 넣는다 — trigger set-arg 와 같다.
+        bool numeric = !value.empty();
+        for (char c : value)
+            if (!std::isdigit(static_cast<unsigned char>(c))) { numeric = false; break; }
+
+        const auto result = numeric
+            ? archive.setBriefingActionArg(index, slot, argIndex,
+                                           static_cast<std::uint32_t>(std::stoul(value)))
+            : archive.setBriefingActionArgText(index, slot, argIndex, value);
+        if (!result)
+        {
+            std::cerr << "인자 바꾸기 실패: " << result.message << "\n";
+            return false;
+        }
+        std::cout << "  브리핑 " << index << "  동작 " << slot
+                  << "  인자 " << argIndex << " -> " << value
+                  << (numeric ? "" : "  (글자)") << "\n";
+        return true;
+    });
+}
+
+int briefingRemoveLine(Args & args)
+{
+    const SaveTarget target = takeSaveTarget(args);
+    args.finish();
+
+    const std::string mapPath = args.at(0);
+    const auto index = static_cast<std::size_t>(args.integer(1));
+    const auto texts = args.from(2);
+
+    return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
+        std::vector<std::size_t> slots;
+        for (const auto & text : texts)
+            slots.push_back(static_cast<std::size_t>(std::stoll(text)));
+        if (slots.empty())
+            throw CliError("줄 번호를 하나 이상 적어야 합니다.");
+
+        std::sort(slots.begin(), slots.end(), std::greater<>());
+        slots.erase(std::unique(slots.begin(), slots.end()), slots.end());
+
+        for (std::size_t slot : slots)
+        {
+            if (auto r = archive.removeBriefingAction(index, slot); !r)
+            {
+                std::cerr << "지우기 실패(" << slot << "): " << r.message << "\n";
+                return false;
+            }
+        }
+        std::cout << "  브리핑 " << index << "  동작 " << slots.size() << "줄을 지웠습니다.\n";
+        return true;
+    });
+}
+
+int briefingMoveLine(Args & args)
+{
+    const SaveTarget target = takeSaveTarget(args);
+    args.finish();
+
+    const std::string mapPath = args.at(0);
+    const auto index = static_cast<std::size_t>(args.integer(1));
+    const auto from = static_cast<std::size_t>(args.integer(2));
+    const auto to = static_cast<std::size_t>(args.integer(3));
+
+    return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
+        if (auto r = archive.moveBriefingAction(index, from, to); !r)
+        {
+            std::cerr << "자리 옮기기 실패: " << r.message << "\n";
+            return false;
+        }
+        std::cout << "  브리핑 " << index << "  동작 " << from << " -> " << to << "\n";
+        return true;
+    });
+}
+
+int briefingTypes(Args & args)
+{
+    const auto needle = args.option("--find");
+    io::GameGraphics graphics;
+    if (!loadGraphics(args, graphics))
+        return 1;
+    args.finish();
+
+    return readMap(args.at(0), [&](io::MapArchive & archive) {
+        const auto choices = archive.briefingActionTypes(graphics);
+        std::size_t shown = 0;
+        for (const auto & choice : choices)
+        {
+            if (needle && choice.text.find(*needle) == std::string::npos)
+                continue;
+            std::cout << "  " << std::setw(5) << choice.value << "  " << choice.text << "\n";
+            ++shown;
+        }
+        std::cout << "  브리핑 동작 " << shown << "종\n";
+        return 0;
+    });
+}
+
 } // namespace
 
 std::vector<Group> scenarioGroups()
@@ -486,6 +883,18 @@ std::vector<Group> scenarioGroups()
             {"duplicate", "<맵> <번호> -o <출력맵>", "트리거를 베낀다.", triggerDuplicate},
             {"owners",    "<맵> <번호> <1,3,5|all|none> -o <출력맵>",
                           "그 트리거를 실행할 플레이어를 정한다.", triggerOwners},
+            {"enabled",   "<맵> <번호> <on|off> -o <출력맵>",
+                          "트리거를 켜고 끈다.", triggerEnabled},
+            {"types",     "<맵> [condition|action] [--find 글자] --install 설치폴더",
+                          "고를 수 있는 조건·동작 종류를 나열한다.", triggerTypes},
+            {"set-type",  "<맵> <condition|action> <트리거> <줄> <종류> -o <출력맵>",
+                          "조건·동작 한 줄의 종류를 바꾼다.", triggerSetType},
+            {"remove-line", "<맵> <condition|action> <트리거> <줄...> -o <출력맵>",
+                          "조건·동작 줄을 지운다.", triggerRemoveLine},
+            {"move-line", "<맵> <condition|action> <트리거> <from> <to> -o <출력맵>",
+                          "조건·동작 줄의 차례를 바꾼다.", triggerMoveLine},
+            {"line-enabled", "<맵> <condition|action> <트리거> <줄> <on|off> -o <출력맵>",
+                          "조건·동작 한 줄을 켜고 끈다.", triggerLineEnabled},
         }},
         Group{"briefing", "미션 브리핑 (MBRF)", {
             {"show",  "<맵> [출력.txt] --install 설치폴더", "브리핑을 텍스트로 옮긴다.", briefingShow},
@@ -493,6 +902,19 @@ std::vector<Group> scenarioGroups()
                       "텍스트 브리핑을 컴파일해 적용한다.", briefingApply},
             {"args",  "<맵> <번호> --install 설치폴더",
                       "브리핑 하나를 인자 단위로 풀어 보여 준다.", briefingArgs},
+            {"add",    "<맵> [--count N] -o <출력맵>", "빈 브리핑을 더한다.", briefingAdd},
+            {"remove", "<맵> <번호...> -o <출력맵>", "브리핑을 지운다.", briefingRemove},
+            {"move",   "<맵> <from> <to> -o <출력맵>", "브리핑 차례를 바꾼다.", briefingMove},
+            {"types",  "<맵> [--find 글자] --install 설치폴더",
+                       "고를 수 있는 브리핑 동작 종류를 나열한다.", briefingTypes},
+            {"set-type", "<맵> <번호> <줄> <종류> -o <출력맵>",
+                       "브리핑 동작 한 줄의 종류를 바꾼다.", briefingSetType},
+            {"set-arg", "<맵> <번호> <줄> <인자> <값> -o <출력맵>",
+                       "브리핑 동작의 인자 하나를 바꾼다.", briefingSetArg},
+            {"remove-line", "<맵> <번호> <줄...> -o <출력맵>",
+                       "브리핑 동작 줄을 지운다.", briefingRemoveLine},
+            {"move-line", "<맵> <번호> <from> <to> -o <출력맵>",
+                       "브리핑 동작 줄의 차례를 바꾼다.", briefingMoveLine},
         }},
     };
 }

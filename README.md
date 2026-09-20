@@ -234,7 +234,15 @@ splash-cli object paste map.scx 40 40 base.objects --install "/경로/StarCraft"
 
 # 맵 전체를 리빌러로 덮기
 splash-cli scenario revealers map.scx --owner 1 --spacing 16 -o out.scx
+
+# 조건·동작을 낱개로 (종류 번호는 trigger types 로 본다)
+splash-cli trigger types map.scx condition --install "/경로/StarCraft"
+splash-cli trigger set-type map.scx condition 0 1 23 -o out.scx
+splash-cli trigger line-enabled map.scx action 0 0 off -o out.scx
 ```
+
+지형·유닛을 갈아 끼운 모드 맵은 `--mod <mpq>` 를 여러 번 주면 설치본보다
+먼저 뒤집니다 — 앞에 적은 것이 우선합니다.
 
 진단·검증 명령은 갈래 없이 그대로 쓴다.
 

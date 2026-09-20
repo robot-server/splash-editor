@@ -159,20 +159,19 @@ PR #178("freeze MPQ ... fix 64-bit memory bugs", 2026-09-15 머지)이 릴리스
 명령은 저장할 곳(`-o` 나 `--in-place`)을 반드시 받고, 저장한 뒤 저장본을
 다시 열어 확인한다.
 
-남은 것은 아래다. 모두 코어에는 있고 CLI 에만 없다.
+코어에 있는데 CLI 에만 없던 것은 다 이었다 — 트리거·브리핑의 조건·동작을
+낱개로 더하고 빼고 옮기고 켜고 끄는 일(`trigger set-type/remove-line/
+move-line/line-enabled/enabled`, `briefing add/remove/move/set-type/set-arg/
+remove-line/move-line`)과 모드 자료 얹기(`--mod`)까지 된다.
+
+남은 둘은 **코어에 없다.** CLI 배선이 아니라 코어 작업이 먼저다.
 
 - **두들 꺼진 상태를 붙일 때 되살리지 못한다.** `object paste` 는 두들을
   늘 켜진 채로 놓는다. 코어에 두들을 끄는 API 가 없다 — DD2 의 enabled
   칸을 쓰는 길이 `placeDoodad` 에만 있고 나중에 바꾸지 못한다.
-- **트리거의 조건·동작을 낱개로 더하고 빼기.** 트리거 자체는 명령으로
-  더하고 지우고 베낄 수 있게 되었다(`trigger add/remove/duplicate/owners`,
-  2026-09-20). 조건·동작 한 줄을 통째로 넣는 길은 EUD 쪽만 있다
-  (`eud set-condition`/`set-action`). 그 밖의 종류는 아직 텍스트로
-  갈아 끼우거나(`trigger apply`) 인자 하나만 고친다(`trigger set-arg`).
-  코어에는 `removeCondition`·`moveAction` 이 다 있다.
-- **브러시 팔레트(.splashbrush) 를 명령으로 찍기.** GUI 에만 있다.
-- **모드 자료(MPQ) 얹기.** `GameGraphics::load` 가 modArchives 를 받지만
-  CLI 에는 옵션이 없다.
+- **브러시 팔레트(.splashbrush) 를 명령으로 찍기.** 코어에 없다 —
+  읽고 쓰는 코드가 `src/ui/brush_palette.cpp` 에만 있다. CLI 에 붙이기
+  전에 코어로 옮기는 일이 먼저다.
 
 **주의할 것**: 명령을 더할 때마다 실제 맵으로 열기 → 고치기 → 저장 →
 다시 열기를 돌려 확인한다. 지형은 칠했다가 되돌리면 CHK 가 한 바이트도

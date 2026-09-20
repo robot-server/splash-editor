@@ -105,6 +105,9 @@ int readMap(const std::string & mapPath,
 
 /// 게임 자료를 읽는다. `--install <경로>` 가 없으면 CliError.
 /// 비용이 크므로 필요한 명령에서만 부른다.
+///
+/// `--mod <mpq>` 를 여러 번 주면 설치본보다 먼저 뒤진다. 앞에 적은 것이
+/// 우선한다 — 유닛·지형을 갈아 끼운 모드 맵을 원래 모습대로 볼 수 있다.
 bool loadGraphics(Args & args, io::GameGraphics & graphics);
 
 // --- 이름 조회 ---
