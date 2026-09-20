@@ -391,12 +391,18 @@ ChoiceMatch matchChoice(const io::TriggerArg & arg, const std::string & text)
     ChoiceMatch found;
     for (const auto & choice : arg.choices)
     {
-        // 소리 이름에는 "  (맵에 없음)" 같은 꼬리가 붙는다. 꼬리를 뗀
-        // 쪽도 함께 견준다.
+        // 보이는 글자 그대로가 먼저다.
         bool hit = squashName(choice.text) == needle;
         if (!hit)
         {
-            const auto tail = choice.text.find("  (");
+            // io 계층이 목록을 만들면서 덧붙이는 꼬리를 뗀 쪽도 견준다.
+            // 소리 자리의 "  (맵에 없음)" 이 그것이다(map_archive.cpp 의
+            // fillSoundChoices). 문구가 아니라 "빈칸 둘 + 여는 괄호" 라는
+            // 자리표에만 기대므로, 저쪽이 말을 바꿔도 걸린다.
+            //
+            // 뒤에서 찾는다 — 파일 이름 자체에 "  (" 가 들어 있어도
+            // 덧붙인 꼬리는 늘 맨 뒤에 온다.
+            const auto tail = choice.text.rfind("  (");
             if (tail != std::string::npos)
                 hit = squashName(choice.text.substr(0, tail)) == needle;
         }
