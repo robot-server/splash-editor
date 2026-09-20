@@ -4156,6 +4156,7 @@ TriggerArg describeConditionArg(const TextTrigGenerator & generator,
     {
         case ArgType::Unit:
             out.kind = TriggerArgKind::Choice;
+            out.role = TriggerArgRole::UnitType;
             out.label = "유닛";
             for (int i = 0; i < int(Sc::Unit::TotalReferenceTypes); ++i)
                 addChoice(std::uint32_t(i), generator.getTrigUnit(Sc::Unit::Type(i)));
@@ -4163,6 +4164,7 @@ TriggerArg describeConditionArg(const TextTrigGenerator & generator,
 
         case ArgType::Location:
             out.kind = TriggerArgKind::Choice;
+            out.role = TriggerArgRole::Location;
             out.label = "위치";
             for (std::size_t i = 0; i <= scenario.numLocations(); ++i)
                 addChoice(std::uint32_t(i), generator.getTrigLocation(i));
@@ -4170,6 +4172,7 @@ TriggerArg describeConditionArg(const TextTrigGenerator & generator,
 
         case ArgType::Player:
             out.kind = TriggerArgKind::Choice;
+            out.role = TriggerArgRole::Player;
             out.label = "플레이어";
             for (std::size_t i = 0; i < 27; ++i)
                 addChoice(std::uint32_t(i), generator.getTrigPlayer(i));
@@ -4177,12 +4180,14 @@ TriggerArg describeConditionArg(const TextTrigGenerator & generator,
 
         case ArgType::Amount:
             out.kind = TriggerArgKind::Number;
+            out.role = TriggerArgRole::Amount;
             out.label = "수량";
             break;
 
         case ArgType::NumericComparison:
         case ArgType::Comparison:
             out.kind = TriggerArgKind::Choice;
+            out.role = TriggerArgRole::Comparison;
             out.label = "비교";
             for (int i = 0; i < 16; ++i)
                 addChoice(std::uint32_t(i),
@@ -4215,6 +4220,7 @@ TriggerArg describeConditionArg(const TextTrigGenerator & generator,
 
         case ArgType::Switch:
             out.kind = TriggerArgKind::Choice;
+            out.role = TriggerArgRole::Switch;
             out.label = "스위치";
             for (std::size_t i = 0; i < 256; ++i)
                 addChoice(std::uint32_t(i), generator.getTrigSwitch(i));
@@ -4228,6 +4234,7 @@ TriggerArg describeConditionArg(const TextTrigGenerator & generator,
 
         case ArgType::MemoryOffset:
             out.kind = TriggerArgKind::Number;
+            out.role = TriggerArgRole::MemoryOffset;
             out.label = "메모리 위치";
             break;
 
@@ -4270,6 +4277,7 @@ TriggerArg describeActionArg(const TextTrigGenerator & generator,
     {
         case ArgType::Location:
             out.kind = TriggerArgKind::Choice;
+            out.role = TriggerArgRole::Location;
             out.label = "위치";
             for (std::size_t i = 0; i <= scenario.numLocations(); ++i)
                 addChoice(std::uint32_t(i), generator.getTrigLocation(i));
@@ -4287,6 +4295,7 @@ TriggerArg describeActionArg(const TextTrigGenerator & generator,
 
         case ArgType::Player:
             out.kind = TriggerArgKind::Choice;
+            out.role = TriggerArgRole::Player;
             out.label = "플레이어";
             for (std::size_t i = 0; i < 27; ++i)
                 addChoice(std::uint32_t(i), generator.getTrigPlayer(i));
@@ -4294,6 +4303,7 @@ TriggerArg describeActionArg(const TextTrigGenerator & generator,
 
         case ArgType::Unit:
             out.kind = TriggerArgKind::Choice;
+            out.role = TriggerArgRole::UnitType;
             out.label = "유닛";
             for (int i = 0; i < int(Sc::Unit::TotalReferenceTypes); ++i)
                 addChoice(std::uint32_t(i), generator.getTrigUnit(Sc::Unit::Type(i)));
@@ -4376,6 +4386,7 @@ TriggerArg describeActionArg(const TextTrigGenerator & generator,
 
         case ArgType::Switch:
             out.kind = TriggerArgKind::Choice;
+            out.role = TriggerArgRole::Switch;
             out.label = "스위치";
             for (std::size_t i = 0; i < 256; ++i)
                 addChoice(std::uint32_t(i), generator.getTrigSwitch(i));
@@ -4415,6 +4426,7 @@ TriggerArg describeActionArg(const TextTrigGenerator & generator,
 
         case ArgType::MemoryOffset:
             out.kind = TriggerArgKind::Number;
+            out.role = TriggerArgRole::MemoryOffset;
             out.label = "메모리 위치";
             break;
 

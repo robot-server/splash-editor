@@ -165,6 +165,45 @@ TriggerEditor::TriggerEditor(chk::MapDocument & document, io::GameGraphics & gra
         }
     });
 
+    // EUD 자리는 플레이어와 유닛을 함께 바꾼다.
+    const auto applyEudSlot = [this, triggerIndex](std::size_t slot,
+                                     std::size_t playerArg, std::uint32_t player,
+                                     std::size_t unitArg, std::uint32_t unit) {
+        if (currentIndex() < 0)
+            return;
+
+        const int row = conditions_->currentRow();
+        const bool unitOk = document_.setConditionArg(triggerIndex(), slot, unitArg, unit);
+        const bool playerOk = document_.setConditionArg(triggerIndex(), slot, playerArg, player);
+
+        if (unitOk || playerOk)
+        {
+            emit documentEdited();
+            reloadElements();
+            conditions_->setCurrentRow(row);
+        }
+    };
+    connect(conditionArgs_, &TriggerArgumentPanel::eudSlotPicked, this, applyEudSlot);
+
+    connect(actionArgs_, &TriggerArgumentPanel::eudSlotPicked, this,
+            [this, triggerIndex](std::size_t slot, std::size_t playerArg,
+                                 std::uint32_t player, std::size_t unitArg,
+                                 std::uint32_t unit) {
+        if (currentIndex() < 0)
+            return;
+
+        const int row = actions_->currentRow();
+        const bool unitOk = document_.setActionArg(triggerIndex(), slot, unitArg, unit);
+        const bool playerOk = document_.setActionArg(triggerIndex(), slot, playerArg, player);
+
+        if (unitOk || playerOk)
+        {
+            emit documentEdited();
+            reloadElements();
+            actions_->setCurrentRow(row);
+        }
+    });
+
     connect(actionArgs_, &TriggerArgumentPanel::typeChanged, this,
             [this, triggerIndex](std::size_t slot, std::uint8_t type) {
         if (currentIndex() < 0) return;

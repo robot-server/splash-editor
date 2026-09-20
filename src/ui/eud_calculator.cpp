@@ -146,6 +146,44 @@ EudCalculator::EudCalculator(QWidget * parent)
     refreshFromSlot();
 }
 
+unsigned EudCalculator::currentPlayer() const
+{
+    return static_cast<unsigned>(player_->value());
+}
+
+unsigned EudCalculator::currentUnit() const
+{
+    return static_cast<unsigned>(unit_->value());
+}
+
+void EudCalculator::enablePicking()
+{
+    if (auto * buttons = findChild<QDialogButtonBox *>())
+    {
+        auto * pick = buttons->addButton(tr("이 자리 쓰기"), QDialogButtonBox::AcceptRole);
+        connect(pick, &QPushButton::clicked, this, &QDialog::accept);
+    }
+}
+
+bool EudCalculator::pickSlot(QWidget * parent, unsigned * player, unsigned * unit,
+                             unsigned startPlayer, unsigned startUnit)
+{
+    EudCalculator dialog(parent);
+    dialog.setWindowTitle(tr("EUD 자리 고르기"));
+    dialog.player_->setValue(static_cast<int>(std::min(startPlayer, 2147483647u)));
+    dialog.unit_->setValue(static_cast<int>(std::min<unsigned>(startUnit, kUnitTypes - 1)));
+    dialog.enablePicking();
+
+    if (dialog.exec() != QDialog::Accepted)
+        return false;
+
+    if (player != nullptr)
+        *player = dialog.currentPlayer();
+    if (unit != nullptr)
+        *unit = dialog.currentUnit();
+    return true;
+}
+
 void EudCalculator::refreshFromSlot()
 {
     if (updating_)

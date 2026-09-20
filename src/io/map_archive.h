@@ -264,6 +264,23 @@ enum class TriggerArgKind
     Sound,      ///< 사운드 파일 경로
 };
 
+/// 그 자리가 트리거에서 무엇을 뜻하는지.
+///
+/// 이름표는 사람이 읽으라고 있는 것이라 그것으로 자리를 가려내면 말이
+/// 바뀔 때마다 깨진다. EUD 처럼 특정 자리를 집어야 하는 기능이 기댈 수
+/// 있도록 뜻을 따로 적어 둔다.
+enum class TriggerArgRole
+{
+    Other,
+    Player,
+    UnitType,
+    Location,
+    Switch,
+    Amount,
+    Comparison,
+    MemoryOffset,
+};
+
 /// 고를 수 있는 값 하나.
 struct TriggerChoice
 {
@@ -275,6 +292,7 @@ struct TriggerChoice
 struct TriggerArg
 {
     TriggerArgKind kind = TriggerArgKind::None;
+    TriggerArgRole role = TriggerArgRole::Other; ///< 그 자리의 뜻
     std::string label;                   ///< "플레이어", "유닛" 처럼 무슨 자리인지
     std::string text;                    ///< 지금 값을 사람이 읽는 형태
     std::uint32_t value = 0;             ///< 지금 값의 원시 형태

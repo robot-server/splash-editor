@@ -1,5 +1,7 @@
 #include "ui/trigger_argument_panel.h"
 
+#include "ui/eud_calculator.h"
+
 #include <QComboBox>
 #include <QLineEdit>
 #include <QFormLayout>
@@ -7,6 +9,7 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QSpinBox>
+#include <QTimer>
 #include <QVBoxLayout>
 
 namespace splash::ui {
@@ -28,6 +31,27 @@ TriggerArgumentPanel::TriggerArgumentPanel(Kind kind, QWidget * parent)
     layout->addWidget(body_, 1);
 
     body_->hide();
+}
+
+int TriggerArgumentPanel::findArg(io::TriggerArgRole role) const
+{
+    for (std::size_t i = 0; i < element_.args.size(); ++i)
+    {
+        if (element_.args[i].role == role)
+            return static_cast<int>(i);
+    }
+    return -1;
+}
+
+bool TriggerArgumentPanel::isDeaths() const
+{
+    // Chk 의 Deaths 조건과 Set Deaths 액션. 메모리를 건드릴 수 있는 것은
+    // 이 둘뿐이라 다른 줄에는 단추를 달지 않는다.
+    constexpr std::uint8_t kDeathsCondition = 15;
+    constexpr std::uint8_t kSetDeathsAction = 45;
+
+    return kind_ == Kind::Condition ? element_.type == kDeathsCondition
+                                    : element_.type == kSetDeathsAction;
 }
 
 void TriggerArgumentPanel::clear()
@@ -90,6 +114,39 @@ void TriggerArgumentPanel::rebuild()
         emit typeChanged(slot_, static_cast<std::uint8_t>(typeBox->currentData().toInt()));
     });
     form_->addRow(tr("종류"), typeBox);
+
+    // --- EUD 자리 고르기 ---
+    //
+    // Deaths 는 "플레이어 N 의 유닛 M 을 죽인 수"를 세는 척하면서 실은
+    // 게임 메모리의 한 자리를 읽는다. 자리를 손으로 셈해 넣으면 틀리기
+    // 쉬우니, 주소로 고를 수 있게 단추를 달아 둔다.
+    const int playerArg = findArg(io::TriggerArgRole::Player);
+    const int unitArg = findArg(io::TriggerArgRole::UnitType);
+
+    if (isDeaths() && playerArg >= 0 && unitArg >= 0)
+    {
+        auto * pick = new QPushButton(tr("EUD 주소로 고르기…"), body_);
+        pick->setToolTip(
+            tr("메모리 주소를 넣으면 그 자리에 맞는 플레이어·유닛으로 채웁니다."));
+
+        connect(pick, &QPushButton::clicked, this, [this, playerArg, unitArg] {
+            unsigned player = element_.args[std::size_t(playerArg)].value;
+            unsigned unit = element_.args[std::size_t(unitArg)].value;
+
+            if (!EudCalculator::pickSlot(this, &player, &unit, player, unit))
+                return;
+
+            // 값을 넣으면 이 판이 통째로 다시 그려져 지금 누른 단추가
+            // 사라진다. 누름이 끝난 뒤로 미뤄 둔다.
+            const std::size_t slot = slot_;
+            QTimer::singleShot(0, this, [this, slot, playerArg, unitArg, player, unit] {
+                emit eudSlotPicked(slot, std::size_t(playerArg), player,
+                                   std::size_t(unitArg), unit);
+            });
+        });
+
+        form_->addRow(QString(), pick);
+    }
 
     // --- 인자마다 알맞은 상자 ---
     for (std::size_t i = 0; i < element_.args.size(); ++i)

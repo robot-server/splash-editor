@@ -43,6 +43,20 @@ public:
     /// 주소 -> EPD. 네 바이트 단위로 센 Deaths 표로부터의 거리다.
     static int epdFor(unsigned address);
 
+    /// 자리를 골라 달라고 띄운다. 골랐으면 참이고 player·unit 에 담긴다.
+    ///
+    /// Deaths 조건을 고치는 중에 부르면 고른 자리가 곧바로 그 조건에
+    /// 들어간다 — 주소를 손으로 옮겨 적지 않아도 된다.
+    static bool pickSlot(QWidget * parent, unsigned * player, unsigned * unit,
+                         unsigned startPlayer = 0, unsigned startUnit = 0);
+
+    /// 지금 고른 자리.
+    unsigned currentPlayer() const;
+    unsigned currentUnit() const;
+
+    /// 고르기 단추를 달아 둔다 (pickSlot 이 쓴다).
+    void enablePicking();
+
 private:
     void refreshFromSlot();
     void refreshFromAddress();

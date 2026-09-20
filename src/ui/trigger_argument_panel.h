@@ -46,8 +46,20 @@ signals:
     /// 문자열 인자를 바꿨다.
     void argTextChanged(std::size_t slot, std::size_t argIndex, const QString & text);
 
+    /// EUD 자리를 골랐다. 플레이어와 유닛을 한꺼번에 바꿔야 한다 — 하나만
+    /// 바꾸면 그 사이에 엉뚱한 자리를 가리킨다.
+    void eudSlotPicked(std::size_t slot,
+                       std::size_t playerArg, std::uint32_t player,
+                       std::size_t unitArg, std::uint32_t unit);
+
 private:
     void rebuild();
+
+    /// 그 뜻을 가진 인자의 자리. 없으면 -1.
+    int findArg(io::TriggerArgRole role) const;
+
+    /// 지금 줄이 Deaths(또는 Set Deaths)인지.
+    bool isDeaths() const;
 
     Kind kind_;
     std::size_t triggerIndex_ = 0;
