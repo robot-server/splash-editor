@@ -121,6 +121,42 @@ int main(int argc, char ** argv)
     SPLASH_CHECK(reopened.open(path.string()));
     SPLASH_CHECK_EQ(reopened.units().size(), document.units().size());
 
+    // --- SCMDraft 문법으로 적은 트리거를 그대로 읽는지 ---
+    //
+    // 글줄은 SCMDraft 2 가 함께 주는 "Text Trigedit Syntax Help" 에 적힌
+    // 형태 그대로다. 우리가 쓴 글을 우리가 다시 읽을 수 있는지도 본다.
+    if (haveAssets)
+    {
+        const std::string script =
+            "Trigger(\"Player 1\"){\n"
+            "Conditions:\n"
+            "\tAlways();\n"
+            "\tDeaths(\"Player 1\", \"Terran Marine\", At least, 1);\n"
+            "\tAccumulate(\"Player 1\", At least, 500, ore);\n"
+            "Actions:\n"
+            "\tCreate Unit(\"Player 1\", \"Terran Marine\", 1, \"Anywhere\");\n"
+            "\tSet Resources(\"Player 1\", Add, 100, ore and gas);\n"
+            "\tDisplay Text Message(Always Display, \"hi\");\n"
+            "\tPreserve Trigger();\n"
+            "}\n";
+
+        chk::MapDocument scripted;
+        SPLASH_CHECK(scripted.createNew(io::MapFormat::HybridScm, 0, 64, 64,
+                                        io::MapArchive::DefaultTriggers::None));
+        SPLASH_CHECK(scripted.applyTriggerText(script, graphics));
+        SPLASH_CHECK_EQ(scripted.info().triggerCount, std::size_t(1));
+
+        const auto written = scripted.triggerText(graphics);
+        SPLASH_CHECK(written.has_value());
+        if (written)
+        {
+            SPLASH_CHECK(written->find("Deaths(\"Player 1\", \"Terran Marine\", "
+                                       "At least, 1)") != std::string::npos);
+            SPLASH_CHECK(scripted.applyTriggerText(*written, graphics));
+            SPLASH_CHECK_EQ(scripted.info().triggerCount, std::size_t(1));
+        }
+    }
+
     // --- 실행 취소가 화면을 흔들지 않는지 ---
     SPLASH_CHECK(document.undo());
     view.refresh();
