@@ -73,6 +73,34 @@ inline constexpr bool isAligned(std::uint32_t address)
     return (address - kDeathsBase) % 4u == 0;
 }
 
+/// 그 주소가 든 네 바이트 칸의 첫 자리.
+///
+/// 게임의 바이트·워드 값은 네 바이트 경계에 놓여 있지 않은 것이 흔하다
+/// (유닛 색 0x581D76 처럼). Deaths 는 네 바이트 단위로만 읽고 쓰므로,
+/// 그런 자리는 **담긴 칸을 읽고 비트마스크로 걸러** 다룬다 — 그것이
+/// Memory Masked 가 있는 까닭이다.
+inline constexpr std::uint32_t containingDword(std::uint32_t address)
+{
+    return address - ((address - kDeathsBase) % 4u);
+}
+
+/// 그 주소의 값 size 바이트만 남기는 비트마스크.
+///
+/// 칸 안에서 몇 번째 바이트인지에 따라 자리가 달라진다.
+///
+/// size 가 네 바이트를 넘으면 그것은 값의 폭이 아니라 **항목 사이의 간격**
+/// 이다(우리 표는 그 둘을 한 칸에 담는다 — Deaths 표의 48 처럼). 폭을 알 수
+/// 없으니 한 바이트만 남긴다. 넓게 잡아 옆 값까지 덮는 것보다 안전하다.
+inline constexpr std::uint32_t maskFor(std::uint32_t address, std::uint32_t size)
+{
+    const std::uint32_t byteInDword = (address - kDeathsBase) % 4u;
+    const std::uint32_t width = (size == 0 || size > 4) ? 1u : size;
+    const std::uint32_t bytes = (width > 4u - byteInDword) ? 4u - byteInDword : width;
+    const std::uint32_t bits = bytes * 8u;
+    const std::uint32_t value = (bits >= 32u) ? 0xFFFFFFFFu : ((1u << bits) - 1u);
+    return value << (byteInDword * 8u);
+}
+
 /// 주소 -> Deaths 자리. 네 바이트에 맞지 않으면 거짓.
 ///
 /// 표 안에 드는 주소는 본래의 (플레이어, 유닛) 으로 돌려준다. 표 밖이면

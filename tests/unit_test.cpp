@@ -180,9 +180,38 @@ void testEudSlots()
     SPLASH_CHECK(!io::eud::slotFor(0x0058A365, nullptr, nullptr));
     SPLASH_CHECK(!io::eud::isAligned(0x0058A366));
 
-    // 붙박이 표의 자리는 모두 네 바이트 경계여야 한다.
+    // 붙박이 표에는 네 바이트 경계가 아닌 자리도 있다 — 유닛 색(0x581D76)
+    // 같은 바이트·워드 값이다. Deaths 는 네 바이트 단위로만 읽으므로 그런
+    // 자리는 담긴 칸과 마스크로 다룬다. 어느 쪽이든 길이 있어야 한다.
     for (const auto & entry : io::eud::builtinOffsets())
-        SPLASH_CHECK(io::eud::slotFor(entry.address, nullptr, nullptr));
+    {
+        if (io::eud::isAligned(entry.address))
+        {
+            SPLASH_CHECK(io::eud::slotFor(entry.address, nullptr, nullptr));
+            continue;
+        }
+
+        const std::uint32_t dword = io::eud::containingDword(entry.address);
+        SPLASH_CHECK(io::eud::isAligned(dword));
+        SPLASH_CHECK(dword <= entry.address && entry.address - dword < 4);
+
+        // 마스크는 비어 있으면 안 된다 — 걸러 낼 것이 없다는 뜻이 된다.
+        SPLASH_CHECK(io::eud::maskFor(entry.address, entry.size) != 0);
+    }
+
+    // 마스크 셈. 칸 안 두 번째 바이트의 한 바이트 값이면 0x0000FF00 이다.
+    SPLASH_CHECK_EQ(io::eud::maskFor(io::eud::kDeathsBase, 4), 0xFFFFFFFFu);
+    SPLASH_CHECK_EQ(io::eud::maskFor(io::eud::kDeathsBase + 1, 1), 0x0000FF00u);
+    SPLASH_CHECK_EQ(io::eud::maskFor(io::eud::kDeathsBase + 2, 2), 0xFFFF0000u);
+
+    // size 가 네 바이트를 넘으면 값의 폭이 아니라 항목 사이의 간격이다.
+    // 폭을 모르니 한 바이트만 — 넓게 잡아 옆 값을 덮으면 안 된다.
+    SPLASH_CHECK_EQ(io::eud::maskFor(io::eud::kDeathsBase + 2, 8), 0x00FF0000u);
+
+    // 칸 끝을 넘겨 달라고 해도 칸 안에서 끊는다.
+    SPLASH_CHECK_EQ(io::eud::maskFor(io::eud::kDeathsBase + 3, 4), 0xFF000000u);
+    SPLASH_CHECK_EQ(io::eud::containingDword(io::eud::kDeathsBase + 3),
+                    io::eud::kDeathsBase);
 }
 
 void testEudOffsetLookup()
@@ -202,6 +231,37 @@ void testEudOffsetLookup()
 
     // 어디에도 없는 자리.
     SPLASH_CHECK(io::eud::offsetAt(0x00100000) == nullptr);
+
+    // 붙박이 표에는 우리가 적은 것과 eudplib(MIT)에서 뽑아 온 것이 함께
+    // 들어 있다. 생성물이 빠지면 DAT 표를 이름으로 못 찾는다.
+    const auto & builtin = io::eud::builtinOffsets();
+    SPLASH_CHECK(builtin.size() > 150);
+
+    // 같은 주소를 두 번 담지 않는다. 담으면 offsetAt 이 어느 쪽을 고를지
+    // 그때그때 달라진다.
+    for (std::size_t i = 1; i < builtin.size(); ++i)
+        SPLASH_CHECK(builtin[i - 1].address != builtin[i].address);
+
+    // 주소가 겹치면 우리말 이름이 이겨야 한다 — eudplib 에도 0x0057F0F0 이
+    // `플레이어 · mineral` 로 들어 있지만, 설명과 리마스터 지원 여부가 붙은
+    // 우리 것이 더 쓸모 있다.
+    const auto * mineralEntry = io::eud::offsetAt(0x0057F0F0);
+    SPLASH_CHECK(mineralEntry != nullptr);
+    if (mineralEntry != nullptr)
+    {
+        SPLASH_CHECK_EQ(mineralEntry->name, std::string("플레이어 미네랄"));
+        SPLASH_CHECK(mineralEntry->scr == io::eud::ScrSupport::SimpleData);
+    }
+
+    // eudplib 에서만 오는 자리도 찾아야 한다 (units.dat 의 최대 체력).
+    const auto * maxHp = io::eud::offsetAt(0x00662350);
+    SPLASH_CHECK(maxHp != nullptr);
+    if (maxHp != nullptr)
+    {
+        SPLASH_CHECK_EQ(maxHp->address, 0x00662350u);
+        SPLASH_CHECK_EQ(maxHp->size, 4u);
+        SPLASH_CHECK(maxHp->name.find("units.dat") != std::string::npos);
+    }
 
     // 주소 읽기: 0x 가 붙든 안 붙든, 열여섯 자리 글자가 섞이면 16진수.
     SPLASH_CHECK_EQ(io::eud::parseAddress("0x58A364").value_or(0), 0x0058A364u);

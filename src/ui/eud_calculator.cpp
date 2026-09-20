@@ -333,19 +333,18 @@ void EudCalculator::refreshFromAddress()
         note_->setText(tr("주소로 읽을 수 없습니다 (예: 0x0058A364)."));
         return;
     }
-    if (!eud::isAligned(*address))
-    {
-        note_->setText(tr("네 바이트 경계가 아닙니다 — Deaths 칸으로는 읽을 수 없습니다."));
-        return;
-    }
-
     // 주소 칸은 사람이 치는 중이므로 다시 쓰지 않는다.
     const bool wasUpdating = updating_;
     updating_ = true;
     epd_->setText(QString::number(eud::signedEpdFor(*address)));
+
+    // 네 바이트 경계가 아니어도 막지 않는다 — 담긴 칸을 마스크와 함께
+    // 읽으면 되고, describeAddress 가 그 길을 알려 준다. Deaths 자리는
+    // 담긴 칸 기준으로 보인다.
+    const std::uint32_t aligned = eud::containingDword(*address);
     std::uint32_t player = 0;
     std::uint32_t unit = 0;
-    eud::slotFor(*address, &player, &unit);
+    eud::slotFor(aligned, &player, &unit);
     player_->setValue(static_cast<int>(std::min(player, 2147483647u)));
     unit_->setValue(static_cast<int>(std::min<std::uint32_t>(unit, kUnitTypes - 1)));
     note_->setText(QString::fromStdString(eud::describeAddress(*address)));

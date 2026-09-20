@@ -329,6 +329,29 @@ const std::vector<OffsetEntry> & builtinOffsets()
             { "플레이어 이름",          0x0057EE9C, 25,   1, ScrSupport::Unsupported,
               "리마스터에서는 안 된다." },
         };
+
+        // 여기까지가 우리가 우리말로 적어 둔 자리다. 그 아래로 eudplib 에서
+        // 뽑아 온 표를 붙인다 — DAT 표(units·weapons·flingy·sprites·images·
+        // tech·upgrades·orders)와 플레이어 상태가 이름과 함께 들어온다.
+        //
+        // 주소가 겹치면 **우리 것을 남긴다.** 우리말 이름과 설명, 그리고
+        // 리마스터 지원 여부가 붙어 있어 더 쓸모 있기 때문이다.
+        std::vector<OffsetEntry> generated {
+#include "io/eud_offsets_eudplib.inc"
+        };
+
+        std::vector<std::uint32_t> curated;
+        curated.reserve(out.size());
+        for (const OffsetEntry & entry : out)
+            curated.push_back(entry.address);
+        std::sort(curated.begin(), curated.end());
+
+        for (OffsetEntry & entry : generated)
+        {
+            if (!std::binary_search(curated.begin(), curated.end(), entry.address))
+                out.push_back(std::move(entry));
+        }
+
         sortEntries(out);
         return out;
     }();
@@ -603,7 +626,15 @@ std::string describeAddress(std::uint32_t address)
     std::string out = head;
     if (!isAligned(address))
     {
-        out += "  (네 바이트 경계가 아님 — Deaths 로는 못 읽는다)";
+        // 못 읽는 자리가 아니다 — 담긴 칸을 마스크와 함께 읽으면 된다.
+        const OffsetEntry * here = offsetAt(address);
+        char note[96] = {};
+        std::snprintf(note, sizeof(note), "  담긴 칸 0x%08X, 마스크 0x%08X",
+                      containingDword(address),
+                      maskFor(address, here != nullptr ? here->size : 1u));
+        out += note;
+        if (here != nullptr)
+            out += "  " + here->name;
         return out;
     }
 

@@ -320,13 +320,41 @@ euddraft·SCMDraft 의 Memory 표기와도 같다.
 
 ### 오프셋 표
 
-자주 쓰는 자리는 붙박이로 들고 있다. 더 필요하면 **EUD Book**(`armoha/eud-book`)
-의 `api.json` 을 받아 가리킨다 — 900개가 넘는 자리를 이름·크기·리마스터
-지원 여부(`Simple Data` / `Supported` / `Read Only` / `Unsupported` …)와 함께
-쓴다.
+붙박이로 **165개**를 들고 있다. 두 갈래에서 왔다.
+
+- 자주 쓰는 24개는 우리가 우리말 이름과 설명, 리마스터 지원 여부를 붙여
+  직접 적었다.
+- 나머지는 [eudplib](https://github.com/armoha/eudplib) 의
+  `src/eudplib/scdata` 에서 뽑았다 — DAT 표(units·weapons·flingy·sprites·
+  images·tech·upgrades·orders)와 플레이어 상태다. **eudplib 은 MIT** 라
+  고지문만 지키면 된다. 뽑는 일은 [`tools/gen_eud_offsets.py`](tools/gen_eud_offsets.py)
+  가 하고, 만들어진 표는 `src/io/eud_offsets_eudplib.inc` 에 있다. 주소가
+  겹치면 우리말 이름 쪽을 남긴다.
+
+더 필요하면 **EUD Book**(`armoha/eud-book`) 의 `api.json` 을 받아 가리킨다 —
+900개가 넘는 자리를 리마스터 지원 여부(`Simple Data` / `Supported` /
+`Read Only` / `Unsupported` …)와 함께 쓴다. 그 값은 eudplib 에 없어서, 자리가
+리마스터에서 되는지 촘촘히 가려내려면 이 표가 필요하다.
 
 그 파일은 **라이선스가 밝혀져 있지 않아 저장소에 넣지 않는다.** 쓰려는
-사람이 직접 받아 가리킨다.
+사람이 직접 받아 가리킨다. (LICENSE 도 README 도 없고, 담긴 설명문이 EUDDB
+계열 문구라 원작자가 armoha 가 아닐 수 있다.)
+
+### 네 바이트 경계가 아닌 자리
+
+게임의 바이트·워드 값은 네 바이트 경계에 놓여 있지 않은 것이 흔하다
+(유닛 색 `0x00581D76` 처럼). Deaths 는 네 바이트 단위로만 읽고 쓰므로 그런
+자리는 **담긴 칸을 읽고 비트마스크로 거른다** — `Memory Masked` 가 있는
+까닭이다. 계산기와 `eud addr` 이 담긴 칸과 마스크를 함께 알려 준다.
+
+```
+$ splash-cli eud addr 0x581D76
+  주소      : 0x00581D76
+  네 바이트 경계가 아닙니다 — 담긴 칸을 마스크와 함께 읽으세요.
+  담긴 칸  : 0x00581D74
+  마스크    : 0x00FF0000
+  이름      : 플레이어 · unitColor
+```
 
 ```sh
 # 화면: 트리거 › EUD 주소 계산기… › 오프셋 표 불러오기…

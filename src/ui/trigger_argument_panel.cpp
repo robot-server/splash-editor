@@ -126,7 +126,18 @@ void TriggerArgumentPanel::addMemoryAddressRow()
         }
         if (!io::eud::isAligned(*chosen))
         {
-            note->setText(tr("네 바이트 경계가 아닙니다 — Deaths 로는 읽을 수 없습니다."));
+            // 못 쓰는 자리가 아니다. 담긴 칸을 짚어 주고 마스크를 일러 준다 —
+            // 값을 말없이 옮겨 넣지는 않는다. 어느 칸을 건드릴지는 사람이 정한다.
+            const auto * here = io::eud::offsetAt(*chosen);
+            note->setText(
+                tr("네 바이트 경계가 아닙니다. 담긴 칸 0x%1 을 Memory Masked 로 "
+                   "읽고 마스크 0x%2 로 거르세요.%3")
+                    .arg(io::eud::containingDword(*chosen), 8, 16, QLatin1Char('0'))
+                    .arg(io::eud::maskFor(*chosen, here != nullptr ? here->size : 1u),
+                         8, 16, QLatin1Char('0'))
+                    .arg(here != nullptr
+                             ? tr(" (%1)").arg(QString::fromStdString(here->name))
+                             : QString()));
             return;
         }
         apply(*chosen);

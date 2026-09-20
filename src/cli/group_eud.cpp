@@ -162,8 +162,19 @@ int eudAddr(Args & args)
 
     if (!eud::isAligned(address))
     {
-        std::cout << "  경고      : 네 바이트 경계가 아닙니다. Deaths 로는 읽을 수 없습니다.\n";
-        return 1;
+        // 못 읽는 자리가 아니다. Deaths 가 네 바이트 단위라 담긴 칸을
+        // 읽고 마스크로 거르면 된다 — Memory Masked 가 그 일을 한다.
+        const auto * here = eud::offsetAt(address);
+        const std::uint32_t size = here != nullptr ? here->size : 1u;
+        std::cout << "  네 바이트 경계가 아닙니다 — 담긴 칸을 마스크와 함께 읽으세요.\n";
+        std::cout << "  담긴 칸  : " << hex(eud::containingDword(address)) << "\n";
+        std::cout << "  마스크    : " << hex(eud::maskFor(address, size)) << "\n";
+        if (here != nullptr)
+            std::cout << "  이름      : " << here->name << "\n";
+        std::cout << "  보기      : eud set-condition <맵> <트리거> <줄> "
+                  << hex(eud::containingDword(address)) << " exactly <값> --mask "
+                  << hex(eud::maskFor(address, size)) << "\n";
+        return 0;
     }
 
     std::uint32_t player = 0;
