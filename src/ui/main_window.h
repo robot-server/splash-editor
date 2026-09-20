@@ -25,6 +25,7 @@ class TilePalette;
 class BrushPalette;
 class UnitPalette;
 class MiniMap;
+class ObjectTree;
 class SoundPlayer;
 
 class MainWindow : public QMainWindow
@@ -118,6 +119,7 @@ private:
     QAction * selectToolAction_ = nullptr; ///< 우클릭으로 돌아올 때 표시를 맞춘다
     QComboBox * ownerBox_ = nullptr; ///< 놓을 유닛의 소유자 (숫자 키로도 바꾼다)
     QDockWidget * unitDock_ = nullptr;
+    ObjectTree * objectTree_ = nullptr;
     MiniMap * miniMap_ = nullptr;
     SoundPlayer * soundPlayer_ = nullptr;
 

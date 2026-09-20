@@ -3,6 +3,7 @@
 #include "ui/map_view.h"
 #include "ui/tile_palette.h"
 #include "ui/mini_map.h"
+#include "ui/object_tree.h"
 #include "ui/sound_player.h"
 #include "ui/briefing_editor.h"
 #include "ui/brush_palette.h"
@@ -412,6 +413,26 @@ void MainWindow::buildCentralWidget()
     connect(categoryBox, &QComboBox::currentIndexChanged, this, [this, categoryBox](int) {
         unitPalette_->setCategory(
             static_cast<UnitPalette::Category>(categoryBox->currentData().toInt()));
+    });
+
+    // 오브젝트 나무 — 맵에 놓인 것을 종류별로 짚어 간다.
+    objectTree_ = new ObjectTree(this);
+    objectTree_->setTileset(&tileset_);
+    objectTree_->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    addDockWidget(Qt::RightDockWidgetArea, objectTree_);
+    objectTree_->hide(); // 자리를 많이 차지하므로 필요할 때 연다
+
+    connect(objectTree_, &ObjectTree::unitPicked, this, [this](std::size_t index) {
+        mapView_->focusUnit(index);
+    });
+    connect(objectTree_, &ObjectTree::spritePicked, this, [this](std::size_t index) {
+        mapView_->focusSprite(index);
+    });
+    connect(objectTree_, &ObjectTree::doodadPicked, this, [this](std::size_t index) {
+        mapView_->focusDoodad(index);
+    });
+    connect(objectTree_, &ObjectTree::locationPicked, this, [this](std::size_t index) {
+        mapView_->focusLocation(index);
     });
 
     unitDock_ = new QDockWidget(tr("유닛 팔레트"), this);
@@ -1485,6 +1506,17 @@ void MainWindow::buildMenus()
     zoomResetAction_ = viewMenu->addAction(tr("실제 크기(&A)"));
     zoomResetAction_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_0));
     connect(zoomResetAction_, &QAction::triggered, mapView_, &MapView::zoomReset);
+
+    viewMenu->addSeparator();
+
+    if (objectTree_ != nullptr)
+    {
+        QAction * toggleTree = objectTree_->toggleViewAction();
+        toggleTree->setText(tr("오브젝트 목록(&J)"));
+        toggleTree->setToolTip(
+            tr("맵에 놓인 유닛·스프라이트·두들·로케이션을 목록에서 짚어 갑니다."));
+        viewMenu->addAction(toggleTree);
+    }
 
     viewMenu->addSeparator();
 
@@ -2865,6 +2897,11 @@ void MainWindow::refreshFromDocument()
 {
     refreshTabText(currentDocument_);
     refreshPaletteColor();
+
+    if (objectTree_ != nullptr)
+    {
+        objectTree_->setDocument(document().isOpen() ? &document() : nullptr);
+    }
 
     const bool open = document().isOpen();
 

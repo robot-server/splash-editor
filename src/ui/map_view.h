@@ -65,6 +65,11 @@ public:
     /// 그 로케이션이 보이도록 화면을 옮기고 고른 상태로 만든다.
     void focusLocation(std::size_t index);
 
+    /// 그 유닛·스프라이트·두들이 보이도록 옮기고 고른 상태로 만든다.
+    void focusUnit(std::size_t index);
+    void focusSprite(std::size_t index);
+    void focusDoodad(std::size_t index);
+
     /// 선택된 유닛 번호. 없으면 -1.
     /// 마지막으로 고른 유닛. 여럿을 골랐으면 그 가운데 하나다.
     int selectedUnit() const { return selectedUnit_; }

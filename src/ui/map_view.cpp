@@ -1299,6 +1299,67 @@ void MapView::selectAllUnits()
     viewport()->update();
 }
 
+void MapView::focusUnit(std::size_t index)
+{
+    if (document_ == nullptr || !document_->isOpen())
+        return;
+
+    const auto & units = document_->units();
+    if (index >= units.size())
+        return;
+
+    tool_ = Tool::Select;
+    emit toolChanged(tool_);
+
+    selectedUnits_.assign(1, index);
+    selectedUnit_ = static_cast<int>(index);
+    selectedSprite_ = -1;
+    selectedLocation_ = -1;
+
+    centerOnMap(QPointF(units[index].x, units[index].y));
+    emit selectionChanged(selectedUnit_);
+    viewport()->update();
+}
+
+void MapView::focusSprite(std::size_t index)
+{
+    if (document_ == nullptr || !document_->isOpen())
+        return;
+
+    const auto & sprites = document_->sprites();
+    if (index >= sprites.size())
+        return;
+
+    tool_ = Tool::Select;
+    emit toolChanged(tool_);
+
+    selectedUnits_.clear();
+    selectedUnit_ = -1;
+    selectedLocation_ = -1;
+    selectedSprite_ = static_cast<int>(index);
+
+    centerOnMap(QPointF(sprites[index].x, sprites[index].y));
+    viewport()->update();
+}
+
+void MapView::focusDoodad(std::size_t index)
+{
+    if (document_ == nullptr || !document_->isOpen())
+        return;
+
+    const auto doodads = document_->doodads();
+    if (index >= doodads.size())
+        return;
+
+    // 두들은 두들 도구에서만 고를 수 있다.
+    tool_ = Tool::PlaceDoodad;
+    emit toolChanged(tool_);
+
+    selectedDoodad_ = static_cast<int>(index);
+    centerOnMap(QPointF(doodads[index].x, doodads[index].y));
+    viewport()->update();
+}
+
 bool MapView::jumpToStartLocation(std::uint8_t player)
 {
     if (document_ == nullptr || !document_->isOpen())
