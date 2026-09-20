@@ -364,6 +364,70 @@ MapArchive & MapArchive::operator=(MapArchive &&) noexcept = default;
 
 namespace {
 
+/// CHK 끝을 넘어가는 구역을 잘라 낸다.
+///
+/// 구역 머리말의 길이 칸을 파일 크기보다 훨씬 크게 적어 두는 맵이 있다 —
+/// 남은 바이트가 아홉인데 1.8GB 라고 적어 두는 식이다. 그 값을 믿고 자리를
+/// 잡으면 작은 맵 하나를 여는 데 기가바이트를 쓴다. 게임은 읽을 수 없는
+/// 그 뒤를 그냥 무시하므로 우리도 거기서 끊는다.
+///
+/// 길이가 음수인 구역은 MappingCore 가 "되감기"로 쓰므로 건드리지 않는다.
+void truncateOverlongSections(std::vector<std::uint8_t> & chk)
+{
+    constexpr std::size_t kHeaderSize = 8;
+
+    std::size_t position = 0;
+    while (position + kHeaderSize <= chk.size())
+    {
+        std::int32_t size = 0;
+        std::memcpy(&size, chk.data() + position + 4, sizeof(size));
+
+        if (size < 0)
+        {
+            position += kHeaderSize;
+            continue;
+        }
+
+        const std::size_t remaining = chk.size() - position - kHeaderSize;
+        if (static_cast<std::size_t>(size) > remaining)
+        {
+            chk.resize(position); // 이 구역 머리말부터 버린다
+            return;
+        }
+
+        position += kHeaderSize + static_cast<std::size_t>(size);
+    }
+}
+
+/// 그 맵의 시나리오에 끝을 넘어가는 구역이 있는지.
+///
+/// MappingCore 는 구역 머리말의 길이 칸을 그대로 믿고 자리를 잡는다. 1.8GB
+/// 라고 적어 둔 구역이 있으면 열기만 해도 그만큼을 쓴다. 그런 맵은 우리가
+/// 손질한 시나리오로 직접 읽는다.
+bool hasOverlongSection(const std::string & filePath)
+{
+    try
+    {
+        MpqFile mpq;
+        if (!mpq.open(filePath, /*readOnly*/ true, /*createIfNotFound*/ false))
+            return false;
+
+        auto contents = mpq.getFile(kScenarioChkPath);
+        mpq.close();
+
+        if (!contents || contents->empty())
+            return false;
+
+        const std::size_t original = contents->size();
+        truncateOverlongSections(*contents);
+        return contents->size() != original;
+    }
+    catch (const std::exception &)
+    {
+        return false;
+    }
+}
+
 /// MPQ 를 직접 열어 시나리오만 읽는다.
 ///
 /// MappingCore 는 파일 확장자를 소문자로만 알아본다. ".SCX" 처럼 대문자로
@@ -380,6 +444,10 @@ bool loadArchiveDirectly(MapFile & map, const std::string & filePath)
         map.MpqFile::close();
 
         if (!contents || contents->empty())
+            return false;
+
+        truncateOverlongSections(*contents);
+        if (contents->empty())
             return false;
 
         std::stringstream chk(std::ios_base::in | std::ios_base::out | std::ios_base::binary);
@@ -412,7 +480,13 @@ Result MapArchive::open(const std::string & filePath)
     try
     {
         auto candidate = std::make_unique<MapFile>();
-        if (!candidate->load(filePath) && !loadArchiveDirectly(*candidate, filePath))
+
+        // 길이를 부풀린 구역이 있으면 MappingCore 에 그대로 맡기지 않는다 —
+        // 열기만 해도 기가바이트를 쓰기 때문이다.
+        const bool bomb = !hasChkExtension(filePath) && hasOverlongSection(filePath);
+
+        if ((bomb || !candidate->load(filePath)) &&
+            !loadArchiveDirectly(*candidate, filePath))
         {
             // 아카이브 자체가 열리지 않는 것과 시나리오가 이상한 것은 다른
             // 일이다. 헤더를 손질해 MPQ 로 보이지 않게 만든 맵이 있다.
