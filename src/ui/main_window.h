@@ -127,6 +127,7 @@ private:
     std::vector<QDockWidget *> extraViews_;
     void addViewport();
     void tileViewports();
+    void onManageModArchives();
     void forEachView(const std::function<void(MapView *)> & apply);
     MiniMap * miniMap_ = nullptr;
     SoundPlayer * soundPlayer_ = nullptr;

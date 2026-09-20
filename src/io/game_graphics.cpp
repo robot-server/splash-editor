@@ -68,7 +68,8 @@ bool GameGraphics::isLoaded() const
     return impl_->loaded;
 }
 
-bool GameGraphics::load(const std::string & installPath, std::string * error)
+bool GameGraphics::load(const std::string & installPath, std::string * error,
+                        const std::vector<std::string> & modArchives)
 {
     const auto setError = [error](const std::string & why) {
         if (error != nullptr)
@@ -88,6 +89,15 @@ bool GameGraphics::load(const std::string & installPath, std::string * error)
         // 클러스터는 여러 아카이브를 우선순위대로 뒤지는 인터페이스라,
         // 구버전의 patch_rt/BrooDat/StarDat 조합을 나중에 확장하기 좋다.
         std::vector<ArchiveFilePtr> sources;
+
+        // 모드 자료가 설치본을 덮어쓰도록 먼저 뒤진다. 못 여는 것은
+        // 건너뛴다 — 하나가 없다고 게임 자료까지 못 읽을 이유는 없다.
+        for (const std::string & archive : modArchives)
+        {
+            auto mod = std::make_shared<MpqFile>();
+            if (mod->open(archive, /*readOnly*/ true, /*createIfNotFound*/ false))
+                sources.push_back(mod);
+        }
 
         if (info.kind == InstallationKind::Casc)
         {

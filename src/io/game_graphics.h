@@ -49,7 +49,13 @@ public:
 
     /// 설치 폴더에서 타일셋 데이터를 읽는다. 비용이 크므로 한 번만 호출할 것.
     /// 실패하면 false 를 돌려주고 error 에 사유를 담는다.
-    bool load(const std::string & installPath, std::string * error = nullptr);
+    /// 게임 자료를 읽는다.
+    ///
+    /// modArchives 는 설치본보다 먼저 뒤질 MPQ 들이다. 앞에 적은 것이
+    /// 우선하므로, 유닛이나 지형을 갈아 끼운 모드 맵을 원래 모습대로 볼 수
+    /// 있다. 열리지 않는 것은 건너뛴다.
+    bool load(const std::string & installPath, std::string * error = nullptr,
+              const std::vector<std::string> & modArchives = {});
 
     bool isLoaded() const;
 

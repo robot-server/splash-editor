@@ -32,6 +32,7 @@
 #include <QDateTime>
 #include <QDir>
 #include <QUrl>
+#include <QListWidget>
 #include <QSettings>
 
 #include <algorithm>
@@ -658,6 +659,12 @@ void MainWindow::buildMenus()
 
     QAction * installAction = fileMenu->addAction(tr("StarCraft 설치 폴더 지정(&I)…"));
     connect(installAction, &QAction::triggered, this, &MainWindow::onChooseInstallPath);
+
+    QAction * modAction = fileMenu->addAction(tr("모드 자료(MPQ) 관리(&M)…"));
+    modAction->setToolTip(
+        tr("유닛이나 지형을 갈아 끼운 MPQ 를 얹습니다. 위에 있는 것이 먼저 "
+           "쓰이며, 모드 맵을 원래 모습대로 보는 데 씁니다."));
+    connect(modAction, &QAction::triggered, this, &MainWindow::onManageModArchives);
 
     fileMenu->addSeparator();
 
@@ -1787,6 +1794,96 @@ void MainWindow::addViewport()
         view->centerOnMap(mapView_->visibleMapRect().center());
 }
 
+void MainWindow::onManageModArchives()
+{
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("모드 자료"));
+    dialog.resize(560, 360);
+
+    auto * list = new QListWidget(&dialog);
+    for (const QString & path :
+         QSettings().value(QStringLiteral("modArchives")).toStringList())
+    {
+        list->addItem(path);
+    }
+
+    auto * hint = new QLabel(
+        tr("위에 있는 MPQ 가 먼저 쓰입니다. 여기 없는 파일은 게임 설치본에서 "
+           "읽습니다."), &dialog);
+    hint->setWordWrap(true);
+
+    auto * add = new QPushButton(tr("추가…"), &dialog);
+    auto * remove = new QPushButton(tr("빼기"), &dialog);
+    auto * up = new QPushButton(tr("위로"), &dialog);
+    auto * down = new QPushButton(tr("아래로"), &dialog);
+
+    connect(add, &QPushButton::clicked, &dialog, [&dialog, list] {
+        const QStringList chosen = QFileDialog::getOpenFileNames(
+            &dialog, tr("모드 MPQ 고르기"), QString(),
+            tr("MPQ 파일 (*.mpq *.MPQ *.snp *.exe);;모든 파일 (*)"));
+        for (const QString & path : chosen)
+        {
+            if (list->findItems(path, Qt::MatchExactly).isEmpty())
+                list->addItem(path);
+        }
+    });
+
+    connect(remove, &QPushButton::clicked, &dialog, [list] {
+        qDeleteAll(list->selectedItems());
+    });
+
+    const auto move = [list](int delta) {
+        const int row = list->currentRow();
+        const int target = row + delta;
+        if (row < 0 || target < 0 || target >= list->count())
+            return;
+        list->insertItem(target, list->takeItem(row));
+        list->setCurrentRow(target);
+    };
+    connect(up, &QPushButton::clicked, &dialog, [move] { move(-1); });
+    connect(down, &QPushButton::clicked, &dialog, [move] { move(1); });
+
+    auto * buttons = new QDialogButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    auto * side = new QVBoxLayout();
+    side->addWidget(add);
+    side->addWidget(remove);
+    side->addSpacing(12);
+    side->addWidget(up);
+    side->addWidget(down);
+    side->addStretch(1);
+
+    auto * row = new QHBoxLayout();
+    row->addWidget(list, 1);
+    row->addLayout(side);
+
+    auto * layout = new QVBoxLayout(&dialog);
+    layout->addWidget(hint);
+    layout->addLayout(row, 1);
+    layout->addWidget(buttons);
+
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    QStringList paths;
+    for (int i = 0; i < list->count(); ++i)
+        paths << list->item(i)->text();
+
+    QSettings().setValue(QStringLiteral("modArchives"), paths);
+
+    // 자료가 바뀌었으니 게임 자료를 다시 읽는다.
+    const QString install = QSettings().value(kInstallPathKey).toString();
+    if (!install.isEmpty())
+        loadTilesetFrom(install, /*announce*/ true);
+
+    statusBar()->showMessage(
+        paths.isEmpty() ? tr("모드 자료를 모두 뺐습니다")
+                        : tr("모드 자료 %1개를 얹었습니다").arg(paths.size()), 3000);
+}
+
 void MainWindow::tileViewports()
 {
     // 떠 있는 창만 옮긴다 — 가장자리에 붙인 창은 Qt 가 자리를 맡고 있다.
@@ -2747,8 +2844,16 @@ void MainWindow::loadTilesetFrom(const QString & installPath, bool announce)
 
     // CASC 인덱스를 읽느라 몇 초가 걸릴 수 있다.
     QApplication::setOverrideCursor(Qt::WaitCursor);
+    // 모드 자료가 있으면 설치본보다 먼저 뒤진다.
+    std::vector<std::string> mods;
+    for (const QString & path :
+         QSettings().value(QStringLiteral("modArchives")).toStringList())
+    {
+        mods.push_back(path.toStdString());
+    }
+
     std::string error;
-    const bool ok = tileset_.load(installPath.toStdString(), &error);
+    const bool ok = tileset_.load(installPath.toStdString(), &error, mods);
     QApplication::restoreOverrideCursor();
 
     if (!ok)
