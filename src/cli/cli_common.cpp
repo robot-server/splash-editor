@@ -387,24 +387,36 @@ ChoiceMatch matchChoice(const io::TriggerArg & arg, const std::string & text)
         arg.kind != io::TriggerArgKind::Sound)
         return {};
 
-    const std::string needle = squashName(text);
+    // 목록 쪽과 입력 쪽을 같은 규칙으로 누른다. 한쪽만 누르면 사용자가
+    // 목록에 보이는 대로 쳤을 때 오히려 안 걸리는 비대칭이 생긴다.
+    const auto keys = [](const std::string & text) {
+        std::vector<std::string> out{squashName(text)};
+
+        // io 계층이 목록을 만들면서 덧붙이는 꼬리를 뗀 쪽도 견준다.
+        // 소리 자리의 "  (맵에 없음)" 이 그것이다(map_archive.cpp 의
+        // fillSoundChoices). 문구가 아니라 "빈칸 둘 + 여는 괄호" 라는
+        // 자리표에만 기대므로, 저쪽이 말을 바꿔도 걸린다.
+        //
+        // 뒤에서 찾는다 — 이름 자체에 "  (" 가 들어 있어도 덧붙인 꼬리는
+        // 늘 맨 뒤에 온다.
+        const auto tail = text.rfind("  (");
+        if (tail != std::string::npos)
+            out.push_back(squashName(text.substr(0, tail)));
+        return out;
+    };
+
+    const std::vector<std::string> needles = keys(text);
     ChoiceMatch found;
     for (const auto & choice : arg.choices)
     {
-        // 보이는 글자 그대로가 먼저다.
-        bool hit = squashName(choice.text) == needle;
-        if (!hit)
+        bool hit = false;
+        for (const auto & label : keys(choice.text))
         {
-            // io 계층이 목록을 만들면서 덧붙이는 꼬리를 뗀 쪽도 견준다.
-            // 소리 자리의 "  (맵에 없음)" 이 그것이다(map_archive.cpp 의
-            // fillSoundChoices). 문구가 아니라 "빈칸 둘 + 여는 괄호" 라는
-            // 자리표에만 기대므로, 저쪽이 말을 바꿔도 걸린다.
-            //
-            // 뒤에서 찾는다 — 파일 이름 자체에 "  (" 가 들어 있어도
-            // 덧붙인 꼬리는 늘 맨 뒤에 온다.
-            const auto tail = choice.text.rfind("  (");
-            if (tail != std::string::npos)
-                hit = squashName(choice.text.substr(0, tail)) == needle;
+            if (std::find(needles.begin(), needles.end(), label) != needles.end())
+            {
+                hit = true;
+                break;
+            }
         }
         if (!hit)
             continue;
