@@ -9,6 +9,7 @@
 // 자료 없는 곳에서 테스트가 늘 빨개진다.
 
 #include "chk/map_document.h"
+#include "io/eud.h"
 #include "io/game_graphics.h"
 #include "io/map_archive.h"
 #include "ui/main_window.h"
@@ -214,6 +215,83 @@ int main(int argc, char ** argv)
                                          io::MapArchive::DefaultTriggers::None));
             SPLASH_CHECK(sheet.applyTriggerText(text, graphics));
         }
+
+        // --- EUD(메모리) 조건·동작이 편집기에 그렇게 보이는지 ---
+        //
+        // CHK 안에서 EUD 는 그냥 Deaths 다. 편집기가 그것을 Memory 로
+        // 알아보지 못하면 첫 자리가 "플레이어" 로 보이고, 거기 든 큰 수를
+        // 사람이 플레이어 번호로 고치는 순간 맵이 망가진다.
+        {
+            chk::MapDocument eudMap;
+            SPLASH_CHECK(eudMap.createNew(io::MapFormat::HybridScm, 0, 64, 64,
+                                          io::MapArchive::DefaultTriggers::None));
+            SPLASH_CHECK(eudMap.addTrigger());
+
+            io::MemoryActionSpec action;
+            action.address = 0x0057F0F0; // 플레이어 1 미네랄
+            action.modifier = 7;         // Set To
+            action.amount = 1234;
+            SPLASH_CHECK(eudMap.setActionMemory(0, 0, action));
+
+            io::MemoryConditionSpec condition;
+            condition.address = 0x0058D720;
+            condition.comparison = 0;    // At least
+            condition.amount = 1;
+            condition.masked = true;
+            condition.bitmask = 0xFF;
+            SPLASH_CHECK(eudMap.setConditionMemory(0, 0, condition));
+
+            const auto conditions = eudMap.triggerConditions(0, graphics);
+            SPLASH_CHECK(!conditions.empty());
+            if (!conditions.empty())
+            {
+                const auto & first = conditions.front();
+                SPLASH_CHECK(first.memory);
+                SPLASH_CHECK(first.masked);
+                SPLASH_CHECK_EQ(first.typeKey, io::kMemoryMaskedType);
+                SPLASH_CHECK(!first.args.empty());
+                if (!first.args.empty())
+                {
+                    SPLASH_CHECK(first.args[0].role == io::TriggerArgRole::MemoryOffset);
+                    SPLASH_CHECK_EQ(first.args[0].value,
+                                    io::eud::epdFor(condition.address));
+                }
+                // 마스크 자리까지 보여야 한다 — 안 보이면 고칠 길이 없다.
+                bool sawMask = false;
+                for (const auto & arg : first.args)
+                    sawMask = sawMask || arg.role == io::TriggerArgRole::MemoryBitmask;
+                SPLASH_CHECK(sawMask);
+            }
+
+            const auto actions = eudMap.triggerActions(0, graphics);
+            SPLASH_CHECK(!actions.empty());
+            if (!actions.empty())
+            {
+                SPLASH_CHECK(actions.front().memory);
+                SPLASH_CHECK(!actions.front().masked);
+                SPLASH_CHECK_EQ(actions.front().typeKey, io::kMemoryType);
+            }
+
+            // 맵이 스스로 세는 EUD 자리와, 편집기가 보는 것이 같아야 한다.
+            const auto usages = eudMap.eudUsages();
+            SPLASH_CHECK_EQ(usages.size(), std::size_t(2));
+
+            // 종류 목록에 Memory 가 있어야 고를 수 있다.
+            bool offersMemory = false;
+            for (const auto & choice : eudMap.conditionTypes(graphics))
+                offersMemory = offersMemory || choice.value == io::kMemoryType;
+            SPLASH_CHECK(offersMemory);
+
+            // 텍스트로 뽑았다 다시 넣어도 그대로여야 한다.
+            const auto text = eudMap.triggerText(graphics);
+            SPLASH_CHECK(text.has_value());
+            if (text)
+            {
+                SPLASH_CHECK(text->find("Memory") != std::string::npos);
+                SPLASH_CHECK(eudMap.applyTriggerText(*text, graphics));
+                SPLASH_CHECK_EQ(eudMap.eudUsages().size(), std::size_t(2));
+            }
+        }
     }
 
     // --- 실행 취소가 화면을 흔들지 않는지 ---
@@ -247,13 +325,15 @@ int main(int argc, char ** argv)
         });
         closer.start();
 
-        // 파일 고르기 창은 운영체제가 띄우는 것이라 닫기 어렵다. 그런
-        // 항목만 빼고 누른다.
+        // 파일·색 고르기 창은 운영체제가 띄우는 것이라 닫기 어렵다.
+        // (macOS 의 색 고르기는 모달이라 여기서 테스트가 멈춘다.)
+        // 그런 항목만 빼고 누른다.
         const QStringList skip {
             QStringLiteral("새 맵"), QStringLiteral("열기"),
             QStringLiteral("다른 이름으로"), QStringLiteral("StarCraft 설치 폴더"),
             QStringLiteral("모드 자료"), QStringLiteral("종료"),
             QStringLiteral("맵을 그림으로"), QStringLiteral("쌓아 둔 사본"),
+            QStringLiteral("격자 색"),
         };
 
         // 어떤 항목은 누르면 메뉴를 다시 만든다(최근 파일 목록 따위).

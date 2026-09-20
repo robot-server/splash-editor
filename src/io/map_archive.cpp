@@ -1,6 +1,8 @@
 #include "io/chk_bytes.h"
 #include "io/map_archive.h"
 
+#include "io/eud.h"
+
 #include "io/game_graphics.h"
 
 // MappingCore 헤더는 이 번역 단위 안에만 존재한다.
@@ -253,6 +255,28 @@ std::optional<std::vector<std::uint8_t>> readScenarioChk(const std::string & fil
             return std::nullopt;
 
         auto chk = mpq.getFile(kScenarioChkPath);
+
+        // 로케일로 숨긴 보호. 같은 이름을 로케일만 달리해 두 번 넣고,
+        // 중립 로케일 쪽에는 빈 파일을 놓는다. 게임과 euddraft 는 로케일을
+        // 훑어 진짜를 찾지만, 여기서 중립 쪽을 그대로 받으면 0바이트를
+        // 시나리오로 착각한다. MpqFile::getFile 은 **열기에 실패했을 때만**
+        // 다른 로케일을 보므로 (빈 파일은 열기에 성공한다) 여기서 더 본다.
+        if (!chk || chk->empty())
+        {
+            const std::uint32_t previousLocale = mpq.getLocale();
+            for (const std::uint32_t locale : mpq.getLocales(kScenarioChkPath))
+            {
+                mpq.setLocale(locale);
+                if (auto alternate = mpq.getFile(kScenarioChkPath, /*tryLocales*/ false);
+                    alternate && !alternate->empty())
+                {
+                    chk = std::move(alternate);
+                    break;
+                }
+            }
+            mpq.setLocale(previousLocale);
+        }
+
         mpq.close();
         return chk;
     }
@@ -4165,6 +4189,124 @@ bool namedValue(const std::string & text)
     return !text.empty() && text.find_first_not_of("0123456789") != std::string::npos;
 }
 
+// --- EUD(메모리) 조건·액션 ---
+//
+// EUD 는 새 조건이 아니다. Deaths 조건의 플레이어 자리에 플레이어일 수
+// 없는 큰 수를 넣으면 게임이 Deaths 표 밖의 메모리를 읽는다. MappingCore
+// 는 그것을 Memory / Memory Masked 라는 가상 종류로 다루고, 텍스트 트리거
+// 생성기와 컴파일러가 이미 그 이름을 알고 있다. 여기서도 같은 잣대를 써야
+// 텍스트로 뽑았다 다시 넣을 때 어긋나지 않는다.
+
+/// 플레이어 자리가 이 수를 넘으면 플레이어 번호일 수 없다.
+/// (0-11 이 플레이어, 12-26 이 세력·전체 같은 묶음, 27 이 미쓰임)
+inline constexpr std::uint32_t kMemoryPlayerThreshold = 28;
+
+bool isMemoryCondition(const Chk::Condition & condition)
+{
+    return condition.conditionType == Chk::Condition::Type::Deaths &&
+           condition.player > kMemoryPlayerThreshold;
+}
+
+bool isMemoryAction(const Chk::Action & action)
+{
+    return action.actionType == Chk::Action::Type::SetDeaths &&
+           action.group > kMemoryPlayerThreshold;
+}
+
+Chk::Condition::VirtualType conditionVirtualType(const Chk::Condition & condition)
+{
+    if (!isMemoryCondition(condition))
+        return Chk::Condition::VirtualType(condition.conditionType);
+    return condition.maskFlag == Chk::Condition::MaskFlag::Enabled
+               ? Chk::Condition::VirtualType::MemoryMasked
+               : Chk::Condition::VirtualType::Memory;
+}
+
+Chk::Action::VirtualType actionVirtualType(const Chk::Action & action)
+{
+    if (!isMemoryAction(action))
+        return Chk::Action::VirtualType(action.actionType);
+    return action.maskFlag == Chk::Action::MaskFlag::Enabled
+               ? Chk::Action::VirtualType::SetMemoryMasked
+               : Chk::Action::VirtualType::SetMemory;
+}
+
+/// 인자 자리표. 메모리 줄이면 가상 종류의 자리표를 쓴다 — 그래야 첫 자리가
+/// "플레이어" 가 아니라 "메모리 위치" 로 읽힌다.
+const Chk::Condition::Argument & conditionTextArg(const Chk::Condition & condition,
+                                                  std::size_t argIndex)
+{
+    if (isMemoryCondition(condition))
+        return Chk::Condition::getTextArg(conditionVirtualType(condition), argIndex);
+    return Chk::Condition::getTextArg(condition.conditionType, argIndex);
+}
+
+const Chk::Action::Argument & actionTextArg(const Chk::Action & action,
+                                            std::size_t argIndex)
+{
+    if (isMemoryAction(action))
+        return Chk::Action::getTextArg(actionVirtualType(action), argIndex);
+    return Chk::Action::getTextArg(action.actionType, argIndex);
+}
+
+std::string comparisonName(Chk::Condition::Comparison comparison)
+{
+    switch (comparison)
+    {
+        case Chk::Condition::Comparison::AtLeast: return "AtLeast";
+        case Chk::Condition::Comparison::AtMost:  return "AtMost";
+        case Chk::Condition::Comparison::Exactly: return "Exactly";
+        case Chk::Condition::Comparison::Set:     return "Set";
+        case Chk::Condition::Comparison::NotSet:  return "NotSet";
+    }
+    return std::to_string(std::uint32_t(comparison));
+}
+
+std::string modifierName(std::uint8_t modifier)
+{
+    switch (Chk::Trigger::ValueModifier(modifier))
+    {
+        case Chk::Trigger::ValueModifier::SetTo:    return "SetTo";
+        case Chk::Trigger::ValueModifier::Add:      return "Add";
+        case Chk::Trigger::ValueModifier::Subtract: return "Subtract";
+        default: break;
+    }
+    return std::to_string(std::uint32_t(modifier));
+}
+
+std::string hexAddress(std::uint32_t address)
+{
+    char buffer[16] = {};
+    std::snprintf(buffer, sizeof(buffer), "0x%08X", address);
+    return buffer;
+}
+
+std::string memoryConditionText(const Chk::Condition & condition)
+{
+    const bool masked = condition.maskFlag == Chk::Condition::MaskFlag::Enabled;
+    std::string out = masked ? "MemoryMasked(" : "Memory(";
+    out += hexAddress(eud::addressForEpd(condition.player));
+    out += ", " + comparisonName(condition.comparison);
+    out += ", " + std::to_string(condition.amount);
+    if (masked)
+        out += ", " + hexAddress(condition.locationId);
+    out += ")";
+    return out;
+}
+
+std::string memoryActionText(const Chk::Action & action)
+{
+    const bool masked = action.maskFlag == Chk::Action::MaskFlag::Enabled;
+    std::string out = masked ? "SetMemoryMasked(" : "SetMemory(";
+    out += hexAddress(eud::addressForEpd(action.group));
+    out += ", " + modifierName(action.type2);
+    out += ", " + std::to_string(action.number);
+    if (masked)
+        out += ", " + hexAddress(action.locationId);
+    out += ")";
+    return out;
+}
+
 } // namespace
 
 namespace {
@@ -4178,8 +4320,7 @@ TriggerArg describeConditionArg(const TextTrigGenerator & generator,
 {
     using ArgType = Chk::Condition::ArgType;
 
-    const Chk::Condition::Argument & argument =
-        Chk::Condition::getTextArg(condition.conditionType, argIndex);
+    const Chk::Condition::Argument & argument = conditionTextArg(condition, argIndex);
 
     TriggerArg out;
     if (argument.type == ArgType::NoType)
@@ -4277,7 +4418,13 @@ TriggerArg describeConditionArg(const TextTrigGenerator & generator,
         case ArgType::MemoryOffset:
             out.kind = TriggerArgKind::Number;
             out.role = TriggerArgRole::MemoryOffset;
-            out.label = "메모리 위치";
+            out.label = "메모리 위치 (EPD)";
+            break;
+
+        case ArgType::MemoryBitmask:
+            out.kind = TriggerArgKind::Number;
+            out.role = TriggerArgRole::MemoryBitmask;
+            out.label = "비트마스크";
             break;
 
         default:
@@ -4299,8 +4446,7 @@ TriggerArg describeActionArg(const TextTrigGenerator & generator,
 {
     using ArgType = Chk::Action::ArgType;
 
-    const Chk::Action::Argument & argument =
-        Chk::Action::getTextArg(action.actionType, argIndex);
+    const Chk::Action::Argument & argument = actionTextArg(action, argIndex);
 
     TriggerArg out;
     if (argument.type == ArgType::NoType)
@@ -4469,7 +4615,13 @@ TriggerArg describeActionArg(const TextTrigGenerator & generator,
         case ArgType::MemoryOffset:
             out.kind = TriggerArgKind::Number;
             out.role = TriggerArgRole::MemoryOffset;
-            out.label = "메모리 위치";
+            out.label = "메모리 위치 (EPD)";
+            break;
+
+        case ArgType::MemoryBitmask:
+            out.kind = TriggerArgKind::Number;
+            out.role = TriggerArgRole::MemoryBitmask;
+            out.label = "비트마스크";
             break;
 
         default:
@@ -4564,6 +4716,14 @@ std::vector<TriggerElement> MapArchive::triggerConditions(std::size_t index,
             element.type = std::uint8_t(condition.conditionType);
             element.disabled = condition.isDisabled();
             element.name = impl_->decode(generator.getConditionName(condition.conditionType));
+            element.memory = isMemoryCondition(condition);
+            element.masked = element.memory &&
+                             condition.maskFlag == Chk::Condition::MaskFlag::Enabled;
+            element.typeKey = element.memory
+                                  ? (element.masked ? kMemoryMaskedType : kMemoryType)
+                                  : std::uint32_t(element.type);
+            if (element.memory)
+                element.name = element.masked ? "Memory Masked" : "Memory";
 
             if (condition.conditionType != Chk::Condition::Type::NoCondition)
             {
@@ -4634,6 +4794,14 @@ std::vector<TriggerElement> MapArchive::triggerActions(std::size_t index,
             element.type = std::uint8_t(action.actionType);
             element.disabled = action.isDisabled();
             element.name = impl_->decode(generator.getActionName(action.actionType));
+            element.memory = isMemoryAction(action);
+            element.masked = element.memory &&
+                             action.maskFlag == Chk::Action::MaskFlag::Enabled;
+            element.typeKey = element.memory
+                                  ? (element.masked ? kMemoryMaskedType : kMemoryType)
+                                  : std::uint32_t(element.type);
+            if (element.memory)
+                element.name = element.masked ? "Set Memory Masked" : "Set Memory";
 
             if (action.actionType != Chk::Action::Type::NoAction)
             {
@@ -4690,6 +4858,11 @@ std::vector<TriggerChoice> MapArchive::conditionTypes(const GameGraphics & graph
             if (namedValue(name))
                 out.push_back(TriggerChoice{std::uint32_t(i), impl_->decode(name)});
         }
+
+        // EUD. CHK 에는 Deaths 로 들어가지만 고르는 자리는 따로 둔다 —
+        // SCMDraft 2 의 Memory 조건과 같은 모양새다.
+        out.push_back(TriggerChoice{kMemoryType, "Memory (EUD)"});
+        out.push_back(TriggerChoice{kMemoryMaskedType, "Memory Masked (EUD)"});
     }
     catch (const std::exception &)
     {
@@ -4716,6 +4889,67 @@ std::vector<TriggerChoice> MapArchive::actionTypes(const GameGraphics & graphics
             std::string name = generator.getActionName(Chk::Action::Type(i));
             if (namedValue(name))
                 out.push_back(TriggerChoice{std::uint32_t(i), impl_->decode(name)});
+        }
+
+        out.push_back(TriggerChoice{kMemoryType, "Set Memory (EUD)"});
+        out.push_back(TriggerChoice{kMemoryMaskedType, "Set Memory Masked (EUD)"});
+    }
+    catch (const std::exception &)
+    {
+    }
+    return out;
+}
+
+std::vector<EudUsage> MapArchive::eudUsages() const
+{
+    std::vector<EudUsage> out;
+    if (!impl_->isOpen())
+        return out;
+
+    try
+    {
+        const MapFile & map = *impl_->mapFile;
+        for (std::size_t index = 0; index < map.numTriggers(); ++index)
+        {
+            const Chk::Trigger & trigger = map.getTrigger(index);
+
+            for (std::size_t slot = 0; slot < Chk::Trigger::MaxConditions; ++slot)
+            {
+                const Chk::Condition & condition = trigger.conditions[slot];
+                if (!isMemoryCondition(condition))
+                    continue;
+
+                EudUsage usage;
+                usage.triggerIndex = index;
+                usage.slot = slot;
+                usage.isCondition = true;
+                usage.masked = condition.maskFlag == Chk::Condition::MaskFlag::Enabled;
+                usage.epd = condition.player;
+                usage.address = eud::addressForEpd(usage.epd);
+                usage.bitmask = usage.masked ? condition.locationId : 0xFFFFFFFFu;
+                usage.amount = condition.amount;
+                usage.text = memoryConditionText(condition);
+                out.push_back(std::move(usage));
+            }
+
+            for (std::size_t slot = 0; slot < Chk::Trigger::MaxActions; ++slot)
+            {
+                const Chk::Action & action = trigger.actions[slot];
+                if (!isMemoryAction(action))
+                    continue;
+
+                EudUsage usage;
+                usage.triggerIndex = index;
+                usage.slot = slot;
+                usage.isCondition = false;
+                usage.masked = action.maskFlag == Chk::Action::MaskFlag::Enabled;
+                usage.epd = action.group;
+                usage.address = eud::addressForEpd(usage.epd);
+                usage.bitmask = usage.masked ? action.locationId : 0xFFFFFFFFu;
+                usage.amount = action.number;
+                usage.text = memoryActionText(action);
+                out.push_back(std::move(usage));
+            }
         }
     }
     catch (const std::exception &)
@@ -4748,39 +4982,166 @@ Result mutateTrigger(MapFile & map, std::vector<int> & undoSteps, std::vector<in
 
 } // namespace
 
-Result MapArchive::setConditionType(std::size_t triggerIndex, std::size_t slot, std::uint8_t type)
+namespace {
+
+/// EUD 를 새로 만들 때 채워 둘 자리. 아무 자리나 넣으면 게임이 엉뚱한 곳을
+/// 건드리므로, 건드려도 탈이 없고 눈에 잘 보이는 곳을 고른다 —
+/// 플레이어 1 의 미네랄이다.
+inline constexpr std::uint32_t kDefaultMemoryEpd =
+    (0x0057F0F0u - 0x0058A364u) / 4u; // EPD -11421 (32비트로 감아 돈다)
+
+} // namespace
+
+Result MapArchive::setConditionMemory(std::size_t triggerIndex, std::size_t slot,
+                                      const MemoryConditionSpec & spec)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+    if (!eud::isAligned(spec.address))
+        return Result::failure("주소가 네 바이트 경계가 아닙니다 — Deaths 로는 읽을 수 없습니다.");
+
+    const std::uint32_t epd = eud::epdFor(spec.address);
+    if (epd <= 28)
+    {
+        // 이 범위는 게임이 진짜 플레이어 번호로 읽는다. EUD 로 쓰면
+        // Deaths 표 첫머리를 건드리게 되고, 편집기도 EUD 로 알아보지 못한다.
+        return Result::failure("이 주소는 Deaths 표 첫머리라 EUD 로 쓸 수 없습니다.");
+    }
+
+    return mutateTrigger(*impl_->mapFile, impl_->undoSteps, impl_->redoSteps, triggerIndex,
+        [slot, spec, epd](Chk::Trigger & trigger) {
+            if (slot >= Chk::Trigger::MaxConditions)
+                return false;
+
+            Chk::Condition fresh {};
+            fresh.conditionType = Chk::Condition::Type::Deaths;
+            fresh.player = epd;
+            fresh.unitType = Sc::Unit::Type(0);
+            fresh.comparison = Chk::Condition::Comparison(spec.comparison);
+            fresh.amount = spec.amount;
+            fresh.maskFlag = spec.masked ? Chk::Condition::MaskFlag::Enabled
+                                         : Chk::Condition::MaskFlag::Disabled;
+            fresh.locationId = spec.masked ? spec.bitmask : 0u;
+            fresh.flags = Chk::Condition::getDefaultFlags(
+                spec.masked ? Chk::Condition::VirtualType::MemoryMasked
+                            : Chk::Condition::VirtualType::Memory);
+            trigger.conditions[slot] = fresh;
+            return true;
+        });
+}
+
+Result MapArchive::setActionMemory(std::size_t triggerIndex, std::size_t slot,
+                                   const MemoryActionSpec & spec)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+    if (!eud::isAligned(spec.address))
+        return Result::failure("주소가 네 바이트 경계가 아닙니다 — Deaths 로는 쓸 수 없습니다.");
+
+    const std::uint32_t epd = eud::epdFor(spec.address);
+    if (epd <= 28)
+        return Result::failure("이 주소는 Deaths 표 첫머리라 EUD 로 쓸 수 없습니다.");
+
+    return mutateTrigger(*impl_->mapFile, impl_->undoSteps, impl_->redoSteps, triggerIndex,
+        [slot, spec, epd](Chk::Trigger & trigger) {
+            if (slot >= Chk::Trigger::MaxActions)
+                return false;
+
+            Chk::Action fresh {};
+            fresh.actionType = Chk::Action::Type::SetDeaths;
+            fresh.group = epd;
+            fresh.type = 0;
+            fresh.type2 = spec.modifier;
+            fresh.number = spec.amount;
+            fresh.maskFlag = spec.masked ? Chk::Action::MaskFlag::Enabled
+                                         : Chk::Action::MaskFlag::Disabled;
+            fresh.locationId = spec.masked ? spec.bitmask : 0u;
+            fresh.flags = Chk::Action::getDefaultFlags(
+                spec.masked ? Chk::Action::VirtualType::SetMemoryMasked
+                            : Chk::Action::VirtualType::SetMemory);
+            trigger.actions[slot] = fresh;
+            return true;
+        });
+}
+
+Result MapArchive::setConditionType(std::size_t triggerIndex, std::size_t slot,
+                                    std::uint32_t type)
 {
     if (!impl_->isOpen())
         return Result::failure("열린 맵이 없습니다.");
 
+    const bool memory = (type == kMemoryType || type == kMemoryMaskedType);
+    const bool masked = (type == kMemoryMaskedType);
+    if (!memory && type > 0xFF)
+        return Result::failure("모르는 조건 종류입니다.");
+
     return mutateTrigger(*impl_->mapFile, impl_->undoSteps, impl_->redoSteps, triggerIndex,
-        [slot, type](Chk::Trigger & trigger) {
+        [slot, type, memory, masked](Chk::Trigger & trigger) {
             if (slot >= Chk::Trigger::MaxConditions)
                 return false;
 
             // 종류가 바뀌면 인자 자리의 뜻도 바뀐다. 남은 값이 엉뚱하게
             // 읽히지 않도록 비우고 기본 플래그를 새로 준다.
             Chk::Condition fresh {};
-            fresh.conditionType = Chk::Condition::Type(type);
-            fresh.flags = Chk::Condition::getDefaultFlags(fresh.conditionType);
+            if (memory)
+            {
+                // EUD 는 Deaths 로 들어간다. 플레이어 자리가 EPD 다.
+                fresh.conditionType = Chk::Condition::Type::Deaths;
+                fresh.player = kDefaultMemoryEpd;
+                fresh.unitType = Sc::Unit::Type(0);
+                fresh.comparison = Chk::Condition::Comparison::AtLeast;
+                fresh.maskFlag = masked ? Chk::Condition::MaskFlag::Enabled
+                                        : Chk::Condition::MaskFlag::Disabled;
+                fresh.locationId = masked ? 0xFFFFFFFFu : 0u; // 마스크는 전부 켜 둔다
+                fresh.flags = Chk::Condition::getDefaultFlags(
+                    masked ? Chk::Condition::VirtualType::MemoryMasked
+                           : Chk::Condition::VirtualType::Memory);
+            }
+            else
+            {
+                fresh.conditionType = Chk::Condition::Type(std::uint8_t(type));
+                fresh.flags = Chk::Condition::getDefaultFlags(fresh.conditionType);
+            }
             trigger.conditions[slot] = fresh;
             return true;
         });
 }
 
-Result MapArchive::setActionType(std::size_t triggerIndex, std::size_t slot, std::uint8_t type)
+Result MapArchive::setActionType(std::size_t triggerIndex, std::size_t slot,
+                                 std::uint32_t type)
 {
     if (!impl_->isOpen())
         return Result::failure("열린 맵이 없습니다.");
 
+    const bool memory = (type == kMemoryType || type == kMemoryMaskedType);
+    const bool masked = (type == kMemoryMaskedType);
+    if (!memory && type > 0xFF)
+        return Result::failure("모르는 동작 종류입니다.");
+
     return mutateTrigger(*impl_->mapFile, impl_->undoSteps, impl_->redoSteps, triggerIndex,
-        [slot, type](Chk::Trigger & trigger) {
+        [slot, type, memory, masked](Chk::Trigger & trigger) {
             if (slot >= Chk::Trigger::MaxActions)
                 return false;
 
             Chk::Action fresh {};
-            fresh.actionType = Chk::Action::Type(type);
-            fresh.flags = Chk::Action::getDefaultFlags(fresh.actionType);
+            if (memory)
+            {
+                fresh.actionType = Chk::Action::Type::SetDeaths;
+                fresh.group = kDefaultMemoryEpd;
+                fresh.type = 0;                                   // 유닛 자리는 쓰지 않는다
+                fresh.type2 = std::uint8_t(Chk::Trigger::ValueModifier::SetTo);
+                fresh.maskFlag = masked ? Chk::Action::MaskFlag::Enabled
+                                        : Chk::Action::MaskFlag::Disabled;
+                fresh.locationId = masked ? 0xFFFFFFFFu : 0u;
+                fresh.flags = Chk::Action::getDefaultFlags(
+                    masked ? Chk::Action::VirtualType::SetMemoryMasked
+                           : Chk::Action::VirtualType::SetMemory);
+            }
+            else
+            {
+                fresh.actionType = Chk::Action::Type(std::uint8_t(type));
+                fresh.flags = Chk::Action::getDefaultFlags(fresh.actionType);
+            }
             trigger.actions[slot] = fresh;
             return true;
         });
@@ -4804,7 +5165,7 @@ Result MapArchive::setConditionArg(std::size_t triggerIndex, std::size_t slot,
             std::size_t seen = 0;
             for (std::size_t i = 0; i < Chk::Condition::MaxArguments; ++i)
             {
-                const auto & argument = Chk::Condition::getTextArg(condition.conditionType, i);
+                const auto & argument = conditionTextArg(condition, i);
                 if (argument.type == Chk::Condition::ArgType::NoType ||
                     argument.field == Chk::Condition::ArgField::NoField)
                     continue;
@@ -4836,7 +5197,7 @@ Result MapArchive::setActionArg(std::size_t triggerIndex, std::size_t slot,
             std::size_t seen = 0;
             for (std::size_t i = 0; i < Chk::Action::MaxArguments; ++i)
             {
-                const auto & argument = Chk::Action::getTextArg(action.actionType, i);
+                const auto & argument = actionTextArg(action, i);
                 if (argument.type == Chk::Action::ArgType::NoType ||
                     argument.field == Chk::Action::ArgField::NoField)
                     continue;

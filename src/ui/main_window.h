@@ -58,6 +58,9 @@ private slots:
     void onDocumentEdited();
     void onSelectionChanged(int unitIndex);
     void onShowTriggers();
+
+    /// 이 맵이 건드리는 메모리 자리를 모아 보여 준다.
+    void onShowEudUsages();
     void onNewMap();
     void onMapProperties();
     void onUnitProperties();

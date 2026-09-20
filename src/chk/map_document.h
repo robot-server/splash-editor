@@ -288,8 +288,18 @@ public:
     std::vector<io::TriggerChoice> conditionTypes(const io::GameGraphics & graphics) const;
     std::vector<io::TriggerChoice> actionTypes(const io::GameGraphics & graphics) const;
 
-    bool setConditionType(std::size_t triggerIndex, std::size_t slot, std::uint8_t type);
-    bool setActionType(std::size_t triggerIndex, std::size_t slot, std::uint8_t type);
+    /// io::kMemoryType / io::kMemoryMaskedType 를 주면 EUD 줄이 된다.
+    bool setConditionType(std::size_t triggerIndex, std::size_t slot, std::uint32_t type);
+    bool setActionType(std::size_t triggerIndex, std::size_t slot, std::uint32_t type);
+
+    /// EUD 조건·동작 한 줄을 통째로 쓴다 (주소·비교·값·마스크를 한 번에).
+    bool setConditionMemory(std::size_t triggerIndex, std::size_t slot,
+                            const io::MemoryConditionSpec & spec);
+    bool setActionMemory(std::size_t triggerIndex, std::size_t slot,
+                         const io::MemoryActionSpec & spec);
+
+    /// 맵 안의 EUD 자리를 모두 찾는다.
+    std::vector<io::EudUsage> eudUsages() const;
     bool setConditionArg(std::size_t triggerIndex, std::size_t slot,
                          std::size_t argIndex, std::uint32_t value);
     bool setActionArg(std::size_t triggerIndex, std::size_t slot,

@@ -209,5 +209,6 @@ std::vector<Group> objectGroups();
 std::vector<Group> terrainGroups();
 std::vector<Group> settingsGroups();
 std::vector<Group> scenarioGroups();
+std::vector<Group> eudGroups();
 
 } // namespace splash::cli

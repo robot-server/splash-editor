@@ -37,8 +37,8 @@ public:
     void clear();
 
 signals:
-    /// 종류를 바꿨다.
-    void typeChanged(std::size_t slot, std::uint8_t type);
+    /// 종류를 바꿨다. io::kMemoryType 같은 가상 종류일 수 있다.
+    void typeChanged(std::size_t slot, std::uint32_t type);
 
     /// 인자 값을 바꿨다.
     void argChanged(std::size_t slot, std::size_t argIndex, std::uint32_t value);
@@ -54,6 +54,16 @@ signals:
 
 private:
     void rebuild();
+
+    /// EUD(메모리) 줄의 맨 위에 주소 상자를 얹는다.
+    ///
+    /// 속에 들어가는 값은 EPD 지만 사람이 다루는 것은 주소다. 둘을 손으로
+    /// 옮기다 틀리는 일을 없애려고 주소로 적고 EPD 로 넣는다.
+    void addMemoryAddressRow();
+
+    /// 32비트를 다 쓰는 자리에 쓸 상자. QSpinBox 는 2^31 까지만 담는다 —
+    /// EPD 와 EUD 의 값은 그 위를 예사로 넘어간다.
+    void addWideNumberRow(std::size_t argIndex, const io::TriggerArg & arg);
 
     /// 그 뜻을 가진 인자의 자리. 없으면 -1.
     int findArg(io::TriggerArgRole role) const;

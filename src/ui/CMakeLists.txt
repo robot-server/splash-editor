@@ -23,6 +23,8 @@ qt_add_library(splash_ui_lib STATIC
   mini_map.h
   eud_calculator.cpp
   eud_calculator.h
+  eud_build_dialog.cpp
+  eud_build_dialog.h
   object_tree.cpp
   object_tree.h
   brush_palette.cpp

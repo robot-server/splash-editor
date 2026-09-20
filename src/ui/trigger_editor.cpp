@@ -143,7 +143,7 @@ TriggerEditor::TriggerEditor(chk::MapDocument & document, io::GameGraphics & gra
     const auto triggerIndex = [this] { return static_cast<std::size_t>(currentIndex()); };
 
     connect(conditionArgs_, &TriggerArgumentPanel::typeChanged, this,
-            [this, triggerIndex](std::size_t slot, std::uint8_t type) {
+            [this, triggerIndex](std::size_t slot, std::uint32_t type) {
         if (currentIndex() < 0) return;
         const int row = conditions_->currentRow();
         if (document_.setConditionType(triggerIndex(), slot, type))
@@ -205,7 +205,7 @@ TriggerEditor::TriggerEditor(chk::MapDocument & document, io::GameGraphics & gra
     });
 
     connect(actionArgs_, &TriggerArgumentPanel::typeChanged, this,
-            [this, triggerIndex](std::size_t slot, std::uint8_t type) {
+            [this, triggerIndex](std::size_t slot, std::uint32_t type) {
         if (currentIndex() < 0) return;
         const int row = actions_->currentRow();
         if (document_.setActionType(triggerIndex(), slot, type))

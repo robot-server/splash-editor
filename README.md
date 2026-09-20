@@ -46,8 +46,10 @@ StarCraft: Brood War / Remastered 맵 에디터. Windows · macOS · Linux.
 - **겹쳐 보기** — 높이·지날 수 있는 곳·지을 수 있는 곳·크립·사거리·시야·
   전력 범위·길 영역·AI 타운·타일 번호
 - **한글 맵** — CP949·932·936·1252 를 가려내 읽고 쓴다
-- **EUD 주소 계산기** — 메모리 주소와 Deaths 자리를 서로 바꾼다. 미네랄·
-  가스·보급 같은 자주 쓰는 자리는 목록에서 고른다
+- **EUD** — 트리거 편집기에서 `Memory` / `Memory Masked` 조건·동작을 주소로
+  바로 고친다. 주소 계산기(주소 ↔ EPD ↔ Deaths 자리, 이름으로 찾기),
+  맵이 건드리는 메모리 자리 훑기(리마스터에서 되는지까지), 그리고
+  **euddraft 로 epScript 컴파일**까지 창 안에서 한다
 - **모드 자료** — 갈아 끼운 MPQ 를 얹어 모드 맵을 원래 모습대로 본다.
   설치 폴더와 묶어 프로필로 저장한다
 - **자동 저장** — 고친 맵의 사본을 따로 쌓는다
@@ -199,7 +201,8 @@ CLI 는 GUI 없이 코어를 두드리는 도구이자 테스트 하네스다. *
 | `unitdef` `upgrade` `tech` | 맵이 정하는 능력치·비용 |
 | `scenario` | 리빌러·자원 섞기·맵 밖 치우기·보호 해제·맵 그림 |
 | `sound` | 넣기·빼기·꺼내기 |
-| `trigger` `briefing` | 텍스트로 뽑고 되돌려 넣기, 인자 하나만 고치기 |
+| `trigger` `briefing` | 텍스트로 뽑고 되돌려 넣기, 더하기·지우기·베끼기·실행 플레이어, 인자 하나만 고치기 |
+| `eud` | 주소 ↔ EPD, 오프셋 표 찾기, 맵 안 EUD 훑기·가려내기, 조건·동작 넣기, euddraft 빌드 |
 
 고치는 명령은 **저장할 곳을 반드시 받는다** — `-o <출력맵>` 이거나
 `--in-place`. 원본을 말없이 덮어쓰지 않는다. `--in-place` 는 옆에 먼저 쓰고
@@ -265,6 +268,86 @@ splash-cli scenario revealers map.scx --owner 1 --spacing 16 -o out.scx
 
 예전 이름(`move-unit`, `place-isom`, `set-triggers`, `units`, `triggers` …)도
 그대로 받는다. 새 이름은 갈래 쪽이다.
+
+---
+
+## EUD
+
+EUD(Extended Unit Death)는 새 트리거가 아니다. `Deaths` 조건의 **플레이어
+자리**에 플레이어일 수 없는 큰 수를 넣으면 게임이 Deaths 표 밖의 메모리를
+읽는다. MappingCore 는 그것을 `Memory` / `Memory Masked` 라는 가상 종류로
+다루고, 우리도 같은 잣대를 쓴다 — 플레이어 자리가 28 을 넘으면 EUD 다.
+
+### 자리 셈
+
+Deaths 표는 **유닛 바깥, 플레이어 안쪽**이다. P1 마린, P2 마린, … P12 마린,
+P1 고스트 … 꼴로, 한 유닛이 48바이트(12 x 4)를 차지하고 그런 항목이 228개다.
+
+```
+주소 = 0x0058A364 + 4 x (유닛 x 12 + 플레이어)
+EPD  = (주소 - 0x0058A364) / 4        (부호 있는 나눗셈)
+```
+
+나눗셈을 부호 없이 하면 안 된다. Deaths 표보다 앞인 자리는 거리가 음수인데,
+부호 없이 나누면 같은 주소를 가리키는 다른 답이 나온다. eudplib·EUD Book·
+SCMDraft 가 모두 부호 있는 쪽을 쓴다 (미네랄은 EPD −11421).
+
+표 밖을 가리킬 때는 유닛을 0 으로 두고 플레이어 자리에 EPD 를 통째로 넣는다.
+게임이 `유닛 x 12 + 플레이어` 를 32비트로 감아 세므로 같은 자리를 가리키고,
+euddraft·SCMDraft 의 Memory 표기와도 같다.
+
+### 오프셋 표
+
+자주 쓰는 자리는 붙박이로 들고 있다. 더 필요하면 **EUD Book**(`armoha/eud-book`)
+의 `api.json` 을 받아 가리킨다 — 900개가 넘는 자리를 이름·크기·리마스터
+지원 여부(`Simple Data` / `Supported` / `Read Only` / `Unsupported` …)와 함께
+쓴다.
+
+그 파일은 **라이선스가 밝혀져 있지 않아 저장소에 넣지 않는다.** 쓰려는
+사람이 직접 받아 가리킨다.
+
+```sh
+# 화면: 트리거 › EUD 주소 계산기… › 오프셋 표 불러오기…
+# CLI:  --db 로 그때그때 가리킨다
+splash-cli eud offsets "hyper" --db ~/eud-book/api.json
+splash-cli eud addr 0x57F0F0
+splash-cli eud list map.scx
+splash-cli eud check map.scx --db ~/eud-book/api.json
+```
+
+`eud check` 는 맵이 건드리는 자리 가운데 리마스터에서 **안 되는 것**과
+**쓰기가 막힌 것**을 가려낸다. 쓰기가 막힌 자리에 쓰는 맵은 리마스터에서
+아예 열리지 않는다.
+
+### euddraft
+
+epScript 를 컴파일해 맵에 얹는 일은 [euddraft](https://github.com/armoha/euddraft)
+가 한다. 그것을 다시 만들지 않고 바깥 프로그램으로 부른다.
+
+```sh
+splash-cli eud build base.scx -o out.scx --script hello.eps --plugin eudTurbo
+```
+
+화면에서는 **트리거 › EUD 빌드 (euddraft)…** 다. 스크립트를 새로 만들고
+고치는 것까지 창 안에서 된다.
+
+알아 둘 것:
+
+- **`.eds` 로 부른다.** `.edd` 로 부르면 euddraft 가 파일을 지켜보는 데몬으로
+  돌아 끝나지 않는다.
+- **euddraft 는 맵 보호(freeze)를 기본으로 켠다.** 우리는 기본을 끔으로 두었다
+  — 보호된 맵은 다시 열어 고칠 수 없다. 켜려면 `--freeze`.
+- **euddraft 가 뱉는 맵은 `scenario.chk` 를 로케일로 숨긴다.** 중립 로케일에는
+  0바이트짜리 미끼를 두고 영어(1033) 로케일에 진짜를 넣는다. 우리
+  `readScenarioChk` 는 중립 쪽이 비었으면 로케일을 훑는다.
+- **산출물은 매번 다르다.** eudplib 이 페이로드 자리를 섞는다 — 이 맵들은
+  CHK 바이트로 견줄 수 없다. 편집용 맵과 배포용 맵을 갈라 두는 편이 맞다.
+- macOS 배포본 0.11.0.1 은 **보호를 켜면** 맵을 다 쓴 뒤 `freezeMpq` 안에서
+  SIGBUS 로 죽는다(산출물은 멀쩡하다). 업스트림 PR #178 이 릴리스 뒤에
+  고쳤으므로 다음 판에서는 없어질 것이다. 보호를 끄면 겪지 않는다.
+
+찾는 곳은 환경 변수 `SPLASH_EUDDRAFT`, `PATH`, 그리고 홈·응용 프로그램
+폴더의 `euddraft*` 순이다. `splash-cli eud which` 로 확인한다.
 
 ---
 

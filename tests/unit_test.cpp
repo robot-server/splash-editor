@@ -5,6 +5,7 @@
 
 #include "io/chk_bytes.h"
 #include "io/eud.h"
+#include "io/euddraft.h"
 #include "io/game_graphics.h"
 #include "test_support.h"
 
@@ -120,32 +121,125 @@ void testPackStrings()
 
 void testEudSlots()
 {
-    // 잘 알려진 자리들. EPD 는 StarEdit Network 의 모음과 맞춰 본 값이다.
+    // 잘 알려진 자리들. EPD 는 공개된 EUD 자료(EUD Book 의 pid 칸)와
+    // 맞춰 본 값이다.
     struct Known { std::uint32_t address; int epd; };
     const Known cases[] {
         { 0x0057F0F0, -11421 }, // 미네랄
         { 0x0057F120, -11409 }, // 가스
         { 0x0058A364,      0 }, // Deaths 표 첫 자리
-        { 0x0059CCA8,  19025 }, // 유닛 목록
+        { 0x0059CCA8,  19025 }, // 유닛 표 첫 자리
+        { 0x006509A0, 203151 }, // 트리거 실행 타이머
+        { 0x0058DC60,   3647 }, // 로케이션 표
     };
 
     for (const auto & known : cases)
     {
-        SPLASH_CHECK_EQ(io::eud::epdFor(known.address), known.epd);
+        SPLASH_CHECK_EQ(io::eud::signedEpdFor(known.address), known.epd);
+        SPLASH_CHECK_EQ(io::eud::addressForEpd(io::eud::epdFor(known.address)),
+                        known.address);
 
         std::uint32_t player = 0;
         std::uint32_t unit = 0;
         SPLASH_CHECK(io::eud::slotFor(known.address, &player, &unit));
         SPLASH_CHECK_EQ(io::eud::addressFor(player, unit), known.address);
-        SPLASH_CHECK(unit < io::eud::kUnitTypes);
+    }
+
+    // Deaths 표는 **유닛 바깥, 플레이어 안쪽**이다 — P1 마린, P2 마린, …
+    // P12 마린, P1 고스트 꼴. 한 유닛이 48바이트(12 x 4)를 차지한다.
+    // 이 순서를 뒤집으면 주소가 통째로 어긋난다.
+    SPLASH_CHECK_EQ(io::eud::addressFor(0, 0), io::eud::kDeathsBase);
+    SPLASH_CHECK_EQ(io::eud::addressFor(1, 0), io::eud::kDeathsBase + 4);
+    SPLASH_CHECK_EQ(io::eud::addressFor(0, 1), io::eud::kDeathsBase + 48);
+    SPLASH_CHECK_EQ(io::eud::epdForSlot(3, 1), 15u);
+
+    // 표 안의 자리는 본래의 (플레이어, 유닛) 으로 돌아와야 한다.
+    for (std::uint32_t unit = 0; unit < io::eud::kUnitTypes; unit += 37)
+    {
+        for (std::uint32_t player = 0; player < io::eud::kPlayers; ++player)
+        {
+            std::uint32_t gotPlayer = 0;
+            std::uint32_t gotUnit = 0;
+            SPLASH_CHECK(io::eud::slotFor(io::eud::addressFor(player, unit),
+                                          &gotPlayer, &gotUnit));
+            SPLASH_CHECK_EQ(gotPlayer, player);
+            SPLASH_CHECK_EQ(gotUnit, unit);
+        }
+    }
+
+    // 표 밖은 유닛 0 에 EPD 를 통째로 담는다 — euddraft·SCMDraft 의 표기다.
+    {
+        std::uint32_t player = 0;
+        std::uint32_t unit = 0;
+        SPLASH_CHECK(io::eud::slotFor(0x0057F0F0, &player, &unit));
+        SPLASH_CHECK_EQ(unit, 0u);
+        SPLASH_CHECK_EQ(player, io::eud::epdFor(0x0057F0F0));
     }
 
     // 네 바이트에 맞지 않는 주소는 Deaths 칸이 아니다.
     SPLASH_CHECK(!io::eud::slotFor(0x0058A365, nullptr, nullptr));
+    SPLASH_CHECK(!io::eud::isAligned(0x0058A366));
 
-    // 목록에 적어 둔 자리는 모두 네 바이트 경계여야 한다.
-    for (const auto & entry : io::eud::knownAddresses())
+    // 붙박이 표의 자리는 모두 네 바이트 경계여야 한다.
+    for (const auto & entry : io::eud::builtinOffsets())
         SPLASH_CHECK(io::eud::slotFor(entry.address, nullptr, nullptr));
+}
+
+void testEudOffsetLookup()
+{
+    // 이름으로 찾기. 똑 맞는 이름이 있으면 그것만.
+    const auto minerals = io::eud::findOffsets("플레이어 미네랄");
+    SPLASH_CHECK_EQ(minerals.size(), std::size_t(1));
+    if (!minerals.empty())
+        SPLASH_CHECK_EQ(minerals.front()->address, 0x0057F0F0u);
+
+    // 주소로 찾으면 그 자리를 덮는 항목이 나온다. 미네랄은 12칸짜리라
+    // 두 번째 플레이어 자리도 같은 항목에 든다.
+    const auto * second = io::eud::offsetAt(0x0057F0F4);
+    SPLASH_CHECK(second != nullptr);
+    if (second != nullptr)
+        SPLASH_CHECK_EQ(second->address, 0x0057F0F0u);
+
+    // 어디에도 없는 자리.
+    SPLASH_CHECK(io::eud::offsetAt(0x00100000) == nullptr);
+
+    // 주소 읽기: 0x 가 붙든 안 붙든, 열여섯 자리 글자가 섞이면 16진수.
+    SPLASH_CHECK_EQ(io::eud::parseAddress("0x58A364").value_or(0), 0x0058A364u);
+    SPLASH_CHECK_EQ(io::eud::parseAddress("58A364").value_or(0), 0x0058A364u);
+    SPLASH_CHECK_EQ(io::eud::parseAddress("12").value_or(0), 12u);
+    SPLASH_CHECK(!io::eud::parseAddress("미네랄").has_value());
+}
+
+void testEuddraftSettings()
+{
+    io::euddraft::BuildRequest request;
+    request.inputMap = "/maps/in.scx";
+    request.outputMap = "/maps/out.scx";
+    request.scripts = { "/scripts/hello.eps" };
+    request.plugins = { io::euddraft::Plugin{"eudTurbo", {}} };
+
+    const std::string text = io::euddraft::settingsText(request);
+
+    SPLASH_CHECK(text.find("[main]") != std::string::npos);
+    SPLASH_CHECK(text.find("input: /maps/in.scx") != std::string::npos);
+    SPLASH_CHECK(text.find("output: /maps/out.scx") != std::string::npos);
+    SPLASH_CHECK(text.find("[/scripts/hello.eps]") != std::string::npos);
+    SPLASH_CHECK(text.find("[eudTurbo]") != std::string::npos);
+
+    // euddraft 는 freeze 를 기본으로 켠다. 우리 기본은 끔이므로 [freeze]
+    // 구역이 있어야 하고, 켜 달라고 하면 없어야 한다.
+    SPLASH_CHECK(text.find("[freeze]") != std::string::npos);
+
+    request.freeze = true;
+    SPLASH_CHECK(io::euddraft::settingsText(request).find("[freeze]") ==
+                 std::string::npos);
+
+    // 로그에서 눈에 띄어야 할 줄만 추린다.
+    const auto lines = io::euddraft::importantLines(
+        " - Allocating objects..\nRuntimeError: bad thing\n - done\n");
+    SPLASH_CHECK_EQ(lines.size(), std::size_t(1));
+    if (!lines.empty())
+        SPLASH_CHECK(lines.front().find("bad thing") != std::string::npos);
 }
 
 void testTilesetPlayerColor()
@@ -191,6 +285,8 @@ int main()
     testOverlongSections();
     testPackStrings();
     testEudSlots();
+    testEudOffsetLookup();
+    testEuddraftSettings();
     testTilesetPlayerColor();
     testDoodadOrigin();
     return splash::test::registry().report("단위 테스트");

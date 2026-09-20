@@ -593,7 +593,8 @@ const std::vector<Group> & allGroups()
 {
     static const std::vector<Group> kGroups = [] {
         std::vector<Group> groups;
-        for (auto * maker : { objectGroups, terrainGroups, settingsGroups, scenarioGroups })
+        for (auto * maker : { objectGroups, terrainGroups, settingsGroups, scenarioGroups,
+                              eudGroups })
         {
             auto part = maker();
             groups.insert(groups.end(), std::make_move_iterator(part.begin()),

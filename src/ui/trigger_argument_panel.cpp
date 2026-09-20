@@ -2,7 +2,10 @@
 
 #include "ui/eud_calculator.h"
 
+#include "io/eud.h"
+
 #include <QComboBox>
+#include <QHBoxLayout>
 #include <QLineEdit>
 #include <QFormLayout>
 #include <QLabel>
@@ -71,6 +74,93 @@ void TriggerArgumentPanel::setElement(std::size_t triggerIndex, std::size_t slot
     rebuild();
 }
 
+void TriggerArgumentPanel::addMemoryAddressRow()
+{
+    const int offsetArg = findArg(io::TriggerArgRole::MemoryOffset);
+    if (offsetArg < 0)
+        return;
+
+    const std::uint32_t epd = element_.args[std::size_t(offsetArg)].value;
+    const std::uint32_t address = io::eud::addressForEpd(epd);
+
+    auto * holder = new QWidget(body_);
+    auto * row = new QHBoxLayout(holder);
+    row->setContentsMargins(0, 0, 0, 0);
+
+    auto * edit = new QLineEdit(holder);
+    edit->setText(QStringLiteral("0x%1")
+                      .arg(address, 8, 16, QLatin1Char('0'))
+                      .toUpper()
+                      .replace(QStringLiteral("0X"), QStringLiteral("0x")));
+    edit->setToolTip(tr("1.16.1 기준 메모리 주소. 속에는 EPD 로 들어간다."));
+    row->addWidget(edit, 1);
+
+    auto * pick = new QPushButton(tr("찾기…"), holder);
+    row->addWidget(pick);
+
+    auto * note = new QLabel(QString::fromStdString(io::eud::describeAddress(address)),
+                             body_);
+    note->setWordWrap(true);
+    note->setStyleSheet(QStringLiteral("color: #9aa0a6;"));
+
+    const auto apply = [this, offsetArg](std::uint32_t chosen) {
+        if (!io::eud::isAligned(chosen))
+            return;
+        const std::uint32_t newEpd = io::eud::epdFor(chosen);
+        const std::size_t slot = slot_;
+        // 값을 넣으면 이 판이 통째로 다시 그려진다. 지금 위젯 안에서
+        // 그렇게 하면 발밑이 무너지므로 한 박자 미룬다.
+        QTimer::singleShot(0, this, [this, slot, offsetArg, newEpd] {
+            emit argChanged(slot, std::size_t(offsetArg), newEpd);
+        });
+    };
+
+    connect(edit, &QLineEdit::editingFinished, this, [this, edit, note, apply] {
+        if (loading_)
+            return;
+        const auto chosen = io::eud::parseAddress(edit->text().toStdString());
+        if (!chosen)
+        {
+            note->setText(tr("주소로 읽을 수 없습니다 (예: 0x0058A364)."));
+            return;
+        }
+        if (!io::eud::isAligned(*chosen))
+        {
+            note->setText(tr("네 바이트 경계가 아닙니다 — Deaths 로는 읽을 수 없습니다."));
+            return;
+        }
+        apply(*chosen);
+    });
+
+    connect(pick, &QPushButton::clicked, this, [this, address, apply] {
+        std::uint32_t chosen = address;
+        if (!EudCalculator::pickAddress(this, &chosen, address))
+            return;
+        apply(chosen);
+    });
+
+    form_->addRow(tr("EUD 주소"), holder);
+    form_->addRow(QString(), note);
+}
+
+void TriggerArgumentPanel::addWideNumberRow(std::size_t argIndex, const io::TriggerArg & arg)
+{
+    auto * edit = new QLineEdit(body_);
+    edit->setText(QString::number(arg.value));
+    edit->setToolTip(tr("10진수, 또는 0x 를 붙인 16진수."));
+
+    connect(edit, &QLineEdit::editingFinished, this, [this, edit, argIndex] {
+        if (loading_)
+            return;
+        const auto value = io::eud::parseAddress(edit->text().toStdString());
+        if (!value)
+            return;
+        emit argChanged(slot_, argIndex, *value);
+    });
+
+    form_->addRow(QString::fromStdString(arg.label), edit);
+}
+
 void TriggerArgumentPanel::rebuild()
 {
     loading_ = true;
@@ -102,18 +192,27 @@ void TriggerArgumentPanel::rebuild()
     {
         if (type.value == 0)
             continue; // 0 은 "없음" 이라 위에서 이미 넣었다
-        typeBox->addItem(QString::fromStdString(type.text), type.value);
+        typeBox->addItem(QString::fromStdString(type.text),
+                         QVariant::fromValue(type.value));
     }
 
-    const int typeIndex = typeBox->findData(static_cast<int>(element_.type));
+    // EUD 줄은 CHK 에 Deaths 로 들어가지만 고르개에서는 Memory 로 보여야
+    // 한다. typeKey 가 그 둘을 갈라 준다.
+    const std::uint32_t currentKey =
+        element_.typeKey != 0 ? element_.typeKey : static_cast<std::uint32_t>(element_.type);
+    const int typeIndex = typeBox->findData(QVariant::fromValue(currentKey));
     typeBox->setCurrentIndex(typeIndex >= 0 ? typeIndex : 0);
 
     connect(typeBox, &QComboBox::currentIndexChanged, this, [this, typeBox](int) {
         if (loading_)
             return;
-        emit typeChanged(slot_, static_cast<std::uint8_t>(typeBox->currentData().toInt()));
+        emit typeChanged(slot_, typeBox->currentData().toUInt());
     });
     form_->addRow(tr("종류"), typeBox);
+
+    // EUD 줄이면 주소부터 보여 준다.
+    if (element_.memory)
+        addMemoryAddressRow();
 
     // --- EUD 자리 고르기 ---
     //
@@ -123,7 +222,7 @@ void TriggerArgumentPanel::rebuild()
     const int playerArg = findArg(io::TriggerArgRole::Player);
     const int unitArg = findArg(io::TriggerArgRole::UnitType);
 
-    if (isDeaths() && playerArg >= 0 && unitArg >= 0)
+    if (isDeaths() && !element_.memory && playerArg >= 0 && unitArg >= 0)
     {
         auto * pick = new QPushButton(tr("EUD 주소로 고르기…"), body_);
         pick->setToolTip(
@@ -190,6 +289,16 @@ void TriggerArgumentPanel::rebuild()
 
             case io::TriggerArgKind::Number:
             {
+                // EPD·비트마스크와, EUD 줄의 값은 2^31 을 예사로 넘는다.
+                // QSpinBox 로는 담기지 않으므로 글자 상자를 쓴다.
+                if (arg.role == io::TriggerArgRole::MemoryOffset ||
+                    arg.role == io::TriggerArgRole::MemoryBitmask ||
+                    (element_.memory && arg.role == io::TriggerArgRole::Amount))
+                {
+                    addWideNumberRow(i, arg);
+                    break;
+                }
+
                 auto * box = new QSpinBox(body_);
                 box->setRange(0, static_cast<int>(std::min<std::uint32_t>(arg.maximum, 2147483647u)));
                 box->setValue(static_cast<int>(std::min<std::uint32_t>(arg.value, 2147483647u)));

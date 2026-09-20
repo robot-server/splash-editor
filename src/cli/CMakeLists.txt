@@ -7,6 +7,7 @@ add_executable(splash-cli
   group_terrain.cpp
   group_settings.cpp
   group_scenario.cpp
+  group_eud.cpp
 )
 
 target_link_libraries(splash-cli PRIVATE splash_core)

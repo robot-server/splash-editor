@@ -9,6 +9,8 @@ add_library(splash_io STATIC
   chk_bytes.h
   eud.cpp
   eud.h
+  euddraft.cpp
+  euddraft.h
   game_graphics.cpp
   game_graphics.h
   text_colors.cpp

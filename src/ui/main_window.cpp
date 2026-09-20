@@ -3,6 +3,9 @@
 #include "ui/map_view.h"
 #include "ui/tile_palette.h"
 #include "ui/mini_map.h"
+#include "io/eud.h"
+
+#include "ui/eud_build_dialog.h"
 #include "ui/eud_calculator.h"
 #include "ui/object_tree.h"
 #include "ui/sound_player.h"
@@ -59,6 +62,7 @@
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QStatusBar>
+#include <QTreeWidget>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -1480,12 +1484,33 @@ void MainWindow::buildMenus()
     });
     QAction * eudAction = triggerMenu->addAction(tr("EUD 주소 계산기(&U)…"));
     eudAction->setToolTip(
-        tr("EUD 트리거의 메모리 주소와 Deaths 자리(플레이어·유닛)를 서로 "
-           "바꿔 줍니다."));
+        tr("EUD 트리거의 메모리 주소·EPD·Deaths 자리를 서로 바꾸고, 이름 붙은 "
+           "메모리 자리를 찾아봅니다."));
     connect(eudAction, &QAction::triggered, this, [this] {
         auto * calculator = new EudCalculator(this);
         calculator->setAttribute(Qt::WA_DeleteOnClose);
         calculator->show();
+    });
+
+    QAction * eudListAction = triggerMenu->addAction(tr("이 맵의 EUD 훑기(&D)…"));
+    eudListAction->setToolTip(
+        tr("맵 안에서 메모리를 건드리는 조건·동작을 모두 찾아, 리마스터에서 "
+           "될 자리인지까지 봅니다."));
+    connect(eudListAction, &QAction::triggered, this, &MainWindow::onShowEudUsages);
+
+    QAction * eudBuildAction = triggerMenu->addAction(tr("EUD 빌드 (euddraft)(&B)…"));
+    eudBuildAction->setToolTip(
+        tr("epScript 를 euddraft 로 컴파일해 맵에 얹습니다. euddraft 는 따로 "
+           "받아 두어야 합니다."));
+    connect(eudBuildAction, &QAction::triggered, this, [this] {
+        if (!document().isOpen())
+        {
+            statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
+            return;
+        }
+        auto * dialog = new EudBuildDialog(document(), this);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->show();
     });
 
     QAction * editTriggers = triggerMenu->addAction(tr("트리거 편집기(&E)…"));
@@ -2918,6 +2943,106 @@ void MainWindow::onUnitProperties()
     mapView_->refresh();
     refreshFromDocument();
     statusBar()->showMessage(tr("유닛 속성을 바꿨습니다 — %1개").arg(changed), 3000);
+}
+
+void MainWindow::onShowEudUsages()
+{
+    if (!document().isOpen())
+    {
+        statusBar()->showMessage(tr("먼저 맵을 여세요"), 3000);
+        return;
+    }
+
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    const auto usages = document().eudUsages();
+    QApplication::restoreOverrideCursor();
+
+    auto * dialog = new QDialog(this);
+    dialog->setAttribute(Qt::WA_DeleteOnClose);
+    dialog->setWindowTitle(tr("이 맵의 EUD — %1군데").arg(usages.size()));
+    dialog->resize(920, 560);
+
+    auto * layout = new QVBoxLayout(dialog);
+
+    auto * table = new QTreeWidget(dialog);
+    table->setColumnCount(6);
+    table->setHeaderLabels({tr("트리거"), tr("자리"), tr("주소"), tr("EPD"),
+                            tr("리마스터"), tr("내용")});
+    table->setRootIsDecorated(false);
+    table->setAlternatingRowColors(true);
+    layout->addWidget(table, 1);
+
+    std::size_t unsupported = 0;
+    std::size_t readOnly = 0;
+    std::size_t misaligned = 0;
+
+    for (const auto & usage : usages)
+    {
+        auto * item = new QTreeWidgetItem(table);
+        item->setText(0, QString::number(usage.triggerIndex));
+        item->setText(1, usage.isCondition ? tr("조건 %1").arg(usage.slot)
+                                           : tr("동작 %1").arg(usage.slot));
+        item->setText(2, QStringLiteral("0x%1")
+                             .arg(usage.address, 8, 16, QLatin1Char('0')).toUpper()
+                             .replace(QStringLiteral("0X"), QStringLiteral("0x")));
+        item->setText(3, QString::number(io::eud::signedEpdFor(usage.address)));
+        item->setText(5, QString::fromStdString(usage.text));
+
+        if (!io::eud::isAligned(usage.address))
+        {
+            ++misaligned;
+            item->setText(4, tr("경계 어긋남"));
+            item->setForeground(4, QBrush(QColor(0xC0, 0x39, 0x2B)));
+            continue;
+        }
+
+        const auto * entry = io::eud::offsetAt(usage.address);
+        if (entry == nullptr)
+        {
+            item->setText(4, tr("모름"));
+            continue;
+        }
+
+        item->setText(4, QString::fromStdString(io::eud::scrSupportName(entry->scr)));
+        item->setToolTip(5, QString::fromStdString(entry->name));
+
+        if (entry->scr == io::eud::ScrSupport::Unsupported)
+        {
+            ++unsupported;
+            item->setForeground(4, QBrush(QColor(0xC0, 0x39, 0x2B)));
+        }
+        else if (!usage.isCondition && entry->scr == io::eud::ScrSupport::ReadOnly)
+        {
+            // 읽기만 되는 자리에 쓰는 맵은 리마스터에서 아예 열리지 않는다.
+            ++readOnly;
+            item->setForeground(4, QBrush(QColor(0xB7, 0x79, 0x1F)));
+        }
+    }
+
+    for (int column = 0; column < 5; ++column)
+        table->resizeColumnToContents(column);
+
+    auto * note = new QLabel(dialog);
+    note->setWordWrap(true);
+    if (usages.empty())
+    {
+        note->setText(tr("이 맵은 EUD 를 쓰지 않습니다."));
+    }
+    else
+    {
+        note->setText(tr("리마스터에서 안 되는 자리 %1, 쓰기가 막힌 자리 %2, "
+                         "네 바이트 경계가 아닌 자리 %3.\n"
+                         "이름을 더 많이 가려내려면 EUD 주소 계산기에서 오프셋 표를 "
+                         "불러오세요.")
+                          .arg(unsupported).arg(readOnly).arg(misaligned));
+    }
+    layout->addWidget(note);
+
+    auto * buttons = new QDialogButtonBox(QDialogButtonBox::Close, dialog);
+    connect(buttons, &QDialogButtonBox::rejected, dialog, &QDialog::reject);
+    layout->addWidget(buttons);
+
+    dialog->show();
 }
 
 void MainWindow::onShowTriggers()

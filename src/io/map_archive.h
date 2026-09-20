@@ -279,6 +279,7 @@ enum class TriggerArgRole
     Amount,
     Comparison,
     MemoryOffset,
+    MemoryBitmask,
 };
 
 /// 고를 수 있는 값 하나.
@@ -300,6 +301,14 @@ struct TriggerArg
     std::uint32_t maximum = 0xFFFFFFFFu; ///< kind == Number 일 때 최댓값
 };
 
+/// 가상 조건·액션 종류. CHK 에는 Deaths / Set Deaths 로 들어가지만
+/// 편집기에서는 따로 고를 수 있어야 한다.
+///
+/// 종류 목록(conditionTypes·actionTypes)과 TriggerElement::typeKey 가
+/// 이 값을 쓴다. 실제 종류 번호(0-59)와 겹치지 않는 자리에 둔다.
+inline constexpr std::uint32_t kMemoryType = 0x100;        ///< Memory / Set Memory
+inline constexpr std::uint32_t kMemoryMaskedType = 0x101;  ///< 비트마스크를 함께 쓰는 쪽
+
 /// 트리거에 든 조건 또는 액션 하나.
 struct TriggerElement
 {
@@ -308,6 +317,49 @@ struct TriggerElement
     std::string text;           ///< 인자까지 붙인 한 줄
     bool disabled = false;
     std::vector<TriggerArg> args;
+
+    /// EUD 인지 — Deaths 를 메모리 접근으로 쓰는 줄인지.
+    bool memory = false;
+    /// 비트마스크를 함께 쓰는지 (maskFlag 가 "SC").
+    bool masked = false;
+
+    /// 종류 고르개가 쓰는 값. 보통은 type 과 같고, EUD 면 kMemoryType
+    /// 또는 kMemoryMaskedType 이다.
+    std::uint32_t typeKey = 0;
+};
+
+/// EUD 조건 한 줄에 넣을 값.
+struct MemoryConditionSpec
+{
+    std::uint32_t address = 0;    ///< 1.16.1 기준 메모리 주소
+    std::uint8_t comparison = 0;  ///< Chk::Condition::Comparison (0 AtLeast, 1 AtMost, 10 Exactly)
+    std::uint32_t amount = 0;
+    bool masked = false;          ///< 비트마스크를 쓰는지
+    std::uint32_t bitmask = 0xFFFFFFFFu;
+};
+
+/// EUD 동작 한 줄에 넣을 값.
+struct MemoryActionSpec
+{
+    std::uint32_t address = 0;
+    std::uint8_t modifier = 7;    ///< ValueModifier (7 SetTo, 8 Add, 9 Subtract)
+    std::uint32_t amount = 0;
+    bool masked = false;
+    std::uint32_t bitmask = 0xFFFFFFFFu;
+};
+
+/// 맵 안에서 찾은 EUD 자리 하나.
+struct EudUsage
+{
+    std::size_t triggerIndex = 0;
+    std::size_t slot = 0;
+    bool isCondition = true;
+    bool masked = false;
+    std::uint32_t epd = 0;        ///< Deaths 표에서 네 바이트 단위로 센 거리
+    std::uint32_t address = 0;    ///< 1.16.1 기준 메모리 주소
+    std::uint32_t bitmask = 0;    ///< masked 일 때만 뜻이 있다
+    std::uint32_t amount = 0;     ///< 견줄 값 / 넣을 값
+    std::string text;             ///< 사람이 읽는 한 줄
 };
 
 /// 성공/실패와 사람이 읽을 메시지를 함께 나르는 결과 타입.
@@ -802,9 +854,29 @@ public:
     std::vector<TriggerChoice> conditionTypes(const GameGraphics & graphics) const;
     std::vector<TriggerChoice> actionTypes(const GameGraphics & graphics) const;
 
+    /// 맵 안의 EUD(메모리) 조건·액션을 모두 찾는다.
+    ///
+    /// 게임 자료가 없어도 된다 — 자리와 수만 읽으면 되기 때문이다.
+    std::vector<EudUsage> eudUsages() const;
+
     /// 조건·액션의 종류를 바꾼다. 인자는 기본값으로 되돌아간다.
-    Result setConditionType(std::size_t triggerIndex, std::size_t slot, std::uint8_t type);
-    Result setActionType(std::size_t triggerIndex, std::size_t slot, std::uint8_t type);
+    /// 조건·액션의 종류를 바꾼다.
+    ///
+    /// kMemoryType / kMemoryMaskedType 을 주면 CHK 에는 Deaths 가 들어가고
+    /// 플레이어 자리에는 EUD 로 읽히는 기본 자리가 채워진다.
+    Result setConditionType(std::size_t triggerIndex, std::size_t slot, std::uint32_t type);
+    Result setActionType(std::size_t triggerIndex, std::size_t slot, std::uint32_t type);
+
+    /// EUD 조건 한 줄을 통째로 쓴다.
+    ///
+    /// 주소는 1.16.1 기준이며 네 바이트 경계여야 한다. 자리를 나눠 여러 번
+    /// 쓰면 그 사이에 엉뚱한 곳을 가리키는 순간이 생기므로 한 번에 넣는다.
+    Result setConditionMemory(std::size_t triggerIndex, std::size_t slot,
+                              const MemoryConditionSpec & spec);
+
+    /// EUD 동작 한 줄을 통째로 쓴다.
+    Result setActionMemory(std::size_t triggerIndex, std::size_t slot,
+                           const MemoryActionSpec & spec);
 
     /// 인자 하나의 값을 바꾼다. 문자열 인자는 setConditionArgText 를 쓴다.
     Result setConditionArg(std::size_t triggerIndex, std::size_t slot,

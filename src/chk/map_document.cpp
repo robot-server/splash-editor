@@ -849,7 +849,8 @@ std::vector<io::TriggerChoice> MapDocument::actionTypes(const io::GameGraphics &
     return archive_.actionTypes(graphics);
 }
 
-bool MapDocument::setConditionType(std::size_t triggerIndex, std::size_t slot, std::uint8_t type)
+bool MapDocument::setConditionType(std::size_t triggerIndex, std::size_t slot,
+                                   std::uint32_t type)
 {
     const io::Result result = archive_.setConditionType(triggerIndex, slot, type);
     if (!result) { lastError_ = result.message; return false; }
@@ -860,7 +861,8 @@ bool MapDocument::setConditionType(std::size_t triggerIndex, std::size_t slot, s
     return true;
 }
 
-bool MapDocument::setActionType(std::size_t triggerIndex, std::size_t slot, std::uint8_t type)
+bool MapDocument::setActionType(std::size_t triggerIndex, std::size_t slot,
+                                std::uint32_t type)
 {
     const io::Result result = archive_.setActionType(triggerIndex, slot, type);
     if (!result) { lastError_ = result.message; return false; }
@@ -869,6 +871,35 @@ bool MapDocument::setActionType(std::size_t triggerIndex, std::size_t slot, std:
     redoDepth_ = 0;
     refreshInfo();
     return true;
+}
+
+bool MapDocument::setConditionMemory(std::size_t triggerIndex, std::size_t slot,
+                                     const io::MemoryConditionSpec & spec)
+{
+    const io::Result result = archive_.setConditionMemory(triggerIndex, slot, spec);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setActionMemory(std::size_t triggerIndex, std::size_t slot,
+                                  const io::MemoryActionSpec & spec)
+{
+    const io::Result result = archive_.setActionMemory(triggerIndex, slot, spec);
+    if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+std::vector<io::EudUsage> MapDocument::eudUsages() const
+{
+    return archive_.eudUsages();
 }
 
 bool MapDocument::setConditionArg(std::size_t triggerIndex, std::size_t slot, std::size_t argIndex, std::uint32_t value)

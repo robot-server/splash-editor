@@ -3,6 +3,9 @@
 #include "cli_common.h"
 
 #include <algorithm>
+#include <array>
+#include <functional>
+#include <sstream>
 #include <iomanip>
 #include <iostream>
 
@@ -286,6 +289,129 @@ int triggerSetArg(Args & args)
                                 args.at(5), target.path);
 }
 
+// --- 트리거 자체를 늘리고 줄이기 ---
+//
+// 인자 하나를 고치려면 먼저 고칠 트리거가 있어야 한다. GUI 의 트리거
+// 편집기에는 있던 일이 CLI 에는 없어서, EUD 를 넣으려면 여기서 막혔다.
+
+int triggerAdd(Args & args)
+{
+    const SaveTarget target = takeSaveTarget(args);
+    const auto countOption = args.number("--count");
+    args.finish();
+
+    const std::string mapPath = args.at(0);
+    const auto count = static_cast<std::size_t>(countOption ? *countOption : 1);
+    if (count == 0)
+        throw CliError("--count 는 1 이상이어야 합니다.");
+
+    return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
+        for (std::size_t i = 0; i < count; ++i)
+        {
+            if (auto r = archive.addTrigger(); !r)
+            {
+                std::cerr << r.message << "\n";
+                return false;
+            }
+        }
+        std::cout << "  더했음    : 빈 트리거 " << count << "개 (이제 "
+                  << archive.info().triggerCount << "개)\n";
+        return true;
+    });
+}
+
+int triggerRemove(Args & args)
+{
+    const SaveTarget target = takeSaveTarget(args);
+    args.finish();
+
+    const std::string mapPath = args.at(0);
+
+    // 뒤에서부터 지운다 — 앞을 먼저 지우면 뒤 번호가 밀린다.
+    std::vector<std::size_t> indices;
+    for (std::size_t i = 1; i < args.count(); ++i)
+        indices.push_back(static_cast<std::size_t>(args.integer(i)));
+    if (indices.empty())
+        throw CliError("지울 트리거 번호를 하나 이상 주세요.");
+    std::sort(indices.begin(), indices.end(), std::greater<std::size_t>());
+
+    return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
+        for (const std::size_t index : indices)
+        {
+            if (auto r = archive.removeTrigger(index); !r)
+            {
+                std::cerr << r.message << "\n";
+                return false;
+            }
+        }
+        std::cout << "  지웠음    : 트리거 " << indices.size() << "개 (이제 "
+                  << archive.info().triggerCount << "개)\n";
+        return true;
+    });
+}
+
+int triggerDuplicate(Args & args)
+{
+    const SaveTarget target = takeSaveTarget(args);
+    args.finish();
+
+    const std::string mapPath = args.at(0);
+    const auto index = static_cast<std::size_t>(args.integer(1));
+
+    return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
+        if (auto r = archive.duplicateTrigger(index); !r)
+        {
+            std::cerr << r.message << "\n";
+            return false;
+        }
+        std::cout << "  베꼈음    : 트리거 " << index << " (이제 "
+                  << archive.info().triggerCount << "개)\n";
+        return true;
+    });
+}
+
+int triggerOwners(Args & args)
+{
+    const SaveTarget target = takeSaveTarget(args);
+    args.finish();
+
+    const std::string mapPath = args.at(0);
+    const auto index = static_cast<std::size_t>(args.integer(1));
+    const std::string list = args.at(2);
+
+    // `1,3,5` 또는 `all`. 번호는 사람이 세는 1~12 이고 속으로는 0~11 이다.
+    std::array<bool, 27> owners {};
+    if (list == "all" || list == "모두")
+    {
+        for (std::size_t i = 0; i < 12; ++i)
+            owners[i] = true;
+    }
+    else if (list != "none" && list != "없음")
+    {
+        std::stringstream stream(list);
+        std::string token;
+        while (std::getline(stream, token, ','))
+        {
+            if (token.empty())
+                continue;
+            const long long number = std::stoll(token);
+            if (number < 1 || number > 27)
+                throw CliError("플레이어 번호는 1~27 입니다: " + token);
+            owners[static_cast<std::size_t>(number - 1)] = true;
+        }
+    }
+
+    return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
+        if (auto r = archive.setTriggerOwners(index, owners); !r)
+        {
+            std::cerr << r.message << "\n";
+            return false;
+        }
+        std::cout << "  고쳤음    : 트리거 " << index << " 실행 플레이어\n";
+        return true;
+    });
+}
+
 int briefingShow(Args & args)
 {
     const auto installPath = args.option("--install");
@@ -355,6 +481,11 @@ std::vector<Group> scenarioGroups()
                         "트리거 하나를 인자 단위로 풀어 보여 준다.", triggerArgs},
             {"set-arg", "<맵> <condition|action> <트리거> <줄> <인자> <값> --install 설치폴더 -o <출력맵>",
                         "조건·동작의 인자 하나를 바꾼다.", triggerSetArg},
+            {"add",       "<맵> [--count N] -o <출력맵>", "빈 트리거를 더한다.", triggerAdd},
+            {"remove",    "<맵> <번호...> -o <출력맵>", "트리거를 지운다.", triggerRemove},
+            {"duplicate", "<맵> <번호> -o <출력맵>", "트리거를 베낀다.", triggerDuplicate},
+            {"owners",    "<맵> <번호> <1,3,5|all|none> -o <출력맵>",
+                          "그 트리거를 실행할 플레이어를 정한다.", triggerOwners},
         }},
         Group{"briefing", "미션 브리핑 (MBRF)", {
             {"show",  "<맵> [출력.txt] --install 설치폴더", "브리핑을 텍스트로 옮긴다.", briefingShow},
