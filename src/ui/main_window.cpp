@@ -587,6 +587,17 @@ void MainWindow::buildMenus()
             return;
         }
 
+        // 로케이션 도구에서는 고른 로케이션을 담는다.
+        if (mapView_->tool() == MapView::Tool::Location)
+        {
+            if (mapView_->copySelectedLocation())
+                statusBar()->showMessage(
+                    tr("로케이션을 복사했습니다 — 붙여넣으면 같은 크기로 만듭니다"), 3000);
+            else
+                statusBar()->showMessage(tr("복사할 로케이션을 먼저 고르세요"), 2000);
+            return;
+        }
+
         if (mapView_->copySelection())
             statusBar()->showMessage(tr("유닛을 복사했습니다"), 2000);
         else
@@ -615,6 +626,13 @@ void MainWindow::buildMenus()
     QAction * pasteAction = editMenu->addAction(tr("붙여넣기(&V)"));
     pasteAction->setShortcut(QKeySequence::Paste);
     connect(pasteAction, &QAction::triggered, this, [this] {
+        if (mapView_->tool() == MapView::Tool::Location && mapView_->hasLocationClipboard())
+        {
+            if (mapView_->pasteLocationAtCentre())
+                statusBar()->showMessage(tr("로케이션을 붙였습니다"), 2000);
+            return;
+        }
+
         if (mapView_->pasteAtCentre())
             statusBar()->showMessage(tr("유닛을 붙였습니다"), 2000);
         else

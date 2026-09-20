@@ -173,6 +173,17 @@ public:
     /// 고른 지형을 클립보드에 담는다. 담았으면 참.
     bool copyTerrainSelection();
 
+    /// 고른 로케이션을 담는다. 담았으면 참.
+    bool copySelectedLocation();
+
+    /// 담아 둔 로케이션을 커서 자리에 같은 크기로 만든다.
+    bool pasteLocationAt(const QPointF & screenPos);
+
+    bool hasLocationClipboard() const { return locationClipboard_.valid; }
+
+    /// 화면 한가운데에 붙인다.
+    bool pasteLocationAtCentre();
+
     /// 고른 지형을 담고 그 자리를 비운다 (잘라내기).
     ///
     /// 비운 자리는 타일 0 이 된다 — 게임에서 검게 보이는 빈 타일이다.
@@ -483,6 +494,18 @@ public:
     bool boxSelecting_ = false;
     QPointF boxStart_;   ///< 맵 좌표
     QPointF boxEnd_;
+
+    /// 담아 둔 로케이션. 크기와 이름·높이를 그대로 베낀다.
+    struct LocationClipboard
+    {
+        bool valid = false;
+        int width = 0;
+        int height = 0;
+        std::string name;
+        std::uint16_t elevationFlags = 0;
+        bool inverted = false;
+    };
+    LocationClipboard locationClipboard_;
 
     // 로케이션 그리기·모서리 조절.
     bool drawingLocation_ = false;   ///< 빈 곳을 끌어 새로 그리는 중

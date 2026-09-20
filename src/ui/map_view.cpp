@@ -1874,6 +1874,73 @@ void MapView::useTerrainBrush(const TerrainBrush & brush)
     viewport()->update();
 }
 
+bool MapView::copySelectedLocation()
+{
+    if (document_ == nullptr || selectedLocation_ < 0)
+        return false;
+
+    const auto & locations = document_->locations();
+    if (selectedLocation_ >= static_cast<int>(locations.size()))
+        return false;
+
+    const auto & location = locations[static_cast<std::size_t>(selectedLocation_)];
+
+    locationClipboard_.valid = true;
+    locationClipboard_.width = static_cast<int>(location.right) - static_cast<int>(location.left);
+    locationClipboard_.height = static_cast<int>(location.bottom) - static_cast<int>(location.top);
+    locationClipboard_.name = location.name;
+    locationClipboard_.elevationFlags = location.elevationFlags;
+    locationClipboard_.inverted =
+        document_->locationInverted(static_cast<std::size_t>(selectedLocation_));
+
+    return true;
+}
+
+bool MapView::pasteLocationAt(const QPointF & screenPos)
+{
+    if (!locationClipboard_.valid || document_ == nullptr || !document_->isOpen())
+        return false;
+
+    const QPointF mapPos = screenToMap(screenPos);
+
+    // 담아 둔 크기의 가운데를 커서에 맞춘다.
+    const int left = static_cast<int>(mapPos.x()) - locationClipboard_.width / 2;
+    const int top = static_cast<int>(mapPos.y()) - locationClipboard_.height / 2;
+
+    auto * doc = const_cast<chk::MapDocument *>(document_);
+
+    std::size_t created = 0;
+    if (!doc->addLocation(static_cast<std::uint32_t>(std::max(0, left)),
+                          static_cast<std::uint32_t>(std::max(0, top)),
+                          static_cast<std::uint32_t>(std::max(0, left + locationClipboard_.width)),
+                          static_cast<std::uint32_t>(std::max(0, top + locationClipboard_.height)),
+                          locationClipboard_.name, &created))
+    {
+        emit placementRejected(QString::fromStdString(document_->lastError()));
+        return false;
+    }
+
+    // 높이와 안팎도 함께 베낀다.
+    if (locationClipboard_.elevationFlags != 0)
+        doc->setLocationElevationFlags(created, locationClipboard_.elevationFlags);
+    if (locationClipboard_.inverted)
+        doc->setLocationInverted(created, true);
+
+    selectedLocation_ = static_cast<int>(created);
+    selectedUnit_ = -1;
+    selectedUnits_.clear();
+    emit selectionChanged(-1);
+    emit documentEdited();
+
+    viewport()->update();
+    return true;
+}
+
+bool MapView::pasteLocationAtCentre()
+{
+    return pasteLocationAt(QPointF(viewport()->width() / 2.0, viewport()->height() / 2.0));
+}
+
 bool MapView::cutTerrainSelection()
 {
     if (!copyTerrainSelection())
