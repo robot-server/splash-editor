@@ -280,6 +280,21 @@ public:
     TerrainOverlay terrainOverlay() const { return overlay_; }
     void setTerrainOverlay(TerrainOverlay overlay);
 
+    /// 크립을 옅게 그릴지. 크립 아래 지형을 살필 때 쓴다.
+    bool creepTranslucent() const { return creepTranslucent_; }
+    void setCreepTranslucent(bool translucent);
+
+    /// 맵 리빌러를 감출지. 시야를 열려고 잔뜩 놓은 맵에서 쓴다.
+    bool revealersHidden() const { return hideRevealers_; }
+    void setRevealersHidden(bool hidden);
+
+    /// 지상 유닛이 오갈 수 있는 영역을 색으로 나눠 보여 줄지.
+    ///
+    /// 걷기 플래그로 이어진 칸을 묶는다. 게임의 정확한 길찾기와는 다르지만,
+    /// 미네랄에 막혀 못 가는 자리 같은 것은 이것으로 드러난다.
+    bool pathAreasVisible() const { return showPathAreas_; }
+    void setPathAreasVisible(bool visible);
+
     /// 놓인 유닛의 시야로 안개를 미리 보여 줄지.
     ///
     /// MASK 를 칠해 만든 가리개와는 다르다. 게임을 시작했을 때 그 플레이어가
@@ -447,6 +462,12 @@ private:
     /// 지형 성질을 색으로 겹쳐 그린다.
     void paintTerrainOverlay(QPainter & painter, const QRect & dirty);
 
+    /// 걷기 플래그로 이어진 영역을 묶는다.
+    void buildPathAreas();
+
+    /// 길 영역을 색으로 덮는다.
+    void paintPathAreas(QPainter & painter, const QRect & dirty);
+
     /// 유닛 시야로 안개를 셈해 둔다.
     void buildFogPreview();
 
@@ -522,6 +543,14 @@ public:
     bool showRanges_ = false;
     bool showPylons_ = false;
     bool showFogPreview_ = false;
+    bool creepTranslucent_ = false;
+    bool hideRevealers_ = false;
+    bool showPathAreas_ = false;
+
+    /// 길 영역 셈 결과. 칸마다 영역 번호(0 은 갈 수 없는 칸).
+    std::vector<int> pathAreas_;
+    int pathAreaCount_ = 0;
+    bool pathAreasReady_ = false;
     std::uint8_t fogPreviewPlayer_ = 0;
 
     /// 안개 미리보기 셈 결과. 유닛이 바뀌면 다시 센다.

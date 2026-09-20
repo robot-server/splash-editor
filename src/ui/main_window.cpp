@@ -1162,6 +1162,21 @@ void MainWindow::buildMenus()
         });
     }
 
+    QAction * showPathAreas = viewMenu->addAction(tr("길 영역 나눠 보기(&A)"));
+    showPathAreas->setCheckable(true);
+    showPathAreas->setToolTip(
+        tr("지상 유닛이 오갈 수 있는 곳을 색으로 묶습니다. 같은 색이면 "
+           "서로 갈 수 있습니다. 게임의 정확한 길찾기와는 다릅니다."));
+    connect(showPathAreas, &QAction::toggled, mapView_, &MapView::setPathAreasVisible);
+
+    QAction * translucentCreep = viewMenu->addAction(tr("크립 옅게(&E)"));
+    translucentCreep->setCheckable(true);
+    connect(translucentCreep, &QAction::toggled, mapView_, &MapView::setCreepTranslucent);
+
+    QAction * hideRevealers = viewMenu->addAction(tr("맵 리빌러 감추기(&M)"));
+    hideRevealers->setCheckable(true);
+    connect(hideRevealers, &QAction::toggled, mapView_, &MapView::setRevealersHidden);
+
     QAction * showFogPreview = viewMenu->addAction(tr("안개 미리보기(&W)"));
     showFogPreview->setCheckable(true);
     showFogPreview->setToolTip(

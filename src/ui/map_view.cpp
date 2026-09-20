@@ -66,6 +66,7 @@ void MapView::setTileset(const io::GameGraphics * tileset)
 void MapView::refresh()
 {
     fogPreviewReady_ = false;
+    pathAreasReady_ = false;
     tileCache_.clear();
     unitCache_.clear();
     spriteCache_.clear();
@@ -329,6 +330,7 @@ void MapView::paintEvent(QPaintEvent * event)
     }
 
     paintTerrainOverlay(painter, dirty);
+    paintPathAreas(painter, dirty);
 
     paintFogPreview(painter, dirty);
 
@@ -544,6 +546,11 @@ void MapView::paintCreep(QPainter & painter, const QRect & dirty)
 
     painter.save();
     painter.setRenderHint(QPainter::SmoothPixmapTransform, true);
+
+    // 크립 아래 지형을 살필 때는 옅게 그린다.
+    if (creepTranslucent_)
+        painter.setOpacity(0.35);
+
     painter.drawPixmap(target, *layer, source);
     painter.restore();
 }
@@ -661,6 +668,12 @@ void MapView::paintUnits(QPainter & painter, const QRect & dirty)
     for (std::size_t index = 0; index < units.size(); ++index)
     {
         const auto & unit = units[index];
+
+        // 시야를 열려고 잔뜩 놓은 리빌러는 감출 수 있다.
+        constexpr std::uint16_t kMapRevealer = 101;
+        if (hideRevealers_ && unit.type == kMapRevealer)
+            continue;
+
         // 여럿 고른 것 가운데 하나여도 고른 것으로 그린다.
         const bool isSelected =
             std::find(selectedUnits_.begin(), selectedUnits_.end(),
@@ -1189,6 +1202,139 @@ void MapView::setPylonRangeVisible(bool visible)
 {
     showPylons_ = visible;
     viewport()->update();
+}
+
+void MapView::setCreepTranslucent(bool translucent)
+{
+    creepTranslucent_ = translucent;
+    creepLayerReady_ = false; // 알파가 달라지므로 층을 다시 만든다
+    creepLayer_ = QPixmap();
+    viewport()->update();
+}
+
+void MapView::setRevealersHidden(bool hidden)
+{
+    hideRevealers_ = hidden;
+    viewport()->update();
+}
+
+void MapView::setPathAreasVisible(bool visible)
+{
+    showPathAreas_ = visible;
+    pathAreasReady_ = false;
+    viewport()->update();
+}
+
+void MapView::buildPathAreas()
+{
+    pathAreas_.clear();
+    pathAreaCount_ = 0;
+    pathAreasReady_ = true;
+
+    if (document_ == nullptr || !document_->isOpen() || tileset_ == nullptr)
+        return;
+
+    const auto & info = document_->info();
+    const auto & tiles = document_->tiles();
+    if (tiles.empty() || info.width <= 0 || info.height <= 0)
+        return;
+
+    const std::size_t cells = static_cast<std::size_t>(info.width) * info.height;
+    pathAreas_.assign(cells, 0);
+
+    // 걸을 수 있는 칸을 이어 붙여 영역으로 묶는다. 게임의 길찾기와 같지는
+    // 않지만(대각선·유닛 크기를 따지지 않는다) 막힌 자리는 드러난다.
+    std::vector<bool> walkable(cells, false);
+    for (std::size_t i = 0; i < cells && i < tiles.size(); ++i)
+        walkable[i] = tileset_->tileTerrain(info.tilesetId, tiles[i]).walkable;
+
+    std::vector<std::size_t> stack;
+    for (std::size_t start = 0; start < cells; ++start)
+    {
+        if (!walkable[start] || pathAreas_[start] != 0)
+            continue;
+
+        ++pathAreaCount_;
+        stack.clear();
+        stack.push_back(start);
+        pathAreas_[start] = pathAreaCount_;
+
+        while (!stack.empty())
+        {
+            const std::size_t at = stack.back();
+            stack.pop_back();
+
+            const int x = static_cast<int>(at % info.width);
+            const int y = static_cast<int>(at / info.width);
+
+            const std::pair<int, int> neighbours[4] {
+                {x - 1, y}, {x + 1, y}, {x, y - 1}, {x, y + 1}
+            };
+
+            for (const auto & [nx, ny] : neighbours)
+            {
+                if (nx < 0 || ny < 0 || nx >= info.width || ny >= info.height)
+                    continue;
+
+                const std::size_t next = static_cast<std::size_t>(ny) * info.width + nx;
+                if (!walkable[next] || pathAreas_[next] != 0)
+                    continue;
+
+                pathAreas_[next] = pathAreaCount_;
+                stack.push_back(next);
+            }
+        }
+    }
+}
+
+void MapView::paintPathAreas(QPainter & painter, const QRect & dirty)
+{
+    if (!showPathAreas_ || document_ == nullptr)
+        return;
+
+    if (!pathAreasReady_)
+        buildPathAreas();
+
+    if (pathAreas_.empty())
+        return;
+
+    const auto & info = document_->info();
+    const double tile = scaledTileSize();
+    if (tile <= 0)
+        return;
+
+    const int originX = horizontalScrollBar()->value();
+    const int originY = verticalScrollBar()->value();
+
+    const int firstX = std::max(0, static_cast<int>((originX + dirty.left()) / tile));
+    const int firstY = std::max(0, static_cast<int>((originY + dirty.top()) / tile));
+    const int lastX = std::min<int>(info.width - 1,
+                                    static_cast<int>((originX + dirty.right()) / tile));
+    const int lastY = std::min<int>(info.height - 1,
+                                    static_cast<int>((originY + dirty.bottom()) / tile));
+
+    painter.save();
+    for (int ty = firstY; ty <= lastY; ++ty)
+    {
+        for (int tx = firstX; tx <= lastX; ++tx)
+        {
+            const std::size_t index = static_cast<std::size_t>(ty) * info.width + tx;
+            if (index >= pathAreas_.size())
+                continue;
+
+            const int area = pathAreas_[index];
+            if (area == 0)
+                continue;
+
+            // 영역마다 다른 색을 준다. 이어진 곳은 같은 색이라 한눈에 들어온다.
+            const int hue = (area * 67) % 360;
+            QColor colour = QColor::fromHsv(hue, 200, 255, 70);
+
+            painter.fillRect(QRectF(tx * tile - originX, ty * tile - originY, tile, tile),
+                             colour);
+        }
+    }
+    painter.restore();
 }
 
 void MapView::setFogPreviewVisible(bool visible)
