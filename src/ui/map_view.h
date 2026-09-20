@@ -711,6 +711,7 @@ public:
 
     /// 그 두들이 덮는 자리 (맵 픽셀).
     QRectF doodadBounds(std::size_t index) const;
+    QRectF doodadBounds(std::uint16_t type, int pixelX, int pixelY) const;
 
     /// 담아 둔 로케이션. 크기와 이름·높이를 그대로 베낀다.
     struct LocationClipboard

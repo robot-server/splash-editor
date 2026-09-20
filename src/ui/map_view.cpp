@@ -2832,22 +2832,29 @@ bool MapView::pasteSpriteAtCentre()
 
 QRectF MapView::doodadBounds(std::size_t index) const
 {
-    if (document_ == nullptr || tileset_ == nullptr)
+    if (document_ == nullptr)
         return QRectF();
 
     const auto doodads = document_->doodads();
     if (index >= doodads.size())
         return QRectF();
 
-    const auto & doodad = doodads[index];
+    return doodadBounds(doodads[index].type, doodads[index].x, doodads[index].y);
+}
+
+QRectF MapView::doodadBounds(std::uint16_t type, int pixelX, int pixelY) const
+{
+    if (document_ == nullptr || tileset_ == nullptr)
+        return QRectF();
+
     const auto list = tileset_->doodads(document_->info().tilesetId);
     const auto info = std::find_if(list.begin(), list.end(),
-        [&doodad](const auto & entry) { return entry.id == doodad.type; });
+        [type](const auto & entry) { return entry.id == type; });
     if (info == list.end())
         return QRectF();
 
-    const int left = io::doodadOriginTile(doodad.x, info->tileWidth);
-    const int top = io::doodadOriginTile(doodad.y, info->tileHeight);
+    const int left = io::doodadOriginTile(pixelX, info->tileWidth);
+    const int top = io::doodadOriginTile(pixelY, info->tileHeight);
 
     return QRectF(left * double(io::kTilePixels), top * double(io::kTilePixels),
                   info->tileWidth * double(io::kTilePixels),
@@ -2856,16 +2863,32 @@ QRectF MapView::doodadBounds(std::size_t index) const
 
 int MapView::doodadAt(const QPointF & mapPos) const
 {
-    if (document_ == nullptr || !document_->isOpen())
+    if (document_ == nullptr || !document_->isOpen() || tileset_ == nullptr)
         return -1;
 
+    // 두 목록 모두 한 번만 받아 온다 — 두들이 팔백 개 넘는 맵도 있고
+    // 타일셋의 두들 표도 매번 새로 만들어지므로, 칸마다 다시 받으면
+    // 누를 때마다 눈에 띄게 굼떠진다.
     const auto doodads = document_->doodads();
+    const auto list = tileset_->doodads(document_->info().tilesetId);
 
     // 뒤에 놓은 것이 위에 있으므로 뒤에서부터 본다.
     for (std::size_t i = doodads.size(); i-- > 0;)
     {
-        const QRectF bounds = doodadBounds(i);
-        if (!bounds.isEmpty() && bounds.contains(mapPos))
+        const auto & doodad = doodads[i];
+        const auto info = std::find_if(list.begin(), list.end(),
+            [&doodad](const auto & entry) { return entry.id == doodad.type; });
+        if (info == list.end())
+            continue;
+
+        const int left = io::doodadOriginTile(doodad.x, info->tileWidth);
+        const int top = io::doodadOriginTile(doodad.y, info->tileHeight);
+
+        const QRectF bounds(left * double(io::kTilePixels), top * double(io::kTilePixels),
+                            info->tileWidth * double(io::kTilePixels),
+                            info->tileHeight * double(io::kTilePixels));
+
+        if (bounds.contains(mapPos))
             return static_cast<int>(i);
     }
     return -1;
