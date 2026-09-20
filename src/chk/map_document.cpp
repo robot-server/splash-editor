@@ -1484,6 +1484,27 @@ const std::vector<std::uint16_t> & MapDocument::tiles() const
     return tiles_;
 }
 
+bool MapDocument::removeOutOfBounds(std::size_t * outCount)
+{
+    const std::size_t removed = archive_.removeOutOfBounds();
+    if (outCount != nullptr)
+        *outCount = removed;
+
+    if (removed == 0)
+        return true;
+
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+const std::vector<std::uint16_t> & MapDocument::underlyingTiles() const
+{
+    return underlyingTiles_;
+}
+
 const std::vector<MapUnit> & MapDocument::units() const
 {
     return units_;
@@ -1502,6 +1523,7 @@ const std::vector<MapLocation> & MapDocument::locations() const
 void MapDocument::refreshInfo()
 {
     tiles_ = archive_.terrainTiles();
+    underlyingTiles_ = archive_.underlyingTiles();
     fog_ = archive_.fogTiles();
     doodads_ = archive_.doodads();
 

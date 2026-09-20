@@ -660,6 +660,30 @@ void MainWindow::buildMenus()
     QAction * installAction = fileMenu->addAction(tr("StarCraft 설치 폴더 지정(&I)…"));
     connect(installAction, &QAction::triggered, this, &MainWindow::onChooseInstallPath);
 
+    // 맵을 열 때 자동으로 손볼 것. 맵을 바꾸는 일이라 모두 기본 꺼짐이다.
+    QMenu * onLoadMenu = fileMenu->addMenu(tr("맵 열 때 자동으로"));
+    onLoadMenu->setToolTip(
+        tr("맵을 열자마자 손봅니다. 맵을 바꾸는 일이라 기본은 꺼져 있습니다."));
+
+    QAction * autoBounds = onLoadMenu->addAction(tr("맵 밖으로 나간 것 치우기"));
+    autoBounds->setCheckable(true);
+    autoBounds->setChecked(
+        QSettings().value(QStringLiteral("onLoadRemoveOutOfBounds"), false).toBool());
+    connect(autoBounds, &QAction::toggled, this, [](bool on) {
+        QSettings().setValue(QStringLiteral("onLoadRemoveOutOfBounds"), on);
+    });
+
+    QAction * autoDoodads = onLoadMenu->addAction(tr("어긋난 두들 고치기"));
+    autoDoodads->setCheckable(true);
+    autoDoodads->setChecked(
+        QSettings().value(QStringLiteral("onLoadRepairDoodads"), false).toBool());
+    autoDoodads->setToolTip(
+        tr("일부러 겹쳐 놓은 두들도 되돌아갑니다. 무엇이 고쳐졌는지 알려 주지만 "
+           "되돌리려면 실행 취소를 눌러야 합니다."));
+    connect(autoDoodads, &QAction::toggled, this, [](bool on) {
+        QSettings().setValue(QStringLiteral("onLoadRepairDoodads"), on);
+    });
+
     // 프로필 — 설치 폴더와 모드 자료 묶음에 이름을 붙여 오간다.
     profileMenu_ = fileMenu->addMenu(tr("프로필(&F)"));
     profileMenu_->setToolTip(
@@ -1327,6 +1351,26 @@ void MainWindow::buildMenus()
         mapView_->refresh();
         onDocumentEdited();
         statusBar()->showMessage(tr("두들 %1개를 고쳤습니다").arg(repaired), 3000);
+    });
+
+    QAction * cleanBounds = batchMenu->addAction(tr("맵 밖으로 나간 것 치우기"));
+    cleanBounds->setToolTip(
+        tr("경계 밖에 놓인 유닛·두들을 지우고 로케이션을 안으로 들입니다. "
+           "맵을 줄이거나 남의 맵에서 베껴 붙인 뒤에 씁니다."));
+    connect(cleanBounds, &QAction::triggered, this, [this] {
+        if (!document().isOpen())
+            return;
+
+        std::size_t removed = 0;
+        document().removeOutOfBounds(&removed);
+        if (removed == 0)
+        {
+            statusBar()->showMessage(tr("맵 밖으로 나간 것이 없습니다"), 2500);
+            return;
+        }
+
+        onDocumentEdited();
+        statusBar()->showMessage(tr("%1개를 치웠습니다").arg(removed), 3000);
     });
 
     QAction * convertDoodads = batchMenu->addAction(tr("두들을 지형으로 풀기"));
@@ -3068,6 +3112,39 @@ void MainWindow::loadTilesetFrom(const QString & installPath, bool announce)
         statusBar()->showMessage(tr("타일셋을 읽었습니다: %1").arg(installPath), 4000);
 }
 
+void MainWindow::applyOnLoadFixes()
+{
+    if (!document().isOpen())
+        return;
+
+    QSettings settings;
+    QStringList done;
+
+    if (settings.value(QStringLiteral("onLoadRemoveOutOfBounds"), false).toBool())
+    {
+        std::size_t removed = 0;
+        document().removeOutOfBounds(&removed);
+        if (removed > 0)
+            done << tr("맵 밖으로 나간 것 %1개").arg(removed);
+    }
+
+    if (settings.value(QStringLiteral("onLoadRepairDoodads"), false).toBool() &&
+        tileset_.isLoaded())
+    {
+        std::size_t repaired = 0;
+        document().repairDoodads(tileset_, &repaired);
+        if (repaired > 0)
+            done << tr("어긋난 두들 %1개").arg(repaired);
+    }
+
+    if (done.isEmpty())
+        return;
+
+    // 맵을 바꿨으면 반드시 알린다 — 연 것만으로 달라졌다는 것을 모르면
+    // 안 된다.
+    statusBar()->showMessage(tr("열면서 손봤습니다: %1").arg(done.join(tr(", "))), 6000);
+}
+
 void MainWindow::openPath(const QString & path)
 {
     if (path.isEmpty())
@@ -3087,6 +3164,8 @@ void MainWindow::openPath(const QString & path)
         refreshFromDocument();
         return;
     }
+
+    applyOnLoadFixes();
 
     if (tilePalette_ != nullptr)
         tilePalette_->setTilesetId(document().info().tilesetId);

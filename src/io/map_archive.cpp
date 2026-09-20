@@ -5768,6 +5768,75 @@ Result MapArchive::setTriggerText(const std::string & text, GameGraphics & graph
     return Result::success();
 }
 
+std::size_t MapArchive::removeOutOfBounds()
+{
+    if (!impl_->isOpen())
+        return 0;
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        const std::size_t unitsBefore = map.numUnits();
+        const std::size_t doodadsBefore = map.numDoodads();
+
+        map.removeOutOfBoundsUnits();
+        map.removeOutOfBoundsDoodads();
+        map.downsizeOutOfBoundsLocations();
+
+        const std::size_t removed =
+            (unitsBefore - map.numUnits()) + (doodadsBefore - map.numDoodads());
+
+        if (removed > 0)
+        {
+            // 무엇이 몇 개 사라졌는지 되돌릴 수 있게 세어 둔다.
+            impl_->undoSteps.push_back(static_cast<int>(removed));
+            impl_->redoSteps.clear();
+        }
+        return removed;
+    }
+    catch (const std::exception &)
+    {
+    }
+    return 0;
+}
+
+std::vector<std::uint16_t> MapArchive::underlyingTiles() const
+{
+    if (!impl_->isOpen())
+        return {};
+
+    const MapFile & map = *impl_->mapFile;
+
+    try
+    {
+        const std::size_t width  = map.getTileWidth();
+        const std::size_t height = map.getTileHeight();
+        if (width == 0 || height == 0)
+            return {};
+
+        const auto & editorTiles = map.read.editorTiles;
+        const bool usable =
+            map.hasSection(Chk::SectionName::TILE) &&
+            editorTiles.size() >= width * height &&
+            std::any_of(editorTiles.begin(), editorTiles.end(),
+                        [](std::uint16_t tile) { return tile != 0; });
+
+        if (!usable)
+            return terrainTiles();
+
+        std::vector<std::uint16_t> out(width * height, 0);
+        const std::size_t available = std::min(editorTiles.size(), out.size());
+        for (std::size_t i = 0; i < available; ++i)
+            out[i] = editorTiles[i];
+
+        return out;
+    }
+    catch (const std::exception &)
+    {
+        return {};
+    }
+}
+
 std::vector<std::uint16_t> MapArchive::terrainTiles() const
 {
     if (!impl_->isOpen())

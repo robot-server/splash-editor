@@ -903,6 +903,20 @@ public:
     /// 편집기는 관례상 에디터 쪽을 표시한다.
     std::vector<std::uint16_t> terrainTiles() const;
 
+    /// 맵 밖으로 나간 유닛·두들을 지우고 로케이션을 안으로 들인다.
+    ///
+    /// 맵을 줄이거나 남의 맵에서 베껴 붙이다 보면 경계 밖에 놓인 것이
+    /// 남는다. 게임은 그런 것을 무시하거나 이상하게 다룬다. 몇 개를
+    /// 손봤는지 돌려준다.
+    std::size_t removeOutOfBounds();
+
+    /// 두들을 걷어낸 밑 지형 (TILE 구역).
+    ///
+    /// 화면에 보이는 것은 MTXM 이지만, 두들 아래에 무슨 땅이 있었는지는
+    /// 여기 남아 있다. 두들을 빼고 지형만 베낄 때 쓴다. TILE 이 없으면
+    /// MTXM 을 돌려준다.
+    std::vector<std::uint16_t> underlyingTiles() const;
+
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;

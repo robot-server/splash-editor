@@ -434,12 +434,19 @@ public:
     /// 렌더링 때마다 코어를 두드리지 않아도 된다.
     const std::vector<std::uint16_t> & tiles() const;
 
+    /// 맵 밖으로 나간 유닛·두들을 지우고 로케이션을 안으로 들인다.
+    bool removeOutOfBounds(std::size_t * outCount = nullptr);
+
+    /// 두들을 걷어낸 밑 지형. 두들을 빼고 베낄 때 쓴다.
+    const std::vector<std::uint16_t> & underlyingTiles() const;
+
 private:
     void refreshInfo();
 
     io::MapArchive archive_;
     MapInfo info_;
     std::vector<std::uint16_t> tiles_;
+    std::vector<std::uint16_t> underlyingTiles_;
     std::vector<std::uint8_t> fog_;
     std::vector<MapUnit> units_;
     std::vector<MapSprite> sprites_;

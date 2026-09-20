@@ -2705,7 +2705,10 @@ bool MapView::copyTerrainSelection()
         return false;
 
     const auto & info = document_->info();
-    const auto & tiles = document_->tiles();
+
+    // 두들을 뺄 때는 밑 지형에서 가져온다.
+    const auto & tiles = copyDoodadTiles_ ? document_->tiles()
+                                          : document_->underlyingTiles();
     if (tiles.empty())
         return false;
 

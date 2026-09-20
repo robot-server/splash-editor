@@ -224,6 +224,13 @@ public:
     /// 고른 두들을 지운다. 지웠으면 참.
     bool deleteSelectedDoodad();
 
+    /// 지형을 베낄 때 두들 타일까지 가져올지.
+    ///
+    /// 끄면 두들을 걷어낸 밑 지형을 가져온다 — 두들이 놓인 곳의 땅만
+    /// 베끼고 싶을 때 쓴다.
+    bool copiesDoodadTiles() const { return copyDoodadTiles_; }
+    void setCopyDoodadTiles(bool copy) { copyDoodadTiles_ = copy; }
+
     /// 고른 네모 안의 가리개를 담는다. 담았으면 참.
     bool copyFogSelection();
 
@@ -527,6 +534,7 @@ private:
     bool creepLayerReady_ = false;
     std::vector<std::uint8_t> creepMask_;
     bool creepReady_ = false;
+    bool copyDoodadTiles_ = true;
     Visibility unitVisibility_ = Visibility::Shown;
     Visibility spriteVisibility_ = Visibility::Shown;
     bool showLocations_ = false; ///< 로케이션은 겹쳐 보이면 지형을 가려 기본은 꺼 둔다
