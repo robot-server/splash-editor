@@ -342,6 +342,7 @@ void MapView::paintEvent(QPaintEvent * event)
     paintSelectionBox(painter);
     paintTerrainSelection(painter);
     paintTileValues(painter, dirty);
+    paintPylonRanges(painter);
     paintUnitRanges(painter);
 }
 
@@ -1177,6 +1178,51 @@ void MapView::setUnitRangesVisible(bool visible)
 {
     showRanges_ = visible;
     viewport()->update();
+}
+
+void MapView::setPylonRangeVisible(bool visible)
+{
+    showPylons_ = visible;
+    viewport()->update();
+}
+
+void MapView::paintPylonRanges(QPainter & painter)
+{
+    if (!showPylons_ || document_ == nullptr)
+        return;
+
+    const double tile = scaledTileSize();
+    if (tile <= 0)
+        return;
+
+    const double scale = tile / io::kTilePixels;
+    const int originX = horizontalScrollBar()->value();
+    const int originY = verticalScrollBar()->value();
+
+    // 파일런 전력 범위는 게임 자료에 없다. 널리 알려진 크기를 쓴다 —
+    // 파일런을 가운데 두고 가로 16, 세로 10 타일의 타원이다.
+    constexpr std::uint16_t kPylon = 156;
+    constexpr double kHalfWidth = 8.0 * io::kTilePixels;
+    constexpr double kHalfHeight = 5.0 * io::kTilePixels;
+
+    const auto & units = document_->units();
+
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing, true);
+
+    for (const auto & unit : units)
+    {
+        if (unit.type != kPylon)
+            continue;
+
+        const QPointF centre(unit.x * scale - originX, unit.y * scale - originY);
+
+        painter.setBrush(QColor(120, 160, 255, 30));
+        painter.setPen(QPen(QColor(150, 190, 255, 180), 1.5, Qt::DashLine));
+        painter.drawEllipse(centre, kHalfWidth * scale, kHalfHeight * scale);
+    }
+
+    painter.restore();
 }
 
 void MapView::paintUnitRanges(QPainter & painter)

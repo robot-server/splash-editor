@@ -280,6 +280,14 @@ public:
     TerrainOverlay terrainOverlay() const { return overlay_; }
     void setTerrainOverlay(TerrainOverlay overlay);
 
+    /// 파일런이 전력을 대는 범위를 보여 줄지.
+    ///
+    /// 프로토스 건물은 파일런 범위 안에서만 지을 수 있다. 범위는 타원이고
+    /// 게임이 값을 가지고 있지 않아, 널리 알려진 크기(가로 16·세로 10 타일)로
+    /// 그린다.
+    bool pylonRangeVisible() const { return showPylons_; }
+    void setPylonRangeVisible(bool visible);
+
     /// 고른 유닛의 사거리·시야를 원으로 보여 줄지.
     bool unitRangesVisible() const { return showRanges_; }
     void setUnitRangesVisible(bool visible);
@@ -429,6 +437,9 @@ private:
     /// 지형 성질을 색으로 겹쳐 그린다.
     void paintTerrainOverlay(QPainter & painter, const QRect & dirty);
 
+    /// 파일런 전력 범위를 그린다.
+    void paintPylonRanges(QPainter & painter);
+
     /// 고른 유닛의 사거리·시야를 원으로 그린다.
     void paintUnitRanges(QPainter & painter);
 
@@ -493,6 +504,7 @@ public:
     TerrainOverlay overlay_ = TerrainOverlay::None;
     bool showTileValues_ = false;
     bool showRanges_ = false;
+    bool showPylons_ = false;
     std::uint8_t fogPlayers_ = 0x01; ///< 기본은 플레이어 1
     bool fogErase_ = false;
     bool fogPainting_ = false;

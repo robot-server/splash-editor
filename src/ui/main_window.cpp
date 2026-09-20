@@ -1162,6 +1162,13 @@ void MainWindow::buildMenus()
         });
     }
 
+    QAction * showPylons = viewMenu->addAction(tr("파일런 전력 범위(&Y)"));
+    showPylons->setCheckable(true);
+    showPylons->setToolTip(
+        tr("프로토스 건물을 지을 수 있는 범위입니다. 게임 자료에 값이 없어 "
+           "널리 쓰이는 크기(가로 16·세로 10 타일)로 그립니다."));
+    connect(showPylons, &QAction::toggled, mapView_, &MapView::setPylonRangeVisible);
+
     QAction * showRanges = viewMenu->addAction(tr("고른 유닛의 사거리·시야(&R)"));
     showRanges->setCheckable(true);
     showRanges->setToolTip(
