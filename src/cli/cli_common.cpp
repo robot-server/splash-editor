@@ -53,7 +53,7 @@ long long toNumber(const std::string & text, const std::string & what)
     }
     catch (const std::exception &)
     {
-        throw CliError(what + " 는 수여야 합니다: " + text);
+        throw CliError(what + "를 수로 읽지 못했습니다: " + text);
     }
 }
 
@@ -593,8 +593,8 @@ const std::vector<Group> & allGroups()
 {
     static const std::vector<Group> kGroups = [] {
         std::vector<Group> groups;
-        for (auto * maker : { objectGroups, terrainGroups, settingsGroups, scenarioGroups,
-                              eudGroups })
+        for (auto * maker : { objectGroups, clipboardGroups, terrainGroups,
+                              settingsGroups, scenarioGroups, eudGroups })
         {
             auto part = maker();
             groups.insert(groups.end(), std::make_move_iterator(part.begin()),

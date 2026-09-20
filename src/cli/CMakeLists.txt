@@ -4,6 +4,7 @@ add_executable(splash-cli
   main.cpp
   cli_common.cpp
   group_objects.cpp
+  group_clipboard.cpp
   group_terrain.cpp
   group_settings.cpp
   group_scenario.cpp

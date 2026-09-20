@@ -193,6 +193,7 @@ CLI 는 GUI 없이 코어를 두드리는 도구이자 테스트 하네스다. *
 | `sprite` | 놓기·지우기·속성 |
 | `doodad` | 놓기·지우기·지형으로 풀기·어긋난 것 찾고 고치기 |
 | `location` | 만들기·지우기·이름·크기·높이·안팎 뒤집기 |
+| `object` | 유닛·스프라이트·두들·로케이션을 네모째 오려 붙이기 |
 | `terrain` | 칠하기·복사·붙여넣기·대칭·ISOM 브러시 |
 | `fog` | 가리개 칠하기·일괄·복사·붙여넣기 |
 | `map` | 이름·설명·크기·타일셋 |
@@ -226,6 +227,10 @@ splash-cli terrain paste map.scx 40 40 patch.tiles -o out.scx
 
 # 왼쪽 절반을 오른쪽에 거울처럼 베끼기
 splash-cli terrain mirror map.scx horizontal -o out.scx
+
+# 본진을 통째로 오려 다른 자리에 붙이기 (애드온·나이더스 연결도 따라온다)
+splash-cli object copy map.scx 0 0 20 20 base.objects
+splash-cli object paste map.scx 40 40 base.objects --install "/경로/StarCraft" -o out.scx
 
 # 맵 전체를 리빌러로 덮기
 splash-cli scenario revealers map.scx --owner 1 --spacing 16 -o out.scx

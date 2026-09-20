@@ -206,6 +206,7 @@ int runGroupCommand(const std::string & argv0, const std::vector<std::string> & 
 
 // 갈래 파일들이 채워 넣는 것.
 std::vector<Group> objectGroups();
+std::vector<Group> clipboardGroups();
 std::vector<Group> terrainGroups();
 std::vector<Group> settingsGroups();
 std::vector<Group> scenarioGroups();

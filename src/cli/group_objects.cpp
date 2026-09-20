@@ -44,6 +44,26 @@ std::vector<std::size_t> descendingIndices(const std::vector<std::string> & text
     return indices;
 }
 
+/// 애드온·나이더스로 이어진 짝의 자리. 없으면 -1.
+///
+/// 게임은 classId 로 짝을 찾는다. 자기 자신을 가리키는 것은 이어지지 않은
+/// 유닛이다 (addUnit 이 relationClassId 에 제 번호를 넣어 둔다).
+int linkedPartner(const std::vector<io::RawUnit> & units, std::size_t index)
+{
+    const auto & unit = units[index];
+    if (unit.relationFlags == 0 || unit.relationClassId == unit.classId)
+        return -1;
+    if ((unit.relationFlags & 0x0600) == 0) // 나이더스(0x200) 도 애드온(0x400) 도 아니다
+        return -1;
+
+    for (std::size_t i = 0; i < units.size(); ++i)
+    {
+        if (i != index && units[i].classId != 0 && units[i].classId == unit.relationClassId)
+            return static_cast<int>(i);
+    }
+    return -1;
+}
+
 std::string stateFlagsText(std::uint16_t flags)
 {
     std::string text;
@@ -97,6 +117,15 @@ int unitList(Args & args)
             const std::string states = stateFlagsText(unit.stateFlags);
             if (!states.empty())
                 std::cout << "  [" << states << "]";
+
+            // 이어진 짝을 보여 준다 — object copy/paste 가 연결을 지켰는지
+            // 확인하려면 눈에 보여야 한다.
+            if (const int partner = linkedPartner(units, i); partner >= 0)
+            {
+                std::cout << "  ["
+                          << ((unit.relationFlags & 0x0400) != 0 ? "애드온" : "나이더스")
+                          << " " << partner << "]";
+            }
             std::cout << "\n";
         }
 

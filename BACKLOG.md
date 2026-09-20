@@ -153,10 +153,9 @@ PR #178("freeze MPQ ... fix 64-bit memory bugs", 2026-09-15 머지)이 릴리스
 
 남은 것은 아래다. 모두 코어에는 있고 CLI 에만 없다.
 
-- **객체 복사·붙여넣기.** 지형과 가리개는 파일로 오려 붙일 수 있다
-  (`terrain copy/paste`, `fog copy/paste`). 유닛·스프라이트·두들·로케이션은
-  아직 없다. 지형과 달리 좌표·소유자·연결을 함께 옮겨야 해서 파일 꼴을
-  따로 정해야 한다.
+- **두들 꺼진 상태를 붙일 때 되살리지 못한다.** `object paste` 는 두들을
+  늘 켜진 채로 놓는다. 코어에 두들을 끄는 API 가 없다 — DD2 의 enabled
+  칸을 쓰는 길이 `placeDoodad` 에만 있고 나중에 바꾸지 못한다.
 - **트리거의 조건·동작을 낱개로 더하고 빼기.** 트리거 자체는 명령으로
   더하고 지우고 베낄 수 있게 되었다(`trigger add/remove/duplicate/owners`,
   2026-09-20). 조건·동작 한 줄을 통째로 넣는 길은 EUD 쪽만 있다
@@ -211,4 +210,4 @@ EUD(Memory·Memory Masked 조건·동작을 주소로 편집, 주소 계산기�
 배율 12.5~800%, 유닛·스프라이트 옅게 보기, 지형 베낄 때 두들 빼기,
 맵 밖으로 나간 것 치우기(열 때 자동으로도).
 
-CLI 쪽으로는: 갈래별 명령(unit·sprite·doodad·location·terrain·fog·map·player·force·string·switch·preset·unitdef·upgrade·tech·scenario·sound·trigger·briefing·eud), 유닛을 이름으로 고르기, 지형·가리개를 파일로 오려 붙이기, 지형 대칭, 트리거 더하기·지우기·베끼기·실행 플레이어, EUD 주소 셈·오프셋 표·맵 훑기·조건과 동작 넣기·euddraft 빌드, 저장 전 원본 지키기(--in-place 는 바꿔치기), 저장본 다시 열어 확인.
+CLI 쪽으로는: 갈래별 명령(unit·sprite·doodad·location·terrain·fog·map·player·force·string·switch·preset·unitdef·upgrade·tech·scenario·sound·trigger·briefing·eud), 유닛을 이름으로 고르기, 지형·가리개를 파일로 오려 붙이기, 지형 대칭, 트리거 더하기·지우기·베끼기·실행 플레이어, EUD 주소 셈·오프셋 표·맵 훑기·조건과 동작 넣기·euddraft 빌드, 저장 전 원본 지키기(--in-place 는 바꿔치기), 저장본 다시 열어 확인, 유닛·스프라이트·두들·로케이션을 네모째 오려 붙이기(`object copy/paste`, 애드온·나이더스 연결과 로케이션 높이·안팎 뒤집힘까지 따라온다).
