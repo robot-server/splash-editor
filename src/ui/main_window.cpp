@@ -600,7 +600,7 @@ void MainWindow::buildMenus()
 
     fileMenu->addSeparator();
 
-    QAction * stringsAction = fileMenu->addAction(tr("문자열 편집기(&S)…"));
+    QAction * stringsAction = fileMenu->addAction(tr("문자열 편집기(&T)…"));
     stringsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
     connect(stringsAction, &QAction::triggered, this, &MainWindow::onStringEditor);
 
@@ -1632,14 +1632,14 @@ void MainWindow::buildMenus()
         });
     }
 
-    QAction * showAiTowns = viewMenu->addAction(tr("AI 타운 표시(&I)"));
+    QAction * showAiTowns = viewMenu->addAction(tr("AI 타운 표시(&J)"));
     showAiTowns->setCheckable(true);
     showAiTowns->setToolTip(
         tr("트리거의 \"Run AI Script At Location\" 이 가리키는 로케이션입니다. "
            "컴퓨터가 어디를 거점으로 삼는지 보여 줍니다."));
     connect(showAiTowns, &QAction::toggled, mapView_, &MapView::setAiTownsVisible);
 
-    QAction * showPathAreas = viewMenu->addAction(tr("길 영역 나눠 보기(&A)"));
+    QAction * showPathAreas = viewMenu->addAction(tr("길 영역 나눠 보기(&H)"));
     showPathAreas->setCheckable(true);
     showPathAreas->setToolTip(
         tr("지상 유닛이 오갈 수 있는 곳을 색으로 묶습니다. 같은 색이면 "
