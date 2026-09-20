@@ -24,6 +24,12 @@
 #include <QHeaderView>
 #include <QTableWidget>
 #include <QGroupBox>
+#include <QTimer>
+#include <QStandardPaths>
+#include <QDesktopServices>
+#include <QDateTime>
+#include <QDir>
+#include <QUrl>
 #include <QSettings>
 #include <QSplitter>
 #include <QApplication>
@@ -579,6 +585,49 @@ void MainWindow::buildMenus()
     QAction * propertiesAction = fileMenu->addAction(tr("맵 속성(&P)…"));
     propertiesAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_I));
     connect(propertiesAction, &QAction::triggered, this, &MainWindow::onMapProperties);
+
+    fileMenu->addSeparator();
+
+    // 자동 저장 — 고친 맵의 사본을 주기적으로 따로 쌓는다. 지금 열어 둔
+    // 파일은 건드리지 않으므로, 잘못 고쳐도 원본은 그대로다.
+    QMenu * autosaveMenu = fileMenu->addMenu(tr("자동 저장(&U)"));
+    autosaveMenu->setToolTip(
+        tr("고친 맵의 사본을 따로 쌓습니다. 열어 둔 파일은 건드리지 않습니다."));
+
+    auto * autosaveGroup = new QActionGroup(this);
+    autosaveGroup->setExclusive(true);
+
+    const int savedMinutes =
+        QSettings().value(QStringLiteral("autosaveMinutes"), 0).toInt();
+
+    for (const int minutes : {0, 3, 5, 10, 30})
+    {
+        QAction * choice = autosaveMenu->addAction(
+            minutes == 0 ? tr("끄기") : tr("%1분마다").arg(minutes));
+        choice->setCheckable(true);
+        choice->setChecked(minutes == savedMinutes);
+        choice->setData(minutes);
+        autosaveGroup->addAction(choice);
+
+        connect(choice, &QAction::triggered, this, [this, minutes] {
+            QSettings().setValue(QStringLiteral("autosaveMinutes"), minutes);
+            applyAutosaveInterval(minutes);
+            statusBar()->showMessage(
+                minutes == 0 ? tr("자동 저장을 껐습니다")
+                             : tr("%1분마다 사본을 쌓습니다").arg(minutes), 3000);
+        });
+    }
+
+    autosaveMenu->addSeparator();
+
+    QAction * openBackups = autosaveMenu->addAction(tr("쌓아 둔 사본 열기…"));
+    connect(openBackups, &QAction::triggered, this, [this] {
+        const QString folder = backupFolder();
+        QDir().mkpath(folder);
+        QDesktopServices::openUrl(QUrl::fromLocalFile(folder));
+    });
+
+    applyAutosaveInterval(savedMinutes);
 
     fileMenu->addSeparator();
 
@@ -2717,6 +2766,80 @@ void MainWindow::closeEvent(QCloseEvent * event)
     }
 
     event->accept();
+}
+
+QString MainWindow::backupFolder()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) +
+           QStringLiteral("/backups");
+}
+
+void MainWindow::applyAutosaveInterval(int minutes)
+{
+    if (autosaveTimer_ == nullptr)
+    {
+        autosaveTimer_ = new QTimer(this);
+        connect(autosaveTimer_, &QTimer::timeout, this, &MainWindow::onAutosave);
+    }
+
+    if (minutes <= 0)
+    {
+        autosaveTimer_->stop();
+        return;
+    }
+
+    autosaveTimer_->start(minutes * 60 * 1000);
+}
+
+void MainWindow::onAutosave()
+{
+    const QString folder = backupFolder();
+    if (!QDir().mkpath(folder))
+        return;
+
+    const QString stamp = QDateTime::currentDateTime().toString(
+        QStringLiteral("yyyyMMdd-HHmmss"));
+
+    int saved = 0;
+    for (const auto & document : documents_)
+    {
+        if (document == nullptr || !document->isOpen() || !document->isModified())
+            continue;
+
+        // 원래 이름을 살려 두면 어느 맵의 사본인지 바로 안다. 이름이 없는
+        // 새 맵은 "제목 없음"으로 쌓는다.
+        const QFileInfo source(QString::fromStdString(document->filePath()));
+        const QString base = source.completeBaseName().isEmpty()
+            ? tr("제목 없음") : source.completeBaseName();
+        const QString suffix = source.suffix().isEmpty()
+            ? QStringLiteral("scx") : source.suffix();
+
+        const QString target =
+            QStringLiteral("%1/%2-%3.%4").arg(folder, base, stamp, suffix);
+
+        if (document->saveCopy(target.toStdString()))
+            ++saved;
+    }
+
+    if (saved == 0)
+        return;
+
+    pruneBackups();
+    statusBar()->showMessage(tr("사본 %1개를 쌓았습니다").arg(saved), 2500);
+}
+
+void MainWindow::pruneBackups()
+{
+    // 무한정 쌓이면 디스크를 먹는다. 최근 것만 남긴다.
+    constexpr int kKeep = 40;
+
+    QDir folder(backupFolder());
+    const auto entries = folder.entryInfoList(
+        {QStringLiteral("*.scm"), QStringLiteral("*.scx"), QStringLiteral("*.chk")},
+        QDir::Files, QDir::Time);
+
+    for (int i = kKeep; i < entries.size(); ++i)
+        QFile::remove(entries[i].absoluteFilePath());
 }
 
 void MainWindow::refreshPaletteColor()

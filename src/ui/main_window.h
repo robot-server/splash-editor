@@ -72,6 +72,14 @@ private:
 
     /// 팔레트에 보일 색을 맵 설정에서 다시 읽는다.
     void refreshPaletteColor();
+
+    /// 자동 저장 — 고친 맵의 사본을 따로 쌓는다.
+    static QString backupFolder();
+    void applyAutosaveInterval(int minutes);
+    void onAutosave();
+    void pruneBackups();
+
+    QTimer * autosaveTimer_ = nullptr;
     void updateWindowTitle();
 
     /// 저장된 설치 경로로 타일셋을 읽는다. 경로가 없거나 실패하면 조용히 넘어간다

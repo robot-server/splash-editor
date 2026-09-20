@@ -121,6 +121,10 @@ public:
     /// 새 경로에 쓴다. 성공하면 그 경로가 현재 경로가 되고 더티 플래그가 내려간다.
     bool saveAs(const std::string & filePath);
 
+    /// 사본을 따로 저장한다. 문서가 가리키는 경로도, 고친 표시도 그대로
+    /// 둔다 — 자동 저장처럼 사용자가 모르게 하는 저장에 쓴다.
+    bool saveCopy(const std::string & filePath) const;
+
     void close();
 
     bool isOpen() const;

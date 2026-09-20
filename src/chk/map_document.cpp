@@ -135,6 +135,23 @@ bool MapDocument::save()
     return saveAs(filePath_);
 }
 
+bool MapDocument::saveCopy(const std::string & filePath) const
+{
+    if (!isOpen())
+    {
+        const_cast<MapDocument *>(this)->lastError_ = "열린 맵이 없습니다.";
+        return false;
+    }
+
+    const io::Result result = archive_.saveAs(filePath);
+    if (!result)
+    {
+        const_cast<MapDocument *>(this)->lastError_ = result.message;
+        return false;
+    }
+    return true;
+}
+
 bool MapDocument::saveAs(const std::string & filePath)
 {
     if (!isOpen())
