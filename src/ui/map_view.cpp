@@ -313,18 +313,26 @@ void MapView::paintEvent(QPaintEvent * event)
     if (showCreep_)
         paintCreep(painter, dirty);
     // 격자는 지형 위, 나머지 아래. 좌표를 가늠하는 용도라 옅게 긋는다.
-    if (showGrid_ && tile >= 8.0)
+    // 칸 크기는 타일과 별개로 고를 수 있다 (8 ~ 128 픽셀).
+    const double gridStep = gridSize_ * zoom_;
+    if (showGrid_ && gridStep >= 4.0)
     {
         painter.save();
-        painter.setPen(QPen(QColor(255, 255, 255, 40), 1.0));
-        for (int tx = firstX; tx <= lastX + 1; ++tx)
+        painter.setPen(QPen(gridColor_, 1.0));
+
+        const int firstLineX = static_cast<int>((originX + dirty.left()) / gridStep);
+        const int lastLineX = static_cast<int>((originX + dirty.right()) / gridStep);
+        const int firstLineY = static_cast<int>((originY + dirty.top()) / gridStep);
+        const int lastLineY = static_cast<int>((originY + dirty.bottom()) / gridStep);
+
+        for (int line = firstLineX; line <= lastLineX + 1; ++line)
         {
-            const double x = tx * tile - originX;
+            const double x = line * gridStep - originX;
             painter.drawLine(QPointF(x, dirty.top()), QPointF(x, dirty.bottom()));
         }
-        for (int ty = firstY; ty <= lastY + 1; ++ty)
+        for (int line = firstLineY; line <= lastLineY + 1; ++line)
         {
-            const double y = ty * tile - originY;
+            const double y = line * gridStep - originY;
             painter.drawLine(QPointF(dirty.left(), y), QPointF(dirty.right(), y));
         }
         painter.restore();
@@ -2052,6 +2060,18 @@ void MapView::paintPlacementPreview(QPainter & painter)
     painter.restore();
 }
 
+void MapView::setGridSize(int pixels)
+{
+    gridSize_ = std::clamp(pixels, 8, 128);
+    viewport()->update();
+}
+
+void MapView::setGridColor(const QColor & colour)
+{
+    gridColor_ = colour;
+    viewport()->update();
+}
+
 void MapView::setTerrainSymmetry(Symmetry symmetry)
 {
     symmetry_ = symmetry;
@@ -2089,6 +2109,16 @@ std::vector<QPoint> MapView::mirrorTiles(int tileX, int tileY) const
     if (horizontal && vertical)
         add(lastX - tileX, lastY - tileY);
 
+    // 돌리기 대칭. 180도는 어떤 맵에서도 되고, 90도는 가로세로가 같아야 한다.
+    if (symmetry_ == Symmetry::Rotate180 || symmetry_ == Symmetry::Rotate90)
+        add(lastX - tileX, lastY - tileY);
+
+    if (symmetry_ == Symmetry::Rotate90 && info.width == info.height)
+    {
+        add(lastY - tileY, tileX);
+        add(tileY, lastX - tileX);
+    }
+
     return out;
 }
 
@@ -2122,6 +2152,15 @@ std::vector<QPoint> MapView::mirrorPixels(int pixelX, int pixelY) const
         add(pixelX, height - pixelY);
     if (horizontal && vertical)
         add(width - pixelX, height - pixelY);
+
+    if (symmetry_ == Symmetry::Rotate180 || symmetry_ == Symmetry::Rotate90)
+        add(width - pixelX, height - pixelY);
+
+    if (symmetry_ == Symmetry::Rotate90 && width == height)
+    {
+        add(height - pixelY, pixelX);
+        add(pixelY, width - pixelX);
+    }
 
     return out;
 }

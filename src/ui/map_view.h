@@ -162,7 +162,9 @@ public:
         None,       ///< 대칭 없음
         Horizontal, ///< 좌우 (세로축 기준)
         Vertical,   ///< 위아래 (가로축 기준)
-        Both        ///< 네 곳
+        Both,       ///< 네 곳
+        Rotate180,  ///< 맵 한가운데를 돌린 자리 (두 곳)
+        Rotate90    ///< 90도씩 돌린 자리 (네 곳, 정사각 맵에서만)
     };
     Symmetry terrainSymmetry() const { return symmetry_; }
     void setTerrainSymmetry(Symmetry symmetry);
@@ -353,6 +355,14 @@ public:
 
     /// 타일 격자를 그릴지.
     bool gridVisible() const { return showGrid_; }
+
+    /// 격자 한 칸의 크기 (픽셀). 8 = 아주 촘촘, 128 = 아주 성김.
+    int gridSize() const { return gridSize_; }
+    void setGridSize(int pixels);
+
+    /// 격자 색.
+    QColor gridColor() const { return gridColor_; }
+    void setGridColor(const QColor & colour);
     void setGridVisible(bool visible);
 
 public slots:
@@ -457,6 +467,8 @@ private:
     bool showLocations_ = false; ///< 로케이션은 겹쳐 보이면 지형을 가려 기본은 꺼 둔다
     bool showCreep_ = true;
     bool showGrid_ = false;
+    int gridSize_ = 32;
+    QColor gridColor_ {255, 255, 255, 40};
 
     // 선택과 드래그
     /// 격자에 맞춘 좌표. 유닛의 왼쪽·위 모서리를 격자에 붙인다.

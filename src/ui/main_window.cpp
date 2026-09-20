@@ -33,6 +33,7 @@
 #include <QFileInfo>
 #include <QTabBar>
 #include <QCheckBox>
+#include <QColorDialog>
 #include <QComboBox>
 #include <QLineEdit>
 #include <QSpinBox>
@@ -857,6 +858,8 @@ void MainWindow::buildMenus()
         { MapView::Symmetry::Horizontal, QT_TR_NOOP("좌우") },
         { MapView::Symmetry::Vertical,   QT_TR_NOOP("위아래") },
         { MapView::Symmetry::Both,       QT_TR_NOOP("네 곳") },
+        { MapView::Symmetry::Rotate180,  QT_TR_NOOP("180도 돌리기") },
+        { MapView::Symmetry::Rotate90,   QT_TR_NOOP("90도 돌리기 (정사각 맵)") },
     };
     for (const auto & choice : kSymmetries)
     {
@@ -1395,6 +1398,37 @@ void MainWindow::buildMenus()
     showFog->setChecked(mapView_->fogVisible());
     showFog->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_4));
     connect(showFog, &QAction::toggled, mapView_, &MapView::setFogVisible);
+
+    QMenu * gridMenu = viewMenu->addMenu(tr("격자 크기"));
+    auto * gridGroup = new QActionGroup(this);
+    gridGroup->setExclusive(true);
+    const struct { int pixels; const char * label; } kGridSizes[] {
+        {   8, QT_TR_NOOP("아주 촘촘 (8)") },
+        {  16, QT_TR_NOOP("촘촘 (16)") },
+        {  32, QT_TR_NOOP("한 타일 (32)") },
+        {  64, QT_TR_NOOP("성김 (64)") },
+        { 128, QT_TR_NOOP("아주 성김 (128)") },
+    };
+    for (const auto & choice : kGridSizes)
+    {
+        QAction * action = gridMenu->addAction(tr(choice.label));
+        action->setCheckable(true);
+        action->setChecked(choice.pixels == mapView_->gridSize());
+        gridGroup->addAction(action);
+        connect(action, &QAction::triggered, this, [this, choice] {
+            mapView_->setGridSize(choice.pixels);
+            mapView_->setGridVisible(true);
+        });
+    }
+
+    QAction * gridColorAction = viewMenu->addAction(tr("격자 색…"));
+    connect(gridColorAction, &QAction::triggered, this, [this] {
+        const QColor chosen = QColorDialog::getColor(
+            mapView_->gridColor(), this, tr("격자 색"),
+            QColorDialog::ShowAlphaChannel);
+        if (chosen.isValid())
+            mapView_->setGridColor(chosen);
+    });
 
     QAction * showCreep = viewMenu->addAction(tr("크립 표시(&C)"));
     showCreep->setCheckable(true);
