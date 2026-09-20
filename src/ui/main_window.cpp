@@ -3,6 +3,7 @@
 #include "ui/map_view.h"
 #include "ui/tile_palette.h"
 #include "ui/mini_map.h"
+#include "ui/eud_calculator.h"
 #include "ui/object_tree.h"
 #include "ui/sound_player.h"
 #include "ui/briefing_editor.h"
@@ -1408,6 +1409,16 @@ void MainWindow::buildMenus()
         connect(editor, &SwitchEditor::documentEdited, this, [this] { onDocumentEdited(); });
         editor->show();
     });
+    QAction * eudAction = triggerMenu->addAction(tr("EUD 주소 계산기(&U)…"));
+    eudAction->setToolTip(
+        tr("EUD 트리거의 메모리 주소와 Deaths 자리(플레이어·유닛)를 서로 "
+           "바꿔 줍니다."));
+    connect(eudAction, &QAction::triggered, this, [this] {
+        auto * calculator = new EudCalculator(this);
+        calculator->setAttribute(Qt::WA_DeleteOnClose);
+        calculator->show();
+    });
+
     QAction * editTriggers = triggerMenu->addAction(tr("트리거 편집기(&E)…"));
     editTriggers->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_T));
     connect(editTriggers, &QAction::triggered, this, [this] {

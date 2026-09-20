@@ -19,6 +19,8 @@ qt_add_executable(splash-editor
   unit_palette.h
   mini_map.cpp
   mini_map.h
+  eud_calculator.cpp
+  eud_calculator.h
   object_tree.cpp
   object_tree.h
   brush_palette.cpp
