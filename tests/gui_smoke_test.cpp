@@ -11,15 +11,19 @@
 #include "chk/map_document.h"
 #include "io/game_graphics.h"
 #include "io/map_archive.h"
+#include "ui/main_window.h"
 #include "ui/map_view.h"
 #include "test_support.h"
 
 #include <QApplication>
 #include <QMouseEvent>
+#include <QAction>
 #include <QSettings>
+#include <QTimer>
 
 #include <cstdlib>
 #include <filesystem>
+#include <iostream>
 #include <sstream>
 #include <string>
 
@@ -161,6 +165,89 @@ int main(int argc, char ** argv)
     SPLASH_CHECK(document.undo());
     view.refresh();
     SPLASH_CHECK_EQ(document.units().size(), before);
+
+    // --- 맵이 없을 때 메뉴를 눌러도 버티는지 ---
+    //
+    // 맵을 열기 전에 메뉴를 누르는 일은 흔하다. 대부분 "먼저 맵을 여세요"
+    // 로 끝나야 하는데, 한 군데라도 빈 문서를 만지면 거기서 터진다.
+    //
+    // 창을 띄우는 항목이 있으면 테스트가 멈추므로, 열린 창은 주기적으로
+    // 닫아 준다.
+    {
+        ui::MainWindow window;
+        window.resize(800, 600);
+        window.show();
+
+        QTimer closer;
+        closer.setInterval(10);
+        QObject::connect(&closer, &QTimer::timeout, [] {
+            const auto windows = QApplication::topLevelWidgets();
+            for (QWidget * widget : windows)
+            {
+                if (qobject_cast<ui::MainWindow *>(widget) != nullptr)
+                    continue;
+                if (widget->isVisible())
+                    widget->close();
+            }
+        });
+        closer.start();
+
+        // 파일 고르기 창은 운영체제가 띄우는 것이라 닫기 어렵다. 그런
+        // 항목만 빼고 누른다.
+        const QStringList skip {
+            QStringLiteral("새 맵"), QStringLiteral("열기"),
+            QStringLiteral("다른 이름으로"), QStringLiteral("StarCraft 설치 폴더"),
+            QStringLiteral("모드 자료"), QStringLiteral("종료"),
+            QStringLiteral("맵을 그림으로"), QStringLiteral("쌓아 둔 사본"),
+        };
+
+        int pressed = 0;
+        for (QAction * action : window.findChildren<QAction *>())
+        {
+            const QString text = action->text();
+            if (text.isEmpty() || !action->isEnabled())
+                continue;
+
+            bool skipThis = false;
+            for (const QString & needle : skip)
+                skipThis = skipThis || text.contains(needle);
+            if (skipThis)
+                continue;
+
+            action->trigger();
+            QApplication::processEvents();
+            ++pressed;
+        }
+
+        std::cout << "  맵 없이 누른 메뉴 " << pressed << "개\n";
+        SPLASH_CHECK(pressed > 20);
+
+        // 맵을 연 뒤에도 한 바퀴 — 이쪽이 더 위험하다. 문서를 실제로
+        // 만지는 길이 열리기 때문이다.
+        window.openPath(QString::fromStdString(path.string()));
+
+        int pressedOpen = 0;
+        for (QAction * action : window.findChildren<QAction *>())
+        {
+            const QString text = action->text();
+            if (text.isEmpty() || !action->isEnabled())
+                continue;
+
+            bool skipThis = false;
+            for (const QString & needle : skip)
+                skipThis = skipThis || text.contains(needle);
+            if (skipThis)
+                continue;
+
+            action->trigger();
+            QApplication::processEvents();
+            ++pressedOpen;
+        }
+
+        closer.stop();
+        std::cout << "  맵을 연 뒤 누른 메뉴 " << pressedOpen << "개\n";
+        SPLASH_CHECK(pressedOpen > 20);
+    }
 
     QSettings().clear();
     return splash::test::registry().report("화면 스모크");
