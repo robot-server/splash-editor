@@ -1487,6 +1487,16 @@ void MainWindow::buildMenus()
 
     windowMenu->addSeparator();
 
+    QAction * newViewport = windowMenu->addAction(tr("새 보기 창(&N)"));
+    newViewport->setToolTip(
+        tr("같은 맵을 따로 봅니다. 큰 맵의 먼 두 곳을 나란히 놓고 고칠 때 씁니다."));
+    connect(newViewport, &QAction::triggered, this, [this] {
+        addViewport();
+        statusBar()->showMessage(tr("보기 창을 열었습니다"), 2500);
+    });
+
+    windowMenu->addSeparator();
+
     QAction * nextTab = windowMenu->addAction(tr("다음 맵"));
     nextTab->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Tab));
     connect(nextTab, &QAction::triggered, this, [this] {
@@ -1716,10 +1726,57 @@ void MainWindow::onDeleteSelection()
         statusBar()->showMessage(tr("선택된 유닛이 없습니다."), 2000);
 }
 
+void MainWindow::forEachView(const std::function<void(MapView *)> & apply)
+{
+    if (mapView_ != nullptr)
+        apply(mapView_);
+
+    for (QDockWidget * dock : extraViews_)
+    {
+        if (dock == nullptr)
+            continue;
+        if (auto * view = qobject_cast<MapView *>(dock->widget()))
+            apply(view);
+    }
+}
+
+void MainWindow::addViewport()
+{
+    auto * view = new MapView(this);
+    view->setTileset(&tileset_);
+    view->setDocument(document().isOpen() ? &document() : nullptr);
+
+    // 새 창에서 고친 것도 다른 창에 곧바로 비친다.
+    connect(view, &MapView::documentEdited, this, &MainWindow::onDocumentEdited);
+    connect(view, &MapView::placementRejected, this, [this](const QString & reason) {
+        statusBar()->showMessage(reason, 3000);
+    });
+
+    auto * dock = new QDockWidget(tr("보기 %1").arg(extraViews_.size() + 2), this);
+    dock->setWidget(view);
+    dock->setAttribute(Qt::WA_DeleteOnClose);
+    dock->setAllowedAreas(Qt::AllDockWidgetAreas);
+    dock->setFloating(true);
+    dock->resize(520, 400);
+
+    // 닫힌 창은 목록에서도 뺀다 — 남겨 두면 죽은 포인터를 건드린다.
+    connect(dock, &QObject::destroyed, this, [this, dock] {
+        extraViews_.erase(std::remove(extraViews_.begin(), extraViews_.end(), dock),
+                          extraViews_.end());
+    });
+
+    extraViews_.push_back(dock);
+    dock->show();
+
+    // 주 화면이 보고 있는 자리에서 시작한다.
+    if (mapView_ != nullptr)
+        view->centerOnMap(mapView_->visibleMapRect().center());
+}
+
 void MainWindow::onDocumentEdited()
 {
     // 편집으로 유닛 목록이 바뀌었으니 뷰의 캐시도 무효가 된다.
-    mapView_->refresh();
+    forEachView([](MapView * view) { view->refresh(); });
     refreshFromDocument();
 }
 
@@ -1906,7 +1963,8 @@ void MainWindow::onNewMap()
         return;
     }
 
-    mapView_->setDocument(&document());
+    // 따로 연 보기 창도 같은 맵을 보게 한다.
+    forEachView([this](MapView * view) { view->setDocument(&document()); });
     mapView_->refresh();
     miniMap_->setDocument(&document());
 
@@ -2704,7 +2762,8 @@ void MainWindow::openPath(const QString & path)
         unitPalette_->setTilesetId(document().info().tilesetId);
 
     rememberRecentFile(path);
-    mapView_->setDocument(&document());
+    // 따로 연 보기 창도 같은 맵을 보게 한다.
+    forEachView([this](MapView * view) { view->setDocument(&document()); });
     mapView_->refresh();
     miniMap_->setDocument(&document());
     refreshFromDocument();

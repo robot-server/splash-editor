@@ -10,6 +10,7 @@
 #include <QMainWindow>
 
 #include <memory>
+#include <functional>
 #include <vector>
 
 class QComboBox;
@@ -120,6 +121,12 @@ private:
     QComboBox * ownerBox_ = nullptr; ///< 놓을 유닛의 소유자 (숫자 키로도 바꾼다)
     QDockWidget * unitDock_ = nullptr;
     ObjectTree * objectTree_ = nullptr;
+
+    /// 같은 맵을 따로 보는 창들. 주 화면과 달리 보기 전용은 아니지만,
+    /// 고른 것은 각자 따로 기억한다.
+    std::vector<QDockWidget *> extraViews_;
+    void addViewport();
+    void forEachView(const std::function<void(MapView *)> & apply);
     MiniMap * miniMap_ = nullptr;
     SoundPlayer * soundPlayer_ = nullptr;
 
