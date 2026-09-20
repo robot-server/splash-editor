@@ -2,6 +2,9 @@
 
 #include <QDialog>
 
+#include <vector>
+
+class QComboBox;
 class QLineEdit;
 class QLabel;
 class QSpinBox;
@@ -27,16 +30,32 @@ public:
     /// 유닛 종류 수. 한 플레이어분의 칸 수이기도 하다.
     static constexpr unsigned kUnitTypes = 228;
 
-    /// 자리 -> 주소.
+    /// 자리 -> 주소. 자리는 32비트로 감아 돈다.
     static unsigned addressFor(unsigned player, unsigned unit);
 
-    /// 주소 -> 자리. 표 밖이거나 네 바이트에 맞지 않으면 거짓.
+    /// 주소 -> 자리. 네 바이트에 맞지 않으면 거짓.
+    ///
+    /// EUD 가 노리는 곳은 대개 Deaths 표보다 앞이다. 그런 주소는 자리가
+    /// 음수가 되는데, 게임은 32비트로 감아 세므로 아주 큰 플레이어 번호로
+    /// 나타난다.
     static bool slotFor(unsigned address, unsigned * player, unsigned * unit);
+
+    /// 주소 -> EPD. 네 바이트 단위로 센 Deaths 표로부터의 거리다.
+    static int epdFor(unsigned address);
 
 private:
     void refreshFromSlot();
     void refreshFromAddress();
 
+    /// 널리 쓰이는 자리. 이름과 주소.
+    struct KnownAddress
+    {
+        const char * name;
+        unsigned address;
+    };
+    static const std::vector<KnownAddress> & knownAddresses();
+
+    QComboBox * known_ = nullptr;
     QSpinBox * player_ = nullptr;
     QSpinBox * unit_ = nullptr;
     QLineEdit * address_ = nullptr;
