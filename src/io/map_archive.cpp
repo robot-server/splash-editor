@@ -1960,12 +1960,18 @@ Result MapArchive::saveAs(const std::string & filePath) const
     if (!chk.good())
     {
         // 보호된 맵은 문자열 칸을 한계 너머로 부풀려 두는 수법을 쓴다.
-        // 그 상태로는 CHK 를 쓸 수 없으니 먼저 보호를 풀어야 한다.
-        if (map.isProtected())
+        // 그 상태로는 CHK 를 쓸 수 없으니 먼저 풀어야 한다. 보호 표시가
+        // 없는데 칸만 부풀려 둔 맵도 흔하므로 칸 수로도 가른다.
+        constexpr std::size_t kMaxStrings = 32766;
+        if (map.isProtected() || map.getCapacity() > kMaxStrings)
         {
             return Result::failure(
-                "보호된 맵이라 그대로 저장할 수 없습니다. '보호 풀기'를 먼저 "
-                "하세요 — 문자열 칸을 한계 너머로 부풀려 둔 맵이 흔합니다.");
+                map.isProtected()
+                    ? "보호된 맵이라 그대로 저장할 수 없습니다. '보호 해제'를 "
+                      "먼저 하세요."
+                    : "문자열 칸이 한계(32766)를 넘어 그대로 저장할 수 "
+                      "없습니다. '보호 해제'를 먼저 하세요 — 쓰이지 않는 칸을 "
+                      "줄여 줍니다.");
         }
 
         return Result::failure(

@@ -1388,7 +1388,12 @@ void MainWindow::buildMenus()
             return;
         }
 
-        if (!document().isProtected() && !document().hasPassword())
+        // 보호 표시가 없어도 문자열 칸을 한계 너머로 부풀려 둔 맵은 그대로
+        // 저장되지 않는다. 그런 맵도 고칠 수 있어야 한다.
+        constexpr std::size_t kMaxStrings = 32766;
+        const bool oversizedStrings = document().info().stringCount > kMaxStrings;
+
+        if (!document().isProtected() && !document().hasPassword() && !oversizedStrings)
         {
             QMessageBox::information(this, tr("보호 해제"),
                                      tr("이 맵은 보호되어 있지 않습니다."));
