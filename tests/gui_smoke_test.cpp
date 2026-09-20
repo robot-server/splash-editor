@@ -160,6 +160,60 @@ int main(int argc, char ** argv)
             SPLASH_CHECK(scripted.applyTriggerText(*written, graphics));
             SPLASH_CHECK_EQ(scripted.info().triggerCount, std::size_t(1));
         }
+
+        // 인자에 쓰는 낱말도 그 문서의 Reference List 그대로여야 한다.
+        // 하나라도 다르면 남이 만든 글을 못 읽는다.
+        const char * const vocabulary[] = {
+            // 자원 / 고치는 방식
+            "Trigger(\"Player 1\"){\nConditions:\n"
+            "\tAccumulate(\"Player 1\", At least, 1, ore);\n"
+            "\tAccumulate(\"Player 1\", At most, 1, gas);\n"
+            "\tAccumulate(\"Player 1\", Exactly, 1, ore and gas);\nActions:\n"
+            "\tSet Resources(\"Player 1\", Set To, 1, ore);\n"
+            "\tSet Resources(\"Player 1\", Add, 1, gas);\n"
+            "\tSet Resources(\"Player 1\", Subtract, 1, ore and gas);\n}\n",
+
+            // 상태 / 움직임
+            "Trigger(\"Player 1\"){\nConditions:\n\tAlways();\nActions:\n"
+            "\tSet Doodad State(\"Player 1\", \"Terran Marine\", \"Anywhere\", enabled);\n"
+            "\tSet Doodad State(\"Player 1\", \"Terran Marine\", \"Anywhere\", disabled);\n"
+            "\tSet Doodad State(\"Player 1\", \"Terran Marine\", \"Anywhere\", toggle);\n"
+            "\tOrder(\"Player 1\", \"Terran Marine\", \"Anywhere\", \"Anywhere\", move);\n"
+            "\tOrder(\"Player 1\", \"Terran Marine\", \"Anywhere\", \"Anywhere\", patrol);\n"
+            "\tOrder(\"Player 1\", \"Terran Marine\", \"Anywhere\", \"Anywhere\", attack);\n}\n",
+
+            // 점수 / 동맹 / 유닛 묶음 이름
+            "Trigger(\"Player 1\"){\nConditions:\n"
+            "\tScore(\"Player 1\", Total, At least, 1);\n"
+            "\tScore(\"Player 1\", Kills, At least, 1);\n"
+            "\tScore(\"Player 1\", Razings, At least, 1);\n"
+            "\tScore(\"Player 1\", Custom, At least, 1);\n"
+            "\tBring(\"Player 1\", \"Any unit\", \"Anywhere\", At least, 1);\n"
+            "\tBring(\"Player 1\", \"Men\", \"Anywhere\", At least, 1);\n"
+            "\tBring(\"Player 1\", \"Factories\", \"Anywhere\", At least, 1);\nActions:\n"
+            "\tSet Alliance Status(\"Player 2\", Enemy);\n"
+            "\tSet Alliance Status(\"Player 2\", Ally);\n"
+            "\tSet Alliance Status(\"Player 2\", Allied Victory);\n"
+            "\tKill Unit At Location(\"Player 1\", \"Terran Marine\", All, \"Anywhere\");\n}\n",
+
+            // 실행 플레이어 이름들과 글자 색
+            "Trigger(\"All players\"){\nConditions:\n\tAlways();\nActions:\n"
+            "\tDisplay Text Message(Always Display, \"<1>a<4>b<8>c<C>d<R>e\");\n}\n"
+            "Trigger(\"Current player\"){\nConditions:\n\tAlways();\nActions:\n"
+            "\tPreserve Trigger();\n}\n"
+            "Trigger(\"Foes\"){\nConditions:\n\tAlways();\nActions:\n"
+            "\tPreserve Trigger();\n}\n"
+            "Trigger(\"Allies\"){\nConditions:\n\tAlways();\nActions:\n"
+            "\tPreserve Trigger();\n}\n",
+        };
+
+        for (const char * text : vocabulary)
+        {
+            chk::MapDocument sheet;
+            SPLASH_CHECK(sheet.createNew(io::MapFormat::HybridScm, 0, 64, 64,
+                                         io::MapArchive::DefaultTriggers::None));
+            SPLASH_CHECK(sheet.applyTriggerText(text, graphics));
+        }
     }
 
     // --- 실행 취소가 화면을 흔들지 않는지 ---
