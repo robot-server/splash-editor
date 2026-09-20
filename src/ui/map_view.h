@@ -192,6 +192,17 @@ public:
     /// 화면 한가운데에 붙인다.
     bool pasteLocationAtCentre();
 
+    /// 고른 네모 안의 가리개를 담는다. 담았으면 참.
+    bool copyFogSelection();
+
+    /// 담아 둔 가리개를 커서 자리에 찍는다.
+    bool pasteFogAt(const QPointF & screenPos);
+
+    bool hasFogClipboard() const { return !fogClipboard_.empty(); }
+
+    /// 화면 한가운데에 가리개를 붙인다.
+    bool pasteFogAtCentre();
+
     /// 고른 지형을 담고 그 자리를 비운다 (잘라내기).
     ///
     /// 비운 자리는 타일 0 이 된다 — 게임에서 검게 보이는 빈 타일이다.
@@ -287,6 +298,12 @@ public:
     };
     TerrainOverlay terrainOverlay() const { return overlay_; }
     void setTerrainOverlay(TerrainOverlay overlay);
+
+    /// 고른 유닛을 같은 자리에 여러 개 겹쳐 놓는다.
+    ///
+    /// 트리거로 한꺼번에 주는 유닛 더미를 만들 때 쓴다. 겹치기 금지를
+    /// 켜 두었어도 이것은 일부러 겹치는 것이라 그대로 놓는다.
+    std::size_t stackSelectedUnits(int copies);
 
     /// 맵의 유닛을 모두 고른다.
     void selectAllUnits();
@@ -664,6 +681,11 @@ public:
     int clipboardHeight_ = 0;
     std::vector<std::uint16_t> terrainClipboard_;
     std::vector<bool> clipboardMask_; ///< 빈 칸이 있으면 채워진다
+
+    /// 가리개 클립보드. 지형과 같은 네모를 쓰되 값이 플레이어 비트다.
+    std::vector<std::uint8_t> fogClipboard_;
+    int fogClipboardWidth_ = 0;
+    int fogClipboardHeight_ = 0;
     bool pastingTerrain_ = false; ///< 붙여넣기 브러시가 켜져 있는지
 
     // 복사해 둔 유닛. 맵 사이에서도 붙일 수 있도록 값으로 들고 있는다.

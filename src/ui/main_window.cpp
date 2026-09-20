@@ -605,6 +605,18 @@ void MainWindow::buildMenus()
             return;
         }
 
+        // 가리개 도구에서는 고른 네모의 가리개를 담는다.
+        if (mapView_->tool() == MapView::Tool::Fog)
+        {
+            if (mapView_->copyFogSelection())
+                statusBar()->showMessage(
+                    tr("가리개를 복사했습니다 — 지형 고르기로 네모를 먼저 정하세요"), 3000);
+            else
+                statusBar()->showMessage(
+                    tr("복사할 네모를 지형 고르기로 먼저 정하세요"), 3000);
+            return;
+        }
+
         // 로케이션 도구에서는 고른 로케이션을 담는다.
         if (mapView_->tool() == MapView::Tool::Location)
         {
@@ -630,6 +642,31 @@ void MainWindow::buildMenus()
             tr("유닛 %1개를 골랐습니다").arg(document().units().size()), 2500);
     });
 
+    QAction * stackUnitsAction = editMenu->addAction(tr("고른 유닛 겹쳐 쌓기…"));
+    stackUnitsAction->setToolTip(
+        tr("고른 유닛을 같은 자리에 여러 개 놓습니다. 트리거로 한꺼번에 주는 "
+           "유닛 더미를 만들 때 씁니다."));
+    connect(stackUnitsAction, &QAction::triggered, this, [this] {
+        if (!document().isOpen())
+            return;
+
+        bool accepted = false;
+        const int copies = QInputDialog::getInt(this, tr("겹쳐 쌓기"),
+            tr("몇 개를 더 놓을까요?"), 1, 1, 100, 1, &accepted);
+        if (!accepted)
+            return;
+
+        const std::size_t placed = mapView_->stackSelectedUnits(copies);
+        if (placed == 0)
+        {
+            statusBar()->showMessage(tr("쌓을 유닛을 먼저 고르세요"), 2500);
+            return;
+        }
+
+        onDocumentEdited();
+        statusBar()->showMessage(tr("유닛 %1개를 더 놓았습니다").arg(placed), 3000);
+    });
+
     QAction * cutAction = editMenu->addAction(tr("잘라내기(&X)"));
     cutAction->setShortcut(QKeySequence::Cut);
     connect(cutAction, &QAction::triggered, this, [this] {
@@ -652,6 +689,13 @@ void MainWindow::buildMenus()
     QAction * pasteAction = editMenu->addAction(tr("붙여넣기(&V)"));
     pasteAction->setShortcut(QKeySequence::Paste);
     connect(pasteAction, &QAction::triggered, this, [this] {
+        if (mapView_->tool() == MapView::Tool::Fog && mapView_->hasFogClipboard())
+        {
+            if (mapView_->pasteFogAtCentre())
+                statusBar()->showMessage(tr("가리개를 붙였습니다"), 2000);
+            return;
+        }
+
         if (mapView_->tool() == MapView::Tool::Location && mapView_->hasLocationClipboard())
         {
             if (mapView_->pasteLocationAtCentre())
@@ -1102,6 +1146,26 @@ void MainWindow::buildMenus()
     });
 
     batchMenu->addSeparator();
+
+    QAction * convertDoodads = batchMenu->addAction(tr("두들을 지형으로 풀기"));
+    convertDoodads->setToolTip(
+        tr("두들 항목을 지우고 지형 타일만 남깁니다. 게임에서 보이는 모습은 "
+           "그대로이고, 편집기가 보통 지형처럼 고칠 수 있게 됩니다."));
+    connect(convertDoodads, &QAction::triggered, this, [this] {
+        if (!document().isOpen())
+            return;
+
+        std::size_t converted = 0;
+        if (!document().convertDoodadsToTerrain(&converted))
+        {
+            statusBar()->showMessage(QString::fromStdString(document().lastError()), 3000);
+            return;
+        }
+
+        mapView_->refresh();
+        onDocumentEdited();
+        statusBar()->showMessage(tr("두들 %1개를 지형으로 풀었습니다").arg(converted), 3000);
+    });
 
     QAction * randomizeResources = batchMenu->addAction(tr("자원량 섞기…"));
     connect(randomizeResources, &QAction::triggered, this, [this] {
@@ -1602,8 +1666,18 @@ void MainWindow::onNewMap()
     formatBox->addItem(tr("하이브리드 (.scm)"), int(splash::io::MapFormat::HybridScm));
     formatBox->addItem(tr("리마스터 (.scx)"), int(splash::io::MapFormat::RemasteredScx));
 
-    auto * meleeBox = new QCheckBox(tr("기본 melee 트리거 넣기"), &dialog);
-    meleeBox->setChecked(true);
+    // 기본 트리거 — 옵저버가 있는 세트는 그 인원수만큼 겨루고 나머지는 구경한다.
+    auto * triggerBox = new QComboBox(&dialog);
+    triggerBox->addItem(tr("넣지 않음"),
+                        int(splash::io::MapArchive::DefaultTriggers::None));
+    triggerBox->addItem(tr("기본 melee"),
+                        int(splash::io::MapArchive::DefaultTriggers::Melee));
+    for (int players = 2; players <= 7; ++players)
+    {
+        triggerBox->addItem(tr("melee + 옵저버 (%1명 대전)").arg(players),
+                            players);
+    }
+    triggerBox->setCurrentIndex(1);
 
     form->addRow(tr("크기 프리셋"), presetBox);
     form->addRow(tr("가로 (타일)"), widthBox);
@@ -1611,7 +1685,7 @@ void MainWindow::onNewMap()
     form->addRow(tr("타일셋"), tilesetBox);
     form->addRow(tr("시작 지형"), terrainBox);
     form->addRow(tr("포맷"), formatBox);
-    form->addRow(QString(), meleeBox);
+    form->addRow(tr("기본 트리거"), triggerBox);
 
     auto * buttons = new QDialogButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
@@ -1639,7 +1713,8 @@ void MainWindow::onNewMap()
                              static_cast<std::uint16_t>(tilesetBox->currentData().toInt()),
                              static_cast<std::uint16_t>(widthBox->value()),
                              static_cast<std::uint16_t>(heightBox->value()),
-                             meleeBox->isChecked(),
+                             static_cast<splash::io::MapArchive::DefaultTriggers>(
+                                 triggerBox->currentData().toInt()),
                              tileset_.isLoaded() ? &tileset_ : nullptr,
                              static_cast<std::size_t>(terrainBox->currentData().toULongLong())))
     {

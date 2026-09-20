@@ -1223,6 +1223,46 @@ void MapView::setPylonRangeVisible(bool visible)
     viewport()->update();
 }
 
+std::size_t MapView::stackSelectedUnits(int copies)
+{
+    if (document_ == nullptr || !document_->isOpen() || copies <= 0)
+        return 0;
+
+    std::vector<int> targets = selectedUnits_;
+    if (targets.empty() && selectedUnit_ >= 0)
+        targets.push_back(selectedUnit_);
+    if (targets.empty())
+        return 0;
+
+    auto * doc = const_cast<chk::MapDocument *>(document_);
+
+    // 원본을 먼저 베껴 둔다 — 놓는 동안 목록이 자란다.
+    std::vector<chk::MapUnit> originals;
+    originals.reserve(targets.size());
+    for (int index : targets)
+    {
+        if (index >= 0 && index < static_cast<int>(document_->units().size()))
+            originals.push_back(document_->units()[static_cast<std::size_t>(index)]);
+    }
+
+    std::size_t placed = 0;
+    for (const auto & unit : originals)
+    {
+        for (int copy = 0; copy < copies; ++copy)
+        {
+            if (doc->addUnit(unit.type, unit.owner, unit.x, unit.y))
+                ++placed;
+        }
+    }
+
+    if (placed > 0)
+    {
+        refreshUnits();
+        emit documentEdited();
+    }
+    return placed;
+}
+
 void MapView::selectAllUnits()
 {
     if (document_ == nullptr || !document_->isOpen())
@@ -2649,6 +2689,96 @@ bool MapView::pasteLocationAt(const QPointF & screenPos)
 bool MapView::pasteLocationAtCentre()
 {
     return pasteLocationAt(QPointF(viewport()->width() / 2.0, viewport()->height() / 2.0));
+}
+
+bool MapView::copyFogSelection()
+{
+    if (document_ == nullptr || !document_->isOpen())
+        return false;
+
+    const auto & fog = document_->fogTiles();
+    if (fog.empty())
+        return false;
+
+    const auto & info = document_->info();
+    const QRegion region = terrainRegion_.intersected(QRegion(0, 0, info.width, info.height));
+    if (region.isEmpty())
+        return false;
+
+    // 가리개도 지형과 같은 네모로 고른다 — 도구를 따로 두지 않는다.
+    const QRect box = region.boundingRect();
+    fogClipboardWidth_ = box.width();
+    fogClipboardHeight_ = box.height();
+    fogClipboard_.assign(static_cast<std::size_t>(fogClipboardWidth_) * fogClipboardHeight_, 0);
+
+    for (int y = 0; y < fogClipboardHeight_; ++y)
+    {
+        for (int x = 0; x < fogClipboardWidth_; ++x)
+        {
+            const int mapX = box.left() + x;
+            const int mapY = box.top() + y;
+            if (!region.contains(QPoint(mapX, mapY)))
+                continue;
+
+            const std::size_t index = static_cast<std::size_t>(mapY) * info.width + mapX;
+            if (index < fog.size())
+                fogClipboard_[static_cast<std::size_t>(y) * fogClipboardWidth_ + x] = fog[index];
+        }
+    }
+
+    return true;
+}
+
+bool MapView::pasteFogAt(const QPointF & screenPos)
+{
+    if (fogClipboard_.empty() || document_ == nullptr || !document_->isOpen())
+        return false;
+
+    const QPointF mapPos = screenToMap(screenPos);
+    const int centreX = static_cast<int>(std::max(0.0, mapPos.x())) / io::kTilePixels;
+    const int centreY = static_cast<int>(std::max(0.0, mapPos.y())) / io::kTilePixels;
+
+    const int left = centreX - fogClipboardWidth_ / 2;
+    const int top = centreY - fogClipboardHeight_ / 2;
+
+    const auto & info = document_->info();
+    auto * doc = const_cast<chk::MapDocument *>(document_);
+
+    // 값이 같은 칸끼리 묶어 한 번에 쓴다.
+    std::map<std::uint8_t, std::vector<std::pair<int, int>>> byValue;
+    for (int y = 0; y < fogClipboardHeight_; ++y)
+    {
+        for (int x = 0; x < fogClipboardWidth_; ++x)
+        {
+            const int targetX = left + x;
+            const int targetY = top + y;
+            if (targetX < 0 || targetY < 0 || targetX >= info.width || targetY >= info.height)
+                continue;
+
+            const std::uint8_t value =
+                fogClipboard_[static_cast<std::size_t>(y) * fogClipboardWidth_ + x];
+            byValue[value].emplace_back(targetX, targetY);
+        }
+    }
+
+    bool wrote = false;
+    for (const auto & [value, cells] : byValue)
+    {
+        if (doc->setFogTiles(cells, value))
+            wrote = true;
+    }
+
+    if (!wrote)
+        return false;
+
+    refresh();
+    emit documentEdited();
+    return true;
+}
+
+bool MapView::pasteFogAtCentre()
+{
+    return pasteFogAt(QPointF(viewport()->width() / 2.0, viewport()->height() / 2.0));
 }
 
 bool MapView::cutTerrainSelection()

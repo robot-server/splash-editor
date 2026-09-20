@@ -1055,6 +1055,32 @@ Result MapArchive::placeDoodad(const GameGraphics & graphics, std::uint16_t dood
     return Result::success();
 }
 
+std::size_t MapArchive::convertDoodadsToTerrain()
+{
+    if (!impl_->isOpen())
+        return 0;
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        const std::size_t count = map.numDoodads();
+        if (count == 0)
+            return 0;
+
+        // 뒤에서부터 지워야 앞 번호가 밀리지 않는다.
+        for (std::size_t i = count; i-- > 0;)
+            map.deleteDoodad(i);
+
+        impl_->undoSteps.push_back(static_cast<int>(count));
+        impl_->redoSteps.clear();
+        return count;
+    }
+    catch (const std::exception &)
+    {
+    }
+    return 0;
+}
+
 Result MapArchive::removeDoodad(std::size_t index)
 {
     if (!impl_->isOpen())
@@ -1477,7 +1503,7 @@ Result MapArchive::createNew(MapFormat format,
                              std::uint16_t tilesetId,
                              std::uint16_t width,
                              std::uint16_t height,
-                             bool meleeTriggers,
+                             DefaultTriggers defaultTriggers,
                              const GameGraphics * graphics,
                              std::size_t terrainTypeIndex)
 {
@@ -1492,8 +1518,8 @@ Result MapArchive::createNew(MapFormat format,
         case MapFormat::RemasteredScx:saveType = SaveType::RemasteredScx; break;
     }
 
-    const auto triggers = meleeTriggers ? Chk::DefaultTriggers::DefaultMelee
-                                        : Chk::DefaultTriggers::NoTriggers;
+    // 우리 열거값은 MappingCore 의 것과 번호를 맞춰 두었다.
+    const auto triggers = static_cast<Chk::DefaultTriggers>(defaultTriggers);
 
     auto fresh = std::make_unique<Impl>();
     try

@@ -106,7 +106,8 @@ public:
 
     /// 빈 맵을 새로 만든다.
     bool createNew(io::MapFormat format, std::uint16_t tilesetId,
-                   std::uint16_t width, std::uint16_t height, bool meleeTriggers,
+                   std::uint16_t width, std::uint16_t height,
+                   io::MapArchive::DefaultTriggers defaultTriggers,
                    const io::GameGraphics * graphics = nullptr,
                    std::size_t terrainTypeIndex = 0);
 
@@ -331,6 +332,9 @@ public:
     bool placeDoodad(const io::GameGraphics & graphics, std::uint16_t doodadId,
                      int tileX, int tileY, std::uint8_t owner = 0);
     bool removeDoodad(std::size_t index);
+
+    /// 두들 항목을 모두 지우고 지형만 남긴다.
+    bool convertDoodadsToTerrain(std::size_t * outCount = nullptr);
 
     // --- 소리 (WAV) ---
 

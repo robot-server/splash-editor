@@ -78,12 +78,13 @@ MapDocument::MapDocument(MapDocument &&) noexcept = default;
 MapDocument & MapDocument::operator=(MapDocument &&) noexcept = default;
 
 bool MapDocument::createNew(io::MapFormat format, std::uint16_t tilesetId,
-                            std::uint16_t width, std::uint16_t height, bool meleeTriggers,
+                            std::uint16_t width, std::uint16_t height,
+                            io::MapArchive::DefaultTriggers defaultTriggers,
                             const io::GameGraphics * graphics,
                             std::size_t terrainTypeIndex)
 {
     const io::Result result = archive_.createNew(format, tilesetId, width, height,
-                                                 meleeTriggers, graphics, terrainTypeIndex);
+                                                 defaultTriggers, graphics, terrainTypeIndex);
     if (!result)
     {
         lastError_ = result.message;
@@ -1091,6 +1092,25 @@ bool MapDocument::placeDoodad(const io::GameGraphics & graphics, std::uint16_t d
 {
     const io::Result result = archive_.placeDoodad(graphics, doodadId, tileX, tileY, owner);
     if (!result) { lastError_ = result.message; return false; }
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::convertDoodadsToTerrain(std::size_t * outCount)
+{
+    const std::size_t converted = archive_.convertDoodadsToTerrain();
+    if (outCount != nullptr)
+        *outCount = converted;
+
+    if (converted == 0)
+    {
+        lastError_ = "풀어 낼 두들이 없습니다.";
+        return false;
+    }
+
     modified_ = true;
     ++undoDepth_;
     redoDepth_ = 0;

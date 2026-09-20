@@ -359,6 +359,22 @@ public:
     /// 빈 맵을 새로 만든다. 저작권 자료 없이 테스트 픽스처를 만들기 위한 경로이며,
     /// M2 이후 "새 맵" 기능의 토대이기도 하다.
     ///
+    /// 새 맵에 넣을 기본 트리거.
+    ///
+    /// 옵저버가 있는 세트는 그 인원수만큼 플레이어가 겨루고 나머지는
+    /// 구경만 한다 — 대회 맵에서 흔히 쓴다.
+    enum class DefaultTriggers
+    {
+        None = 0,
+        Melee = 1,
+        MeleeWithObservers2 = 2,
+        MeleeWithObservers3 = 3,
+        MeleeWithObservers4 = 4,
+        MeleeWithObservers5 = 5,
+        MeleeWithObservers6 = 6,
+        MeleeWithObservers7 = 7,
+    };
+
     /// meleeTriggers 를 켜면 MappingCore 의 기본 melee 트리거 세트를 넣는다.
     /// graphics 를 주면 그 타일셋 자료로 지형을 제대로 채운다.
     /// terrainTypeIndex 는 GameGraphics::terrainTypes() 의 brushIndex 다.
@@ -366,7 +382,7 @@ public:
                      std::uint16_t tilesetId,
                      std::uint16_t width,
                      std::uint16_t height,
-                     bool meleeTriggers,
+                     DefaultTriggers defaultTriggers,
                      const GameGraphics * graphics = nullptr,
                      std::size_t terrainTypeIndex = 0);
 
@@ -660,6 +676,13 @@ public:
     /// 두들을 놓는다. 지형 타일도 함께 바꾼다 — 두들은 타일로 그려진다.
     Result placeDoodad(const GameGraphics & graphics, std::uint16_t doodadId,
                        int tileX, int tileY, std::uint8_t owner = 0);
+
+    /// 두들 항목을 모두 지우고 지형만 남긴다.
+    ///
+    /// 두들은 지형 타일 + DD2 항목으로 이뤄진다. 항목을 지우면 편집기가
+    /// 두들로 다루지 않고 보통 지형처럼 고칠 수 있게 된다. 게임에서 보이는
+    /// 모습은 그대로다 — 타일은 건드리지 않는다.
+    std::size_t convertDoodadsToTerrain();
 
     /// 두들 항목을 지운다. 지형 타일은 그대로 둔다 (무엇으로 되돌릴지
     /// 알 수 없으므로, 지형은 따로 칠해야 한다).

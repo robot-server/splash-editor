@@ -167,7 +167,9 @@ int cmdNew(const std::vector<std::string> & args)
                                         : splash::io::MapFormat::HybridScm;
 
     splash::io::MapArchive archive;
-    if (auto r = archive.createNew(format, tilesetId, width, height, melee); !r)
+    if (auto r = archive.createNew(format, tilesetId, width, height,
+            melee ? splash::io::MapArchive::DefaultTriggers::Melee
+                  : splash::io::MapArchive::DefaultTriggers::None); !r)
     {
         std::cerr << "생성 실패: " << r.message << "\n";
         return 1;

@@ -154,7 +154,9 @@ fs::path makeSyntheticMap(const std::string & fileName,
     const fs::path path = workDir() / fileName;
 
     splash::io::MapArchive archive;
-    if (!archive.createNew(format, tilesetId, width, height, melee))
+    if (!archive.createNew(format, tilesetId, width, height,
+                           melee ? splash::io::MapArchive::DefaultTriggers::Melee
+                                 : splash::io::MapArchive::DefaultTriggers::None))
         return {};
     if (!archive.saveAs(path.string()))
         return {};
