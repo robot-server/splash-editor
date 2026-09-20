@@ -399,6 +399,127 @@ void truncateOverlongSections(std::vector<std::uint8_t> & chk)
     }
 }
 
+/// 문자열이 한 구역에 그대로는 들어가지 않는지.
+bool stringsOverflowSection(const MapFile & map)
+{
+    std::size_t characters = 1; // 첫 NUL
+
+    // getCapacity 는 0 번 자리까지 센다. 구역에 적는 개수는 그것을 뺀 값이다.
+    const std::size_t capacity = map.getCapacity();
+    const std::size_t count = capacity > 0 ? capacity - 1 : 0;
+
+    for (std::size_t id = 1; id <= count; ++id)
+    {
+        if (auto text = map.getString<RawString>(id))
+            characters += text->size() + 1;
+    }
+    return 2 + 2 * count + characters > 0xFFFF;
+}
+
+/// 문자열 구역을 꼬리를 겹쳐 담아 만든다.
+///
+/// 한 구역은 65535 바이트까지고 자리표가 u16 이라, 글자가 많은 맵은 그대로
+/// 담으면 들어가지 않는다. "abc" 를 담아 두면 "bc" 는 한 칸 뒤를, "c" 는 두
+/// 칸 뒤를 가리키면 되므로 긴 것부터 담고 짧은 꼬리는 그 안을 가리키게 한다.
+/// 게임이 읽는 방식(자리표가 가리키는 곳부터 NUL 까지)은 그대로다.
+///
+/// 담지 못하면 빈 벡터를 돌려준다.
+std::vector<std::uint8_t> packStringsSharingTails(const std::vector<std::string> & strings)
+{
+    const std::size_t count = strings.size();
+    const std::size_t headerSize = 2 + 2 * count;
+    if (headerSize > 0xFFFF)
+        return {};
+
+    // 긴 것부터 담아야 짧은 꼬리가 그 안에 들어간다.
+    std::vector<std::size_t> order(count);
+    for (std::size_t i = 0; i < count; ++i)
+        order[i] = i;
+    std::sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) {
+        return strings[a].size() > strings[b].size();
+    });
+
+    std::string data(1, '\0'); // 첫 NUL — 빈 자리는 모두 여기를 가리킨다
+    std::vector<std::size_t> offsets(count, 0);
+
+    for (const std::size_t index : order)
+    {
+        const std::string & text = strings[index];
+        if (text.empty())
+        {
+            offsets[index] = 0; // 첫 NUL
+            continue;
+        }
+
+        const std::string needle = text + '\0';
+        const std::size_t found = data.find(needle);
+        if (found != std::string::npos)
+        {
+            offsets[index] = found;
+            continue;
+        }
+
+        offsets[index] = data.size();
+        data += needle;
+    }
+
+    if (headerSize + data.size() > 0xFFFF)
+        return {};
+
+    std::vector<std::uint8_t> out(headerSize + data.size(), 0);
+    const auto put16 = [&out](std::size_t at, std::uint16_t value) {
+        out[at] = static_cast<std::uint8_t>(value & 0xFF);
+        out[at + 1] = static_cast<std::uint8_t>(value >> 8);
+    };
+
+    put16(0, static_cast<std::uint16_t>(count));
+    for (std::size_t i = 0; i < count; ++i)
+        put16(2 + 2 * i, static_cast<std::uint16_t>(headerSize + offsets[i]));
+
+    std::memcpy(out.data() + headerSize, data.data(), data.size());
+    return out;
+}
+
+/// 구역을 하나씩 쓰되 STR 만 꼬리를 겹쳐 담은 것으로 바꿔 넣는다.
+void writeWithPackedStrings(MapFile & map, std::ostream & out)
+{
+    // 자리 번호는 1 부터 세고, getCapacity 는 0 번 자리까지 센다. 구역에
+    // 적는 개수는 그것을 뺀 값이다 — 그러지 않으면 저장할 때마다 빈 칸이
+    // 하나씩 불어난다.
+    const std::size_t capacity = map.getCapacity();
+    const std::size_t count = capacity > 0 ? capacity - 1 : 0;
+    std::vector<std::string> strings(count);
+    for (std::size_t id = 1; id <= count; ++id)
+    {
+        if (auto text = map.getString<RawString>(id))
+            strings[id - 1] = *text;
+    }
+
+    const std::vector<std::uint8_t> packed = packStringsSharingTails(strings);
+
+    for (const auto & section : map.read.saveSections)
+    {
+        if (section.sectionName == Chk::SectionName::STR && !packed.empty())
+        {
+            const Chk::SectionSize size = Chk::SectionSize(packed.size());
+            out.write(reinterpret_cast<const char *>(&section.sectionName),
+                      sizeof(section.sectionName));
+            out.write(reinterpret_cast<const char *>(&size), sizeof(size));
+            out.write(reinterpret_cast<const char *>(packed.data()),
+                      static_cast<std::streamsize>(packed.size()));
+            continue;
+        }
+
+        map.Scenario::writeSection(out, section, true);
+    }
+
+    if (map.read.tailLength > 0)
+    {
+        out.write(reinterpret_cast<const char *>(&map.read.tailData[0]),
+                  std::streamsize(map.read.tailLength < 8 ? map.read.tailLength : 7));
+    }
+}
+
 /// 그 맵의 시나리오에 끝을 넘어가는 구역이 있는지.
 ///
 /// MappingCore 는 구역 머리말의 길이 칸을 그대로 믿고 자리를 잡는다. 1.8GB
@@ -2047,10 +2168,29 @@ Result MapArchive::saveAs(const std::string & filePath) const
     // 결과적으로 버전 변환은 일어나지 않는다. 포맷을 바꾸는 "다른 형식으로
     // 저장"이 필요해지면 그때 명시적인 별도 연산으로 만든다.
 
+    // 문자열 칸이 한계를 넘으면 어떤 방법으로도 쓸 수 없다. 보호된 맵이
+    // 칸을 부풀려 두는 수법이라, 먼저 풀어야 한다고 알린다.
+    constexpr std::size_t kMaxStrings = 32766;
+    if (map.getCapacity() > kMaxStrings + 1)
+    {
+        return Result::failure(
+            map.isProtected()
+                ? "보호된 맵이라 그대로 저장할 수 없습니다. '보호 해제'를 먼저 "
+                  "하세요."
+                : "문자열 칸이 한계(32766)를 넘어 그대로 저장할 수 없습니다. "
+                  "'보호 해제'를 먼저 하세요 — 쓰이지 않는 칸을 줄여 줍니다.");
+    }
+
     std::stringstream chk(std::ios_base::in | std::ios_base::out | std::ios_base::binary);
     try
     {
-        map.Scenario::write(chk);
+        // 글자가 많아 한 구역에 그대로는 들어가지 않는 맵이 있다. 그럴 때만
+        // 구역을 하나씩 쓰면서 STR 만 꼬리를 겹쳐 담은 것으로 바꿔 넣는다.
+        // 나머지 구역은 MappingCore 가 쓰던 그대로다.
+        if (stringsOverflowSection(map))
+            writeWithPackedStrings(map, chk);
+        else
+            map.Scenario::write(chk);
     }
     catch (const std::exception & e)
     {
