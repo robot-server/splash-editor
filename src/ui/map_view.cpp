@@ -22,7 +22,7 @@ namespace splash::ui {
 namespace {
 
 constexpr double kMinZoom = 0.125;
-constexpr double kMaxZoom = 4.0;
+constexpr double kMaxZoom = 8.0;
 
 /// 캐시가 지나치게 커지는 것을 막는 상한.
 /// 타일 하나가 32x32 RGBA(4KB)이므로 4096개면 약 16MB 다.
@@ -183,8 +183,46 @@ QPointF MapView::mapToScreen(double mapX, double mapY) const
                    mapY * zoom_ - verticalScrollBar()->value());
 }
 
-void MapView::zoomIn()    { setZoom(zoom_ * 2.0); }
-void MapView::zoomOut()   { setZoom(zoom_ / 2.0); }
+namespace {
+
+/// 고를 수 있는 배율. 두 배씩만 오가면 큰 맵을 훑을 때 단계가 너무 성기다.
+constexpr double kZoomSteps[] {
+    0.125, 0.25, 0.33, 0.5, 0.66, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0
+};
+
+} // namespace
+
+const double * MapView::zoomSteps(std::size_t * count)
+{
+    if (count != nullptr)
+        *count = std::size(kZoomSteps);
+    return kZoomSteps;
+}
+
+void MapView::zoomIn()
+{
+    for (const double step : kZoomSteps)
+    {
+        if (step > zoom_ + 1e-9)
+        {
+            setZoom(step);
+            return;
+        }
+    }
+}
+
+void MapView::zoomOut()
+{
+    for (std::size_t i = std::size(kZoomSteps); i-- > 0;)
+    {
+        if (kZoomSteps[i] < zoom_ - 1e-9)
+        {
+            setZoom(kZoomSteps[i]);
+            return;
+        }
+    }
+}
+
 void MapView::zoomReset() { setZoom(1.0); }
 
 void MapView::updateScrollRanges()

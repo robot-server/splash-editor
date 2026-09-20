@@ -56,6 +56,9 @@ public:
     /// 문서나 타일셋의 내용이 바뀌었을 때 호출한다. 캐시를 비우고 다시 그린다.
     void refresh();
 
+    /// 고를 수 있는 배율 목록. 메뉴를 채우는 데 쓴다.
+    static const double * zoomSteps(std::size_t * count);
+
     /// 지금 보고 있는 맵 영역(맵 픽셀 좌표).
     QRectF visibleMapRect() const;
 

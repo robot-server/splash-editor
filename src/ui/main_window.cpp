@@ -1564,6 +1564,24 @@ void MainWindow::buildMenus()
     zoomResetAction_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_0));
     connect(zoomResetAction_, &QAction::triggered, mapView_, &MapView::zoomReset);
 
+    // 배율을 바로 고른다 — 큰 맵을 훑을 때 두 배씩 오가면 단계가 성기다.
+    QMenu * zoomMenu = viewMenu->addMenu(tr("배율"));
+    {
+        std::size_t count = 0;
+        const double * steps = MapView::zoomSteps(&count);
+        for (std::size_t i = count; i-- > 0;)
+        {
+            const double step = steps[i];
+            QAction * choice = zoomMenu->addAction(
+                tr("%1%").arg(QString::number(step * 100, 'g', 3)));
+            connect(choice, &QAction::triggered, this, [this, step] {
+                mapView_->setZoom(step);
+                statusBar()->showMessage(
+                    tr("배율 %1%").arg(QString::number(step * 100, 'g', 3)), 2000);
+            });
+        }
+    }
+
     viewMenu->addSeparator();
 
     QAction * clearCaches = viewMenu->addAction(tr("그림 버퍼 비우기"));
