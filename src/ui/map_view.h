@@ -14,6 +14,7 @@
 #include <QRectF>
 #include <QVector>
 #include <QPixmap>
+#include <QRegion>
 
 #include <cstdint>
 #include <utility>
@@ -184,6 +185,11 @@ public:
         int width = 0;
         int height = 0;
         std::vector<std::uint16_t> tiles;
+
+        /// 칸마다 "이 칸이 브러시에 드는지". 떨어진 네모를 여러 개 골랐을
+        /// 때 그 사이의 빈 칸을 찍지 않으려는 것이다. 비어 있으면 모두 든다.
+        std::vector<bool> mask;
+
         std::uint16_t tilesetId = 0;
     };
 
@@ -488,10 +494,15 @@ public:
 
     // 지형 고르기·클립보드.
     bool terrainSelecting_ = false;
-    QRect terrainSelection_;  ///< 타일 좌표 (없으면 비어 있음)
+    QRect terrainSelection_;  ///< 지금 끌고 있는 네모 (타일 좌표)
+
+    /// 고른 영역 전체. Shift 로 떨어진 네모를 여러 개 더할 수 있다.
+    QRegion terrainRegion_;
+
     int clipboardWidth_ = 0;  ///< 담아 둔 지형의 타일 크기
     int clipboardHeight_ = 0;
     std::vector<std::uint16_t> terrainClipboard_;
+    std::vector<bool> clipboardMask_; ///< 빈 칸이 있으면 채워진다
     bool pastingTerrain_ = false; ///< 붙여넣기 브러시가 켜져 있는지
 
     // 복사해 둔 유닛. 맵 사이에서도 붙일 수 있도록 값으로 들고 있는다.

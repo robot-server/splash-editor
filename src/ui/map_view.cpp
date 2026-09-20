@@ -726,6 +726,7 @@ void MapView::setTool(Tool tool)
         {
             terrainSelecting_ = false;
             terrainSelection_ = QRect();
+            terrainRegion_ = QRegion();
             pastingTerrain_ = false;
         }
     }
@@ -1784,7 +1785,7 @@ void MapView::selectUnitsInBox(const QPointF & fromMap, const QPointF & toMap, b
 
 bool MapView::copyTerrainSelection()
 {
-    if (document_ == nullptr || !document_->isOpen() || terrainSelection_.isEmpty())
+    if (document_ == nullptr || !document_->isOpen())
         return false;
 
     const auto & info = document_->info();
@@ -1792,23 +1793,45 @@ bool MapView::copyTerrainSelection()
     if (tiles.empty())
         return false;
 
-    const QRect box = terrainSelection_.intersected(QRect(0, 0, info.width, info.height));
-    if (box.isEmpty())
+    const QRegion region = terrainRegion_.intersected(QRegion(0, 0, info.width, info.height));
+    if (region.isEmpty())
         return false;
+
+    // 여러 덩어리를 골랐으면 그것을 다 감싸는 네모를 크기로 삼고, 덩어리에
+    // 들지 않는 칸은 "비었음"으로 남긴다 — 찍을 때 건너뛴다.
+    const QRect box = region.boundingRect();
 
     clipboardWidth_ = box.width();
     clipboardHeight_ = box.height();
-    terrainClipboard_.clear();
-    terrainClipboard_.reserve(static_cast<std::size_t>(clipboardWidth_) * clipboardHeight_);
 
-    for (int y = box.top(); y <= box.bottom(); ++y)
+    const std::size_t cells = static_cast<std::size_t>(clipboardWidth_) * clipboardHeight_;
+    terrainClipboard_.assign(cells, 0);
+    clipboardMask_.assign(cells, false);
+
+    bool anyEmpty = false;
+    for (int y = 0; y < clipboardHeight_; ++y)
     {
-        for (int x = box.left(); x <= box.right(); ++x)
+        for (int x = 0; x < clipboardWidth_; ++x)
         {
-            const std::size_t index = static_cast<std::size_t>(y) * info.width + x;
-            terrainClipboard_.push_back(index < tiles.size() ? tiles[index] : std::uint16_t(0));
+            const int mapX = box.left() + x;
+            const int mapY = box.top() + y;
+            const std::size_t at = static_cast<std::size_t>(y) * clipboardWidth_ + x;
+
+            if (!region.contains(QPoint(mapX, mapY)))
+            {
+                anyEmpty = true;
+                continue;
+            }
+
+            const std::size_t index = static_cast<std::size_t>(mapY) * info.width + mapX;
+            terrainClipboard_[at] = (index < tiles.size()) ? tiles[index] : std::uint16_t(0);
+            clipboardMask_[at] = true;
         }
     }
+
+    // 네모 하나만 골랐으면 가리개가 필요 없다.
+    if (!anyEmpty)
+        clipboardMask_.clear();
 
     // 담은 지형이 곧 브러시가 된다 — SCMDraft 와 같은 흐름이다.
     pastingTerrain_ = true;
@@ -1825,6 +1848,7 @@ MapView::TerrainBrush MapView::terrainClipboardBrush() const
     brush.width = clipboardWidth_;
     brush.height = clipboardHeight_;
     brush.tiles = terrainClipboard_;
+    brush.mask = clipboardMask_;
     brush.tilesetId = (document_ != nullptr) ? document_->info().tilesetId : 0;
     return brush;
 }
@@ -1837,6 +1861,7 @@ void MapView::useTerrainBrush(const TerrainBrush & brush)
     clipboardWidth_ = brush.width;
     clipboardHeight_ = brush.height;
     terrainClipboard_ = brush.tiles;
+    clipboardMask_ = brush.mask;
 
     // 곧바로 찍을 수 있게 브러시를 켜고 지형 도구로 옮긴다.
     pastingTerrain_ = true;
@@ -1855,19 +1880,22 @@ bool MapView::cutTerrainSelection()
         return false;
 
     const auto & info = document_->info();
-    const QRect box = terrainSelection_.intersected(QRect(0, 0, info.width, info.height));
-    if (box.isEmpty())
+    const QRegion region = terrainRegion_.intersected(QRegion(0, 0, info.width, info.height));
+    if (region.isEmpty())
         return false;
 
     std::vector<io::MapArchive::TileWrite> writes;
-    writes.reserve(static_cast<std::size_t>(box.width()) * box.height());
 
-    for (int y = box.top(); y <= box.bottom(); ++y)
+    // 고른 덩어리에 든 칸만 비운다.
+    for (const QRect & rect : region)
     {
-        for (int x = box.left(); x <= box.right(); ++x)
+        for (int y = rect.top(); y <= rect.bottom(); ++y)
         {
-            writes.push_back(io::MapArchive::TileWrite{
-                static_cast<std::size_t>(x), static_cast<std::size_t>(y), std::uint16_t(0)});
+            for (int x = rect.left(); x <= rect.right(); ++x)
+            {
+                writes.push_back(io::MapArchive::TileWrite{
+                    static_cast<std::size_t>(x), static_cast<std::size_t>(y), std::uint16_t(0)});
+            }
         }
     }
 
@@ -1907,9 +1935,13 @@ bool MapView::pasteTerrainAt(const QPointF & screenPos)
             if (targetX < 0 || targetY < 0 || targetX >= info.width || targetY >= info.height)
                 continue;
 
+            const std::size_t at = static_cast<std::size_t>(y) * clipboardWidth_ + x;
+            if (!clipboardMask_.empty() && !clipboardMask_[at])
+                continue; // 고른 덩어리에 들지 않는 칸
+
             writes.push_back(io::MapArchive::TileWrite{
                 static_cast<std::size_t>(targetX), static_cast<std::size_t>(targetY),
-                terrainClipboard_[static_cast<std::size_t>(y) * clipboardWidth_ + x]});
+                terrainClipboard_[at]});
         }
     }
 
@@ -1939,18 +1971,22 @@ void MapView::paintTerrainSelection(QPainter & painter)
 
     painter.save();
 
-    // 고른 네모.
-    if (!terrainSelection_.isEmpty())
-    {
-        const QRectF box(terrainSelection_.left() * tile - originX,
-                         terrainSelection_.top() * tile - originY,
-                         terrainSelection_.width() * tile,
-                         terrainSelection_.height() * tile);
-
-        painter.fillRect(box, QColor(120, 255, 180, 40));
-        painter.setPen(QPen(QColor(120, 255, 180, 220), 2));
+    // 고른 영역 — 떨어진 덩어리가 여러 개일 수 있다.
+    const auto drawBox = [&](const QRect & rect, int alphaFill, int alphaLine) {
+        if (rect.isEmpty())
+            return;
+        const QRectF box(rect.left() * tile - originX, rect.top() * tile - originY,
+                         rect.width() * tile, rect.height() * tile);
+        painter.fillRect(box, QColor(120, 255, 180, alphaFill));
+        painter.setPen(QPen(QColor(120, 255, 180, alphaLine), 2));
         painter.drawRect(box);
-    }
+    };
+
+    for (const QRect & rect : terrainRegion_)
+        drawBox(rect, 40, 220);
+
+    // 지금 끌고 있는 네모는 조금 옅게.
+    drawBox(terrainSelection_, 30, 160);
 
     // 붙여넣기 미리보기 — 담아 둔 지형이 커서를 따라온다.
     if (pastingTerrain_ && hasHover_ && !terrainClipboard_.empty() && tileset_ != nullptr)
@@ -1965,10 +2001,11 @@ void MapView::paintTerrainSelection(QPainter & painter)
         {
             for (int x = 0; x < clipboardWidth_; ++x)
             {
-                const std::uint16_t tileId =
-                    terrainClipboard_[static_cast<std::size_t>(y) * clipboardWidth_ + x];
+                const std::size_t at = static_cast<std::size_t>(y) * clipboardWidth_ + x;
+                if (!clipboardMask_.empty() && !clipboardMask_[at])
+                    continue;
 
-                const QPixmap * pixmap = tilePixmap(tileId);
+                const QPixmap * pixmap = tilePixmap(terrainClipboard_[at]);
                 if (pixmap == nullptr)
                     continue;
 
@@ -2139,11 +2176,13 @@ void MapView::mousePressEvent(QMouseEvent * event)
         lastPlaced_ = QPoint(-1, -1);
         lastNydusUnit_ = -1;
 
-        if (tool_ == Tool::SelectTerrain && (pastingTerrain_ || !terrainSelection_.isEmpty()))
+        if (tool_ == Tool::SelectTerrain &&
+            (pastingTerrain_ || !terrainRegion_.isEmpty() || !terrainSelection_.isEmpty()))
         {
             // 지형 도구에서는 붙여넣기 브러시를 먼저 거둔다.
             pastingTerrain_ = false;
             terrainSelection_ = QRect();
+            terrainRegion_ = QRegion();
             viewport()->update();
             event->accept();
             return;
@@ -2262,6 +2301,10 @@ void MapView::mousePressEvent(QMouseEvent * event)
         const QPointF mapPos = screenToMap(event->position());
         const int tileX = static_cast<int>(std::max(0.0, mapPos.x())) / io::kTilePixels;
         const int tileY = static_cast<int>(std::max(0.0, mapPos.y())) / io::kTilePixels;
+
+        // Shift 를 누르고 끌면 고른 영역에 덩어리를 더한다.
+        if (!(event->modifiers() & Qt::ShiftModifier))
+            terrainRegion_ = QRegion();
 
         terrainSelecting_ = true;
         terrainSelection_ = QRect(tileX, tileY, 1, 1);
@@ -2734,6 +2777,11 @@ void MapView::mouseReleaseEvent(QMouseEvent * event)
     if (terrainSelecting_)
     {
         terrainSelecting_ = false;
+
+        if (!terrainSelection_.isEmpty())
+            terrainRegion_ = terrainRegion_.united(QRegion(terrainSelection_));
+
+        terrainSelection_ = QRect();
         viewport()->update();
         event->accept();
         return;

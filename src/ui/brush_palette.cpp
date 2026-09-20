@@ -18,7 +18,7 @@ namespace {
 
 /// 파일 첫머리에 두는 표. 다른 파일을 잘못 읽지 않으려는 것이다.
 constexpr quint32 kMagic = 0x53504C42; // "SPLB"
-constexpr quint16 kVersion = 1;
+constexpr quint16 kVersion = 2; // 2: 칸 가리개(mask) 추가
 
 } // namespace
 
@@ -169,6 +169,12 @@ bool BrushPalette::writeFile(const QString & path) const
 
         for (std::uint16_t tile : brush.tiles)
             out << static_cast<quint16>(tile);
+
+        // 떨어진 덩어리를 여러 개 고른 브러시는 빈 칸을 가린다. 비어 있으면
+        // 모든 칸이 든다는 뜻이라 길이 0 으로 적는다.
+        out << static_cast<quint32>(brush.mask.size());
+        for (bool used : brush.mask)
+            out << static_cast<quint8>(used ? 1 : 0);
     }
 
     return out.status() == QDataStream::Ok;
@@ -224,6 +230,23 @@ bool BrushPalette::readFile(const QString & path, bool append)
             quint16 tile = 0;
             in >> tile;
             brush.tiles[t] = tile;
+        }
+
+        if (version >= 2)
+        {
+            quint32 maskCount = 0;
+            in >> maskCount;
+
+            if (maskCount != 0 && maskCount != tileCount)
+                return false;
+
+            brush.mask.resize(maskCount);
+            for (quint32 m = 0; m < maskCount; ++m)
+            {
+                quint8 used = 0;
+                in >> used;
+                brush.mask[m] = (used != 0);
+            }
         }
 
         loaded.push_back(std::move(brush));
