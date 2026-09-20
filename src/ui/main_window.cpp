@@ -637,6 +637,16 @@ void MainWindow::buildMenus()
             return;
         }
 
+        // 두들 도구에서는 고른 두들을 담는다.
+        if (mapView_->tool() == MapView::Tool::PlaceDoodad)
+        {
+            if (mapView_->copySelectedDoodad())
+                statusBar()->showMessage(tr("두들을 복사했습니다"), 2000);
+            else
+                statusBar()->showMessage(tr("복사할 두들을 먼저 고르세요"), 2000);
+            return;
+        }
+
         // 로케이션 도구에서는 고른 로케이션을 담는다.
         if (mapView_->tool() == MapView::Tool::Location)
         {
@@ -699,6 +709,15 @@ void MainWindow::buildMenus()
             return;
         }
 
+        if (mapView_->tool() == MapView::Tool::PlaceDoodad)
+        {
+            if (mapView_->copySelectedDoodad() && mapView_->deleteSelectedDoodad())
+                statusBar()->showMessage(tr("두들을 잘라냈습니다"), 2000);
+            else
+                statusBar()->showMessage(tr("잘라낼 두들을 먼저 고르세요"), 2000);
+            return;
+        }
+
         // 유닛은 복사한 뒤 지운다.
         if (mapView_->copySelection() && mapView_->deleteSelectedUnit())
             statusBar()->showMessage(tr("유닛을 잘라냈습니다"), 2000);
@@ -713,6 +732,16 @@ void MainWindow::buildMenus()
         {
             if (mapView_->pasteSpriteAtCentre())
                 statusBar()->showMessage(tr("스프라이트를 붙였습니다"), 2000);
+            return;
+        }
+
+        if (mapView_->tool() == MapView::Tool::PlaceDoodad && mapView_->hasDoodadClipboard())
+        {
+            if (mapView_->pasteDoodadAtCentre())
+                statusBar()->showMessage(tr("두들을 붙였습니다"), 2000);
+            else
+                statusBar()->showMessage(
+                    QString::fromStdString(document().lastError()), 3000);
             return;
         }
 

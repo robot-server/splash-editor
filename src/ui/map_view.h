@@ -201,6 +201,21 @@ public:
 
     bool hasSpriteClipboard() const { return spriteClipboard_.valid; }
 
+    /// 지금 고른 두들. 없으면 -1.
+    int selectedDoodad() const { return selectedDoodad_; }
+
+    /// 고른 두들을 담는다. 담았으면 참.
+    bool copySelectedDoodad();
+
+    /// 담아 둔 두들을 커서 자리에 놓는다.
+    bool pasteDoodadAt(const QPointF & screenPos);
+    bool pasteDoodadAtCentre();
+
+    bool hasDoodadClipboard() const { return doodadClipboard_.valid; }
+
+    /// 고른 두들을 지운다. 지웠으면 참.
+    bool deleteSelectedDoodad();
+
     /// 고른 네모 안의 가리개를 담는다. 담았으면 참.
     bool copyFogSelection();
 
@@ -674,6 +689,23 @@ public:
         bool drawnAsSprite = false;
     };
     SpriteClipboard spriteClipboard_;
+
+    /// 담아 둔 두들.
+    struct DoodadClipboard
+    {
+        bool valid = false;
+        std::uint16_t type = 0;
+        std::uint8_t owner = 0;
+    };
+    DoodadClipboard doodadClipboard_;
+
+    int selectedDoodad_ = -1;
+
+    /// 그 자리에 있는 두들 번호. 없으면 -1. 맵 픽셀 좌표를 받는다.
+    int doodadAt(const QPointF & mapPos) const;
+
+    /// 그 두들이 덮는 자리 (맵 픽셀).
+    QRectF doodadBounds(std::size_t index) const;
 
     /// 담아 둔 로케이션. 크기와 이름·높이를 그대로 베낀다.
     struct LocationClipboard

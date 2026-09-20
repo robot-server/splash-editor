@@ -2276,6 +2276,21 @@ void MapView::paintTerrainCursor(QPainter & painter)
         painter.setPen(QPen(line, 2));
         painter.drawRect(box);
 
+        // 고른 두들을 표시한다.
+        if (selectedDoodad_ >= 0)
+        {
+            const QRectF bounds = doodadBounds(static_cast<std::size_t>(selectedDoodad_));
+            if (!bounds.isEmpty())
+            {
+                const QRectF onScreen(bounds.left() * scale - originX,
+                                      bounds.top() * scale - originY,
+                                      bounds.width() * scale, bounds.height() * scale);
+                painter.setPen(QPen(QColor(90, 255, 120), 2, Qt::DashLine));
+                painter.setBrush(Qt::NoBrush);
+                painter.drawRect(onScreen);
+            }
+        }
+
         painter.restore();
         return;
     }
@@ -2752,6 +2767,110 @@ bool MapView::pasteSpriteAt(const QPointF & screenPos)
 bool MapView::pasteSpriteAtCentre()
 {
     return pasteSpriteAt(QPointF(viewport()->width() / 2.0, viewport()->height() / 2.0));
+}
+
+QRectF MapView::doodadBounds(std::size_t index) const
+{
+    if (document_ == nullptr || tileset_ == nullptr)
+        return QRectF();
+
+    const auto doodads = document_->doodads();
+    if (index >= doodads.size())
+        return QRectF();
+
+    const auto & doodad = doodads[index];
+    const auto list = tileset_->doodads(document_->info().tilesetId);
+    const auto info = std::find_if(list.begin(), list.end(),
+        [&doodad](const auto & entry) { return entry.id == doodad.type; });
+    if (info == list.end())
+        return QRectF();
+
+    const int left = io::doodadOriginTile(doodad.x, info->tileWidth);
+    const int top = io::doodadOriginTile(doodad.y, info->tileHeight);
+
+    return QRectF(left * double(io::kTilePixels), top * double(io::kTilePixels),
+                  info->tileWidth * double(io::kTilePixels),
+                  info->tileHeight * double(io::kTilePixels));
+}
+
+int MapView::doodadAt(const QPointF & mapPos) const
+{
+    if (document_ == nullptr || !document_->isOpen())
+        return -1;
+
+    const auto doodads = document_->doodads();
+
+    // 뒤에 놓은 것이 위에 있으므로 뒤에서부터 본다.
+    for (std::size_t i = doodads.size(); i-- > 0;)
+    {
+        const QRectF bounds = doodadBounds(i);
+        if (!bounds.isEmpty() && bounds.contains(mapPos))
+            return static_cast<int>(i);
+    }
+    return -1;
+}
+
+bool MapView::copySelectedDoodad()
+{
+    if (document_ == nullptr || selectedDoodad_ < 0)
+        return false;
+
+    const auto doodads = document_->doodads();
+    if (selectedDoodad_ >= static_cast<int>(doodads.size()))
+        return false;
+
+    const auto & doodad = doodads[static_cast<std::size_t>(selectedDoodad_)];
+    doodadClipboard_.valid = true;
+    doodadClipboard_.type = doodad.type;
+    doodadClipboard_.owner = doodad.owner;
+    return true;
+}
+
+bool MapView::pasteDoodadAt(const QPointF & screenPos)
+{
+    if (!doodadClipboard_.valid || document_ == nullptr || !document_->isOpen() ||
+        tileset_ == nullptr)
+    {
+        return false;
+    }
+
+    const QPointF mapPos = screenToMap(screenPos);
+    auto * doc = const_cast<chk::MapDocument *>(document_);
+
+    if (!doc->placeDoodad(*tileset_, doodadClipboard_.type,
+                          static_cast<int>(mapPos.x()) / io::kTilePixels,
+                          static_cast<int>(mapPos.y()) / io::kTilePixels,
+                          doodadClipboard_.owner))
+    {
+        return false;
+    }
+
+    refresh();
+    emit documentEdited();
+    return true;
+}
+
+bool MapView::pasteDoodadAtCentre()
+{
+    return pasteDoodadAt(QPointF(viewport()->width() / 2.0, viewport()->height() / 2.0));
+}
+
+bool MapView::deleteSelectedDoodad()
+{
+    if (document_ == nullptr || !document_->isOpen() || tileset_ == nullptr ||
+        selectedDoodad_ < 0)
+    {
+        return false;
+    }
+
+    auto * doc = const_cast<chk::MapDocument *>(document_);
+    if (!doc->removeDoodad(*tileset_, static_cast<std::size_t>(selectedDoodad_)))
+        return false;
+
+    selectedDoodad_ = -1;
+    refresh();
+    emit documentEdited();
+    return true;
 }
 
 bool MapView::copyFogSelection()
@@ -3317,6 +3436,22 @@ void MapView::mousePressEvent(QMouseEvent * event)
         const QPointF mapPos = screenToMap(event->position());
         const int tileX = static_cast<int>(std::max(0.0, mapPos.x())) / io::kTilePixels;
         const int tileY = static_cast<int>(std::max(0.0, mapPos.y())) / io::kTilePixels;
+
+        // 이미 놓인 두들을 누르면 그것을 고른다 — 복사하거나 지우려면
+        // 고를 수 있어야 한다. 그 자리에 겹쳐 놓고 싶으면 Shift 를 누른다.
+        if ((event->modifiers() & Qt::ShiftModifier) == 0)
+        {
+            const int hit = doodadAt(mapPos);
+            if (hit >= 0)
+            {
+                selectedDoodad_ = hit;
+                viewport()->update();
+                event->accept();
+                return;
+            }
+        }
+
+        selectedDoodad_ = -1;
 
         auto * doc = const_cast<chk::MapDocument *>(document_);
         if (tileset_ != nullptr && doc->placeDoodad(*tileset_, placeDoodadId_, tileX, tileY))
@@ -4057,6 +4192,11 @@ void MapView::keyPressEvent(QKeyEvent * event)
 {
     if (event->key() == Qt::Key_Delete || event->key() == Qt::Key_Backspace)
     {
+        if (tool_ == Tool::PlaceDoodad && deleteSelectedDoodad())
+        {
+            event->accept();
+            return;
+        }
         if (deleteSelectedUnit())
         {
             event->accept();
