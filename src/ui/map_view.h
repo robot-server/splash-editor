@@ -310,7 +310,19 @@ public:
     int brushSize() const { return brushSize_; }
     void setBrushSize(int size);
 
-    bool unitsVisible() const { return showUnits_; }
+    /// 무엇을 얼마나 보여 줄지.
+    ///
+    /// 숨기면 가려진 것 뒤를 보기는 좋지만 거기 무엇이 있었는지 잊는다.
+    /// 그 사이 단계로 옅게 보여 주는 갈래를 둔다.
+    enum class Visibility { Shown, Faded, Hidden };
+
+    Visibility unitVisibility() const { return unitVisibility_; }
+    void setUnitVisibility(Visibility visibility);
+
+    Visibility spriteVisibility() const { return spriteVisibility_; }
+    void setSpriteVisibility(Visibility visibility);
+
+    bool unitsVisible() const { return unitVisibility_ != Visibility::Hidden; }
     bool locationsVisible() const { return showLocations_; }
     bool creepVisible() const { return showCreep_; }
 
@@ -515,7 +527,8 @@ private:
     bool creepLayerReady_ = false;
     std::vector<std::uint8_t> creepMask_;
     bool creepReady_ = false;
-    bool showUnits_ = true;
+    Visibility unitVisibility_ = Visibility::Shown;
+    Visibility spriteVisibility_ = Visibility::Shown;
     bool showLocations_ = false; ///< 로케이션은 겹쳐 보이면 지형을 가려 기본은 꺼 둔다
     bool showCreep_ = true;
     bool showGrid_ = false;

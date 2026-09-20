@@ -1610,11 +1610,55 @@ void MainWindow::buildMenus()
 
     viewMenu->addSeparator();
 
-    QAction * showUnits = viewMenu->addAction(tr("유닛 표시(&U)"));
-    showUnits->setCheckable(true);
-    showUnits->setChecked(mapView_->unitsVisible());
-    showUnits->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_1));
-    connect(showUnits, &QAction::toggled, mapView_, &MapView::setUnitsVisible);
+    // 보임 / 옅게 / 숨김. 숨기면 뒤를 보기 좋지만 거기 무엇이 있었는지
+    // 잊게 되므로 그 사이 단계를 둔다.
+    const auto addVisibilityMenu =
+        [this, viewMenu](const QString & title, const QKeySequence & shortcut,
+                         MapView::Visibility current,
+                         void (MapView::*setter)(MapView::Visibility)) {
+        QMenu * menu = viewMenu->addMenu(title);
+        auto * group = new QActionGroup(this);
+        group->setExclusive(true);
+
+        const std::pair<QString, MapView::Visibility> choices[] {
+            { tr("보임"),   MapView::Visibility::Shown },
+            { tr("옅게"),   MapView::Visibility::Faded },
+            { tr("숨김"),   MapView::Visibility::Hidden },
+        };
+
+        bool first = true;
+        for (const auto & [label, value] : choices)
+        {
+            QAction * action = menu->addAction(label);
+            action->setCheckable(true);
+            action->setChecked(value == current);
+            group->addAction(action);
+
+            if (first && !shortcut.isEmpty())
+            {
+                // 단축키는 보임/숨김을 오가는 데 쓴다.
+                first = false;
+            }
+
+            connect(action, &QAction::triggered, this, [this, value, setter] {
+                (mapView_->*setter)(value);
+            });
+        }
+        return menu;
+    };
+
+    addVisibilityMenu(tr("유닛 표시(&U)"), QKeySequence(Qt::CTRL | Qt::Key_1),
+                      mapView_->unitVisibility(), &MapView::setUnitVisibility);
+    addVisibilityMenu(tr("스프라이트 표시(&Z)"), QKeySequence(),
+                      mapView_->spriteVisibility(), &MapView::setSpriteVisibility);
+
+    QAction * toggleUnits = viewMenu->addAction(tr("유닛 보임·숨김 바꾸기"));
+    toggleUnits->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_1));
+    connect(toggleUnits, &QAction::triggered, this, [this] {
+        mapView_->setUnitVisibility(
+            mapView_->unitVisibility() == MapView::Visibility::Hidden
+                ? MapView::Visibility::Shown : MapView::Visibility::Hidden);
+    });
 
     QAction * showLocations = viewMenu->addAction(tr("로케이션 표시(&L)"));
     showLocations->setCheckable(true);

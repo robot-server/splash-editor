@@ -145,11 +145,28 @@ void MapView::setZoom(double factor)
     viewport()->update();
 }
 
+void MapView::setUnitVisibility(Visibility visibility)
+{
+    if (unitVisibility_ == visibility)
+        return;
+    unitVisibility_ = visibility;
+    viewport()->update();
+}
+
+void MapView::setSpriteVisibility(Visibility visibility)
+{
+    if (spriteVisibility_ == visibility)
+        return;
+    spriteVisibility_ = visibility;
+    viewport()->update();
+}
+
 void MapView::setUnitsVisible(bool visible)
 {
-    if (showUnits_ == visible)
+    const Visibility wanted = visible ? Visibility::Shown : Visibility::Hidden;
+    if (unitVisibility_ == wanted)
         return;
-    showUnits_ = visible;
+    unitVisibility_ = wanted;
     viewport()->update();
 }
 
@@ -395,10 +412,11 @@ void MapView::paintEvent(QPaintEvent * event)
         paintFog(painter, dirty);
     if (showLocations_)
         paintLocations(painter, dirty);
-    if (showUnits_)
+    if (unitVisibility_ != Visibility::Hidden || spriteVisibility_ != Visibility::Hidden)
     {
         paintUnits(painter, dirty);
-        paintUnitLinks(painter);
+        if (unitVisibility_ != Visibility::Hidden)
+            paintUnitLinks(painter);
     }
 
     paintPlacementPreview(painter);
@@ -709,9 +727,17 @@ void MapView::paintUnits(QPainter & painter, const QRect & dirty)
 
     painter.save();
 
+    // 옅게 보이기는 반투명으로 그린다. 무엇이 있는지는 알아보되 뒤가
+    // 비쳐 보여 지형을 고치기 좋다.
+    constexpr double kFaded = 0.35;
+
     // 맵 스프라이트(THG2)를 먼저 — 대개 나무·바위 같은 배경 장식이다.
+    painter.setOpacity(spriteVisibility_ == Visibility::Faded ? kFaded : 1.0);
     for (const auto & sprite : sprites)
     {
+        if (spriteVisibility_ == Visibility::Hidden)
+            break;
+
         const UnitSprite * pixmap = mapSprite(sprite.type, sprite.owner, sprite.drawnAsSprite);
         if (pixmap == nullptr)
             continue;
@@ -736,6 +762,13 @@ void MapView::paintUnits(QPainter & painter, const QRect & dirty)
             painter.drawRect(bounds);
         }
     }
+
+    if (unitVisibility_ == Visibility::Hidden)
+    {
+        painter.restore();
+        return;
+    }
+    painter.setOpacity(unitVisibility_ == Visibility::Faded ? kFaded : 1.0);
 
     // 스프라이트가 없는 유닛(또는 그래픽 미로드)을 위한 대체 표시 크기.
     const double diameter = std::clamp(16.0 * zoom_, 3.0, 48.0);

@@ -19,6 +19,7 @@
 #include <QMouseEvent>
 #include <QAction>
 #include <QSettings>
+#include <QPointer>
 #include <QTimer>
 
 #include <cstdlib>
@@ -201,23 +202,37 @@ int main(int argc, char ** argv)
             QStringLiteral("맵을 그림으로"), QStringLiteral("쌓아 둔 사본"),
         };
 
-        int pressed = 0;
-        for (QAction * action : window.findChildren<QAction *>())
-        {
-            const QString text = action->text();
-            if (text.isEmpty() || !action->isEnabled())
-                continue;
+        // 어떤 항목은 누르면 메뉴를 다시 만든다(최근 파일 목록 따위).
+        // 그때 지워진 항목을 붙들고 있으면 안 되므로 약한 손잡이로 든다.
+        const auto pressAll = [&skip](ui::MainWindow & target) {
+            QList<QPointer<QAction>> actions;
+            for (QAction * action : target.findChildren<QAction *>())
+                actions.append(action);
 
-            bool skipThis = false;
-            for (const QString & needle : skip)
-                skipThis = skipThis || text.contains(needle);
-            if (skipThis)
-                continue;
+            int count = 0;
+            for (const QPointer<QAction> & action : actions)
+            {
+                if (action.isNull())
+                    continue;
 
-            action->trigger();
-            QApplication::processEvents();
-            ++pressed;
-        }
+                const QString text = action->text();
+                if (text.isEmpty() || !action->isEnabled())
+                    continue;
+
+                bool skipThis = false;
+                for (const QString & needle : skip)
+                    skipThis = skipThis || text.contains(needle);
+                if (skipThis)
+                    continue;
+
+                action->trigger();
+                QApplication::processEvents();
+                ++count;
+            }
+            return count;
+        };
+
+        const int pressed = pressAll(window);
 
         std::cout << "  맵 없이 누른 메뉴 " << pressed << "개\n";
         SPLASH_CHECK(pressed > 20);
@@ -226,23 +241,7 @@ int main(int argc, char ** argv)
         // 만지는 길이 열리기 때문이다.
         window.openPath(QString::fromStdString(path.string()));
 
-        int pressedOpen = 0;
-        for (QAction * action : window.findChildren<QAction *>())
-        {
-            const QString text = action->text();
-            if (text.isEmpty() || !action->isEnabled())
-                continue;
-
-            bool skipThis = false;
-            for (const QString & needle : skip)
-                skipThis = skipThis || text.contains(needle);
-            if (skipThis)
-                continue;
-
-            action->trigger();
-            QApplication::processEvents();
-            ++pressedOpen;
-        }
+        const int pressedOpen = pressAll(window);
 
         closer.stop();
         std::cout << "  맵을 연 뒤 누른 메뉴 " << pressedOpen << "개\n";
