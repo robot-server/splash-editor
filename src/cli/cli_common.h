@@ -122,6 +122,26 @@ bool loadGraphics(Args & args, io::GameGraphics & graphics);
 
 // --- 이름 조회 ---
 
+/// 이름을 견주기 좋게 눕힌다 (빈칸·밑줄·붙임표를 지우고 영문은 소문자로).
+std::string squashName(const std::string & text);
+
+/// 트리거·브리핑 인자를 이름으로 골랐을 때의 결과.
+struct ChoiceMatch
+{
+    std::uint32_t value = 0;
+    std::size_t count = 0; ///< 같은 이름이 몇 개 걸렸는지 (1 이 아니면 애매하다)
+};
+
+/// 인자 자리를 이름으로 고른다. 고를 수 있는 자리가 아니면 count 0.
+///
+/// choices 는 이름표가 붙은 값만 담긴 걸러진 목록이라(비교 자리는 셋뿐,
+/// Set·NotSet 은 빠져 있다) 이름으로 못 찾아도 숫자 경로를 막으면 안 된다.
+ChoiceMatch matchChoice(const io::TriggerArg & arg, const std::string & text);
+
+/// 고를 수 있는 이름들을 오류에 붙여 줄 한 줄로. 길면 스무 개에서 끊는다.
+std::string choiceListText(const io::TriggerArg & arg);
+
+
 /// 유닛을 번호나 이름으로 고른다. 이름은 대소문자를 가리지 않고,
 /// 딱 하나만 걸리면 부분 일치도 받는다.
 std::uint16_t parseUnitType(const std::string & text);

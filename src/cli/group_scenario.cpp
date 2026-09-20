@@ -826,6 +826,8 @@ int briefingSetType(Args & args)
 int briefingSetArg(Args & args)
 {
     const SaveTarget target = takeSaveTarget(args);
+    // 이름으로 고르려면 게임 자료가 있어야 선택지를 만들 수 있다.
+    const auto installPath = args.option("--install");
     args.finish();
 
     const std::string mapPath = args.at(0);
@@ -834,15 +836,57 @@ int briefingSetArg(Args & args)
     const auto argIndex = static_cast<std::size_t>(args.integer(3));
     const std::string value = args.at(4);
 
+    io::GameGraphics graphics;
+    bool haveGraphics = false;
+    if (installPath)
+    {
+        std::string error;
+        haveGraphics = graphics.load(*installPath, &error);
+        if (!haveGraphics)
+        {
+            std::cerr << "게임 데이터 로드 실패: " << error << "\n";
+            return 1;
+        }
+    }
+
     return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
-        // 숫자로 읽히면 값으로, 아니면 글자로 넣는다 — trigger set-arg 와 같다.
-        bool numeric = !value.empty();
-        for (char c : value)
-            if (!std::isdigit(static_cast<unsigned char>(c))) { numeric = false; break; }
+        // 십진·0x 16진을 받는다. trigger set-arg 와 같은 규칙이다.
+        std::uint32_t raw = 0;
+        bool numeric = false;
+        if (!value.empty())
+        {
+            try
+            {
+                std::size_t used = 0;
+                const unsigned long long parsed = std::stoull(value, &used, 0);
+                numeric = used == value.size() && parsed <= 0xFFFFFFFFull;
+                raw = static_cast<std::uint32_t>(parsed);
+            }
+            catch (const std::exception &) { numeric = false; }
+        }
+
+        // 수가 아니면 그 자리가 고르기인지 보고 이름으로 찾아본다.
+        if (!numeric && haveGraphics)
+        {
+            const auto elements = archive.briefingActions(index, graphics);
+            if (slot < elements.size() && argIndex < elements[slot].args.size())
+            {
+                const auto & argSlot = elements[slot].args[argIndex];
+                const ChoiceMatch chosen = matchChoice(argSlot, value);
+                if (chosen.count > 0)
+                {
+                    raw = chosen.value;
+                    numeric = true;
+                    std::cout << "  고름      : " << value << " -> " << raw << "\n";
+                    if (chosen.count > 1)
+                        std::cout << "  알림      : 같은 이름이 " << chosen.count
+                                  << "개입니다. 첫 번째를 썼습니다.\n";
+                }
+            }
+        }
 
         const auto result = numeric
-            ? archive.setBriefingActionArg(index, slot, argIndex,
-                                           static_cast<std::uint32_t>(std::stoul(value)))
+            ? archive.setBriefingActionArg(index, slot, argIndex, raw)
             : archive.setBriefingActionArgText(index, slot, argIndex, value);
         if (!result)
         {
@@ -1000,8 +1044,9 @@ std::vector<Group> scenarioGroups()
                        "고를 수 있는 브리핑 동작 종류를 나열한다.", briefingTypes},
             {"set-type", "<맵> <번호> <줄> <종류> -o <출력맵>",
                        "브리핑 동작 한 줄의 종류를 바꾼다.", briefingSetType},
-            {"set-arg", "<맵> <번호> <줄> <인자> <값> -o <출력맵>",
-                       "브리핑 동작의 인자 하나를 바꾼다.", briefingSetArg},
+            {"set-arg", "<맵> <번호> <줄> <인자> <값> [--install 설치폴더] -o <출력맵>",
+                       "브리핑 동작의 인자 하나를 바꾼다. --install 을 주면 "
+                       "이름으로도 고를 수 있다.", briefingSetArg},
             {"remove-line", "<맵> <번호> <줄...> -o <출력맵>",
                        "브리핑 동작 줄을 지운다.", briefingRemoveLine},
             {"move-line", "<맵> <번호> <from> <to> -o <출력맵>",

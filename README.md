@@ -240,7 +240,15 @@ splash-cli scenario revealers map.scx --owner 1 --spacing 16 -o out.scx
 splash-cli trigger types map.scx condition --install "/경로/StarCraft"
 splash-cli trigger set-type map.scx condition 0 1 23 -o out.scx
 splash-cli trigger line-enabled map.scx action 0 0 off -o out.scx
+
+# 인자는 수(십진·0x 16진)로도, 이름으로도 넣는다
+splash-cli trigger set-arg map.scx action 0 0 0 "Player 3" --install "/경로/StarCraft" -o out.scx
+splash-cli trigger set-arg map.scx condition 0 0 3 "at most" --install "/경로/StarCraft" -o out.scx
 ```
+
+이름으로 못 찾으면 **고를 수 있는 것을 함께 보여 줍니다.** 그 목록이 곧 "이
+자리에 이름표가 붙은 값" 의 전부입니다 — 이름표가 없는 값(비교의 `Set`·
+`NotSet` 등)은 수로 넣습니다.
 
 지형·유닛을 갈아 끼운 모드 맵은 `--mod <mpq>` 를 여러 번 주면 설치본보다
 먼저 뒤집니다 — 앞에 적은 것이 우선합니다.

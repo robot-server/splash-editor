@@ -365,6 +365,69 @@ bool loadGraphics(Args & args, io::GameGraphics & graphics)
 
 // --- 이름 조회 ---
 
+/// 이름을 견주기 좋게 눕힌다. 빈칸·밑줄·붙임표를 지우고 영문은 소문자로.
+///
+/// 한글이 섞이므로 tolower 에는 unsigned char 로 넘긴다 — char 로 넘기면
+/// UTF-8 의 0x80~0xFF 가 음수가 되어 정의되지 않은 동작이다.
+std::string squashName(const std::string & text)
+{
+    std::string out;
+    for (char c : text)
+    {
+        if (c == ' ' || c == '_' || c == '-')
+            continue;
+        out.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+    }
+    return out;
+}
+
+ChoiceMatch matchChoice(const io::TriggerArg & arg, const std::string & text)
+{
+    if (arg.kind != io::TriggerArgKind::Choice &&
+        arg.kind != io::TriggerArgKind::Sound)
+        return {};
+
+    const std::string needle = squashName(text);
+    ChoiceMatch found;
+    for (const auto & choice : arg.choices)
+    {
+        // 소리 이름에는 "  (맵에 없음)" 같은 꼬리가 붙는다. 꼬리를 뗀
+        // 쪽도 함께 견준다.
+        bool hit = squashName(choice.text) == needle;
+        if (!hit)
+        {
+            const auto tail = choice.text.find("  (");
+            if (tail != std::string::npos)
+                hit = squashName(choice.text.substr(0, tail)) == needle;
+        }
+        if (!hit)
+            continue;
+
+        if (found.count == 0)
+            found.value = choice.value;
+        ++found.count;
+    }
+    return found;
+}
+
+std::string choiceListText(const io::TriggerArg & arg)
+{
+    std::string text;
+    for (std::size_t i = 0; i < arg.choices.size(); ++i)
+    {
+        if (i != 0) text += ", ";
+        text += arg.choices[i].text;
+        // 목록이 길면(유닛 233개 따위) 끝까지 늘어놓아 봐야 읽히지 않는다.
+        if (i == 19 && arg.choices.size() > 20)
+        {
+            text += ", ... (" + std::to_string(arg.choices.size() - 20) + "개 더)";
+            break;
+        }
+    }
+    return text;
+}
+
+
 std::uint16_t parseUnitType(const std::string & text)
 {
     constexpr std::uint16_t kRealUnitTypes = 228;

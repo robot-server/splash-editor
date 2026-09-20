@@ -15,6 +15,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -659,6 +660,31 @@ int cmdSetTriggerArg(const std::string & mapPath, const std::string & installPat
         }
     }
 
+    // 수가 아니면 그 자리가 고르기인지 보고 이름으로 찾아본다.
+    // 숫자 경로는 그대로 두므로 이름표 없는 값도 계속 넣을 수 있다.
+    const auto elements = isCondition ? archive.triggerConditions(triggerIndex, graphics)
+                                      : archive.triggerActions(triggerIndex, graphics);
+    const splash::io::TriggerArg * argSlot = nullptr;
+    if (slot < elements.size() && argIndex < elements[slot].args.size())
+        argSlot = &elements[slot].args[argIndex];
+
+    if (!numeric && argSlot != nullptr)
+    {
+        const splash::cli::ChoiceMatch chosen = splash::cli::matchChoice(*argSlot, value);
+        if (chosen.count > 0)
+        {
+            raw = chosen.value;
+            numeric = true;
+            std::cout << "  고름      : " << value << " -> " << raw << "\n";
+            // 로케이션·스위치·문자열은 같은 이름을 여럿 가질 수 있다.
+            // 첫 번째를 쓰되 갈리지 않았다는 것은 알려야 한다.
+            if (chosen.count > 1)
+                std::cout << "  알림      : 같은 이름이 " << chosen.count
+                          << "개입니다. 첫 번째를 썼습니다 — 다른 것을 쓰려면"
+                             " 번호로 주세요.\n";
+        }
+    }
+
     if (numeric)
     {
         result = isCondition ? archive.setConditionArg(triggerIndex, slot, argIndex, raw)
@@ -670,7 +696,10 @@ int cmdSetTriggerArg(const std::string & mapPath, const std::string & installPat
     }
     else
     {
-        std::cerr << "조건 인자에는 수만 넣을 수 있습니다 (십진 또는 0x 16진).\n";
+        std::cerr << "조건 인자에는 수(십진 또는 0x 16진)나 고를 수 있는 이름만"
+                     " 넣을 수 있습니다.\n";
+        if (argSlot != nullptr && !argSlot->choices.empty())
+            std::cerr << "  고를 수 있는 것: " << splash::cli::choiceListText(*argSlot) << "\n";
         return 1;
     }
 
