@@ -1,6 +1,13 @@
 # CLI 프런트엔드. GUI 없이 코어를 검증하는 경로이자 테스트 하네스.
 
-add_executable(splash-cli main.cpp)
+add_executable(splash-cli
+  main.cpp
+  cli_common.cpp
+  group_objects.cpp
+  group_terrain.cpp
+  group_settings.cpp
+  group_scenario.cpp
+)
 
 target_link_libraries(splash-cli PRIVATE splash_core)
 

@@ -3,6 +3,8 @@
 // GUI 없이 코어를 두드리기 위한 도구다. round-trip 검증(M1 의 합격 조건)은
 // 여기서 실행하며, tests/ 의 자동 테스트도 같은 코드를 쓴다.
 
+#include "cli_common.h"
+
 #include "chk/map_document.h"
 #include "io/game_assets.h"
 #include "io/game_graphics.h"
@@ -21,7 +23,13 @@ namespace {
 int usage(const char * argv0)
 {
     std::cout <<
-        "사용법:\n"
+        "사용법: " << argv0 << " <갈래> <명령> [인자...]\n"
+        "        " << argv0 << " <명령> [인자...]        (맵·설치본 진단)\n\n";
+
+    splash::cli::printGroupList(argv0);
+
+    std::cout <<
+        "\n진단·검증 명령:\n"
         "  " << argv0 << " info <맵파일>\n"
         "      맵을 열고 메타데이터를 출력한다.\n\n"
         "  " << argv0 << " roundtrip <맵파일> [출력경로]\n"
@@ -34,33 +42,26 @@ int usage(const char * argv0)
         "      기본값: 64 64 4(Jungle)\n\n"
         "  " << argv0 << " assets <StarCraft 설치폴더>\n"
         "      설치본을 조사한다. 아카이브를 열고 타일셋 데이터가 읽히는지 확인한다.\n\n"
-        "  " << argv0 << " render <맵파일> <설치폴더> <출력.ppm> [--units] [--locations]\n"
-        "      맵 지형을 이미지로 그린다. 타일셋 디코딩 검증용이다.\n"
-        "      --units / --locations / --creep 를 주면 함께 겹쳐 그린다.\n\n"
-        "  " << argv0 << " triggers <맵파일> <설치폴더> [출력.txt]\n"
-        "      트리거를 사람이 읽는 텍스트로 옮긴다.\n\n"
-        "  " << argv0 << " set-triggers <맵파일> <설치폴더> <텍스트파일> <출력맵>\n"
-        "      텍스트 트리거를 컴파일해 맵에 적용하고 저장한다.\n\n"
-        "  " << argv0 << " place-isom <맵파일> <설치폴더> <픽셀x> <픽셀y> <지형brush> <브러시> <출력맵>\n"
-        "      ISOM 브러시로 지형을 놓는다 (절벽·경계가 자동으로 이어진다).\n\n"
-        "  " << argv0 << " briefing <맵파일> <설치폴더> [출력.txt]\n"
-        "      미션 브리핑을 텍스트로 옮긴다.\n\n"
-        "  " << argv0 << " trigger-args <맵파일> <설치폴더> <번호>\n"
-        "      트리거 하나의 조건·동작을 인자 단위로 풀어 보여 준다.\n\n"
-        "  " << argv0 << " sounds <맵파일>\n"
-        "      맵에 등록된 소리를 나열한다.\n\n"
-        "  " << argv0 << " add-sound <맵파일> <WAV파일> <출력맵>\n"
-        "      WAV 를 맵에 넣고 소리 목록에 올린다.\n\n"
-        "  " << argv0 << " set-trigger-arg <맵파일> <설치폴더> <condition|action> <트리거> <줄> <인자> <값> <출력맵>\n"
-        "      조건·동작의 인자 하나를 바꾼다. 값이 숫자가 아니면 문자열로 넣는다.\n\n"
-        "  " << argv0 << " set-briefing <맵파일> <설치폴더> <텍스트파일> <출력맵>\n"
-        "      텍스트 브리핑을 컴파일해 맵에 적용하고 저장한다.\n\n"
-        "  " << argv0 << " trigger-list <맵파일> <설치폴더> [번호]\n"
-        "      트리거 목록과, 번호를 주면 그 트리거의 조건·동작을 보여 준다.\n\n"
-        "  " << argv0 << " units <맵파일> [개수]\n"
-        "      맵에 놓인 유닛을 나열한다 (기본 20개).\n\n"
+        "  " << argv0 << " render <맵파일> <설치폴더> <출력.ppm> [--units] [--locations] [--creep]\n"
+        "      맵 지형을 이미지로 그린다 (scenario image 와 같다).\n\n"
         "  " << argv0 << " unit-image <설치폴더> <유닛번호> <출력.ppm> [소유자] [타일셋]\n"
-        "      유닛 하나를 격자 배경 위에 그린다. 스프라이트 검증용이다.\n";
+        "      유닛 하나를 격자 배경 위에 그린다. 스프라이트 검증용이다.\n\n"
+        "  " << argv0 << " icon <설치폴더> <아이콘번호> <출력.ppm>\n"
+        "  " << argv0 << " tile-sheet <설치폴더> <타일셋> <첫타일> <개수> <출력.ppm>\n"
+        "  " << argv0 << " mega-sheet <설치폴더> <타일셋> <첫메가타일> <개수> <출력.ppm>\n"
+        "      타일·아이콘 그림을 한 장으로 뽑는다. 디코딩 검증용이다.\n\n"
+        "  " << argv0 << " tileset-info <설치폴더> <타일셋>\n"
+        "  " << argv0 << " unit-classes <설치폴더>\n"
+        "  " << argv0 << " images-tbl <설치폴더> [찾을글자]\n"
+        "  " << argv0 << " has-asset <설치폴더> <아카이브경로>\n"
+        "  " << argv0 << " icon-histogram <설치폴더> <아이콘번호>\n"
+        "  " << argv0 << " find-creep <설치폴더> <타일셋>\n"
+        "  " << argv0 << " creep-kin <설치폴더> <타일셋> <메가타일> <개수>\n"
+        "      설치본 자료를 들여다본다.\n\n"
+        "예전 이름도 그대로 받는다 (move-unit, place-isom, set-triggers,\n"
+        "set-trigger-arg, set-briefing, add-sound, unprotect, units, sounds,\n"
+        "switches, doodads, triggers, trigger-list, trigger-args, briefing,\n"
+        "briefing-args). 새 이름은 위의 갈래 쪽입니다.\n";
     return 2;
 }
 
@@ -1839,6 +1840,70 @@ int cmdRoundtrip(const std::string & mapPath, const std::string & requestedOut)
 
 } // namespace
 
+// 갈래 명령(`splash-cli trigger show ...`)이 불러 쓰는 다리.
+// 알맹이는 위에 그대로 두고 이름만 내놓는다.
+namespace splash::cli {
+
+int renderMapImage(const std::string & mapPath, const std::string & installPath,
+                   const std::string & outPath,
+                   bool drawUnits, bool drawLocations, bool drawCreep)
+{
+    return cmdRender(mapPath, installPath, outPath, drawUnits, drawLocations, drawCreep);
+}
+
+int triggerTextCommand(const std::string & mapPath, const std::string & installPath,
+                       const std::string & outPath)
+{
+    return cmdTriggers(mapPath, installPath, outPath);
+}
+
+int setTriggersCommand(const std::string & mapPath, const std::string & installPath,
+                       const std::string & textPath, const std::string & outMapPath)
+{
+    return cmdSetTriggers(mapPath, installPath, textPath, outMapPath);
+}
+
+int triggerListCommand(const std::string & mapPath, const std::string & installPath,
+                       int triggerIndex)
+{
+    return cmdTriggerList(mapPath, installPath, triggerIndex);
+}
+
+int triggerArgsCommand(const std::string & mapPath, const std::string & installPath,
+                       std::size_t triggerIndex)
+{
+    return cmdTriggerArgs(mapPath, installPath, triggerIndex);
+}
+
+int setTriggerArgCommand(const std::string & mapPath, const std::string & installPath,
+                         const std::string & which, std::size_t triggerIndex,
+                         std::size_t slot, std::size_t argIndex,
+                         const std::string & value, const std::string & outMapPath)
+{
+    return cmdSetTriggerArg(mapPath, installPath, which, triggerIndex, slot, argIndex,
+                            value, outMapPath);
+}
+
+int briefingTextCommand(const std::string & mapPath, const std::string & installPath,
+                        const std::string & outPath)
+{
+    return cmdBriefing(mapPath, installPath, outPath);
+}
+
+int setBriefingCommand(const std::string & mapPath, const std::string & installPath,
+                       const std::string & textPath, const std::string & outMapPath)
+{
+    return cmdSetBriefing(mapPath, installPath, textPath, outMapPath);
+}
+
+int briefingArgsCommand(const std::string & mapPath, const std::string & installPath,
+                        std::size_t index)
+{
+    return cmdBriefingArgs(mapPath, installPath, index);
+}
+
+} // namespace splash::cli
+
 int main(int argc, char ** argv)
 {
     const std::vector<std::string> args(argv + 1, argv + argc);
@@ -1846,6 +1911,19 @@ int main(int argc, char ** argv)
         return usage(argv[0]);
 
     const std::string & command = args[0];
+
+    if (command == "help" || command == "--help" || command == "-h")
+    {
+        usage(argv[0]);
+        return 0;
+    }
+
+    // 갈래 명령을 먼저 본다. 갈래가 아니면 아래의 평평한 명령으로 넘어간다.
+    if (const int code = splash::cli::runGroupCommand(argv[0], args);
+        code != splash::cli::kUnknownCommand)
+    {
+        return code;
+    }
 
     if (command == "info" && args.size() == 2)
         return cmdInfo(args[1]);

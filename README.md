@@ -177,7 +177,58 @@ cmake --build build --config RelWithDebInfo
 
 ### CLI
 
-CLI 는 GUI 없이 코어를 두드리는 도구이자 테스트 하네스다.
+CLI 는 GUI 없이 코어를 두드리는 도구이자 테스트 하네스다. **화면에서 되는
+편집은 명령으로도 된다.** 명령은 갈래로 묶여 있다.
+
+```sh
+./build/src/cli/splash-cli help          # 갈래 목록
+./build/src/cli/splash-cli unit          # 그 갈래의 명령
+```
+
+| 갈래 | 하는 일 |
+| --- | --- |
+| `unit` | 놓기·지우기·옮기기·속성·겹쳐 쌓기·애드온 잇기 |
+| `sprite` | 놓기·지우기·속성 |
+| `doodad` | 놓기·지우기·지형으로 풀기·어긋난 것 찾고 고치기 |
+| `location` | 만들기·지우기·이름·크기·높이·안팎 뒤집기 |
+| `terrain` | 칠하기·복사·붙여넣기·대칭·ISOM 브러시 |
+| `fog` | 가리개 칠하기·일괄·복사·붙여넣기 |
+| `map` | 이름·설명·크기·타일셋 |
+| `player` `force` | 종족·슬롯·세력·색, 동맹·시야 공유 |
+| `string` `switch` `preset` | 문자열·스위치·CUWP |
+| `unitdef` `upgrade` `tech` | 맵이 정하는 능력치·비용 |
+| `scenario` | 리빌러·자원 섞기·맵 밖 치우기·보호 해제·맵 그림 |
+| `sound` | 넣기·빼기·꺼내기 |
+| `trigger` `briefing` | 텍스트로 뽑고 되돌려 넣기, 인자 하나만 고치기 |
+
+고치는 명령은 **저장할 곳을 반드시 받는다** — `-o <출력맵>` 이거나
+`--in-place`. 원본을 말없이 덮어쓰지 않는다. `--in-place` 는 옆에 먼저 쓰고
+바꿔치기하므로, 쓰다 멈춰도 원본이 남는다. 저장한 다음에는 저장본을 다시
+열어 확인하고, 그 결과를 한 줄로 찍는다.
+
+```sh
+# 유닛을 이름으로 놓기 (번호로도 된다). 좌표는 픽셀, --tiles 면 타일
+splash-cli unit place map.scx "Terran Marine" 50 30 --tiles --owner 1 -o out.scx
+
+# 속성 바꾸기
+splash-cli unit set map.scx 34 --owner 3 --hp 50 --cloaked on -o out.scx
+
+# 로케이션 만들고 높이 조건 주기
+splash-cli location add map.scx 10 10 20 20 --tiles --name "시험터" -o out.scx
+splash-cli location elevation out.scx 1 저지대,고공 --in-place
+
+# 지형을 베껴 두었다가 다른 자리에 붙이기
+splash-cli terrain copy map.scx 10 10 6 3 patch.tiles --no-doodads
+splash-cli terrain paste map.scx 40 40 patch.tiles -o out.scx
+
+# 왼쪽 절반을 오른쪽에 거울처럼 베끼기
+splash-cli terrain mirror map.scx horizontal -o out.scx
+
+# 맵 전체를 리빌러로 덮기
+splash-cli scenario revealers map.scx --owner 1 --spacing 16 -o out.scx
+```
+
+진단·검증 명령은 갈래 없이 그대로 쓴다.
 
 ```sh
 # 메타데이터 보기
@@ -210,16 +261,10 @@ CLI 는 GUI 없이 코어를 두드리는 도구이자 테스트 하네스다.
 # 타일셋 조사 / 타일 시트 뽑기
 ./build/src/cli/splash-cli tileset-info "/경로/StarCraft" 4
 ./build/src/cli/splash-cli tile-sheet "/경로/StarCraft" 4 0 16 sheet.ppm
-
-# 유닛·로케이션 목록 보기
-./build/src/cli/splash-cli units map.scx 30
-
-# 트리거를 텍스트로 (SCMDraft 형식)
-./build/src/cli/splash-cli triggers map.scx "/경로/StarCraft" triggers.txt
-
-# 고친 텍스트를 다시 맵에 적용
-./build/src/cli/splash-cli set-triggers map.scx "/경로/StarCraft" triggers.txt out.scx
 ```
+
+예전 이름(`move-unit`, `place-isom`, `set-triggers`, `units`, `triggers` …)도
+그대로 받는다. 새 이름은 갈래 쪽이다.
 
 ---
 
