@@ -184,8 +184,8 @@ public:
         bool spriteOverlay = false; ///< 참이면 sprites.dat, 거짓이면 units.dat
     };
 
-    /// 그 타일셋의 두들 목록.
-    std::vector<DoodadInfo> doodads(std::uint16_t tilesetId) const;
+    /// 그 타일셋의 두들 목록. 처음 부를 때 만들어 두고 그대로 돌려준다.
+    const std::vector<DoodadInfo> & doodads(std::uint16_t tilesetId) const;
 
     /// 그 두들을 그 자리에 놓을 수 있는지 (dddata.bin 의 배치 가능 표).
     ///

@@ -31,6 +31,10 @@ struct GameGraphics::Impl
     /// 미니맵은 맵을 열거나 지형을 고칠 때마다 다시 그리므로 캐시가 필요하다.
     mutable std::map<std::uint32_t, std::array<std::uint8_t, 3>> miniColors;
 
+    /// 타일셋별 두들 목록. 만들 때마다 정렬까지 해야 해서, 두들을 놓는
+    /// 동안 마우스를 움직일 때마다 다시 만들면 눈에 띄게 굼떠진다.
+    mutable std::map<std::uint16_t, std::vector<DoodadInfo>> doodadLists;
+
     // Sc::Data 는 load() 대신 필요한 부분만 직접 채운다. 그쪽 load() 는
     // 파일 브라우저를 요구하고 우리가 이미 연 아카이브를 쓰지 않는다.
     std::unique_ptr<Sc::Data> scData;
@@ -606,12 +610,20 @@ const Sc::Terrain::DoodadCv5 & asDoodad(const Sc::Terrain::TileGroup & group)
 
 } // namespace
 
-std::vector<GameGraphics::DoodadInfo> GameGraphics::doodads(std::uint16_t tilesetId) const
+const std::vector<GameGraphics::DoodadInfo> &
+GameGraphics::doodads(std::uint16_t tilesetId) const
 {
-    std::vector<DoodadInfo> out;
+    static const std::vector<DoodadInfo> kEmpty;
     if (!impl_->loaded)
-        return out;
+        return kEmpty;
 
+    if (const auto found = impl_->doodadLists.find(tilesetId);
+        found != impl_->doodadLists.end())
+    {
+        return found->second;
+    }
+
+    std::vector<DoodadInfo> out;
     const Sc::Terrain::Tiles & tiles = impl_->tiles(tilesetId);
 
     // doodadIdToTileGroup 이 두들 번호와 시작 그룹을 이어 준다.
@@ -656,7 +668,8 @@ std::vector<GameGraphics::DoodadInfo> GameGraphics::doodads(std::uint16_t tilese
             return a.name < b.name;
         return a.id < b.id;
     });
-    return out;
+
+    return impl_->doodadLists.emplace(tilesetId, std::move(out)).first->second;
 }
 
 bool GameGraphics::doodadFits(std::uint16_t tilesetId, std::uint16_t doodadId,
