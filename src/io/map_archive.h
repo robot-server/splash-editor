@@ -588,6 +588,22 @@ public:
     /// 프리셋 하나를 바꾼다.
     Result setUnitPreset(std::size_t index, const UnitPreset & preset);
 
+    // --- 한꺼번에 손보기 ---
+
+    /// 맵 전체를 리빌러로 덮는다. 몇 개를 놓았는지 돌려준다.
+    ///
+    /// 리빌러 하나가 시야 몇 타일을 여는지에 맞춰 띄엄띄엄 놓는다.
+    std::size_t placeMapRevealers(std::uint8_t owner, int spacingTiles);
+
+    /// 맵의 리빌러를 모두 지운다. 몇 개를 지웠는지 돌려준다.
+    std::size_t removeMapRevealers();
+
+    /// 가리개를 전부 씌우거나 걷는다 (플레이어 비트).
+    Result setFogEverywhere(std::uint8_t players, bool covered);
+
+    /// 미네랄·가스의 남은 양을 섞는다. 몇 개를 바꿨는지 돌려준다.
+    std::size_t randomizeResources(std::uint32_t minimum, std::uint32_t maximum);
+
     /// AI 스크립트가 타운으로 쓰는 로케이션 번호들.
     ///
     /// 트리거의 "Run AI Script At Location" 이 가리키는 자리다. 컴퓨터가

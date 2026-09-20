@@ -542,6 +542,183 @@ Result MapArchive::setUnitPreset(std::size_t index, const UnitPreset & preset)
 
 // ------------------------------------------------------- 스위치 이름·보호
 
+std::size_t MapArchive::placeMapRevealers(std::uint8_t owner, int spacingTiles)
+{
+    if (!impl_->isOpen())
+        return 0;
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        constexpr std::uint16_t kMapRevealer = 101;
+
+        const int width = static_cast<int>(map.getTileWidth());
+        const int height = static_cast<int>(map.getTileHeight());
+        const int step = std::max(1, spacingTiles);
+
+        std::size_t placed = 0;
+        int actions = 0;
+
+        // 격자로 띄엄띄엄 놓는다. 가운데를 맞춰야 가장자리도 덮인다.
+        for (int ty = step / 2; ty < height; ty += step)
+        {
+            for (int tx = step / 2; tx < width; tx += step)
+            {
+                Chk::Unit unit {};
+                unit.type = Sc::Unit::Type(kMapRevealer);
+                unit.owner = owner;
+                unit.xc = static_cast<std::uint16_t>(tx * kTilePixels + kTilePixels / 2);
+                unit.yc = static_cast<std::uint16_t>(ty * kTilePixels + kTilePixels / 2);
+
+                map.addUnit(unit);
+                ++placed;
+                ++actions;
+            }
+        }
+
+        if (actions > 0)
+        {
+            impl_->undoSteps.push_back(actions);
+            impl_->redoSteps.clear();
+        }
+        return placed;
+    }
+    catch (const std::exception &)
+    {
+    }
+    return 0;
+}
+
+std::size_t MapArchive::removeMapRevealers()
+{
+    if (!impl_->isOpen())
+        return 0;
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        constexpr std::uint16_t kMapRevealer = 101;
+
+        // 뒤에서부터 지워야 앞 번호가 밀리지 않는다.
+        std::size_t removed = 0;
+        for (std::size_t i = map.numUnits(); i-- > 0;)
+        {
+            if (static_cast<std::uint16_t>(map.getUnit(i).type) != kMapRevealer)
+                continue;
+
+            map.deleteUnit(i);
+            ++removed;
+        }
+
+        if (removed > 0)
+        {
+            impl_->undoSteps.push_back(static_cast<int>(removed));
+            impl_->redoSteps.clear();
+        }
+        return removed;
+    }
+    catch (const std::exception &)
+    {
+    }
+    return 0;
+}
+
+Result MapArchive::setFogEverywhere(std::uint8_t players, bool covered)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        if (!map.hasSection(Chk::SectionName::MASK))
+        {
+            if (!covered)
+                return Result::success(); // 가리개가 없으면 걷을 것도 없다
+            map.addSaveSection(Chk::SectionName::MASK);
+        }
+
+        const std::size_t width = map.getTileWidth();
+        const std::size_t height = map.getTileHeight();
+
+        int actions = 0;
+        for (std::size_t y = 0; y < height; ++y)
+        {
+            for (std::size_t x = 0; x < width; ++x)
+            {
+                const std::uint8_t before = map.getFog(x, y);
+                const std::uint8_t after = covered
+                    ? static_cast<std::uint8_t>(before | players)
+                    : static_cast<std::uint8_t>(before & ~players);
+
+                if (after == before)
+                    continue;
+
+                map.setFog(x, y, after);
+                ++actions;
+            }
+        }
+
+        if (actions > 0)
+        {
+            impl_->undoSteps.push_back(actions);
+            impl_->redoSteps.clear();
+        }
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("가리개를 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+std::size_t MapArchive::randomizeResources(std::uint32_t minimum, std::uint32_t maximum)
+{
+    if (!impl_->isOpen())
+        return 0;
+    if (maximum < minimum)
+        std::swap(minimum, maximum);
+
+    MapFile & map = *impl_->mapFile;
+    try
+    {
+        // 자원 유닛만 고른다 — units.dat 의 특성으로 가린다.
+        std::size_t changed = 0;
+        int actions = 0;
+
+        const std::uint32_t span = maximum - minimum + 1;
+
+        for (std::size_t i = 0; i < map.numUnits(); ++i)
+        {
+            Chk::Unit unit = map.getUnit(i);
+
+            // 미네랄 덩이(176~178)와 베스핀 간헐천(188).
+            const auto type = static_cast<std::uint16_t>(unit.type);
+            const bool isResource = (type >= 176 && type <= 178) || type == 188;
+            if (!isResource)
+                continue;
+
+            unit.resourceAmount = minimum + (static_cast<std::uint32_t>(std::rand()) % span);
+
+            map.deleteUnit(i);
+            map.insertUnit(i, unit);
+            actions += 2;
+            ++changed;
+        }
+
+        if (actions > 0)
+        {
+            impl_->undoSteps.push_back(actions);
+            impl_->redoSteps.clear();
+        }
+        return changed;
+    }
+    catch (const std::exception &)
+    {
+    }
+    return 0;
+}
+
 std::vector<std::size_t> MapArchive::aiTownLocations() const
 {
     std::vector<std::size_t> out;

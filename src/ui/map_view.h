@@ -280,6 +280,15 @@ public:
     TerrainOverlay terrainOverlay() const { return overlay_; }
     void setTerrainOverlay(TerrainOverlay overlay);
 
+    /// 맵의 유닛을 모두 고른다.
+    void selectAllUnits();
+
+    /// 시작 위치로 화면을 옮긴다. 옮겼으면 참.
+    bool jumpToStartLocation(std::uint8_t player);
+
+    /// 맵을 그림으로 그려 돌려준다 (지형 + 켜 둔 층).
+    QImage renderToImage() const;
+
     /// AI 타운으로 쓰이는 로케이션을 따로 표시할지.
     bool aiTownsVisible() const { return showAiTowns_; }
     void setAiTownsVisible(bool visible);

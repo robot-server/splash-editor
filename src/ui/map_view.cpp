@@ -1206,6 +1206,98 @@ void MapView::setPylonRangeVisible(bool visible)
     viewport()->update();
 }
 
+void MapView::selectAllUnits()
+{
+    if (document_ == nullptr || !document_->isOpen())
+        return;
+
+    const auto & units = document_->units();
+    selectedUnits_.clear();
+    selectedUnits_.reserve(units.size());
+    for (int i = 0; i < static_cast<int>(units.size()); ++i)
+        selectedUnits_.push_back(i);
+
+    selectedUnit_ = selectedUnits_.empty() ? -1 : selectedUnits_.back();
+    selectedLocation_ = -1;
+    emit selectionChanged(selectedUnit_);
+    viewport()->update();
+}
+
+bool MapView::jumpToStartLocation(std::uint8_t player)
+{
+    if (document_ == nullptr || !document_->isOpen())
+        return false;
+
+    // 시작 위치는 유닛 214 로 놓인다.
+    constexpr std::uint16_t kStartLocation = 214;
+
+    for (const auto & unit : document_->units())
+    {
+        if (unit.type != kStartLocation || unit.owner != player)
+            continue;
+
+        centerOnMap(QPointF(unit.x, unit.y));
+        return true;
+    }
+    return false;
+}
+
+QImage MapView::renderToImage() const
+{
+    if (document_ == nullptr || !document_->isOpen() || tileset_ == nullptr)
+        return QImage();
+
+    const auto & info = document_->info();
+    const int width = info.width * io::kTilePixels;
+    const int height = info.height * io::kTilePixels;
+    if (width <= 0 || height <= 0)
+        return QImage();
+
+    QImage image(width, height, QImage::Format_RGB32);
+    image.fill(Qt::black);
+
+    const auto & tiles = document_->tiles();
+    std::vector<std::uint8_t> rgba(io::kTileRgbaBytes);
+
+    // 지형을 원래 크기로 그린다 — 화면 배율과 무관하게 같은 그림이 나온다.
+    for (int ty = 0; ty < info.height; ++ty)
+    {
+        for (int tx = 0; tx < info.width; ++tx)
+        {
+            const std::size_t index = static_cast<std::size_t>(ty) * info.width + tx;
+            const std::uint16_t tileId = (index < tiles.size()) ? tiles[index] : 0;
+
+            if (!tileset_->renderTile(info.tilesetId, tileId, rgba.data()))
+                continue;
+
+            const QImage tileImage(rgba.data(), io::kTilePixels, io::kTilePixels,
+                                   io::kTilePixels * 4, QImage::Format_RGBA8888);
+
+            QPainter painter(&image);
+            painter.drawImage(QPoint(tx * io::kTilePixels, ty * io::kTilePixels), tileImage);
+        }
+    }
+
+    // 유닛도 얹는다 — 그림만 보고 맵 구성을 알 수 있어야 쓸모가 있다.
+    QPainter painter(&image);
+    for (const auto & unit : document_->units())
+    {
+        const io::UnitImage drawn = tileset_->renderUnit(
+            unit.type, unit.owner, info.tilesetId, unit.resourceAmount,
+            unit.stateFlags, unit.relationFlags);
+
+        if (drawn.width <= 0 || drawn.height <= 0)
+            continue;
+
+        const QImage sprite(drawn.rgba.data(), drawn.width, drawn.height,
+                            drawn.width * 4, QImage::Format_RGBA8888);
+
+        painter.drawImage(QPoint(unit.x - drawn.anchorX, unit.y - drawn.anchorY), sprite);
+    }
+
+    return image;
+}
+
 void MapView::setAiTownsVisible(bool visible)
 {
     showAiTowns_ = visible;

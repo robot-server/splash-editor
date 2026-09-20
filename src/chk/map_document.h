@@ -299,6 +299,14 @@ public:
 
     // --- 스위치 이름·맵 보호 ---
 
+    // --- 한꺼번에 손보기 ---
+
+    bool placeMapRevealers(std::uint8_t owner, int spacingTiles, std::size_t * outCount = nullptr);
+    bool removeMapRevealers(std::size_t * outCount = nullptr);
+    bool setFogEverywhere(std::uint8_t players, bool covered);
+    bool randomizeResources(std::uint32_t minimum, std::uint32_t maximum,
+                            std::size_t * outCount = nullptr);
+
     /// AI 스크립트가 타운으로 쓰는 로케이션 번호들.
     std::vector<std::size_t> aiTownLocations() const;
 

@@ -949,6 +949,76 @@ bool MapDocument::setUnitPreset(std::size_t index, const io::MapArchive::UnitPre
     return true;
 }
 
+bool MapDocument::placeMapRevealers(std::uint8_t owner, int spacingTiles, std::size_t * outCount)
+{
+    const std::size_t placed = archive_.placeMapRevealers(owner, spacingTiles);
+    if (outCount != nullptr)
+        *outCount = placed;
+
+    if (placed == 0)
+    {
+        lastError_ = "리빌러를 놓지 못했습니다.";
+        return false;
+    }
+
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::removeMapRevealers(std::size_t * outCount)
+{
+    const std::size_t removed = archive_.removeMapRevealers();
+    if (outCount != nullptr)
+        *outCount = removed;
+
+    if (removed == 0)
+    {
+        lastError_ = "지울 리빌러가 없습니다.";
+        return false;
+    }
+
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::setFogEverywhere(std::uint8_t players, bool covered)
+{
+    const io::Result result = archive_.setFogEverywhere(players, covered);
+    if (!result) { lastError_ = result.message; return false; }
+
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
+bool MapDocument::randomizeResources(std::uint32_t minimum, std::uint32_t maximum,
+                                     std::size_t * outCount)
+{
+    const std::size_t changed = archive_.randomizeResources(minimum, maximum);
+    if (outCount != nullptr)
+        *outCount = changed;
+
+    if (changed == 0)
+    {
+        lastError_ = "바꿀 자원 유닛이 없습니다.";
+        return false;
+    }
+
+    modified_ = true;
+    ++undoDepth_;
+    redoDepth_ = 0;
+    refreshInfo();
+    return true;
+}
+
 std::vector<std::size_t> MapDocument::aiTownLocations() const
 {
     return archive_.aiTownLocations();

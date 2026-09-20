@@ -20,6 +20,7 @@
 #include <QActionGroup>
 #include <QApplication>
 #include <QGridLayout>
+#include <QInputDialog>
 #include <QHeaderView>
 #include <QTableWidget>
 #include <QGroupBox>
@@ -604,6 +605,14 @@ void MainWindow::buildMenus()
             statusBar()->showMessage(tr("복사할 유닛을 먼저 고르세요"), 2000);
     });
 
+    QAction * selectAllAction = editMenu->addAction(tr("모두 고르기(&A)"));
+    selectAllAction->setShortcut(QKeySequence::SelectAll);
+    connect(selectAllAction, &QAction::triggered, this, [this] {
+        mapView_->selectAllUnits();
+        statusBar()->showMessage(
+            tr("유닛 %1개를 골랐습니다").arg(document().units().size()), 2500);
+    });
+
     QAction * cutAction = editMenu->addAction(tr("잘라내기(&X)"));
     cutAction->setShortcut(QKeySequence::Cut);
     connect(cutAction, &QAction::triggered, this, [this] {
@@ -985,6 +994,125 @@ void MainWindow::buildMenus()
 
     scenarioMenu->addSeparator();
 
+    QMenu * batchMenu = scenarioMenu->addMenu(tr("한꺼번에 손보기"));
+
+    QAction * saveImageAction = batchMenu->addAction(tr("맵을 그림으로 저장…"));
+    connect(saveImageAction, &QAction::triggered, this, [this] {
+        if (!document().isOpen())
+            return;
+
+        const QString path = QFileDialog::getSaveFileName(
+            this, tr("맵 그림 저장"), QStringLiteral("map.png"),
+            tr("PNG 그림 (*.png);;JPEG 그림 (*.jpg)"));
+        if (path.isEmpty())
+            return;
+
+        QApplication::setOverrideCursor(Qt::WaitCursor);
+        const QImage image = mapView_->renderToImage();
+        const bool ok = !image.isNull() && image.save(path);
+        QApplication::restoreOverrideCursor();
+
+        if (!ok)
+        {
+            QMessageBox::warning(this, tr("저장 실패"), tr("그림을 쓰지 못했습니다."));
+            return;
+        }
+
+        statusBar()->showMessage(tr("맵 그림을 썼습니다: %1").arg(path), 4000);
+    });
+
+    batchMenu->addSeparator();
+
+    QAction * placeRevealers = batchMenu->addAction(tr("맵 리빌러 깔기"));
+    connect(placeRevealers, &QAction::triggered, this, [this] {
+        if (!document().isOpen())
+            return;
+
+        std::size_t placed = 0;
+        if (!document().placeMapRevealers(
+                static_cast<std::uint8_t>(ownerBox_ != nullptr
+                                              ? ownerBox_->currentData().toInt() : 0),
+                /*spacingTiles*/ 8, &placed))
+        {
+            statusBar()->showMessage(QString::fromStdString(document().lastError()), 3000);
+            return;
+        }
+
+        mapView_->refreshUnits();
+        onDocumentEdited();
+        statusBar()->showMessage(tr("리빌러 %1개를 깔았습니다").arg(placed), 3000);
+    });
+
+    QAction * removeRevealers = batchMenu->addAction(tr("맵 리빌러 모두 지우기"));
+    connect(removeRevealers, &QAction::triggered, this, [this] {
+        if (!document().isOpen())
+            return;
+
+        std::size_t removed = 0;
+        if (!document().removeMapRevealers(&removed))
+        {
+            statusBar()->showMessage(QString::fromStdString(document().lastError()), 3000);
+            return;
+        }
+
+        mapView_->refreshUnits();
+        onDocumentEdited();
+        statusBar()->showMessage(tr("리빌러 %1개를 지웠습니다").arg(removed), 3000);
+    });
+
+    batchMenu->addSeparator();
+
+    QAction * coverFog = batchMenu->addAction(tr("가리개 모두 씌우기"));
+    connect(coverFog, &QAction::triggered, this, [this] {
+        if (document().isOpen() && document().setFogEverywhere(0xFF, /*covered*/ true))
+        {
+            mapView_->refresh();
+            onDocumentEdited();
+            statusBar()->showMessage(tr("맵 전체를 가렸습니다"), 3000);
+        }
+    });
+
+    QAction * clearFog = batchMenu->addAction(tr("가리개 모두 걷기"));
+    connect(clearFog, &QAction::triggered, this, [this] {
+        if (document().isOpen() && document().setFogEverywhere(0xFF, /*covered*/ false))
+        {
+            mapView_->refresh();
+            onDocumentEdited();
+            statusBar()->showMessage(tr("가리개를 모두 걷었습니다"), 3000);
+        }
+    });
+
+    batchMenu->addSeparator();
+
+    QAction * randomizeResources = batchMenu->addAction(tr("자원량 섞기…"));
+    connect(randomizeResources, &QAction::triggered, this, [this] {
+        if (!document().isOpen())
+            return;
+
+        bool accepted = false;
+        const int least = QInputDialog::getInt(this, tr("자원량 섞기"),
+            tr("가장 적은 양"), 1000, 0, 999999, 100, &accepted);
+        if (!accepted)
+            return;
+
+        const int most = QInputDialog::getInt(this, tr("자원량 섞기"),
+            tr("가장 많은 양"), 1500, 0, 999999, 100, &accepted);
+        if (!accepted)
+            return;
+
+        std::size_t changed = 0;
+        if (!document().randomizeResources(static_cast<std::uint32_t>(least),
+                                           static_cast<std::uint32_t>(most), &changed))
+        {
+            statusBar()->showMessage(QString::fromStdString(document().lastError()), 3000);
+            return;
+        }
+
+        mapView_->refreshUnits();
+        onDocumentEdited();
+        statusBar()->showMessage(tr("자원 유닛 %1개의 양을 섞었습니다").arg(changed), 3000);
+    });
+
     QAction * unprotectAction = scenarioMenu->addAction(tr("보호 해제(&P)…"));
     unprotectAction->setToolTip(
         tr("규격을 벗어나게 만들어 둔 맵을 고쳐 편집·저장할 수 있게 합니다."));
@@ -1088,6 +1216,21 @@ void MainWindow::buildMenus()
     connect(paletteDock_, &QDockWidget::visibilityChanged, showPalette, &QAction::setChecked);
 
     QMenu * windowMenu = menuBar()->addMenu(tr("창(&W)"));
+
+    QMenu * startMenu = windowMenu->addMenu(tr("시작 위치로 가기"));
+    for (int player = 0; player < 8; ++player)
+    {
+        QAction * action = startMenu->addAction(tr("플레이어 %1").arg(player + 1));
+        connect(action, &QAction::triggered, this, [this, player] {
+            if (mapView_->jumpToStartLocation(static_cast<std::uint8_t>(player)))
+                statusBar()->showMessage(tr("플레이어 %1 시작 위치").arg(player + 1), 2500);
+            else
+                statusBar()->showMessage(
+                    tr("플레이어 %1 의 시작 위치가 없습니다").arg(player + 1), 2500);
+        });
+    }
+
+    windowMenu->addSeparator();
 
     QAction * nextTab = windowMenu->addAction(tr("다음 맵"));
     nextTab->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Tab));
