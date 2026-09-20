@@ -2081,6 +2081,25 @@ Result MapArchive::saveAs(const std::string & filePath) const
                       "줄여 줍니다.");
         }
 
+        // 문자열을 꼬리부터 겹쳐 담아 한계를 피한 맵이 있다. 우리 저장
+        // 경로는 아직 그 방식을 쓰지 못한다.
+        std::size_t characters = 0;
+        for (std::size_t id = 1; id <= map.getCapacity(); ++id)
+        {
+            if (auto text = map.getString<RawString>(id))
+                characters += text->size() + 1;
+        }
+
+        constexpr std::size_t kPointableSpace = 65535;
+        if (characters + 2 * map.getCapacity() > kPointableSpace)
+        {
+            return Result::failure(
+                "문자열이 " + std::to_string(characters) + "자라 한 구역(" +
+                std::to_string(kPointableSpace) + "바이트)에 들어가지 않습니다. "
+                "이 맵은 문자열을 꼬리부터 겹쳐 담아 한계를 피하고 있는데, "
+                "아직 그렇게 저장하지 못합니다.");
+        }
+
         return Result::failure(
             "CHK 를 직렬화하지 못했습니다. CHK 가 유효하지 않을 수 있습니다"
             " (자세한 사유는 stderr 의 MappingCore 진단 참고).");
