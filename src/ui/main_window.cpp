@@ -1162,6 +1162,27 @@ void MainWindow::buildMenus()
         });
     }
 
+    QAction * showFogPreview = viewMenu->addAction(tr("안개 미리보기(&W)"));
+    showFogPreview->setCheckable(true);
+    showFogPreview->setToolTip(
+        tr("놓인 유닛의 시야로 게임 시작 때 무엇이 보일지 그립니다. "
+           "MASK 를 칠해 만든 가리개와는 다릅니다."));
+    connect(showFogPreview, &QAction::toggled, mapView_, &MapView::setFogPreviewVisible);
+
+    QMenu * fogPreviewMenu = viewMenu->addMenu(tr("안개 미리보기 플레이어"));
+    auto * fogPreviewGroup = new QActionGroup(this);
+    fogPreviewGroup->setExclusive(true);
+    for (int player = 0; player < 12; ++player)
+    {
+        QAction * action = fogPreviewMenu->addAction(tr("플레이어 %1").arg(player + 1));
+        action->setCheckable(true);
+        action->setChecked(player == 0);
+        fogPreviewGroup->addAction(action);
+        connect(action, &QAction::triggered, this, [this, player] {
+            mapView_->setFogPreviewPlayer(static_cast<std::uint8_t>(player));
+        });
+    }
+
     QAction * showPylons = viewMenu->addAction(tr("파일런 전력 범위(&Y)"));
     showPylons->setCheckable(true);
     showPylons->setToolTip(

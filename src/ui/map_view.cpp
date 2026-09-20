@@ -65,6 +65,7 @@ void MapView::setTileset(const io::GameGraphics * tileset)
 
 void MapView::refresh()
 {
+    fogPreviewReady_ = false;
     tileCache_.clear();
     unitCache_.clear();
     spriteCache_.clear();
@@ -79,6 +80,8 @@ void MapView::refresh()
 
 void MapView::refreshUnits()
 {
+    fogPreviewReady_ = false;
+
     // 크립은 저그 건물이 어디 있는지에 달렸으므로 다시 셈해야 한다.
     creepTiles_.clear();
     creepMask_.clear();
@@ -326,6 +329,8 @@ void MapView::paintEvent(QPaintEvent * event)
     }
 
     paintTerrainOverlay(painter, dirty);
+
+    paintFogPreview(painter, dirty);
 
     if (showFog_)
         paintFog(painter, dirty);
@@ -1184,6 +1189,112 @@ void MapView::setPylonRangeVisible(bool visible)
 {
     showPylons_ = visible;
     viewport()->update();
+}
+
+void MapView::setFogPreviewVisible(bool visible)
+{
+    showFogPreview_ = visible;
+    fogPreviewReady_ = false;
+    viewport()->update();
+}
+
+void MapView::setFogPreviewPlayer(std::uint8_t player)
+{
+    fogPreviewPlayer_ = player;
+    fogPreviewReady_ = false;
+    viewport()->update();
+}
+
+void MapView::buildFogPreview()
+{
+    fogPreview_.clear();
+    fogPreviewReady_ = true;
+
+    if (document_ == nullptr || !document_->isOpen() || tileset_ == nullptr)
+        return;
+
+    const auto & info = document_->info();
+    if (info.width <= 0 || info.height <= 0)
+        return;
+
+    // 처음에는 모두 가려져 있고, 그 플레이어의 유닛이 보는 칸을 걷어 낸다.
+    fogPreview_.assign(static_cast<std::size_t>(info.width) * info.height, true);
+
+    for (const auto & unit : document_->units())
+    {
+        if (unit.owner != fogPreviewPlayer_)
+            continue;
+
+        const auto ranges = tileset_->unitRanges(unit.type);
+        if (ranges.sight <= 0)
+            continue;
+
+        const int centreX = static_cast<int>(unit.x) / io::kTilePixels;
+        const int centreY = static_cast<int>(unit.y) / io::kTilePixels;
+        const int radius = ranges.sight / io::kTilePixels;
+
+        const int left = std::max(0, centreX - radius);
+        const int right = std::min(info.width - 1, centreX + radius);
+        const int top = std::max(0, centreY - radius);
+        const int bottom = std::min(info.height - 1, centreY + radius);
+
+        for (int y = top; y <= bottom; ++y)
+        {
+            for (int x = left; x <= right; ++x)
+            {
+                // 게임은 시야를 원으로 친다. 지형 높이에 따른 가림은 게임
+                // 실행 파일 안에 있어 여기서는 셈하지 않는다 — 대략만 본다.
+                const int dx = x - centreX;
+                const int dy = y - centreY;
+                if (dx * dx + dy * dy > radius * radius)
+                    continue;
+
+                fogPreview_[static_cast<std::size_t>(y) * info.width + x] = false;
+            }
+        }
+    }
+}
+
+void MapView::paintFogPreview(QPainter & painter, const QRect & dirty)
+{
+    if (!showFogPreview_ || document_ == nullptr)
+        return;
+
+    if (!fogPreviewReady_)
+        buildFogPreview();
+
+    if (fogPreview_.empty())
+        return;
+
+    const auto & info = document_->info();
+    const double tile = scaledTileSize();
+    if (tile <= 0)
+        return;
+
+    const int originX = horizontalScrollBar()->value();
+    const int originY = verticalScrollBar()->value();
+
+    const int firstX = std::max(0, static_cast<int>((originX + dirty.left()) / tile));
+    const int firstY = std::max(0, static_cast<int>((originY + dirty.top()) / tile));
+    const int lastX = std::min<int>(info.width - 1,
+                                    static_cast<int>((originX + dirty.right()) / tile));
+    const int lastY = std::min<int>(info.height - 1,
+                                    static_cast<int>((originY + dirty.bottom()) / tile));
+
+    painter.save();
+    for (int ty = firstY; ty <= lastY; ++ty)
+    {
+        for (int tx = firstX; tx <= lastX; ++tx)
+        {
+            const std::size_t index = static_cast<std::size_t>(ty) * info.width + tx;
+            if (index >= fogPreview_.size() || !fogPreview_[index])
+                continue;
+
+            painter.fillRect(QRectF(tx * tile - originX, ty * tile - originY, tile, tile),
+                             QColor(0, 0, 0, 150));
+        }
+    }
+    painter.restore();
 }
 
 void MapView::paintPylonRanges(QPainter & painter)

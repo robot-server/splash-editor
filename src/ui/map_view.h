@@ -280,6 +280,16 @@ public:
     TerrainOverlay terrainOverlay() const { return overlay_; }
     void setTerrainOverlay(TerrainOverlay overlay);
 
+    /// 놓인 유닛의 시야로 안개를 미리 보여 줄지.
+    ///
+    /// MASK 를 칠해 만든 가리개와는 다르다. 게임을 시작했을 때 그 플레이어가
+    /// 무엇을 볼 수 있는지 보여 준다.
+    bool fogPreviewVisible() const { return showFogPreview_; }
+    void setFogPreviewVisible(bool visible);
+
+    /// 안개 미리보기가 어느 플레이어 기준인지 (0 부터).
+    void setFogPreviewPlayer(std::uint8_t player);
+
     /// 파일런이 전력을 대는 범위를 보여 줄지.
     ///
     /// 프로토스 건물은 파일런 범위 안에서만 지을 수 있다. 범위는 타원이고
@@ -437,6 +447,12 @@ private:
     /// 지형 성질을 색으로 겹쳐 그린다.
     void paintTerrainOverlay(QPainter & painter, const QRect & dirty);
 
+    /// 유닛 시야로 안개를 셈해 둔다.
+    void buildFogPreview();
+
+    /// 안개 미리보기를 덮어 그린다.
+    void paintFogPreview(QPainter & painter, const QRect & dirty);
+
     /// 파일런 전력 범위를 그린다.
     void paintPylonRanges(QPainter & painter);
 
@@ -505,6 +521,12 @@ public:
     bool showTileValues_ = false;
     bool showRanges_ = false;
     bool showPylons_ = false;
+    bool showFogPreview_ = false;
+    std::uint8_t fogPreviewPlayer_ = 0;
+
+    /// 안개 미리보기 셈 결과. 유닛이 바뀌면 다시 센다.
+    std::vector<bool> fogPreview_;
+    bool fogPreviewReady_ = false;
     std::uint8_t fogPlayers_ = 0x01; ///< 기본은 플레이어 1
     bool fogErase_ = false;
     bool fogPainting_ = false;
