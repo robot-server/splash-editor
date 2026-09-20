@@ -174,6 +174,13 @@ public:
         /// 걸을 수 있는지를 함께 준다 (VF4).
         bool walkable = false;      ///< 한 칸이라도 걸을 수 있는지
         bool fullyWalkable = false; ///< 열여섯 칸 모두 걸을 수 있는지
+
+        /// VF4 의 "시야 막음" 비트. 실제 타일셋에는 쓰이지 않는다 — 정글
+        /// 8192 타일을 세어 0개였다. 게임은 높이 차이로 시야를 가린다.
+        bool blocksView = false;
+
+        /// 크립이 퍼질 수 있는 땅인지 (저그 건물을 놓을 수 있다).
+        bool creep = false;
     };
     TileTerrain tileTerrain(std::uint16_t tilesetId, std::uint16_t tileId) const;
 

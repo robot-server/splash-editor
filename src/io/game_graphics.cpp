@@ -659,6 +659,7 @@ GameGraphics::TileTerrain GameGraphics::tileTerrain(std::uint16_t tilesetId,
 
     using Flags = Sc::Terrain::TileGroup::Flags;
     terrain.buildable = (flags & Flags::Unbuildable) == 0;
+    terrain.creep = (flags & (Flags::Creep | Flags::TemporaryCreep)) != 0;
 
     if (flags & Flags::HighGround)
         terrain.elevation = 2;
@@ -675,17 +676,21 @@ GameGraphics::TileTerrain GameGraphics::tileTerrain(std::uint16_t tilesetId,
         const auto & tileFlags = tiles.tileFlags[megaTileIndex];
 
         std::size_t walkableCount = 0;
+        std::size_t blockingCount = 0;
         for (std::size_t y = 0; y < 4; ++y)
         {
             for (std::size_t x = 0; x < 4; ++x)
             {
                 if (tileFlags.miniTileFlags[y][x].isWalkable())
                     ++walkableCount;
+                if (tileFlags.miniTileFlags[y][x].blocksView())
+                    ++blockingCount;
             }
         }
 
         terrain.walkable = walkableCount > 0;
         terrain.fullyWalkable = walkableCount == 16;
+        terrain.blocksView = blockingCount > 0;
     }
 
     return terrain;

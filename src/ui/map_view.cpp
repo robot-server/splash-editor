@@ -325,6 +325,8 @@ void MapView::paintEvent(QPaintEvent * event)
         painter.restore();
     }
 
+    paintTerrainOverlay(painter, dirty);
+
     if (showFog_)
         paintFog(painter, dirty);
     if (showLocations_)
@@ -339,6 +341,7 @@ void MapView::paintEvent(QPaintEvent * event)
     paintTerrainCursor(painter);
     paintSelectionBox(painter);
     paintTerrainSelection(painter);
+    paintTileValues(painter, dirty);
 }
 
 const QVector<QPixmap> & MapView::creepTiles()
@@ -1081,6 +1084,146 @@ void MapView::setFogPlayers(std::uint8_t players)
 void MapView::setFogErasing(bool erasing)
 {
     fogErase_ = erasing;
+}
+
+void MapView::setTerrainOverlay(TerrainOverlay overlay)
+{
+    overlay_ = overlay;
+    viewport()->update();
+}
+
+void MapView::setTileValuesVisible(bool visible)
+{
+    showTileValues_ = visible;
+    viewport()->update();
+}
+
+void MapView::paintTerrainOverlay(QPainter & painter, const QRect & dirty)
+{
+    if (overlay_ == TerrainOverlay::None || document_ == nullptr || tileset_ == nullptr)
+        return;
+
+    const auto & info = document_->info();
+    const auto & tiles = document_->tiles();
+    if (tiles.empty())
+        return;
+
+    const double tile = scaledTileSize();
+    if (tile <= 0)
+        return;
+
+    const int originX = horizontalScrollBar()->value();
+    const int originY = verticalScrollBar()->value();
+
+    const int firstX = std::max(0, static_cast<int>((originX + dirty.left()) / tile));
+    const int firstY = std::max(0, static_cast<int>((originY + dirty.top()) / tile));
+    const int lastX = std::min<int>(info.width - 1,
+                                    static_cast<int>((originX + dirty.right()) / tile));
+    const int lastY = std::min<int>(info.height - 1,
+                                    static_cast<int>((originY + dirty.bottom()) / tile));
+
+    painter.save();
+
+    for (int ty = firstY; ty <= lastY; ++ty)
+    {
+        for (int tx = firstX; tx <= lastX; ++tx)
+        {
+            const std::size_t index = static_cast<std::size_t>(ty) * info.width + tx;
+            if (index >= tiles.size())
+                continue;
+
+            const auto terrain = tileset_->tileTerrain(info.tilesetId, tiles[index]);
+
+            QColor shade;
+            switch (overlay_)
+            {
+                case TerrainOverlay::Elevation:
+                    // 낮을수록 어둡게, 높을수록 밝게.
+                    shade = terrain.elevation == 2 ? QColor(255, 240, 150, 90)
+                          : terrain.elevation == 1 ? QColor(150, 200, 255, 80)
+                                                   : QColor(40, 60, 100, 70);
+                    break;
+
+                case TerrainOverlay::Walkable:
+                    shade = terrain.fullyWalkable ? QColor(60, 220, 90, 70)
+                          : terrain.walkable      ? QColor(230, 200, 60, 80)
+                                                  : QColor(220, 50, 50, 90);
+                    break;
+
+                case TerrainOverlay::Buildable:
+                    shade = terrain.buildable ? QColor(60, 220, 90, 70)
+                                              : QColor(220, 50, 50, 80);
+                    break;
+
+                case TerrainOverlay::Creep:
+                    if (!terrain.creep)
+                        continue;
+                    shade = QColor(180, 70, 200, 80);
+                    break;
+
+                case TerrainOverlay::None:
+                    continue;
+            }
+
+            painter.fillRect(QRectF(tx * tile - originX, ty * tile - originY, tile, tile), shade);
+        }
+    }
+
+    painter.restore();
+}
+
+void MapView::paintTileValues(QPainter & painter, const QRect & dirty)
+{
+    if (!showTileValues_ || document_ == nullptr)
+        return;
+
+    const double tile = scaledTileSize();
+
+    // 글자가 들어갈 자리가 없으면 그리지 않는다.
+    if (tile < 28)
+        return;
+
+    const auto & info = document_->info();
+    const auto & tiles = document_->tiles();
+    if (tiles.empty())
+        return;
+
+    const int originX = horizontalScrollBar()->value();
+    const int originY = verticalScrollBar()->value();
+
+    const int firstX = std::max(0, static_cast<int>((originX + dirty.left()) / tile));
+    const int firstY = std::max(0, static_cast<int>((originY + dirty.top()) / tile));
+    const int lastX = std::min<int>(info.width - 1,
+                                    static_cast<int>((originX + dirty.right()) / tile));
+    const int lastY = std::min<int>(info.height - 1,
+                                    static_cast<int>((originY + dirty.bottom()) / tile));
+
+    painter.save();
+
+    QFont small = painter.font();
+    small.setPointSizeF(std::max(6.0, tile / 4.0));
+    painter.setFont(small);
+
+    for (int ty = firstY; ty <= lastY; ++ty)
+    {
+        for (int tx = firstX; tx <= lastX; ++tx)
+        {
+            const std::size_t index = static_cast<std::size_t>(ty) * info.width + tx;
+            if (index >= tiles.size())
+                continue;
+
+            const QRectF cell(tx * tile - originX, ty * tile - originY, tile, tile);
+
+            // 어떤 지형 위에서도 읽히도록 검은 테두리를 깔고 흰 글자를 얹는다.
+            const QString text = QString::number(tiles[index]);
+            painter.setPen(QColor(0, 0, 0, 200));
+            painter.drawText(cell.adjusted(1, 1, 1, 1), Qt::AlignCenter, text);
+            painter.setPen(QColor(240, 240, 245));
+            painter.drawText(cell, Qt::AlignCenter, text);
+        }
+    }
+
+    painter.restore();
 }
 
 void MapView::paintFog(QPainter & painter, const QRect & dirty)

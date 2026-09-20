@@ -266,6 +266,24 @@ public:
     /// 이어진 유닛을 선으로 보여 줄지.
     bool unitLinksVisible() const { return showLinks_; }
 
+    /// 지형의 성질을 색으로 겹쳐 보여 준다.
+    ///
+    /// 지형을 맞추거나 미네랄 자리·길목을 살필 때 쓴다.
+    enum class TerrainOverlay
+    {
+        None,      ///< 겹치지 않음
+        Elevation, ///< 높이 (저·중·고)
+        Walkable,  ///< 지상 유닛이 지날 수 있는지
+        Buildable, ///< 건물을 지을 수 있는지
+        Creep      ///< 크립 위에만 지을 수 있는 땅
+    };
+    TerrainOverlay terrainOverlay() const { return overlay_; }
+    void setTerrainOverlay(TerrainOverlay overlay);
+
+    /// 타일 값을 칸마다 적어 보여 줄지 (지형을 맞출 때 쓴다).
+    bool tileValuesVisible() const { return showTileValues_; }
+    void setTileValuesVisible(bool visible);
+
     /// 시야 가리개(MASK)를 겹쳐 보여 줄지.
     bool fogVisible() const { return showFog_; }
 
@@ -404,6 +422,12 @@ private:
     /// 애드온·나이더스로 이어진 유닛을 선으로 잇는다.
     void paintUnitLinks(QPainter & painter);
 
+    /// 지형 성질을 색으로 겹쳐 그린다.
+    void paintTerrainOverlay(QPainter & painter, const QRect & dirty);
+
+    /// 타일 값을 칸마다 적는다.
+    void paintTileValues(QPainter & painter, const QRect & dirty);
+
     /// 시야 가리개를 겹쳐 그린다.
     void paintFog(QPainter & painter, const QRect & dirty);
 
@@ -459,6 +483,8 @@ public:
 
     bool showFog_ = false;
     bool showLinks_ = true;
+    TerrainOverlay overlay_ = TerrainOverlay::None;
+    bool showTileValues_ = false;
     std::uint8_t fogPlayers_ = 0x01; ///< 기본은 플레이어 1
     bool fogErase_ = false;
     bool fogPainting_ = false;

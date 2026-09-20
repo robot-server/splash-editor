@@ -1139,6 +1139,34 @@ void MainWindow::buildMenus()
     showGrid->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_G));
     connect(showGrid, &QAction::toggled, mapView_, &MapView::setGridVisible);
 
+    // 지형 성질을 색으로 겹쳐 본다 — 지형을 맞추거나 길목을 살필 때 쓴다.
+    QMenu * overlayMenu = viewMenu->addMenu(tr("지형 겹쳐 보기"));
+    auto * overlayGroup = new QActionGroup(this);
+    overlayGroup->setExclusive(true);
+    const struct { MapView::TerrainOverlay value; const char * label; } kOverlays[] {
+        { MapView::TerrainOverlay::None,      QT_TR_NOOP("없음") },
+        { MapView::TerrainOverlay::Elevation, QT_TR_NOOP("높이") },
+        { MapView::TerrainOverlay::Walkable,  QT_TR_NOOP("지날 수 있는 곳") },
+        { MapView::TerrainOverlay::Buildable, QT_TR_NOOP("지을 수 있는 곳") },
+        { MapView::TerrainOverlay::Creep,     QT_TR_NOOP("크립 위에만 짓는 땅") },
+    };
+    for (const auto & choice : kOverlays)
+    {
+        QAction * action = overlayMenu->addAction(tr(choice.label));
+        action->setCheckable(true);
+        action->setChecked(choice.value == mapView_->terrainOverlay());
+        overlayGroup->addAction(action);
+        connect(action, &QAction::triggered, this, [this, choice] {
+            mapView_->setTerrainOverlay(choice.value);
+            statusBar()->showMessage(tr("지형 겹쳐 보기: %1").arg(tr(choice.label)), 2500);
+        });
+    }
+
+    QAction * showTileValues = viewMenu->addAction(tr("타일 번호 표시(&T)"));
+    showTileValues->setCheckable(true);
+    showTileValues->setToolTip(tr("칸마다 타일 번호를 적습니다. 많이 확대해야 보입니다."));
+    connect(showTileValues, &QAction::toggled, mapView_, &MapView::setTileValuesVisible);
+
     QAction * showLinks = viewMenu->addAction(tr("유닛 연결 표시(&K)"));
     showLinks->setCheckable(true);
     showLinks->setChecked(mapView_->unitLinksVisible());
