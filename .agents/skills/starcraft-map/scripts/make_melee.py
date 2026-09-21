@@ -86,6 +86,28 @@ def quadrant_facing(x: int, y: int, width: int, height: int) -> int:
     return int(round(angle / (math.pi / 2))) % 4
 
 
+def in_base_or_exit(tx: int, ty: int, starts, cx: float, cy: float,
+                    base_w: int = 14, base_h: int = 10,
+                    corridor: int = 34, half: int = 9) -> bool:
+    """이 자리가 본진 언저리이거나 본진에서 가운데로 나가는 통로 안인지.
+
+    통로를 비워 두지 않으면 지형 덩이가 출구를 막아 본진이 섬이 된다.
+    """
+    for (sx, sy) in starts:
+        if abs(tx - sx) < base_w and abs(ty - sy) < base_h:
+            return True
+        vx, vy = cx - sx, cy - sy
+        length = math.hypot(vx, vy) or 1.0
+        ux, uy = vx / length, vy / length
+        # 통로 선분 위로 사영해 거리를 잰다
+        px, py = tx - sx, ty - sy
+        t = px * ux + py * uy
+        if 0 <= t <= corridor:
+            if abs(px - ux * t) <= half and abs(py - uy * t) <= half:
+                return True
+    return False
+
+
 def plateau_strokes(cx: int, cy: int, half_w: int, half_h: int,
                     terrain: int, width: int, height: int):
     """(cx, cy) 를 가운데로 하는 고지대 붓질 목록.
@@ -234,45 +256,6 @@ def main(argv=None):
             strokes += plateau_strokes(sx, sy, 11, 7, high_terrain, width, height)
         cli.isom_batch(strokes)
 
-    # 2) 램프 — 맵 가운데를 보는 세로 방향에 건다.
-    #
-    # 절벽 줄은 **높이**로 찾고, 찍은 뒤에는 **미니타일 길찾기**로 실제로
-    # 통하는지 확인한다. 눈으로만 보고 판단하면 막힌 램프를 놓게 된다.
-    ramp_at = {}
-    if not args.no_plateau:
-        print("램프를 놓습니다...")
-        cy_mid = (height - 1) / 2.0
-        for (sx, sy) in starts:
-            downward = sy < cy_mid          # 위쪽 본진은 아래로 내려간다
-            y_end = min(height - 6, sy + 16) if downward else max(4, sy - 16)
-            edge = scmap.find_elevation_edge(cli, tileset_id, sx, sy, y_end,
-                                             vertical=True)
-            if edge is None:
-                print(f"  ({sx},{sy}) 절벽 줄을 못 찾아 건너뜁니다")
-                continue
-            low_y = edge + 8 if downward else edge - 8
-            low_y = max(2, min(height - 3, low_y))
-            cands = (scmap.ramp_candidates(tileset_id, downward) +
-                     scmap.ramp_candidates(tileset_id, not downward))
-            rw = max((c[2] for c in cands), default=6)
-            rx = sx - rw // 2
-            rx -= rx % 2                    # 마름모 격자에 맞춰 짝수로
-            rx = max(0, min(width - rw, rx))
-            got = scmap.place_ramp_checked(
-                cli, tileset_id, rx, edge,
-                high_point=(sx, sy), low_point=(sx, low_y),
-                downward=downward, candidates=cands)
-            if got is None:
-                # 램프를 못 놓으면 그 본진은 갇힌다. 고지대를 걷어내
-                # 평지로 되돌린다 — 막힌 맵보다는 평지가 낫다.
-                print(f"  ({sx},{sy}) 통하는 램프를 못 찾아 고지대를 걷어냅니다")
-                paint_plateau(cli, sx, sy, half_w=12, half_h=8,
-                              terrain=low_terrain, width=width, height=height)
-            else:
-                base, ry = got
-                ramp_at[(sx, sy)] = (rx, ry, downward)
-                print(f"  ({sx},{sy}) → 램프 ({rx},{ry}) 0x{base:04x} [길찾기 통과]")
-
     # 3) 스타팅 표시와 본진 자원
     print("본진 자원을 놓습니다...")
     cx_mid, cy_mid = (width - 1) / 2.0, (height - 1) / 2.0
@@ -383,9 +366,10 @@ def main(argv=None):
                     for tx in range(px - bw // 2, px + bw // 2 + 1, 2):
                         if not (3 <= tx < width - 3):
                             continue
-                        # 스타팅 언저리는 건드리지 않는다
-                        if any(abs(tx - sx) < 14 and abs(ty - sy) < 10
-                               for (sx, sy) in starts):
+                        # 스타팅 언저리와 **나가는 길**은 비워 둔다.
+                        # 출구를 막으면 램프를 아무리 잘 내도 본진이
+                        # 섬이 된다 — 실제로 그렇게 갇힌 맵이 나왔다.
+                        if in_base_or_exit(tx, ty, starts, cxm, cym):
                             continue
                         feature_strokes.append((tx, ty, terrain))
 
@@ -428,6 +412,116 @@ def main(argv=None):
                         ok = False
                         break
             print(f"  두들 {placed}개")
+
+    # 7b) 램프 — 지형을 다 얹은 **뒤에** 낸다.
+    #
+    #      먼저 내면 나중에 얹은 지형 덩이가 램프 바깥을 막아 본진이
+    #      섬이 된다. 실제로 그렇게 갇힌 맵이 나왔다.
+    #
+    # 절벽 줄은 **높이**로 찾고, 찍은 뒤에는 **미니타일 길찾기**로 실제로
+    # 통하는지 확인한다. 눈으로만 보고 판단하면 막힌 램프를 놓게 된다.
+    ramp_at = {}
+    if not args.no_plateau:
+        print("램프를 놓습니다...")
+        cy_mid = (height - 1) / 2.0
+        for (sx, sy) in starts:
+            downward = sy < cy_mid          # 위쪽 본진은 아래로 내려간다
+            y_end = min(height - 6, sy + 16) if downward else max(4, sy - 16)
+            edge = scmap.find_elevation_edge(cli, tileset_id, sx, sy, y_end,
+                                             vertical=True)
+            if edge is None:
+                print(f"  ({sx},{sy}) 절벽 줄을 못 찾아 건너뜁니다")
+                continue
+            # 목표는 **언덕 바깥 열네 칸**. 맵 한가운데까지 요구하면 램프는
+            # 멀쩡한데 바깥 지형이 막았다는 이유로 램프가 퇴짜를 맞는다.
+            # 바깥이 막힌 것은 뒤의 연결성 복구가 길을 내어 푼다.
+            low_x = sx
+            low_y = edge + 14 if downward else edge - 14
+            low_y = max(2, min(height - 3, low_y))
+            cands = (scmap.ramp_candidates(tileset_id, downward) +
+                     scmap.ramp_candidates(tileset_id, not downward))
+            rw = max((c[2] for c in cands), default=6)
+            rx = sx - rw // 2
+            rx -= rx % 2                    # 마름모 격자에 맞춰 짝수로
+            rx = max(0, min(width - rw, rx))
+            got = scmap.place_ramp_checked(
+                cli, tileset_id, rx, edge,
+                high_point=(sx, sy), low_point=(low_x, low_y),
+                downward=downward, candidates=cands)
+            if got is None:
+                print(f"  ({sx},{sy}) 통하는 램프를 못 찾았습니다")
+            else:
+                base, ry = got
+                ramp_at[(sx, sy)] = (rx, ry, downward)
+                print(f"  ({sx},{sy}) → 램프 ({rx},{ry}) 0x{base:04x} [길찾기 통과]")
+
+        # 하나라도 램프를 못 내면 **모든** 본진의 고지대를 걷어낸다.
+        # 한 곳만 언덕이면 그 자리가 유리해져 밸런스가 깨진다 — 밀리맵에서
+        # 자리 차이는 지형 차이보다 나쁘다.
+        if ramp_at and len(ramp_at) < len(starts):
+            print(f"  {len(starts) - len(ramp_at)}곳이 램프를 못 내 "
+                  f"모든 본진을 평지로 되돌립니다 (대칭이 먼저다)")
+            strip = []
+            for (sx, sy) in starts:
+                strip += plateau_strokes(sx, sy, 12, 8, low_terrain, width, height)
+            cli.isom_batch(strip)
+            ramp_at = {}
+        elif not ramp_at:
+            print("  램프를 하나도 내지 못해 평지로 갑니다")
+            strip = []
+            for (sx, sy) in starts:
+                strip += plateau_strokes(sx, sy, 12, 8, low_terrain, width, height)
+            cli.isom_batch(strip)
+
+    # 8) 연결성 복구 — 갇힌 본진이 있으면 길을 낸다.
+    #
+    # 램프가 통해도 그 바깥을 지형 덩이가 막으면 본진이 섬이 된다.
+    # 램프 하나만 보지 말고 **맵 전체에서** 스타팅끼리 닿는지 봐야 한다.
+    print("연결성을 확인합니다...")
+    for attempt in range(4):
+        grid = scmap.walk_grid(cli, tileset_id, 0, 0, width, height)
+        pts = [scmap.nearest_walkable(grid, sx * 4 + 2, sy * 4 + 2, radius=48)
+               for (sx, sy) in starts]
+        if any(p is None for p in pts):
+            print("  스타팅 자리에 걸을 땅이 없습니다")
+            break
+        bad = [i for i in range(1, len(pts))
+               if not scmap.walk_reachable(grid, pts[0], pts[i])]
+        if not bad:
+            print(f"  스타팅 {len(starts)}곳이 모두 이어집니다")
+            break
+        print(f"  {[i + 1 for i in bad]} 번이 갇혀 길을 냅니다 ({attempt + 1}번째)")
+        # 갇힌 본진에서 가운데로 낮은 땅 띠를 낸다. 대칭을 지키려고
+        # 모든 스타팅에 같은 붓질을 되풀이한다.
+        carve = []
+        cx_m, cy_m = (width - 1) / 2.0, (height - 1) / 2.0
+        for (sx, sy) in starts:
+            # **램프 출구**에서 시작한다. 본진에서 몇 칸 떨어진 자리를 잡으면
+            # 병목(언덕 바로 아래)을 건너뛰어 길이 이어지지 않는다.
+            spot = ramp_at.get((sx, sy))
+            if spot:
+                rx, ry, downward = spot
+                ox = rx + 3
+                oy = ry + 7 if downward else ry - 2
+            else:
+                ox, oy = sx, sy
+            vx, vy = cx_m - ox, cy_m - oy
+            length = math.hypot(vx, vy) or 1.0
+            ux, uy = vx / length, vy / length
+            for step in range(2, int(length) + 1):
+                tx = int(round(ox + ux * step))
+                ty = int(round(oy + uy * step))
+                for d in (-4, -2, 0, 2, 4):
+                    px = tx + d
+                    if not (3 <= px < width - 3 and 3 <= ty < height - 3):
+                        continue
+                    # **램프 위는 절대 칠하지 않는다.** 칠하면 램프가 지워져
+                    # 본진이 다시 갇힌다 — 길을 낼수록 더 막히는 꼴이 된다.
+                    if any(rx0 - 1 <= px <= rx0 + 6 and ry0 - 1 <= ty <= ry0 + 6
+                           for (rx0, ry0, _d) in ramp_at.values()):
+                        continue
+                    carve.append((px - (px % 2), ty, low_terrain))
+        cli.isom_batch(carve)
 
     # 자원량은 다 놓은 뒤 한 번에 맞춘다.
     scmap.set_all_resources(cli)
