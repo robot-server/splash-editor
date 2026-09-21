@@ -183,6 +183,14 @@ EUD 는 **오직 게임 안의 재미를 위해서만** 쓴다. 게임 상태를
 python3 $S/corpus.py          # 전체 표를 찍어 본다
 ```
 
+`data/trigger-usage.json` 에는 맵 772장을 전수조사해 **동작·조건마다
+인자가 어떤 꼴로 쓰이는지** 담았다. 이름만 세면 사용법을 못 배운다.
+
+```sh
+# 내가 쓴 트리거를 실제 용례와 대조한다
+python3 $S/check_trigger_usage.py check <내맵.scx> data/trigger-usage.json
+```
+
 ```python
 import corpus
 c = corpus.load()

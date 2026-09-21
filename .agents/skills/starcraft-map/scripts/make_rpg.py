@@ -336,6 +336,16 @@ def main(argv=None):
     print("시야를 엽니다...")
     scmap.reveal_for_all(cli, a.players)
 
+    print("브리핑을 짭니다...")
+    cli.apply_briefing(scmap.briefing_text(
+        ["마을에서 출발합니다. 마을은 안전합니다.",
+         f"구역 {a.zones}곳을 차례로 깹니다. 뒤로 갈수록 셉니다.",
+         "잡으면 돈이 들어옵니다. 마을 비콘에서 강화하세요.",
+         f"마을에서는 공짜로, 구역 발판에서는 {HEAL_COST}원에 체력을 채웁니다.",
+         "마지막 방의 보스를 잡으면 이깁니다."],
+        objectives="구역을 깨고 보스를 잡는다",
+        portrait=HERO))
+
     print("트리거를 짭니다...")
     cli.apply_triggers(build_triggers(a.players, a.zones, enemy, boss_p, th))
     if a.name:

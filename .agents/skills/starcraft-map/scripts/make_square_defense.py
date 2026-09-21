@@ -470,6 +470,18 @@ def main(argv=None):
     scmap.reveal_for_all(cli, a.players)
 
     # 8) 트리거
+    # 브리핑 — 실측 772장 중 457장(59%)이 쓴다. 안 쓰면 아무 설명 없이
+    # 맵에 던져진다.
+    print("브리핑을 짭니다...")
+    cli.apply_briefing(scmap.briefing_text(
+        [f"경기장 {a.players}곳에 각자 자리를 잡습니다.",
+         f"웨이브 {a.waves}개가 통로를 돌아 서쪽 출구로 갑니다.",
+         "출구에 닿으면 목숨이 하나 줍니다. 목숨은 20개입니다.",
+         "가운데 섬 비콘에서 머린 120 · 성큰 200 · 수리 80 에 삽니다.",
+         "마지막 웨이브 뒤 보스를 잡으면 이깁니다."],
+        objectives=f"웨이브 {a.waves}개를 막고 보스를 잡는다",
+        portrait="Terran Marine"))
+
     print("트리거를 짭니다...")
     text = build_triggers(a.players, a.waves, enemy, boss_p, arena_names)
     cli.apply_triggers(text)

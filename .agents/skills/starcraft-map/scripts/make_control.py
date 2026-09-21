@@ -266,6 +266,15 @@ def main(argv=None):
     print("시야를 엽니다...")
     scmap.reveal_for_all(cli, a.players)
 
+    print("브리핑을 짭니다...")
+    cli.apply_briefing(scmap.briefing_text(
+        ["가운데 싸움터에서 겨룹니다.",
+         "주머니 안 비콘을 밟아 부대를 삽니다. 한 번에 100원입니다.",
+         "죽으면 잠시 뒤 주머니에서 다시 나옵니다.",
+         f"먼저 {a.goal}킬 하면 이깁니다."],
+        objectives=f"{a.goal}킬을 먼저 채운다",
+        portrait="Terran Marine"))
+
     print("트리거를 짭니다...")
     cli.apply_triggers(build_triggers(a.players, a.goal, a.respawn, names))
     if a.name:

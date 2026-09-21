@@ -299,6 +299,15 @@ def main(argv=None):
     print("시야를 엽니다...")
     scmap.reveal_for_all(cli, a.players)
 
+    print("브리핑을 짭니다...")
+    cli.apply_briefing(scmap.briefing_text(
+        [f"OX 문제가 {len(questions)}개 나옵니다.",
+         f"문제가 뜨면 {a.seconds}초 안에 발판으로 옮기세요.",
+         "왼쪽이 O, 오른쪽이 X 입니다.",
+         f"틀리거나 고르지 않으면 목숨이 하나 줍니다. 목숨은 {a.lives}개입니다."],
+        objectives=f"{len(questions)}문제를 목숨 {a.lives}개로 버틴다",
+        portrait="Terran Civilian"))
+
     print("트리거를 짭니다...")
     cli.apply_triggers(build_triggers(a.players, questions, a.lives, a.seconds))
     if a.name:

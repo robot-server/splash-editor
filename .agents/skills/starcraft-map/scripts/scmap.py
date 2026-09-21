@@ -276,6 +276,20 @@ class Cli:
         if description is not None:
             self.edit("map", "description", self.path, description)
 
+    def apply_briefing(self, text: str):
+        """브리핑을 컴파일해 넣는다. 트리거와 마찬가지로 통째로 간다."""
+        import tempfile
+        tf = tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False,
+                                         encoding="utf-8")
+        try:
+            tf.write(text); tf.close()
+            out = self.path + ".brf.tmp"
+            self.run("briefing", "apply", self.path, tf.name,
+                     "--install", self.install, "-o", out)
+            os.replace(out, self.path)
+        finally:
+            os.unlink(tf.name)
+
     def apply_triggers(self, text: str):
         """SCMDraft 꼴 트리거 텍스트를 컴파일해 넣는다.
 
@@ -1206,3 +1220,34 @@ def absent_player_cleanup(humans: int, system_owner: str,
             f'\tDisplay Text Message(Always Display, "{msg}");\n'
             '\tDefeat();\n}')
     return out
+
+
+def briefing_text(lines: list[str], objectives: str | None = None,
+                  portrait: str | None = None, hold_ms: int = 6000) -> str:
+    """미션 브리핑(MBRF) 을 글로 짠다.
+
+    유즈맵을 열면 게임 전에 뜨는 화면이다. **실측 772장 중 457장(59%)이
+    쓴다.** 안 쓰면 플레이어가 아무 설명 없이 맵에 던져진다.
+
+    브리핑에는 **조건이 없다.** 플레이어와 동작만 있고, 스위치 개념도
+    없다. 적힌 차례대로 흐른다.
+
+    실측에서 쓰는 동작 (457장 기준):
+        Mission Objectives  83%   화면 왼쪽에 목표를 적는다
+        Text Message        78%   가운데에 글을 띄운다 (글, 밀리초)
+        Wait                65%   다음 줄까지 기다린다
+        Show Portrait       55%   말하는 얼굴을 띄운다 (유닛, 슬롯)
+        Play WAV            24%
+    """
+    out = []
+    if objectives:
+        out.append('Briefing("All players"){\n'
+                   f'\tMission Objectives("{objectives}");\n}}')
+    for i, line in enumerate(lines):
+        body = ""
+        if portrait and i == 0:
+            body += f'\tShow Portrait("{portrait}", 0);\n'
+        body += f'\tText Message("{line}", {hold_ms});\n'
+        body += f'\tWait({hold_ms});\n'
+        out.append('Briefing("All players"){\n' + body + '}')
+    return TRIGGER_SEP.join(out)

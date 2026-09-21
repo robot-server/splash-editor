@@ -19,6 +19,50 @@ splash-cli trigger apply <맵> trig.txt --install "$SC_INSTALL" -o out.scx
 
 ---
 
+## 0-B. 미션 브리핑 (MBRF) — 맵의 59%가 쓴다
+
+유즈맵을 열면 게임 전에 뜨는 화면이다. **전수조사 772장 중 457장(59%)이
+쓴다.** 안 넣으면 플레이어가 아무 설명 없이 맵에 던져진다.
+
+**브리핑에는 조건이 없다.** 플레이어와 동작만 있고 스위치 개념도 없다.
+적힌 차례대로 흐른다.
+
+```
+Briefing("All players"){
+	Mission Objectives("웨이브 20개를 막고 보스를 잡는다");
+}
+
+//-----------------------------------------------------------------//
+
+Briefing("All players"){
+	Show Portrait("Terran Marine", 0);
+	Text Message("경기장 여섯 곳에 각자 자리를 잡습니다.", 6000);
+	Wait(6000);
+}
+```
+
+쓰는 동작 (브리핑 있는 457장 기준):
+
+| 동작 | 쓴 맵 | 꼴 |
+| --- | --- | --- |
+| `Mission Objectives` | **83%** | `(글)` — 화면 왼쪽 목표 |
+| `Text Message` | **78%** | `(글, 밀리초)` — 가운데 글 |
+| `Wait` | 65% | `(밀리초)` |
+| `Show Portrait` | 55% | `(유닛, 슬롯)` — 말하는 얼굴 |
+| `Play WAV` | 24% | `(파일, 밀리초)` |
+| `Display Speaking Portrait` | 23% | `(슬롯, 밀리초)` |
+| `Hide Portrait` | 8% | `(슬롯)` |
+| `Transmission` | 7% | `(글, 유닛, Set To, 밀리초, 로케이션, 밀리초)` |
+
+```python
+cli.apply_briefing(scmap.briefing_text(
+    ["첫 줄", "둘째 줄"],
+    objectives="목표 한 줄",
+    portrait="Terran Marine"))
+```
+
+---
+
 ## 0-A. 인자는 **실제 맵에서 확인하고 쓴다**
 
 컴파일이 통과한다고 맞는 게 아니다. `Modify Unit Hit Points` 의 인자
@@ -32,7 +76,7 @@ splash-cli trigger apply <맵> trig.txt --install "$SC_INSTALL" -o out.scx
 python3 scripts/check_trigger_usage.py check <내맵.scx> data/trigger-usage.json
 ```
 
-### 실측에서 확인한 인자 꼴 (숫자는 쓰인 횟수)
+### 실측에서 확인한 인자 꼴 — 맵 772장 전수 (숫자는 쓰인 횟수)
 
 ```
  634  Modify Unit Hit Points(플레이어, 유닛, 100, 0, 로케이션)   ← 퍼센트가 먼저, 개수 0 = 전부
