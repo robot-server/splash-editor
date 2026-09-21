@@ -111,6 +111,9 @@ def build_triggers(players, waves, enemy, boss_p, arena_names):
     수를 채우려고 빈 트리거를 넣지 않는다."""
     T = []
     add = T.append
+    # **하이퍼 트리거를 맨 앞에.** 없으면 트리거가 1초에 한 번만 돌아
+    # 비콘·스폰·판정이 모두 한 박자 늦는다. 유즈맵에 거의 필수다.
+    add(scmap.hyper_trigger())
     HUMANS = [f"Player {p}" for p in range(1, players + 1)]
 
     # --- 시작 ---
@@ -311,7 +314,9 @@ def main(argv=None):
     print(f"  바닥 타일 0x{tile:04x} (그룹 {grp}) — 실측 분포에서 골랐습니다")
 
     boxes = layout(a.players, W, H)
-    RING, WALL = 5, 4
+    # 벽 두께는 **사거리보다 얇아야 한다.** 마린 사거리가 4 타일이라
+    # 벽이 4 면 섬 가장자리에 딱 붙어야 겨우 닿는다. 2 로 줄인다.
+    RING, WALL = 5, 2
 
     # 1) 전부 벽으로 덮는다
     print("벽을 세웁니다...")
@@ -376,10 +381,22 @@ def main(argv=None):
         p = i + 1
         cx, cy = x + w // 2, y + h // 2
         cli.place(scmap.START_LOCATION, cx, cy, owner=p)
-        for k in range(6):                                   # 지킬 병력
-            cli.place("Terran Marine", cx - 3 + k, cy - 3, owner=p)
-        for k in range(2):
-            cli.place("Terran Missile Turret", cx - 3 + k * 6, cy, owner=p)
+        # 시작 병력도 섬 가장자리에 붙여 둔다. 가운데 모아 두면
+        # 사거리가 링에 닿지 않아 한 발도 못 쏜다.
+        for k in range(6):
+            cli.place("Terran Marine",
+                      x + RING + WALL + 1 + k,
+                      y + RING + WALL + 1, owner=p)
+        # **미사일 터렛은 대공 전용이다.** 지상 웨이브를 못 때린다.
+        # 지상까지 치는 것은 포톤 캐논(사거리 7)·성큰(7)·벙커다.
+        # 섬 가운데가 아니라 **가장자리를 따라** 놓아야 사거리가 닿는다.
+        w_isl = w - 2 * (RING + WALL)
+        h_isl = h - 2 * (RING + WALL)
+        ix0, iy0 = x + RING + WALL, y + RING + WALL
+        for (px, py) in ((ix0 + 2, iy0 + 2), (ix0 + w_isl - 3, iy0 + 2),
+                         (ix0 + 2, iy0 + h_isl - 3),
+                         (ix0 + w_isl - 3, iy0 + h_isl - 3)):
+            cli.place("Protoss Photon Cannon", px, py, owner=p)
         cli.place("Terran Civilian", cx, cy + 4, owner=p)     # 비콘 밟을 말
         for k, (bld, _) in enumerate(UPGRADE_SHOPS):         # 업그레이드 상점
             bx = cx - 5 + k * 5
@@ -392,7 +409,7 @@ def main(argv=None):
 
     # 7) 시야 (실측: 유즈맵 74% 가 Map Revealer 를 쓴다)
     print("시야를 엽니다...")
-    cli.edit("scenario", "revealers", cli.path, "--owner", "1", "--spacing", "16")
+    scmap.reveal_for_all(cli, a.players)
 
     # 8) 트리거
     print("트리거를 짭니다...")

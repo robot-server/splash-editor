@@ -602,8 +602,17 @@ def setup_melee_players(cli: Cli, players: int):
              "--randomize-start", "on")
 
 
-def setup_usemap_players(cli: Cli, humans: int, computers: list[int]):
+def setup_usemap_players(cli: Cli, humans: int, computers: list[int],
+                         race: str = "terran"):
     """유즈맵 플레이어 슬롯을 정한다.
+
+    **종족을 반드시 못 박는다.** "선택 가능"(userselect) 으로 두면 그
+    슬롯이 밀리처럼 취급되어, 스타팅 포인트에서 **본진 + 일꾼 네 기**가
+    나온다. 유즈맵에서는 치명적이다 — 건물 짓는 사이에 게임이 끝난다.
+    실제로 그렇게 만들어 플레이해 보고 지적받았다.
+
+    실측 유즈맵 329장의 사람 슬롯 종족:
+        테란 72%, 저그 14%, 프로토스 11%, 선택 가능 **1%**
 
     유즈맵에서 트리거가 적으로 쓰는 플레이어는 **컴퓨터**여야 한다.
     "열림" 으로 두면 사람이 앉을 수 있는 빈 자리가 되고, 아무도 앉지
@@ -612,7 +621,7 @@ def setup_usemap_players(cli: Cli, humans: int, computers: list[int]):
     for p in range(1, 9):
         if p <= humans:
             cli.edit("player", "set", cli.path, str(p),
-                     "--race", "userselect", "--slot", "open", "--force", "1")
+                     "--race", race, "--slot", "open", "--force", "1")
         elif p in computers:
             cli.edit("player", "set", cli.path, str(p),
                      "--race", "zerg", "--slot", "computer", "--force", "2")
@@ -620,10 +629,27 @@ def setup_usemap_players(cli: Cli, humans: int, computers: list[int]):
             cli.edit("player", "set", cli.path, str(p),
                      "--race", "inactive", "--slot", "inactive")
     # 사람끼리는 한 편 — 협동 유즈맵의 기본이다.
-    cli.edit("force", "set", cli.path, "1", "--name", "Players",
-             "--allied-victory", "on", "--shared-vision", "on")
-    cli.edit("force", "set", cli.path, "2", "--name", "Enemy",
-             "--allied-victory", "on", "--shared-vision", "on")
+    #
+    # **시작 위치 섞기는 끈다.** 켜 두면 플레이어가 스타팅에 무작위로
+    # 배정되어, P1 을 가리키는 트리거가 엉뚱한 자리를 본다. 자리마다
+    # 트리거가 다른 유즈맵(디펜스 경기장 등)은 그대로 망가진다.
+    # 실측: 1번 세력에 이 깃발을 켠 맵은 329장 중 10% 뿐이다.
+    for f, name in ((1, "Players"), (2, "Enemy")):
+        cli.edit("force", "set", cli.path, str(f), "--name", name,
+                 "--allied-victory", "on", "--shared-vision", "on",
+                 "--randomize-start", "off")
+
+
+def reveal_for_all(cli: Cli, humans: int, spacing: int = 16):
+    """사람 플레이어 **모두**에게 시야를 연다.
+
+    한 사람 것만 깔면 나머지는 깜깜하다. 실측 유즈맵 329장 중 74% 가
+    Map Revealer 를 쓰고, 쓰는 맵의 **주인 수 중앙값이 5명**이다
+    (개수 중앙값 50개). 한 명만 깔아 두는 맵은 표본에 거의 없다.
+    """
+    for p in range(1, humans + 1):
+        cli.edit("scenario", "revealers", cli.path,
+                 "--owner", str(p), "--spacing", str(spacing))
 
 
 def set_all_resources(cli: Cli, mineral_amount: int = MINERAL_AMOUNT,
@@ -1054,3 +1080,27 @@ def paint_floor_mixed(cli: Cli, tileset_id: int, rng, regions, groups,
         cli.paste_tiles(rx, ry, grid)
         painted += rw * rh
     return painted
+
+
+def hyper_trigger(owner: str = "All players", waits: int = 63) -> str:
+    """하이퍼(터보) 트리거 — **유즈맵에 거의 필수다.**
+
+    기본 트리거는 한 바퀴에 약 1초가 걸린다. 그대로 두면 비콘을 밟아도
+    한 박자 늦게 반응하고, 유닛이 1초 간격으로 띄엄띄엄 죽는다.
+    `Wait(0)` 을 예순세 개 늘어놓고 되풀이하면 트리거가 매 프레임 돈다.
+
+    실측: 유즈맵 329장 중 91% 가 `Wait` 를 쓰고, 쓰는 맵의 평균이
+    맵당 약 198회다 — 63 x 3 = 189, 즉 하이퍼 트리거 서너 벌이다.
+
+    **주의: 한 플레이어는 동시에 웨이트 트리거를 하나만 쓸 수 있다.**
+    그래서 하이퍼 트리거를 깔면 그 플레이어의 다른 `Wait` 는 뒤로
+    밀린다. 시간을 재려면 `Wait` 말고 죽음 수 세기나 `Elapsed Time`,
+    `Countdown Timer` 를 쓴다.
+    """
+    body = "\n".join("\tWait(0);" for _ in range(waits))
+    return (f'Trigger("{owner}"){{\n'
+            f'Conditions:\n\tAlways();\n\n'
+            f'Actions:\n{body}\n\tPreserve Trigger();\n}}')
+
+
+TRIGGER_SEP = "\n\n//-----------------------------------------------------------------//\n\n"

@@ -19,6 +19,89 @@ splash-cli trigger apply <맵> trig.txt --install "$SC_INSTALL" -o out.scx
 
 ---
 
+## 0. 기본기 — 이걸 모르면 트리거가 겉돈다
+
+전부 실제로 틀려 보고 배운 것이다.
+
+### 하이퍼(터보) 트리거를 맨 앞에 넣는다
+
+기본 트리거는 한 바퀴에 **약 1초**가 걸린다. 그대로 두면 비콘을 밟아도
+한 박자 늦게 반응하고, 스폰이 뚝뚝 끊기고, 판정이 굼뜨다.
+
+```
+Trigger("All players"){
+Conditions:
+	Always();
+
+Actions:
+	Wait(0);      ← 예순세 개
+	... (63개)
+	Preserve Trigger();
+}
+```
+
+`scmap.hyper_trigger()` 가 만들어 준다. **유즈맵에 거의 필수다** —
+실측 329장 중 91% 가 `Wait` 를 쓰고 맵당 평균 약 198회다 (63 x 3).
+
+### `Wait` 로 시간을 재지 않는다
+
+**한 플레이어는 동시에 웨이트 트리거를 하나만 쓸 수 있다.** 어딘가에서
+`Wait(4000)` 으로 4초를 끌면 그 플레이어의 다른 트리거가 전부 뒤로
+밀린다. 하이퍼 트리거와도 부딪친다. 게다가 `Wait` 는 **실제 시간**
+기준이라 게임 속도 설정을 무시한다.
+
+시간은 이걸로 잰다:
+
+| 쓸 것 | 언제 |
+| --- | --- |
+| `Elapsed Time(At least, N)` | 게임 시작부터 N 초 |
+| `Countdown Timer(At most, 0)` + `Set Countdown Timer` | 되풀이되는 주기 |
+| `Set Deaths` 로 센 카운터 | 그 밖의 모든 것 |
+
+### 누적 조건으로 보상을 주지 않는다
+
+`Kill`·`Deaths` 는 **누적**이다. `Preserve Trigger` 와 같이 쓰면 조건이
+한 번 참이 된 뒤로 **매 바퀴마다** 동작이 돈다.
+
+```
+✗ Kill("Player 1", "Any unit", At least, 1);
+    → Set Resources("Player 1", Add, 25, ore);
+      Preserve Trigger();              // 무한 돈
+```
+
+죽은 수를 **소비**하는 것이 관용구다:
+
+```
+✓ Trigger("Player 7"){                 // 몬스터 주인
+  Conditions:
+  	Deaths("Player 7", "Zerg Zergling", At least, 1);
+  Actions:
+  	Set Deaths("Player 7", "Zerg Zergling", Subtract, 1);
+  	Set Resources("All players", Add, 20, ore);
+  	Preserve Trigger();
+  }
+```
+
+이 방법은 **누가 잡았는지 못 가린다.** 경쟁 맵이면 점수는 게임이 세
+주는 `Leader Board Kills` 에 맡기고 돈은 시간 수입으로 준다.
+
+### 스위치는 임의 이름을 못 쓴다
+
+`Switch("Wave 1", ...)` 은 컴파일에 실패한다. `Switch N` 번호만 받는다
+(`"Switch 1"` ~ `"Switch 256"`). 쓸 번호를 미리 갈라 적어 둔다.
+
+### 인자를 틀리기 쉬운 것 (실제로 컴파일해 확인)
+
+| 틀린 것 | 맞는 것 |
+| --- | --- |
+| `Leader Board Kills("이름")` | `Leader Board Kills("이름", "Any unit")` |
+| `Leader Board Custom Score(...)` | `Leader Board Points("이름", Custom)` |
+| `Modify Unit Hit Points(p, u, All, ...)` | 개수는 **숫자만** |
+| `Create Unit With Properties` | `Create Unit with Properties` (소문자 with) |
+| `"Torrasque"` | `"Torrasque (Ultralisk)"` |
+
+---
+
 ## 1. 생김새
 
 ```

@@ -61,6 +61,9 @@ def pocket_spots(players, W, H, pocket, margin=3):
 def build_triggers(players, goal, respawn_s, arena_names):
     T = []
     add = T.append
+    # **하이퍼 트리거를 맨 앞에.** 없으면 트리거가 1초에 한 번만 돌아
+    # 비콘·스폰·판정이 모두 한 박자 늦는다. 유즈맵에 거의 필수다.
+    add(scmap.hyper_trigger())
     HUMANS = ",".join(f'"Player {p}"' for p in range(1, players + 1))
 
     add(f'''Trigger({HUMANS}){{
@@ -112,13 +115,16 @@ Actions:
 \tPlay WAV("sound\\\\Misc\\\\Button.wav", 300);
 \tPreserve Trigger();
 }}''')
-        # 잡으면 돈 — 되먹임을 짧게
+        # **킬마다 돈을 주지 않는다.** Kill(..., At least, 1) 은 누적
+        # 조건이라 Preserve 와 함께 쓰면 첫 킬 뒤 매 순회마다 들어온다
+        # (무한 돈). 죽은 수 소비 관용구는 "누가 잡았는지" 를 못 가리므로
+        # 여기서는 시간 수입으로 준다. 누가 잘하는지는 순위표가 보여 준다.
         add(f'''Trigger("{p}"){{
 Conditions:
-\tKill("{p}", "Any unit", At least, 1);
+\tElapsed Time(At least, 20);
 
 Actions:
-\tSet Resources("{p}", Add, 25, ore);
+\tSet Resources("{p}", Add, 40, ore);
 \tPreserve Trigger();
 }}''')
         # 이김
@@ -263,7 +269,7 @@ def main(argv=None):
         cli.place("Protoss Pylon", ox, oy, owner=12)
 
     print("시야를 엽니다...")
-    cli.edit("scenario", "revealers", cli.path, "--owner", "1", "--spacing", "16")
+    scmap.reveal_for_all(cli, a.players)
 
     print("트리거를 짭니다...")
     cli.apply_triggers(build_triggers(a.players, a.goal, a.respawn, names))
