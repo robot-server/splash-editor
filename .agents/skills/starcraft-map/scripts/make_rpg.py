@@ -42,6 +42,7 @@ ZONES = [
 ]
 BOSS = ("Torrasque (Ultralisk)", "토라스크")
 
+HEAL_COST = 60                        # 구역 회복 발판 값
 HERO = "Jim Raynor (Marine)"          # 실측 유즈맵 49% 가 영웅을 쓴다
 SHOPS = [("Terran Engineering Bay", "공격력", 200),
          ("Terran Armory", "방어력", 250),
@@ -134,6 +135,34 @@ Conditions:
 Actions:
 \tDisplay Text Message(Always Display, "\\x07{bn} 를 잡았습니다!");
 \tVictory();
+}}''')
+
+    # **회복 수단.** 없으면 한 번 깎인 체력이 죽을 때까지 그대로다.
+    # 키우기 맵의 기본이다 — 마을은 공짜로 채워 주고, 밖에서는 돈을
+    # 내고 채운다. 그래야 "돌아갈까 버틸까" 하는 판단이 생긴다.
+    for p in range(1, players + 1):
+        add(f'''Trigger("Player {p}"){{
+Conditions:
+\tBring("Player {p}", "Any unit", "Town", At least, 1);
+
+Actions:
+\tModify Unit Hit Points("Player {p}", "Any unit", 12, 100, "Town");
+\tModify Unit Energy("Player {p}", "Any unit", 12, 100, "Town");
+\tPreserve Trigger();
+}}''')
+        # 구역마다 회복 발판 — 값을 내고 그 자리에서 채운다
+        for z in range(nzones):
+            add(f'''Trigger("Player {p}"){{
+Conditions:
+\tBring("Player {p}", "Any unit", "Heal{z + 1}", At least, 1);
+\tAccumulate("Player {p}", At least, {HEAL_COST}, ore);
+
+Actions:
+\tSet Resources("Player {p}", Subtract, {HEAL_COST}, ore);
+\tModify Unit Hit Points("Player {p}", "Any unit", 12, 100, "Zone{z + 1}");
+\tDisplay Text Message(Always Display, "\\x03체력을 채웠습니다. \\x02-{HEAL_COST}");
+\tPlay WAV("sound\\\\Misc\\\\Button.wav", 300);
+\tPreserve Trigger();
 }}''')
 
     # 마을로 되살리기 — 영웅이 없으면 새로 준다.
@@ -267,6 +296,7 @@ def main(argv=None):
         zx, zy, zw, zh = cells[z + 1]
         loc(f"Zone{z + 1}", zx, zy, zx + zw, zy + zh)
         loc(f"Zone{z + 1} Spawn", zx + zw - 8, zy + 3, zx + zw - 2, zy + zh - 3)
+        loc(f"Heal{z + 1}", zx + 2, zy + zh - 6, zx + 6, zy + zh - 2)
     bx, by, bw, bh = cells[-1]
     loc("Boss", bx, by, bx + bw, by + bh)
     loc("Boss Spawn", bx + bw // 2 - 3, by + bh // 2 - 3,
@@ -293,6 +323,11 @@ def main(argv=None):
             my = zy + 4 + (k // 6) * 3
             cli.place(unit, min(mx, zx + zw - 2), min(my, zy + zh - 2),
                       owner=enemy_no)
+    # 구역마다 회복 발판 — 눈에 띄게 비콘과 건물을 함께 둔다
+    for z in range(a.zones):
+        zx, zy, zw, zh = cells[z + 1]
+        cli.place("Terran Beacon", zx + 4, zy + zh - 4, owner=12)
+        cli.place("Zerg Creep Colony", zx + 4, zy + zh - 8, owner=12)
     cli.place(scmap.START_LOCATION, cells[1][0] + 2, band_y + 2, owner=enemy_no)
     cli.place(scmap.START_LOCATION, bx + 2, by + 2, owner=boss_no)
     cli.place(BOSS[0], bx + bw // 2, by + bh // 2, owner=boss_no)

@@ -112,9 +112,20 @@ def plateau_strokes(cx: int, cy: int, half_w: int, half_h: int,
                     terrain: int, width: int, height: int):
     """(cx, cy) 를 가운데로 하는 고지대 붓질 목록.
 
-    ISOM 은 마름모 격자라 가로는 두 칸이 한 걸음이다. 가로를 짝수 걸음으로
-    훑어야 빈 줄이 남지 않는다.
+    **네모로 그리지 않는다.** 꽉 찬 직사각형을 그리면 외접 사각형 채움이
+    0.95 가 나오는데 공식 맵은 0.40~0.75 다. 네모난 언덕은 사람이 그린
+    것으로 보이지 않는다 — 실제로 그렇게 만들어 보고 지적받았다.
+
+    바깥 테두리를 각도에 따라 물결지게 깎되, 가운데는 반드시 남긴다.
+    자원 아홉 덩이와 가스가 거기 들어가야 하기 때문이다.
+
+    모든 본진이 같은 모양이다. 대칭 맵에서 자리마다 모양이 다르면
+    그 자체가 자리 밸런스 문제가 된다.
+
+    ISOM 은 마름모 격자라 가로는 두 칸이 한 걸음이다. 가로를 짝수
+    걸음으로 훑어야 빈 줄이 남지 않는다.
     """
+    CORE = 0.52          # 이 안쪽은 무조건 남긴다 (자원 자리)
     out = []
     for ty in range(cy - half_h, cy + half_h + 1):
         if not (2 <= ty < height - 2):
@@ -122,6 +133,17 @@ def plateau_strokes(cx: int, cy: int, half_w: int, half_h: int,
         for tx in range(cx - half_w, cx + half_w + 1, 2):
             if not (2 <= tx < width - 2):
                 continue
+            nx = (tx - cx) / float(half_w)
+            ny = (ty - cy) / float(half_h)
+            d = math.hypot(nx, ny)
+            if d > CORE:
+                a = math.atan2(ny, nx)
+                # 각도에 따라 테두리를 들쭉날쭉하게. 위상은 고정 —
+                # 본진마다 같은 모양이어야 자리가 공평하다.
+                edge = 1.02 - 0.20 * math.sin(3 * a + 0.7) \
+                            - 0.11 * math.sin(5 * a + 2.1)
+                if d > edge:
+                    continue
             out.append((tx, ty, terrain))
     return out
 
@@ -331,10 +353,10 @@ def main(argv=None):
         print("가운데 지형을 얹습니다...")
         cx, cy = (width - 1) / 2.0, (height - 1) / 2.0
         # 한가운데 섬 하나 + 스타팅마다 같은 상대 위치의 능선 하나.
-        for ty in range(int(cy) - 6, int(cy) + 7):
-            for tx in range(int(cx) - 9, int(cx) + 10, 2):
-                if 2 <= tx < width - 2 and 2 <= ty < height - 2:
-                    cli.isom(tx, ty, high_terrain)
+        # **여기도 네모로 그리지 않는다.** 본진 언덕만 고치고 이걸 두면
+        # 가운데에 네모가 남아 형상 검사에 그대로 걸린다 (실제로 걸렸다).
+        cli.isom_batch(plateau_strokes(int(cx), int(cy), 9, 6,
+                                       high_terrain, width, height))
         for (sx, sy) in starts:
             vx, vy = cx - sx, cy - sy
             length = math.hypot(vx, vy) or 1.0
