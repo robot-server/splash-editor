@@ -442,6 +442,72 @@ int terrainIsom(Args & args)
     });
 }
 
+/// ISOM 붓질을 파일에서 한꺼번에 읽어 놓는다.
+///
+/// 붓질마다 명령을 부르면 맵을 열고 저장하는 값이 붓질 값보다 훨씬 크다
+/// — 천 번 칠하는 데 몇 분이 걸린다. 한 번 열어 다 칠하고 한 번 저장한다.
+int terrainIsomBatch(Args & args)
+{
+    const SaveTarget target = takeSaveTarget(args);
+    io::GameGraphics graphics;
+    if (!loadGraphics(args, graphics))
+        return 1;
+
+    const std::string mapPath = args.at(0);
+    const std::string listPath = args.at(1);
+
+    std::ifstream in(listPath);
+    if (!in)
+    {
+        std::cerr << "붓질 목록을 열지 못했습니다: " << listPath << "\n";
+        return 1;
+    }
+
+    // 한 줄에 "<픽셀x> <픽셀y> <지형번호> [브러시]". # 로 시작하면 주석.
+    struct Stroke { std::size_t x, y, terrain, brush; };
+    std::vector<Stroke> strokes;
+    std::string line;
+    std::size_t lineNo = 0;
+    while (std::getline(in, line))
+    {
+        ++lineNo;
+        if (line.empty() || line[0] == '#')
+            continue;
+        std::istringstream ls(line);
+        Stroke st {};
+        st.brush = 1;
+        if (!(ls >> st.x >> st.y >> st.terrain))
+        {
+            std::cerr << listPath << ":" << lineNo << " 줄을 읽지 못했습니다.\n";
+            return 2;
+        }
+        ls >> st.brush;
+        strokes.push_back(st);
+    }
+    if (strokes.empty())
+    {
+        std::cerr << "붓질이 하나도 없습니다.\n";
+        return 2;
+    }
+
+    return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
+        std::size_t done = 0, failed = 0;
+        for (const auto & st : strokes)
+        {
+            if (auto r = archive.placeIsomTerrain(graphics, st.x, st.y,
+                                                  st.terrain, st.brush))
+                ++done;
+            else
+                ++failed;
+        }
+        std::cout << "  놓음      : 붓질 " << done << "번";
+        if (failed != 0)
+            std::cout << ", 놓지 못한 것 " << failed << "번";
+        std::cout << "\n";
+        return done > 0;
+    });
+}
+
 int terrainTypes(Args & args)
 {
     io::GameGraphics graphics;
@@ -664,6 +730,9 @@ std::vector<Group> terrainGroups()
                        "한쪽 지형을 맞은편에 베낀다.", terrainMirror},
             {"isom",   "<맵> <픽셀x> <픽셀y> <지형번호> [브러시] --install 설치폴더 -o <출력맵>",
                        "ISOM 브러시로 놓는다 (절벽·경계가 이어진다).", terrainIsom},
+            {"isom-batch", "<맵> <붓질목록.txt> --install 설치폴더 -o <출력맵>",
+                       "ISOM 붓질을 파일에서 한꺼번에 놓는다 (한 줄에 x y 지형 [브러시]).",
+                       terrainIsomBatch},
             {"types",  "<맵> --install 설치폴더", "이 타일셋의 지형 종류를 나열한다.", terrainTypes},
         }},
         Group{"fog", "시야 가리개 (MASK)", {

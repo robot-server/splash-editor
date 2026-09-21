@@ -86,20 +86,27 @@ def quadrant_facing(x: int, y: int, width: int, height: int) -> int:
     return int(round(angle / (math.pi / 2))) % 4
 
 
-def paint_plateau(cli: Cli, cx: int, cy: int, half_w: int, half_h: int,
-                  terrain: int, width: int, height: int):
-    """(cx, cy) 를 가운데로 하는 고지대를 칠한다.
+def plateau_strokes(cx: int, cy: int, half_w: int, half_h: int,
+                    terrain: int, width: int, height: int):
+    """(cx, cy) 를 가운데로 하는 고지대 붓질 목록.
 
     ISOM 은 마름모 격자라 가로는 두 칸이 한 걸음이다. 가로를 짝수 걸음으로
     훑어야 빈 줄이 남지 않는다.
     """
+    out = []
     for ty in range(cy - half_h, cy + half_h + 1):
         if not (2 <= ty < height - 2):
             continue
         for tx in range(cx - half_w, cx + half_w + 1, 2):
             if not (2 <= tx < width - 2):
                 continue
-            cli.isom(tx, ty, terrain)
+            out.append((tx, ty, terrain))
+    return out
+
+
+def paint_plateau(cli: Cli, cx: int, cy: int, half_w: int, half_h: int,
+                  terrain: int, width: int, height: int):
+    cli.isom_batch(plateau_strokes(cx, cy, half_w, half_h, terrain, width, height))
 
 
 def find_cliff_row(cli: Cli, cx: int, y_from: int, y_to: int) -> int | None:
@@ -222,9 +229,10 @@ def main(argv=None):
     args.no_plateau = not args.plateau
     if not args.no_plateau:
         print("본진 고지대를 칠합니다...")
-        for i, (sx, sy) in enumerate(starts):
-            paint_plateau(cli, sx, sy, half_w=11, half_h=7,
-                          terrain=high_terrain, width=width, height=height)
+        strokes = []
+        for (sx, sy) in starts:
+            strokes += plateau_strokes(sx, sy, 11, 7, high_terrain, width, height)
+        cli.isom_batch(strokes)
 
     # 2) 램프 — 맵 가운데를 보는 세로 방향에 건다.
     #
@@ -349,6 +357,7 @@ def main(argv=None):
     if args.features > 0:
         print(f"지형 덩이를 얹습니다 ({args.features}곳씩)...")
         rng2 = random.Random(args.seed + 7)
+        feature_strokes = []
         alt_names = [n for n in types
                      if not n.lower().startswith("high") and n != low_name]
         cxm, cym = (width - 1) / 2.0, (height - 1) / 2.0
@@ -378,7 +387,9 @@ def main(argv=None):
                         if any(abs(tx - sx) < 14 and abs(ty - sy) < 10
                                for (sx, sy) in starts):
                             continue
-                        cli.isom(tx, ty, terrain)
+                        feature_strokes.append((tx, ty, terrain))
+
+        cli.isom_batch(feature_strokes)
 
     # 7) 지형지물 — 두들. 공식 맵 57개 중앙값이 135개다. 없으면 벌판이다.
     if args.doodads > 0:

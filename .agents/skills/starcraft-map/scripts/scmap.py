@@ -202,6 +202,27 @@ class Cli:
         args += ["--install", self.install]
         self.edit(*args)
 
+    def isom_batch(self, strokes):
+        """ISOM 붓질을 한꺼번에 놓는다. strokes 는 (타일x, 타일y, 지형) 목록.
+
+        붓질마다 명령을 부르면 맵을 열고 저장하는 값이 붓질 값보다 훨씬
+        크다 — 천 번 칠하는 데 몇 분이 걸린다. 한 번에 보낸다.
+        """
+        strokes = list(strokes)
+        if not strokes:
+            return 0
+        with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False,
+                                         encoding="utf-8") as f:
+            for (tx, ty, terrain) in strokes:
+                f.write(f"{tx * TILE} {ty * TILE} {terrain}\n")
+            tmp = f.name
+        try:
+            self.edit("terrain", "isom-batch", self.path, tmp,
+                      "--install", self.install, timeout=900)
+        finally:
+            os.unlink(tmp)
+        return len(strokes)
+
     def paste_tiles(self, tile_x: int, tile_y: int, rows: list[list[int]]):
         """타일 표를 그대로 찍는다 (.tiles 를 만들어 paste)."""
         with tempfile.NamedTemporaryFile("w", suffix=".tiles", delete=False,
@@ -361,26 +382,37 @@ def symmetric_points(x: float, y: float, symmetry: str, count: int,
 # 밖 타일까지 건드려 검게 깨졌다 — 크기를 꼭 함께 쓴다.
 #
 # (이름, 기준값, 가로, 세로)
-# 방향마다 다른 기준값을 쓴다 (공식 맵 57개에서 둘레 높이로 갈라 셌다).
-# "down" 은 고지대가 위에 있고 아래로 내려가는 램프, "up" 은 그 반대다.
-# 동·서 변종은 표본이 얇아 못 넣었다 — 그래서 place_ramp_checked 가
-# 찍어 보고 검사한다.
+# 방향마다 쓸 램프 블록. **전수 탐색으로 찾아 검증한 값이다.**
 #
-# (이름, 블록 기준값, 가로, 세로)
+# 찾은 방법: 타일셋마다 평지 위에 고지대 덩이를 하나 얹은 시험 맵을 만들고,
+# 램프 비트가 선 (그룹, 서브) 을 모두 후보로 삼아 절벽 줄 언저리에 찍어 본 뒤
+# **미니타일 길찾기**로 고지대와 저지대가 이어지는지 확인했다. 눈으로 보면
+# 멀쩡한데 막혀 있는 경우가 많아 길찾기 말고는 믿을 수 없다.
+#
+# off 는 "고지대가 끝나는 줄" 에서 블록을 몇 칸 밀지다. down 은 고지대가
+# 위에 있고 아래로 내려가는 램프, up 은 그 반대다.
+#
+# (이름, 블록 기준값, 가로, 세로, off)
 RAMPS_BY_DIR = {
-    0: {"down": [("Badlands 아래로", 0x4AB0, 6, 6), ("Badlands 갈래2", 0x4A50, 6, 6)],
-        "up":   [("Badlands 위로", 0x02C2, 6, 6), ("Badlands 갈래2", 0x4A50, 6, 6)]},
-    3: {"down": [("Ashworld 아래로", 0x4540, 6, 6), ("Ashworld 갈래2", 0x44E0, 6, 6)],
-        "up":   [("Ashworld 위로", 0x0854, 6, 6), ("Ashworld 갈래2", 0x44E0, 6, 6)]},
-    4: {"down": [("Jungle 아래로", 0x4300, 6, 6), ("Jungle 갈래2", 0x4360, 6, 6)],
-        "up":   [("Jungle 위로", 0x022C, 6, 6), ("Jungle 위로2", 0x024C, 6, 6),
-                 ("Jungle 위로3", 0x05E2, 6, 6)]},
-    7: {"down": [("Twilight 아래로", 0x4040, 6, 4), ("Twilight 갈래2", 0x4000, 6, 4)],
-        "up":   [("Twilight 위로", 0x3F60, 6, 4), ("Twilight 갈래2", 0x4000, 6, 4)]},
+    0: {"down": [("Badlands", 0x4A70, 6, 6, -3), ("Badlands2", 0x4A60, 6, 6, -3)],
+        "up":   [("Badlands", 0x45D0, 6, 6, -2), ("Badlands2", 0x45C0, 6, 6, -3)]},
+    1: {"down": [("Space", 0x3D60, 6, 6, 0), ("Space2", 0x3D50, 6, 6, -1)],
+        "up":   [("Space", 0x3D60, 6, 6, -3), ("Space2", 0x3D50, 6, 6, -4)]},
+    3: {"down": [("Ashworld", 0x5250, 6, 6, -6)],          # down 은 못 찾았다
+        "up":   [("Ashworld", 0x5250, 6, 6, -6), ("Ashworld2", 0x5240, 6, 6, -6)]},
+    4: {"down": [("Jungle", 0x4300, 6, 6, -3), ("Jungle2", 0x4310, 6, 6, -3)],
+        "up":   [("Jungle", 0x4300, 6, 6, -5), ("Jungle2", 0x4310, 6, 6, -5)]},
+    5: {"down": [("Desert", 0x35D0, 6, 6, -6)],            # down 은 못 찾았다
+        "up":   [("Desert", 0x35D0, 6, 6, -6), ("Desert2", 0x35C0, 6, 6, -6)]},
+    6: {"down": [("Ice", 0x65A0, 6, 6, -3), ("Ice2", 0x6590, 6, 6, -3)],
+        "up":   [("Ice", 0x65A0, 6, 6, -6), ("Ice2", 0x6590, 6, 6, -6)]},
+    7: {"down": [("Twilight", 0x34D0, 6, 6, 0), ("Twilight2", 0x34C0, 6, 6, -1)],
+        "up":   [("Twilight", 0x34E0, 6, 6, -2), ("Twilight2", 0x34D0, 6, 6, -3)]},
 }
 
 # 옛 이름 — 방향을 가리지 않는다. 새 코드는 RAMPS_BY_DIR 을 쓴다.
-RAMPS = {ts: d["down"] for ts, d in RAMPS_BY_DIR.items()}
+RAMPS = {ts: [(n, b, w, h) for (n, b, w, h, _o) in d["down"]]
+         for ts, d in RAMPS_BY_DIR.items()}
 
 
 def ramp_rows(base: int, width: int, height: int, first_row: int = 0):
@@ -656,20 +688,37 @@ def place_ramp_checked(cli: Cli, tileset_id: int, x: int, edge_row: int,
 
     hx, hy = high_point
     lx, ly = low_point
+    info = cli.info()
+    mw, mh = info["width"], info["height"]
+    # 길찾기 창은 맵 안에 물려야 한다. 넘치면 terrain show 가 요청보다
+    # 적게 돌려주어 격자가 어긋난다.
     rx0 = max(0, min(hx, lx) - 12)
     ry0 = max(0, min(hy, ly) - 6)
-    rw = abs(hx - lx) + 24
-    rh = abs(hy - ly) + 12
+    rw = min(abs(hx - lx) + 24, mw - rx0)
+    rh = min(abs(hy - ly) + 12, mh - ry0)
 
     width = max(c[2] for c in candidates)
     height = max(c[3] for c in candidates)
 
+    # 후보가 제 오프셋을 들고 있으면 그것부터 — 전수 탐색으로 찾아 둔 값이다.
+    tries = []
+    for entry in candidates:
+        name, base, w, h = entry[0], entry[1], entry[2], entry[3]
+        own = entry[4] if len(entry) > 4 else None
+        if own is not None:
+            tries.append((edge_row + own, name, base, w, h))
     for shift in shifts:
-        ry = edge_row + shift
-        if ry < 0:
+        for entry in candidates:
+            name, base, w, h = entry[0], entry[1], entry[2], entry[3]
+            tries.append((edge_row + shift, name, base, w, h))
+
+    seen = set()
+    for ry, name, base, w, h in tries:
+        if ry < 0 or (ry, base, w, h) in seen:
             continue
+        seen.add((ry, base, w, h))
         before = cli.tiles(x, ry, width, height)
-        for name, base, w, h in candidates:
+        if True:
             try:
                 place_ramp(cli, x, ry, base, w, h)
             except CliError:
