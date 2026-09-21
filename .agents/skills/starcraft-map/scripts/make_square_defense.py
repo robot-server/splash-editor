@@ -84,41 +84,6 @@ def layout(players, W, H, margin=2, gap=3):
     return boxes
 
 
-def paint_floor(cli, tileset, rng, regions, groups):
-    """바닥을 **여러 그룹을 섞어** 칠한다.
-
-    한 그룹의 변종만 흩으면 서로 다른 타일이 16개를 못 넘는다 (실측
-    Ice 유즈맵 중앙값은 260개다). 그룹이 섞여야 그 타일셋처럼 보인다.
-    덩이로 칠해야 얼룩덜룩하지 않고 결이 생긴다.
-    """
-    tiles = scmap.tileset_tiles(cli, tileset)
-    pool = {}
-    for g in groups:
-        good = [t for t in range(g * 16, g * 16 + 16)
-                if t in tiles and tiles[t][1] and tiles[t][2]]
-        if good:
-            pool[g] = good
-    if not pool:
-        return 0
-    keys = list(pool)
-    painted = 0
-    for (rx, ry, rw, rh) in regions:
-        grid = cli.tiles(rx, ry, rw, rh)
-        # 그룹마다 씨앗을 뿌리고 가장 가까운 씨앗의 그룹으로 칠한다
-        seeds = [(rng.randrange(rw), rng.randrange(rh), rng.choice(keys))
-                 for _ in range(max(3, rw * rh // 90))]
-        for y in range(rh):
-            for x in range(rw):
-                best, bg = None, keys[0]
-                for (sx, sy, g) in seeds:
-                    d = (sx - x) ** 2 + (sy - y) ** 2
-                    if best is None or d < best:
-                        best, bg = d, g
-                grid[y][x] = rng.choice(pool[bg])
-        cli.paste_tiles(rx, ry, grid)
-        painted += rw * rh
-    return painted
-
 
 def floor_tile(cli, tileset, rng):
     """그 타일셋에서 실제로 바닥으로 많이 쓰인 그룹의 타일을 고른다.
@@ -373,8 +338,8 @@ def main(argv=None):
         walk.append((x + w - RING, y + RING, RING, h - 2 * RING))  # 오른 통로
         walk.append((x + RING + WALL, y + RING + WALL,
                      w - 2 * (RING + WALL), h - 2 * (RING + WALL)))  # 섬
-    groups = corpus.pick_floor_groups(corpus.load(), ts, "usemap", 6)
-    n = paint_floor(cli, ts, rng, walk, groups)
+    groups = corpus.pick_floor_groups(corpus.load(), ts, "usemap", 14)
+    n = scmap.paint_floor_mixed(cli, ts, rng, walk, groups)
     print(f"  그룹 {groups} 를 섞어 {n}칸을 칠했습니다")
     changed = scmap.scatter_tile_variants(cli, ts, rng, chance=0.5)
     print(f"  변종으로 다시 {changed}칸을 흩었습니다")

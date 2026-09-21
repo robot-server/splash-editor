@@ -978,3 +978,56 @@ def scatter_tile_variants(cli: Cli, tileset_id: int, rng, chance: float = 0.6,
     if changed:
         cli.paste_tiles(x0, y0, grid)
     return changed
+
+
+def paint_floor_mixed(cli: Cli, tileset_id: int, rng, regions, groups,
+                      need_build: bool = False, elevation: int | None = None) -> int:
+    """바닥을 **여러 지형 그룹을 덩이로 섞어** 칠한다.
+
+    한 그룹만 쓰면 서로 다른 타일이 16개를 못 넘는다. 실측 유즈맵의
+    아래 사분위가 141개다 — 그룹을 여럿 써야 닿는다.
+
+    덩이(가장 가까운 씨앗)로 칠해야 얼룩덜룩하지 않고 결이 생긴다.
+    `need_build` 를 켜면 건물을 지을 수 있는 타일만 쓴다. 바닥 대부분은
+    걷기만 되면 되므로 기본은 끈다 — 켜면 쓸 수 있는 변종이 확 줄어
+    타일 가짓수가 모자란다.
+
+    **고도는 반드시 하나로 묶는다.** 스타크래프트는 낮은 곳에서 높은
+    곳을 치면 빗나간다. 싸움터 바닥에 고도가 섞이면 같은 자리에서도
+    명중률이 들쭉날쭉해진다. `elevation` 을 주지 않으면 첫 그룹의
+    고도를 따르고 다른 고도의 그룹은 버린다.
+    """
+    tiles = tileset_tiles(cli, tileset_id)
+    pool = {}
+    for g in groups:
+        good = [t for t in range(g * 16, g * 16 + 16)
+                if t in tiles and tiles[t][1] and (tiles[t][2] or not need_build)]
+        if not good:
+            continue
+        lvl = tiles[good[0]][0]
+        if elevation is None:
+            elevation = lvl                 # 첫 그룹의 고도로 맞춘다
+        if lvl != elevation:
+            continue
+        pool[g] = good
+    if not pool:
+        raise CliError("바닥으로 쓸 타일을 찾지 못했습니다.")
+    keys = list(pool)
+    painted = 0
+    for (rx, ry, rw, rh) in regions:
+        if rw <= 0 or rh <= 0:
+            continue
+        grid = cli.tiles(rx, ry, rw, rh)
+        seeds = [(rng.randrange(rw), rng.randrange(rh), rng.choice(keys))
+                 for _ in range(max(4, rw * rh // 70))]
+        for y in range(rh):
+            for x in range(rw):
+                best, bg = None, keys[0]
+                for (sx, sy, g) in seeds:
+                    d = (sx - x) ** 2 + (sy - y) ** 2
+                    if best is None or d < best:
+                        best, bg = d, g
+                grid[y][x] = rng.choice(pool[bg])
+        cli.paste_tiles(rx, ry, grid)
+        painted += rw * rh
+    return painted
