@@ -114,6 +114,11 @@ python3 $S/preview.py out.scx look.png
   있다. 유즈맵은 업그레이드를 파는 구조가 기본이다.
 - `Start Location` 은 **100%**. 유즈맵도 스타팅이 있어야 한다.
 
+> **먼저 [references/game-rules.md](references/game-rules.md) 를 읽는다.**
+> 종족을 "선택 가능" 으로 두면 배치한 유닛이 통째로 무시되고 본진 +
+> 일꾼으로 시작한다. 하이퍼 트리거가 없으면 모든 판정이 1초씩 늦는다.
+> 미사일 터렛은 지상을 못 때린다. 전부 실제로 틀려 본 것이다.
+
 ```sh
 # 유즈맵 뼈대 (장르 고르면 그에 맞는 트리거 뼈대까지)
 python3 $S/make_usemap.py out.scx --genre defense --players 6 --name "맵 이름"
@@ -203,6 +208,10 @@ Space 밀리 **0개**에서 Badlands 밀리 **208개**까지 벌어진다. 전�
   하지 말 것(WFC·패치 점수), 할 것(기능 그래프부터)
 - [references/usemap-dopamine.md](references/usemap-dopamine.md) — 인기
   유즈맵 329장 전수 실측, 재미 구조 설계
+- [references/game-rules.md](references/game-rules.md) —
+  **맵을 만들기 전에 읽을 것.** 틀리면 맵이 망가지는 게임 규칙:
+  종족 설정, 사거리표, 고도 명중률, 킬 점수, Bring/Command 인식 범위,
+  하이퍼 트리거, 튕김 원인
 - [references/trigger-recipes.md](references/trigger-recipes.md) — 트리거
   텍스트 문법과 바로 쓰는 조각
 - [references/eud-and-limits.md](references/eud-and-limits.md) — EUD 안전

@@ -27,6 +27,14 @@ GAS_AMOUNT = 5000
 
 TILE = 32  # 타일 한 칸의 픽셀
 
+# **놓으면 게임이 튕기는 유닛.** 리마스터에서 베타 시절 더미 유닛 대부분은
+# 튕기지 않게 고쳐졌지만 아래는 여전히 튕긴다 (스타 에디터 아카데미 실측).
+CRASHING_UNITS = {
+    "Allan Turret", "Duke Turret type 1", "Duke Turret type 2",
+    "Goliath Turret", "Tank Turret type 1", "Tank Turret type 2",
+    "Terran Tank Turret", "Terran Goliath Turret",
+}
+
 
 class CliError(RuntimeError):
     pass
@@ -239,7 +247,22 @@ class Cli:
 
     def place(self, unit: int | str, tile_x: int, tile_y: int, owner: int = 1,
               sub_x: int = 0, sub_y: int = 0):
-        """유닛을 놓는다. 좌표는 타일, sub_* 로 픽셀 단위 미세 조정."""
+        """유닛을 놓는다. 좌표는 타일, sub_* 로 픽셀 단위 미세 조정.
+
+        **맵 밖에 놓으면 게임이 튕긴다.** 생성기가 좌표를 한 칸 잘못
+        잡는 일은 흔한데 그 대가가 튕김이다. 여기서 막는다.
+
+        놓으면 튕기는 유닛도 막는다 (포탑 더미 유닛 등).
+        """
+        if isinstance(unit, str) and unit in CRASHING_UNITS:
+            raise CliError(f"'{unit}' 은 배치하면 게임이 튕깁니다. "
+                           f"놓지 않습니다.")
+        info = self.info()
+        w, h = info["width"], info["height"]
+        if not (0 <= tile_x < w and 0 <= tile_y < h):
+            raise CliError(f"맵 밖에 유닛을 놓으려 했습니다: "
+                           f"({tile_x},{tile_y}) — 맵은 {w}x{h} 입니다. "
+                           f"그대로 두면 게임이 튕깁니다.")
         self.edit("unit", "place", self.path, str(unit),
                   str(tile_x * TILE + sub_x), str(tile_y * TILE + sub_y),
                   "--owner", str(owner))
@@ -1082,25 +1105,57 @@ def paint_floor_mixed(cli: Cli, tileset_id: int, rng, regions, groups,
     return painted
 
 
-def hyper_trigger(owner: str = "All players", waits: int = 63) -> str:
-    """하이퍼(터보) 트리거 — **유즈맵에 거의 필수다.**
+def hyper_trigger(owner: str, waits: int = 63) -> str:
+    """하이퍼(터보) 트리거 한 벌 — **유즈맵에 거의 필수다.**
 
-    기본 트리거는 한 바퀴에 약 1초가 걸린다. 그대로 두면 비콘을 밟아도
-    한 박자 늦게 반응하고, 유닛이 1초 간격으로 띄엄띄엄 죽는다.
-    `Wait(0)` 을 예순세 개 늘어놓고 되풀이하면 트리거가 매 프레임 돈다.
+    기본 트리거는 한 바퀴에 Fastest 기준 약 1.26초(30프레임)가 걸린다.
+    그대로 두면 비콘을 밟아도 한 박자 늦고, 접촉 판정이 스쳐 지나가고,
+    유닛이 뚝뚝 끊겨 죽는다.
 
-    실측: 유즈맵 329장 중 91% 가 `Wait` 를 쓰고, 쓰는 맵의 평균이
-    맵당 약 198회다 — 63 x 3 = 189, 즉 하이퍼 트리거 서너 벌이다.
+    **반드시 `Wait` 를 달리 쓰지 않는 플레이어에게 건다.** 보통 시스템
+    컴퓨터(P8)다. 한 플레이어는 동시에 웨이트 트리거를 하나만 쓸 수
+    있어서, 사람 플레이어에게 걸면 그 사람의 다른 트리거가 전부
+    먹통이 된다. `"All players"` 에 거는 것은 그래서 틀렸다.
 
-    **주의: 한 플레이어는 동시에 웨이트 트리거를 하나만 쓸 수 있다.**
-    그래서 하이퍼 트리거를 깔면 그 플레이어의 다른 `Wait` 는 뒤로
-    밀린다. 시간을 재려면 `Wait` 말고 죽음 수 세기나 `Elapsed Time`,
-    `Countdown Timer` 를 쓴다.
+    실행부 상한이 64개라 `Wait` 는 63개가 최대다. 보통 **세 벌**을
+    깐다 — `hyper_triggers()` 를 쓴다.
     """
     body = "\n".join("\tWait(0);" for _ in range(waits))
     return (f'Trigger("{owner}"){{\n'
             f'Conditions:\n\tAlways();\n\n'
             f'Actions:\n{body}\n\tPreserve Trigger();\n}}')
+
+
+def hyper_triggers(owner: str, copies: int = 3) -> list[str]:
+    """하이퍼 트리거 세 벌. 한 벌로는 매 프레임에 못 미친다."""
+    return [hyper_trigger(owner) for _ in range(copies)]
+
+
+def kill_bounty(player: str, amount: int, per_score: int = 50,
+                resource: str = "ore") -> str:
+    """잡은 만큼만 돈을 주는 관용구 — **킬 스코어를 깎는다.**
+
+    `Kill(..., At least, 1)` 은 "지금까지 몇 기 죽였나" 라 한 번 참이
+    되면 계속 참이다. `Preserve` 와 함께 쓰면 매 주기 돈이 들어온다.
+
+    죽은 수를 소비하는 방법은 누가 잡았는지 못 가린다. **킬 스코어**는
+    플레이어별로 쌓이므로 그걸 깎으면 잡은 사람에게만 준다.
+
+    기본 킬 점수는 미네랄x2 + 가스x4 다. **영웅은 그 두 배**다.
+
+        저글링 50 · 마린 100 · 질럿 200 · 히드라 350 · 골리앗 400
+        드라군 500 · 시즈탱크 700 · 울트라 1300 · 아콘 1400 · 배틀 2400
+        짐 레이너(마린) 200 · 토라스크(울트라) 2600
+
+    `per_score` 를 잡몹 한 마리 값으로 두면 한 마리에 `amount` 만큼
+    준다. 센 유닛은 그만큼 여러 번 나눠 들어온다.
+    """
+    return (f'Trigger("{player}"){{\n'
+            f'Conditions:\n\tScore("{player}", Kills, At least, {per_score});\n\n'
+            f'Actions:\n'
+            f'\tSet Score("{player}", Subtract, {per_score}, Kills);\n'
+            f'\tSet Resources("{player}", Add, {amount}, {resource});\n'
+            f'\tPreserve Trigger();\n}}')
 
 
 TRIGGER_SEP = "\n\n//-----------------------------------------------------------------//\n\n"

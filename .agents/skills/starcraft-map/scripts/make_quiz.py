@@ -65,7 +65,7 @@ def build_triggers(players, questions, lives, secs):
     nq = len(questions)
 
     # 하이퍼 트리거 — 없으면 발판 판정이 한 박자 늦는다
-    add(scmap.hyper_trigger())
+    T.extend(scmap.hyper_triggers("Player 8"))
 
     add(f'''Trigger({HUMANS}){{
 Conditions:

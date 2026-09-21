@@ -111,9 +111,10 @@ def build_triggers(players, waves, enemy, boss_p, arena_names):
     수를 채우려고 빈 트리거를 넣지 않는다."""
     T = []
     add = T.append
-    # **하이퍼 트리거를 맨 앞에.** 없으면 트리거가 1초에 한 번만 돌아
-    # 비콘·스폰·판정이 모두 한 박자 늦는다. 유즈맵에 거의 필수다.
-    add(scmap.hyper_trigger())
+    # **하이퍼 트리거를 맨 앞에, 적(컴퓨터)에게 세 벌.**
+    # 없으면 트리거가 약 1.26초에 한 번만 돌아 비콘·스폰·판정이 모두
+    # 한 박자 늦는다. 사람에게 걸면 그 사람의 다른 Wait 가 먹통이 된다.
+    T.extend(scmap.hyper_triggers(enemy))
     HUMANS = [f"Player {p}" for p in range(1, players + 1)]
 
     # --- 시작 ---
@@ -198,10 +199,20 @@ Conditions:
 \tAlways();
 
 Actions:
-\tOrder("{who}", "Any unit", "{a} Spawn", "{a} NE", move);
-\tOrder("{who}", "Any unit", "{a} NE", "{a} SE", move);
-\tOrder("{who}", "Any unit", "{a} SE", "{a} SW", move);
-\tOrder("{who}", "Any unit", "{a} SW", "{a} Exit", move);
+\tOrder("{who}", "Any unit", "{a} Spawn", "{a} NE", attack);
+\tOrder("{who}", "Any unit", "{a} NE", "{a} SE", attack);
+\tOrder("{who}", "Any unit", "{a} SE", "{a} SW", attack);
+\tOrder("{who}", "Any unit", "{a} SW", "{a} Exit", attack);
+\tPreserve Trigger();
+}}''')
+        # **지킬 유닛을 제자리에 묶는다.** 안 묶으면 첫 웨이브를 쫓아
+        # 나가서 섬을 비우고, 다음 웨이브가 그대로 통과한다.
+        add(f'''Trigger("{p}"){{
+Conditions:
+\tAlways();
+
+Actions:
+\tOrder("{p}", "Men", "{a} Center", "{a} Center", move);
 \tPreserve Trigger();
 }}''')
         add(f'''Trigger("{p}"){{
@@ -388,7 +399,13 @@ def main(argv=None):
                       x + RING + WALL + 1 + k,
                       y + RING + WALL + 1, owner=p)
         # **미사일 터렛은 대공 전용이다.** 지상 웨이브를 못 때린다.
-        # 지상까지 치는 것은 포톤 캐논(사거리 7)·성큰(7)·벙커다.
+        #
+        # 지상을 치는 것 중 **성큰 콜로니**를 쓴다 (사거리 7).
+        #   - 포톤 캐논은 파일런이 있어야 전력이 들어온다. 없으면 안
+        #     쏜다 — 실측에서도 캐논 쓰는 맵의 89% 가 파일런을 함께 둔다.
+        #   - 벙커는 안에 마린을 넣어야 쏜다. 미리 놓은 벙커는 비어 있다.
+        #   - 성큰은 **스스로 크립을 깔아서** 딸린 것이 없다. 유즈맵
+        #     45% 가 쓰는 이유다.
         # 섬 가운데가 아니라 **가장자리를 따라** 놓아야 사거리가 닿는다.
         w_isl = w - 2 * (RING + WALL)
         h_isl = h - 2 * (RING + WALL)
@@ -396,7 +413,7 @@ def main(argv=None):
         for (px, py) in ((ix0 + 2, iy0 + 2), (ix0 + w_isl - 3, iy0 + 2),
                          (ix0 + 2, iy0 + h_isl - 3),
                          (ix0 + w_isl - 3, iy0 + h_isl - 3)):
-            cli.place("Protoss Photon Cannon", px, py, owner=p)
+            cli.place("Zerg Sunken Colony", px, py, owner=p)
         cli.place("Terran Civilian", cx, cy + 4, owner=p)     # 비콘 밟을 말
         for k, (bld, _) in enumerate(UPGRADE_SHOPS):         # 업그레이드 상점
             bx = cx - 5 + k * 5

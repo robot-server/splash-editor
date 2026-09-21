@@ -63,7 +63,7 @@ def build_triggers(players, goal, respawn_s, arena_names):
     add = T.append
     # **하이퍼 트리거를 맨 앞에.** 없으면 트리거가 1초에 한 번만 돌아
     # 비콘·스폰·판정이 모두 한 박자 늦는다. 유즈맵에 거의 필수다.
-    add(scmap.hyper_trigger())
+    T.extend(scmap.hyper_triggers("Player 8"))
     HUMANS = ",".join(f'"Player {p}"' for p in range(1, players + 1))
 
     add(f'''Trigger({HUMANS}){{
@@ -119,14 +119,9 @@ Actions:
         # 조건이라 Preserve 와 함께 쓰면 첫 킬 뒤 매 순회마다 들어온다
         # (무한 돈). 죽은 수 소비 관용구는 "누가 잡았는지" 를 못 가리므로
         # 여기서는 시간 수입으로 준다. 누가 잘하는지는 순위표가 보여 준다.
-        add(f'''Trigger("{p}"){{
-Conditions:
-\tElapsed Time(At least, 20);
-
-Actions:
-\tSet Resources("{p}", Add, 40, ore);
-\tPreserve Trigger();
-}}''')
+        # 잡은 만큼만 준다 — **킬 스코어를 깎는 관용구.** 죽은 수를
+        # 소비하는 방법과 달리 누가 잡았는지 가려진다.
+        add(scmap.kill_bounty(p, 30, per_score=100))
         # 이김
         add(f'''Trigger("{p}"){{
 Conditions:
@@ -228,7 +223,7 @@ def main(argv=None):
     print(f"  변종 {ch}칸")
 
     print("플레이어 슬롯을 정합니다...")
-    scmap.setup_usemap_players(cli, a.players, [])
+    scmap.setup_usemap_players(cli, a.players, [8])   # P8 = 하이퍼용 시스템 컴퓨터
 
     print("로케이션을 놓습니다...")
     loc = lambda n, x0, y0, x1, y1: cli.edit(

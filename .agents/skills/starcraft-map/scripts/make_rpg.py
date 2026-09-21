@@ -54,7 +54,7 @@ def build_triggers(players, nzones, enemy, boss_p, town_h):
     add = T.append
     # **하이퍼 트리거를 맨 앞에.** 없으면 트리거가 1초에 한 번만 돌아
     # 비콘·스폰·판정이 모두 한 박자 늦는다. 유즈맵에 거의 필수다.
-    add(scmap.hyper_trigger())
+    T.extend(scmap.hyper_triggers(enemy))
     HUMANS = ",".join(f'"Player {p}"' for p in range(1, players + 1))
 
     add(f'''Trigger({HUMANS}){{
