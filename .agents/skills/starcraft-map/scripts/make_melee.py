@@ -183,8 +183,9 @@ def main(argv=None):
                     help="가운데 지형을 얹지 않는다")
     ap.add_argument("--features", type=int, default=4,
                     help="대칭으로 얹을 지형 덩이 수 (고지대·다른 바닥 지형)")
-    ap.add_argument("--doodads", type=int, default=120,
-                    help="놓을 두들 수 (공식 맵 중앙값 135). 0 이면 놓지 않는다")
+    ap.add_argument("--doodads", type=int, default=34,
+                    help="놓을 두들 수. 공식 밀리맵 183곳 전수 중앙값이 34다 "
+                         "(4분위 0~208). 앞서 135로 알았던 것은 유즈맵이 섞인 값")
     ap.add_argument("--seed", type=int, default=1, help="두들 자리 난수 씨앗")
     ap.add_argument("--plateau", action="store_true",
                     help="본진을 고지대에 올리고 램프를 낸다. 걸어서 통하는 "
@@ -192,7 +193,19 @@ def main(argv=None):
     ap.add_argument("--no-plateau", action="store_true",
                     help="(옛 이름) 기본이 평지라 아무 일도 하지 않는다")
     ap.add_argument("--install", default=None)
+    ap.add_argument("--force", action="store_true",
+                    help="이미 있는 맵을 덮어쓴다. 기본은 거절한다 — 뼈대를 "
+                         "다시 만들면 그 위에 쓴 트리거·유닛이 모두 사라진다")
     args = ap.parse_args(argv)
+
+    # 뼈대 생성은 맵을 처음부터 다시 만든다. 작성해 둔 내용이 있으면
+    # 통째로 날아간다. 실제로 그렇게 트리거를 날린 적이 있다.
+    if os.path.exists(args.out) and not args.force:
+        print(f"이미 있습니다: {args.out}\n"
+              f"  뼈대를 다시 만들면 그 위에 쓴 내용이 모두 사라집니다.\n"
+              f"  내용을 고치려면 trigger show/apply 로 트리거만 손보세요.\n"
+              f"  정말 처음부터 다시 만들려면 --force 를 주세요.", file=sys.stderr)
+        return 2
 
     width, height = args.size
     if not (2 <= args.players <= 8):
@@ -253,7 +266,9 @@ def main(argv=None):
         print("본진 고지대를 칠합니다...")
         strokes = []
         for (sx, sy) in starts:
-            strokes += plateau_strokes(sx, sy, 11, 7, high_terrain, width, height)
+            strokes += plateau_strokes(sx, sy, scmap.MAIN_PLATEAU_HALF_W,
+                                       scmap.MAIN_PLATEAU_HALF_H,
+                                       high_terrain, width, height)
         cli.isom_batch(strokes)
 
     # 3) 스타팅 표시와 본진 자원
@@ -345,34 +360,35 @@ def main(argv=None):
                      if not n.lower().startswith("high") and n != low_name]
         cxm, cym = (width - 1) / 2.0, (height - 1) / 2.0
         for k in range(args.features):
-            # 가운데에서 적당히 떨어진 자리에 하나 잡고 대칭으로 되풀이한다
+            # 자리·크기·모양을 모두 흔든다. 같은 네모를 고른 간격으로 찍으면
+            # 한눈에 기계가 만든 티가 난다.
             ang = rng2.uniform(0, 2 * math.pi)
-            rad = rng2.uniform(0.18, 0.40) * min(width, height)
+            rad = rng2.uniform(0.10, 0.44) * min(width, height)
             bx = int(cxm + rad * math.cos(ang))
             by = int(cym + rad * math.sin(ang))
-            bw = rng2.randrange(5, 10)
-            bh = rng2.randrange(4, 8)
-            # 절반은 고지대, 절반은 다른 바닥 지형으로
+            area = rng2.randrange(14, 46)
+            blob = scmap.organic_blob(rng2, area,
+                                      elongate=rng2.uniform(0.5, 2.2))
             if k % 2 == 0 or not alt_names:
                 terrain = high_terrain
             else:
                 terrain = types[rng2.choice(alt_names)]
-            for (px, py) in scmap.symmetric_points(bx, by, symmetry,
-                                                   args.players, width, height):
+            # 대칭 자리마다 같은 모양을 돌려 놓는다
+            spots = scmap.symmetric_points(bx, by, symmetry, args.players,
+                                           width, height)
+            for turn, (px, py) in enumerate(spots):
                 px, py = int(round(px)), int(round(py))
-                for ty in range(py - bh // 2, py + bh // 2 + 1):
-                    if not (3 <= ty < height - 3):
+                for (dx, dy) in blob:
+                    if symmetry in ("rot90", "rot180"):
+                        odx, ody = scmap.rotate_offset(dx, dy, turn)
+                    else:
+                        odx, ody = dx, dy
+                    tx, ty = px + int(odx), py + int(ody)
+                    if not (3 <= tx < width - 3 and 3 <= ty < height - 3):
                         continue
-                    for tx in range(px - bw // 2, px + bw // 2 + 1, 2):
-                        if not (3 <= tx < width - 3):
-                            continue
-                        # 스타팅 언저리와 **나가는 길**은 비워 둔다.
-                        # 출구를 막으면 램프를 아무리 잘 내도 본진이
-                        # 섬이 된다 — 실제로 그렇게 갇힌 맵이 나왔다.
-                        if in_base_or_exit(tx, ty, starts, cxm, cym):
-                            continue
-                        feature_strokes.append((tx, ty, terrain))
-
+                    if in_base_or_exit(tx, ty, starts, cxm, cym):
+                        continue
+                    feature_strokes.append((tx - (tx % 2), ty, terrain))
         cli.isom_batch(feature_strokes)
 
     # 7) 지형지물 — 두들. 공식 맵 57개 중앙값이 135개다. 없으면 벌판이다.
@@ -463,14 +479,18 @@ def main(argv=None):
                   f"모든 본진을 평지로 되돌립니다 (대칭이 먼저다)")
             strip = []
             for (sx, sy) in starts:
-                strip += plateau_strokes(sx, sy, 12, 8, low_terrain, width, height)
+                strip += plateau_strokes(sx, sy, scmap.MAIN_PLATEAU_HALF_W + 1,
+                                     scmap.MAIN_PLATEAU_HALF_H + 1,
+                                     low_terrain, width, height)
             cli.isom_batch(strip)
             ramp_at = {}
         elif not ramp_at:
             print("  램프를 하나도 내지 못해 평지로 갑니다")
             strip = []
             for (sx, sy) in starts:
-                strip += plateau_strokes(sx, sy, 12, 8, low_terrain, width, height)
+                strip += plateau_strokes(sx, sy, scmap.MAIN_PLATEAU_HALF_W + 1,
+                                     scmap.MAIN_PLATEAU_HALF_H + 1,
+                                     low_terrain, width, height)
             cli.isom_batch(strip)
 
     # 8) 연결성 복구 — 갇힌 본진이 있으면 길을 낸다.

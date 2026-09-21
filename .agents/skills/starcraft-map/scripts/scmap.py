@@ -273,6 +273,17 @@ class Cli:
             if os.path.exists(out):
                 os.unlink(out)
 
+    def append_triggers(self, text: str):
+        """있는 트리거 **뒤에** 더한다.
+
+        `trigger apply` 는 텍스트 전체로 갈아 끼운다. 내용을 얹을 때마다
+        전체를 다시 쓰면 앞서 쓴 것을 날리기 쉽다 — 실제로 날려 봤다.
+        여기서는 지금 든 것을 뽑아 뒤에 붙인 뒤 넣는다.
+        """
+        current = self.trigger_text().rstrip()
+        sep = "\n\n//-----------------------------------------------------------------//\n\n"
+        self.apply_triggers((current + sep if current else "") + text)
+
     def trigger_text(self) -> str:
         """트리거를 텍스트로 뽑는다. 표준출력은 길면 잘리므로 파일로 받는다."""
         with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as f:
@@ -382,32 +393,51 @@ def symmetric_points(x: float, y: float, symmetry: str, count: int,
 # 밖 타일까지 건드려 검게 깨졌다 — 크기를 꼭 함께 쓴다.
 #
 # (이름, 기준값, 가로, 세로)
-# 방향마다 쓸 램프 블록. **전수 탐색으로 찾아 검증한 값이다.**
+# 방향마다 쓸 램프 블록. **전수 탐색으로 찾아 미니타일 길찾기로 검증했다.**
 #
-# 찾은 방법: 타일셋마다 평지 위에 고지대 덩이를 하나 얹은 시험 맵을 만들고,
-# 램프 비트가 선 (그룹, 서브) 을 모두 후보로 삼아 절벽 줄 언저리에 찍어 본 뒤
-# **미니타일 길찾기**로 고지대와 저지대가 이어지는지 확인했다. 눈으로 보면
-# 멀쩡한데 막혀 있는 경우가 많아 길찾기 말고는 믿을 수 없다.
+# 찾은 방법: 타일셋마다 고지대를 **맵을 가로지르는 벽**으로 세운 시험 맵을
+# 만들고(세로 벽·가로 벽 두 벌), 램프 비트가 선 (그룹, 서브) 을 모두 후보로
+# 찍어 본 뒤 벽 양쪽이 걸어서 이어지는지 확인했다.
 #
-# off 는 "고지대가 끝나는 줄" 에서 블록을 몇 칸 밀지다. down 은 고지대가
-# 위에 있고 아래로 내려가는 램프, up 은 그 반대다.
+# 벽으로 만드는 것이 중요하다. 고지대를 덩이로 두면 램프를 지나지 않고
+# 옆으로 돌아가도 "통했다"가 되어 엉뚱한 값이 뽑힌다 — 실제로 그렇게
+# 잘못된 표를 만들었다가 되돌렸다.
 #
+# **램프는 좌우로 나는 것이 더 흔하다.** 공식 밀리맵 46장에서 램프가 붙은
+# 본진 57곳을 세어 보니 왼쪽 26, 오른쪽 23, 위 5, 아래 3 이었다. 위아래만
+# 시도하면 대개 자리를 찾지 못한다.
+#
+# off 는 "고지대가 끝나는 줄/칸" 에서 블록을 몇 칸 밀지다.
 # (이름, 블록 기준값, 가로, 세로, off)
 RAMPS_BY_DIR = {
-    0: {"down": [("Badlands", 0x4A70, 6, 6, -3), ("Badlands2", 0x4A60, 6, 6, -3)],
-        "up":   [("Badlands", 0x45D0, 6, 6, -2), ("Badlands2", 0x45C0, 6, 6, -3)]},
-    1: {"down": [("Space", 0x3D60, 6, 6, 0), ("Space2", 0x3D50, 6, 6, -1)],
-        "up":   [("Space", 0x3D60, 6, 6, -3), ("Space2", 0x3D50, 6, 6, -4)]},
-    3: {"down": [("Ashworld", 0x5250, 6, 6, -6)],          # down 은 못 찾았다
-        "up":   [("Ashworld", 0x5250, 6, 6, -6), ("Ashworld2", 0x5240, 6, 6, -6)]},
-    4: {"down": [("Jungle", 0x4300, 6, 6, -3), ("Jungle2", 0x4310, 6, 6, -3)],
-        "up":   [("Jungle", 0x4300, 6, 6, -5), ("Jungle2", 0x4310, 6, 6, -5)]},
-    5: {"down": [("Desert", 0x35D0, 6, 6, -6)],            # down 은 못 찾았다
-        "up":   [("Desert", 0x35D0, 6, 6, -6), ("Desert2", 0x35C0, 6, 6, -6)]},
-    6: {"down": [("Ice", 0x65A0, 6, 6, -3), ("Ice2", 0x6590, 6, 6, -3)],
-        "up":   [("Ice", 0x65A0, 6, 6, -6), ("Ice2", 0x6590, 6, 6, -6)]},
-    7: {"down": [("Twilight", 0x34D0, 6, 6, 0), ("Twilight2", 0x34C0, 6, 6, -1)],
-        "up":   [("Twilight", 0x34E0, 6, 6, -2), ("Twilight2", 0x34D0, 6, 6, -3)]},
+    0: {"down":  [("Badlands", 0x4A70, 6, 6, -3), ("Badlands2", 0x4A60, 6, 6, -3)],
+        "up":    [("Badlands", 0x45D0, 6, 6, -2), ("Badlands2", 0x45C0, 6, 6, -3)],
+        "left":  [("Badlands", 0x45C0, 6, 6, -5), ("Badlands2", 0x45D0, 6, 6, -7)],
+        "right": [("Badlands", 0x45D0, 6, 6, 0),  ("Badlands2", 0x45C0, 6, 6, 0)]},
+    1: {"down":  [("Space", 0x3D60, 6, 6, 0),  ("Space2", 0x3D50, 6, 6, -1)],
+        "up":    [("Space", 0x3D60, 6, 6, -3), ("Space2", 0x3D50, 6, 6, -4)],
+        "left":  [("Space", 0x3D60, 6, 6, -5), ("Space2", 0x3D50, 6, 6, -5)],
+        "right": [("Space", 0x3D60, 6, 6, 0),  ("Space2", 0x3D50, 6, 6, 0)]},
+    3: {"down":  [("Ashworld", 0x4570, 6, 6, -4)],          # 세로 아래는 못 찾음
+        "up":    [("Ashworld", 0x5250, 6, 6, -7), ("Ashworld2", 0x5240, 6, 6, -7)],
+        "left":  [("Ashworld", 0x4570, 6, 6, -4), ("Ashworld2", 0x4560, 6, 6, -7)],
+        "right": [("Ashworld", 0x4570, 6, 6, 0),  ("Ashworld2", 0x4560, 6, 6, 0)]},
+    4: {"down":  [("Jungle", 0x4300, 6, 6, -3), ("Jungle2", 0x4310, 6, 6, -3)],
+        "up":    [("Jungle", 0x4300, 6, 6, -5), ("Jungle2", 0x4310, 6, 6, -5)],
+        "left":  [("Jungle", 0x4300, 6, 6, -7), ("Jungle2", 0x4310, 6, 6, -7)],
+        "right": [("Jungle", 0x4300, 6, 6, 0),  ("Jungle2", 0x4310, 6, 6, 0)]},
+    5: {"down":  [("Desert", 0x3320, 6, 6, -4)],            # 세로 아래는 못 찾음
+        "up":    [("Desert", 0x35D0, 6, 6, -6), ("Desert2", 0x35C0, 6, 6, -6)],
+        "left":  [("Desert", 0x3330, 6, 6, -4), ("Desert2", 0x3320, 6, 6, -4)],
+        "right": [("Desert", 0x3310, 6, 6, 1),  ("Desert2", 0x3300, 6, 6, 1)]},
+    6: {"down":  [("Ice", 0x65A0, 6, 6, -3), ("Ice2", 0x6590, 6, 6, -3)],
+        "up":    [("Ice", 0x65A0, 6, 6, -6), ("Ice2", 0x6590, 6, 6, -6)],
+        "left":  [("Ice", 0x65A0, 6, 6, -7), ("Ice2", 0x6590, 6, 6, -7)],
+        "right": [("Ice", 0x65A0, 6, 6, 1),  ("Ice2", 0x6590, 6, 6, 1)]},
+    7: {"down":  [("Twilight", 0x34D0, 6, 6, 0),  ("Twilight2", 0x34C0, 6, 6, -1)],
+        "up":    [("Twilight", 0x34E0, 6, 6, -2), ("Twilight2", 0x34D0, 6, 6, -3)],
+        "left":  [("Twilight", 0x34E0, 6, 6, -5), ("Twilight2", 0x34D0, 6, 6, -5)],
+        "right": [("Twilight", 0x34E0, 6, 6, 0),  ("Twilight2", 0x34D0, 6, 6, 0)]},
 }
 
 # 옛 이름 — 방향을 가리지 않는다. 새 코드는 RAMPS_BY_DIR 을 쓴다.
@@ -436,12 +466,18 @@ def place_ramp(cli: Cli, tile_x: int, tile_y: int, base: int,
         cli.paste_tiles(tile_x, tile_y + 1, ramp_rows(base, width, height - 1, 1))
 
 
-def ramp_candidates(tileset_id: int, downward: bool = True):
-    """그 타일셋·방향에서 시도해 볼 램프 목록."""
+def ramp_candidates(tileset_id: int, direction="down"):
+    """그 타일셋·방향에서 시도해 볼 램프 목록.
+
+    direction 은 "down"/"up"/"left"/"right", 또는 옛 코드를 위해 참/거짓
+    (참이면 down, 거짓이면 up).
+    """
+    if isinstance(direction, bool):
+        direction = "down" if direction else "up"
     d = RAMPS_BY_DIR.get(tileset_id & 7)
     if not d:
         return []
-    return d["down" if downward else "up"]
+    return d.get(direction, [])
 
 
 def default_ramp(tileset_id: int):
@@ -459,14 +495,36 @@ def default_ramp(tileset_id: int):
 # 미네랄은 9개(144곳)가 가장 흔했고 가스는 1개(219곳)였다. 아래 값은
 # 투혼의 본진을 잰 것으로, 스타팅 중심에서의 픽셀 차이다. 미네랄은
 # 32픽셀(한 타일) 간격으로 두 줄에 걸쳐 늘어선다.
+# 본진 자원 배치. **공식 밀리맵 46장의 본진 183곳을 전수로 재어** 얻었다.
+# 미네랄 9개 + 가스 1개인 표준형 136곳 가운데 가장 흔한 배치(26곳)를 그대로
+# 쓴다. 두 번째로 흔한 배치(22곳)는 이것의 상하 거울이라 out_y 로 뒤집으면
+# 나온다.
+#
+# 스타팅 중심에서의 픽셀 차이다. 미네랄은 왼쪽 6~7타일에 세로줄로 서고,
+# 가스는 스타팅 바로 위아래 **정확히 5.0타일**(±160)에 놓인다 — 가스
+# 거리는 4분위가 5.0~5.0 으로 편차가 없었다.
+#
+# (앞서 투혼 한 장만 보고 가스를 -176 으로 잡았는데 0.5타일 어긋난 값이었다.)
 MAIN_MINERAL_OFFSETS = [
-    (-192, -96), (-224, -64), (-192, -32), (-224, 0),
-    (-192, 32), (-224, 64), (-192, 96), (-192, 128), (-160, 160),
+    (-224, -48), (-224, 16), (-224, 80),
+    (-192, -80), (-192, -16), (-192, 48), (-192, 112), (-192, 144),
+    (-160, 176),
 ]
-# 가스는 미네랄 줄과 직각으로, 스타팅 바로 위 5.5타일에 둔다. 투혼·서킷
-# 브레이커 모두 (0, ±176) 이었다. 미네랄과 너무 떨어뜨리면 게임에서 일꾼
-# 동선이 갈라지고, 맵을 재는 쪽에서도 다른 멀티로 잡힌다.
-MAIN_GAS_OFFSET = (0, -176)
+MAIN_GAS_OFFSET = (0, -160)
+
+# 본진 언덕 크기 — 전수 중앙값은 34x34 타일, 넓이 720칸이다.
+# 앞서 쓰던 23x15 는 절반도 안 되어 건물 지을 자리가 나오지 않았다.
+MAIN_PLATEAU_HALF_W = 17
+MAIN_PLATEAU_HALF_H = 17
+
+# 스타팅에서 램프까지 중앙값 18.6타일. 그리고 **램프는 좌우로 난다** —
+# 램프가 붙은 본진 57곳 중 왼쪽 26, 오른쪽 23, 위 5, 아래 3 이었다.
+# 위아래만 시도하면 대개 찾지 못한다.
+MAIN_RAMP_DISTANCE = 18
+
+# 본진이 반드시 언덕인 것도 아니다: 183곳의 높이는
+# 중지대 94 / 저지대 52 / 고지대 37 이고, 램프가 아예 없는 본진이 126곳이다.
+# 좁은 길목으로 나가는 본진이 램프 있는 본진보다 흔하다.
 
 
 def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
@@ -790,3 +848,116 @@ def nearest_walkable(grid, mx: int, my: int, radius: int = 24):
                 if 0 <= nx < W and 0 <= ny < H and grid[ny][nx]:
                     return (nx, ny)
     return None
+
+
+# --- 불규칙한 덩이 ---
+#
+# 같은 직사각형을 일정 간격으로 찍으면 한눈에 "기계가 만들었다" 가 보인다.
+# 실제 맵의 지형은 가장자리가 들쭉날쭉하고 크기도 제각각이다. 무작위
+# 걸음으로 덩이를 키워 모양을 흐트러뜨린다.
+
+def organic_blob(rng, area: int, elongate: float = 1.0):
+    """가운데에서 무작위로 번져 나가는 덩이. (dx, dy) 오프셋 집합.
+
+    area 는 대략의 칸 수, elongate 가 1 보다 크면 가로로 길어진다.
+    ISOM 은 가로 두 칸이 한 걸음이라 dx 는 짝수만 쓴다.
+    """
+    cells = {(0, 0)}
+    frontier = [(0, 0)]
+    while len(cells) < area and frontier:
+        cx, cy = rng.choice(frontier)
+        # 가로로 늘이고 싶으면 가로 이웃을 더 자주 고른다
+        steps = [(2, 0), (-2, 0)] * max(1, int(round(elongate * 2))) + [(0, 1), (0, -1)]
+        dx, dy = rng.choice(steps)
+        cell = (cx + dx, cy + dy)
+        if cell in cells:
+            continue
+        cells.add(cell)
+        frontier.append(cell)
+        if len(frontier) > area:
+            frontier.pop(0)
+    # 가장자리를 한 번 더 흐트러뜨린다 — 튀어나온 칸을 몇 개 지운다
+    edge = [c for c in cells
+            if sum(((c[0] + dx, c[1] + dy) in cells)
+                   for dx, dy in ((2, 0), (-2, 0), (0, 1), (0, -1))) <= 2]
+    for c in edge:
+        if len(cells) > area * 0.6 and rng.random() < 0.45:
+            cells.discard(c)
+    return cells
+
+
+def rotate_offset(dx: float, dy: float, quarter_turns: int):
+    """덩이 모양을 90도 단위로 돌린다 (대칭 자리에 같은 모양을 놓으려고)."""
+    for _ in range(quarter_turns % 4):
+        dx, dy = -dy, dx
+    return dx, dy
+
+
+# --- 타일 변종 흩기 ---
+#
+# ISOM 솔버는 같은 지형을 늘 같은 변종으로 채운다. 그 결과 맵 전체가
+# 한 패턴으로 깔려, 여덟 칸 떨어진 자리에도 같은 타일이 되풀이된다.
+# 공식 맵을 재어 보면 여덟 칸 주기 반복이 1~2% 인데 그렇게 만든 맵은
+# 6% 를 넘는다 — 눈에 바둑판처럼 보이는 까닭이다.
+#
+# 같은 그룹 안에서 **높이·걷기·짓기가 똑같은** 변종끼리만 바꿔치기하면
+# 그림만 달라지고 게임 동작은 그대로다.
+
+_TILE_CACHE: dict[int, dict[int, tuple]] = {}
+
+
+def tileset_tiles(cli: Cli, tileset_id: int) -> dict[int, tuple]:
+    """타일 번호 → (높이, 걷기, 짓기, 램프, 걷기비트)."""
+    key = tileset_id & 7
+    if key in _TILE_CACHE:
+        return _TILE_CACHE[key]
+    out = cli.run("tileset-tiles", cli.install, str(key), timeout=600)
+    table = {}
+    for line in out.splitlines():
+        if line.startswith("#"):
+            continue
+        f = line.split()
+        if len(f) == 6:
+            table[int(f[0])] = (int(f[1]), int(f[2]), int(f[3]),
+                                int(f[4]), int(f[5], 16))
+    _TILE_CACHE[key] = table
+    return table
+
+
+def interchangeable_variants(cli: Cli, tileset_id: int) -> dict[int, list[int]]:
+    """타일 번호 → 바꿔 써도 되는 같은 그룹 변종들."""
+    tiles = tileset_tiles(cli, tileset_id)
+    buckets: dict[tuple, list[int]] = {}
+    for tile_id, props in tiles.items():
+        buckets.setdefault((tile_id >> 4,) + props, []).append(tile_id)
+    return {t: buckets[(t >> 4,) + p] for t, p in tiles.items()}
+
+
+def scatter_tile_variants(cli: Cli, tileset_id: int, rng, chance: float = 0.6,
+                          region=None) -> int:
+    """지형 그림을 흩는다. 게임 동작은 그대로 두고 되풀이만 깬다.
+
+    chance 는 바꿔 볼 타일의 비율이다. 바꿀 수 있는 변종이 하나뿐이면
+    그대로 둔다.
+    """
+    info = cli.info()
+    x0, y0, w, h = region or (0, 0, info["width"], info["height"])
+    grid = cli.tiles(x0, y0, w, h)
+    swap = interchangeable_variants(cli, tileset_id)
+
+    changed = 0
+    for y in range(h):
+        row = grid[y]
+        for x in range(w):
+            if rng.random() > chance:
+                continue
+            options = swap.get(row[x])
+            if not options or len(options) < 2:
+                continue
+            pick = rng.choice(options)
+            if pick != row[x]:
+                row[x] = pick
+                changed += 1
+    if changed:
+        cli.paste_tiles(x0, y0, grid)
+    return changed

@@ -316,6 +316,8 @@ GENRES = {
         "start_area": (.40, .40, .60, .60),
         "objectives": "\\x041. 길목에 유닛을 세워 웨이브를 막습니다\\r\\n\\x042. 웨이브마다 미네랄을 받습니다\\r\\n\\x043. 적이 목표에 닿으면 패배",
         "start_units": [("Terran SCV", 2)],
+        "enemy_units": [("Zerg Zergling", 4), ("Zerg Hatchery", 1)],
+        "description": "길목에 유닛을 세워 몰려오는 웨이브를 막습니다. 웨이브를 막을 때마다 미네랄을 받아 수비 유닛을 늘리세요. 적이 목표 지점에 닿으면 목숨이 줄어듭니다.",
         "size": (96, 96),
         "walls": [(.40, .12, .60, .38), (.40, .62, .60, .88)],
     },
@@ -326,6 +328,8 @@ GENRES = {
         "start_area": (.05, .05, .15, .15),
         "objectives": "\\x041. 사냥터의 적을 잡아 경험치를 모읍니다\\r\\n\\x042. 경험치가 차면 승급합니다\\r\\n\\x043. 보스를 잡으면 승리",
         "start_units": [("Zerg Zergling", 1)],
+        "enemy_units": [("Zerg Zergling", 6), ("Terran Marine", 4)],
+        "description": "저글링으로 시작해 사냥터의 적을 잡습니다. 경험치가 차면 히드라·럴커·울트라로 승급하고, 마지막에 보스를 잡으면 이깁니다.",
         "size": (128, 128),
         "walls": [(.24, .24, .36, .76), (.64, .24, .76, .76)],
     },
@@ -336,6 +340,8 @@ GENRES = {
         "start_area": (.35, .62, .65, .85),
         "objectives": "\\x041. 주어진 마린으로 싸워 이깁니다\\r\\n\\x042. 이기면 점수를 얻습니다",
         "start_units": [("Terran Marine", 6)],
+        "enemy_units": [("Terran Marine", 6)],
+        "description": "주어진 마린으로 상대 부대와 싸웁니다. 이기면 점수를 얻고 다음 판이 시작됩니다.",
         "size": (64, 64),
         "walls": [(.06, .38, .40, .48), (.60, .38, .94, .48)],
     },
@@ -346,6 +352,8 @@ GENRES = {
         "start_area": (.38, .65, .62, .85),
         "objectives": "\\x041. 문제가 나오면 O 또는 X 로 걸어갑니다\\r\\n\\x042. 맞히면 1점",
         "start_units": [("Terran Civilian", 1)],
+        "enemy_units": [],
+        "description": "문제가 나오면 O 또는 X 비콘으로 걸어가 답합니다. 제한 시간 안에 답해야 하며, 가장 많이 맞힌 사람이 이깁니다.",
         "size": (64, 64),
         "walls": [(.44, .10, .56, .42)],
     },
@@ -356,6 +364,8 @@ GENRES = {
         "start_area": (.04, .46, .12, .54),
         "objectives": "\\x041. 쫓아오는 것을 피해 나아갑니다\\r\\n\\x042. 목표 지점에 닿으면 승리",
         "start_units": [("Terran Civilian", 1)],
+        "enemy_units": [("Zerg Zergling", 4)],
+        "description": "쫓아오는 것을 피해 구간을 하나씩 통과합니다. 목표 지점에 닿으면 탈출 성공입니다.",
         "size": (128, 128),
         "walls": [(.20, .10, .30, .42), (.20, .58, .30, .90),
                   (.65, .10, .75, .42), (.65, .58, .75, .90)],
@@ -374,7 +384,19 @@ def main(argv=None):
     ap.add_argument("--name", default=None)
     ap.add_argument("--no-walls", action="store_true", help="지형 벽을 세우지 않는다")
     ap.add_argument("--install", default=None)
+    ap.add_argument("--force", action="store_true",
+                    help="이미 있는 맵을 덮어쓴다. 기본은 거절한다 — 뼈대를 "
+                         "다시 만들면 그 위에 쓴 트리거·유닛이 모두 사라진다")
     args = ap.parse_args(argv)
+
+    # 뼈대 생성은 맵을 처음부터 다시 만든다. 작성해 둔 내용이 있으면
+    # 통째로 날아간다. 실제로 그렇게 트리거를 날린 적이 있다.
+    if os.path.exists(args.out) and not args.force:
+        print(f"이미 있습니다: {args.out}\n"
+              f"  뼈대를 다시 만들면 그 위에 쓴 내용이 모두 사라집니다.\n"
+              f"  내용을 고치려면 trigger show/apply 로 트리거만 손보세요.\n"
+              f"  정말 처음부터 다시 만들려면 --force 를 주세요.", file=sys.stderr)
+        return 2
 
     genre = GENRES[args.genre]
     width, height = args.size or genre["size"]
@@ -440,6 +462,20 @@ def main(argv=None):
             for k in range(count):
                 cli.place(unit, px + (k % 3), py + 1 + (k // 3), owner=p)
 
+    # 4b) 컴퓨터 플레이어에게도 스타팅과 유닛을 준다.
+    #
+    #     인기 디펜스 맵 다섯 장을 재어 보니 **슬롯 여덟 곳 모두에 스타팅**이
+    #     있고, 유닛을 가장 많이 가진 쪽이 컴퓨터였다 (147~212개). 컴퓨터가
+    #     맵에 아무것도 없으면 트리거가 소환하기 전까지 존재하지 않는다.
+    for k, pno in enumerate([enemy_no, boss_no]):
+        ex = int((0.15 + 0.7 * k) * width)
+        ey = int(0.12 * height)
+        ex = max(3, min(width - 4, ex))
+        cli.place(scmap.START_LOCATION, ex, ey, owner=pno)
+        for unit, count in genre.get("enemy_units", []):
+            for j in range(count):
+                cli.place(unit, ex + (j % 4), ey + 2 + (j // 4), owner=pno)
+
     # 5) 시야 — 93개 중 59개 맵이 Map Revealer 를 쓴다
     print("시야를 엽니다...")
     cli.edit("scenario", "revealers", cli.path, "--owner", "1", "--spacing", "16")
@@ -462,7 +498,7 @@ Actions:
     text += genre["triggers"](enemy, boss)
     cli.apply_triggers(text)
 
-    cli.set_map_name(name)
+    cli.set_map_name(name, genre.get("description"))
 
     info = cli.info()
     print(f"\n만들었습니다: {args.out}")
