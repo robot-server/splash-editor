@@ -1,6 +1,6 @@
 {
  "_about": "scmscx.com 에서 받아 splash-cli 로 전수 덤프한 표. 밀리는 지형 서명으로 중복을 지웠다(옵저버 판본은 원본으로 접힘). 지형 통계는 옵 판본을 포함해도 되지만 (지형이 같다) 트리거 통계는 순수 밀리만 쓴다. group_weights/doodad_weights 는 맵마다 정규화한 뒤 합쳤다 — 큰 맵이 표를 먹지 않게.",
- "_caution": "전체 중앙값을 그대로 쓰지 말 것. 두들 개수는 타일셋에 따라 0(Space)에서 208(Badlands)까지 벌어진다. 반드시 per_tileset 을 본다.",
+ "_caution": "전체 중앙값을 그대로 쓰지 말 것. 두뎃 개수는 타일셋에 따라 0(Space)에서 208(Badlands)까지 벌어진다. 반드시 per_tileset 을 본다.",
  "melee": {
   "overall": {
    "n_maps": 182,

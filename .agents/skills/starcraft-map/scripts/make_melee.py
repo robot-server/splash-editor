@@ -206,9 +206,9 @@ def main(argv=None):
     ap.add_argument("--features", type=int, default=4,
                     help="대칭으로 얹을 지형 덩이 수 (고지대·다른 바닥 지형)")
     ap.add_argument("--doodads", type=int, default=34,
-                    help="놓을 두들 수. 공식 밀리맵 183곳 전수 중앙값이 34다 "
+                    help="놓을 두뎃 수. 공식 밀리맵 183곳 전수 중앙값이 34다 "
                          "(4분위 0~208). 앞서 135로 알았던 것은 유즈맵이 섞인 값")
-    ap.add_argument("--seed", type=int, default=1, help="두들 자리 난수 씨앗")
+    ap.add_argument("--seed", type=int, default=1, help="두뎃 자리 난수 씨앗")
     ap.add_argument("--plateau", action="store_true",
                     help="본진을 고지대에 올리고 램프를 낸다. 걸어서 통하는 "
                          "램프를 못 찾으면 그 본진은 평지로 되돌린다")
@@ -413,16 +413,16 @@ def main(argv=None):
                     feature_strokes.append((tx - (tx % 2), ty, terrain))
         cli.isom_batch(feature_strokes)
 
-    # 7) 지형지물 — 두들. 공식 맵 57개 중앙값이 135개다. 없으면 벌판이다.
+    # 7) 지형지물 — 두뎃. 공식 맵 57개 중앙값이 135개다. 없으면 벌판이다.
     if args.doodads > 0:
-        print(f"두들을 놓습니다 (목표 {args.doodads}개)...")
+        print(f"두뎃을 놓습니다 (목표 {args.doodads}개)...")
         cat = cli.doodad_catalogue()
         # 길을 막지 않는 작은 장식만 고른다 (4x4 이하, 절벽·다리 제외)
         picks = [d for d in cat
                  if d["w"] <= 4 and d["h"] <= 4
                  and d["kind"] not in ("Cliff", "Bridges", "Wall")]
         if not picks:
-            print("  놓을 만한 두들이 없어 건너뜁니다")
+            print("  놓을 만한 두뎃이 없어 건너뜁니다")
         else:
             rng = random.Random(args.seed)
             placed = 0
@@ -433,7 +433,7 @@ def main(argv=None):
                 d = rng.choice(picks)
                 bx = rng.randrange(4, width - 8)
                 by = rng.randrange(4, height - 8)
-                # 대칭 자리마다 같은 두들을 놓는다
+                # 대칭 자리마다 같은 두뎃을 놓는다
                 spots = scmap.symmetric_points(bx, by, symmetry, args.players,
                                                width, height)
                 ok = True
@@ -449,7 +449,7 @@ def main(argv=None):
                     except CliError:
                         ok = False
                         break
-            print(f"  두들 {placed}개")
+            print(f"  두뎃 {placed}개")
 
     # 7b) 램프 — 지형을 다 얹은 **뒤에** 낸다.
     #

@@ -103,7 +103,7 @@ python3 $S/preview.py out.scx look.png
 요지만 옮기면:
 
 - 유닛 중앙값 **677개**(밀리의 다섯 배), 트리거 **237개**, 이름 붙인
-  로케이션 **114개**, 두들 **0개**.
+  로케이션 **114개**, 두뎃 **0개**.
 - `Create Unit` 과 `Preserve Trigger` 가 나란히 **98%**. "계속 도는
   트리거가 유닛을 준다" 가 유즈맵의 기본 골격이다.
 - `Bring` 조건이 **97%** — 판정의 거의 전부가 "로케이션에 무엇이 몇 기
@@ -188,10 +188,10 @@ import corpus
 c = corpus.load()
 corpus.describe("usemap", "ice")           # 한 줄 요약
 corpus.pick_floor_groups(c, "ice", "usemap", 3)   # 바닥으로 쓸 그룹
-corpus.doodad_count(c, "jungle", "melee", rng)    # 그 타일셋에 맞는 두들 수
+corpus.doodad_count(c, "jungle", "melee", rng)    # 그 타일셋에 맞는 두뎃 수
 ```
 
-**⚠ 전체 중앙값을 그대로 쓰지 않는다.** 두들 개수는 타일셋에 따라
+**⚠ 전체 중앙값을 그대로 쓰지 않는다.** 두뎃 개수는 타일셋에 따라
 Space 밀리 **0개**에서 Badlands 밀리 **208개**까지 벌어진다. 전체
 중앙값(91)은 어느 타일셋에도 맞지 않는 수다. 반드시 타일셋별 값을 본다.
 

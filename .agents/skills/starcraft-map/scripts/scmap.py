@@ -174,7 +174,7 @@ class Cli:
         return [rows[k] for k in sorted(rows)]
 
     def doodad_catalogue(self) -> list[dict]:
-        """이 맵 타일셋의 두들 목록. (번호, 가로, 세로, 갈래)"""
+        """이 맵 타일셋의 두뎃 목록. (번호, 가로, 세로, 갈래)"""
         out = self.run("doodad", "list", self.path, "--catalogue",
                        "--install", self.install)
         items = []

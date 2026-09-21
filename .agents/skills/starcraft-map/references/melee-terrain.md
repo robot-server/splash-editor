@@ -22,9 +22,9 @@ python3 scripts/corpus.py            # 전체 표를 찍는다
 
 ### ⚠ 전체 중앙값을 그대로 쓰면 안 된다
 
-두들 개수 하나만 봐도 이렇다:
+두뎃(doodad) 개수 하나만 봐도 이렇다:
 
-| 타일셋 | 밀리 두들 중앙값 | 유즈 두들 중앙값 |
+| 타일셋 | 밀리 두뎃 중앙값 | 유즈 두뎃 중앙값 |
 | --- | --- | --- |
 | Badlands | **208** | 8 |
 | Ice | **198** | 0 |
@@ -44,7 +44,7 @@ Space 밀리맵의 중앙값은 **0** 이고 Badlands 는 **208** 이다. 전체
 | --- | --- | --- | --- | --- |
 | 쓰인 타일 그룹 | **504** | 388~634 | **150** | 33~325 |
 | 서로 다른 타일 | **1995** | 1576~2440 | **654** | 141~1266 |
-| 두들 | 91 *(타일셋별로 볼 것)* | 0~233 | 0 | 0~42 |
+| 두뎃 | 91 *(타일셋별로 볼 것)* | 0~233 | 0 | 0~42 |
 | 스프라이트 | 38 | 15~84 | 3 | 0~60 |
 
 ### 되풀이 — 이게 "기계 티" 의 정체다
@@ -255,9 +255,9 @@ splash-cli terrain fill <맵> <x> <y> <w> <h> <타일값> --in-place
 splash-cli terrain copy <맵> <x> <y> <w> <h> patch.tiles
 splash-cli terrain paste <맵> <x> <y> patch.tiles --in-place
 
-# 두들 (바위·나무 같은 장식). 지날 수 없는 것이 많아 길목에 쓰면 초크가 된다
+# 두뎃 (바위·나무 같은 장식). 지날 수 없는 것이 많아 길목에 쓰면 초크가 된다
 splash-cli doodad list <맵> --catalogue --install "$SC_INSTALL"
-splash-cli doodad place <맵> <두들번호> <타일x> <타일y> --install "$SC_INSTALL" --in-place
+splash-cli doodad place <맵> <두뎃번호> <타일x> <타일y> --install "$SC_INSTALL" --in-place
 splash-cli doodad check <맵> --install "$SC_INSTALL"     # 어긋난 것 찾기
 ```
 

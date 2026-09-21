@@ -38,8 +38,8 @@ export SC_INSTALL=/경로/StarCraft
 | 네모 칠하기 | `$CLI terrain fill map.scx 10 10 8 8 0x0042 --in-place` |
 | 베끼기 / 붙이기 | `$CLI terrain copy map.scx 10 10 6 6 p.tiles` · `$CLI terrain paste map.scx 40 40 p.tiles --in-place` |
 | 램프 타일 찾기 | `$CLI tileset-ramps "$SC_INSTALL" 4` |
-| 두들 목록 / 놓기 | `$CLI doodad list map.scx --catalogue --install "$SC_INSTALL"` · `$CLI doodad place map.scx 12 30 20 --install "$SC_INSTALL" --in-place` |
-| 어긋난 두들 고치기 | `$CLI doodad repair map.scx --install "$SC_INSTALL" --in-place` |
+| 두뎃 목록 / 놓기 | `$CLI doodad list map.scx --catalogue --install "$SC_INSTALL"` · `$CLI doodad place map.scx 12 30 20 --install "$SC_INSTALL" --in-place` |
+| 어긋난 두뎃 고치기 | `$CLI doodad repair map.scx --install "$SC_INSTALL" --in-place` |
 
 `terrain mirror` 는 **절벽이 있는 지형에 쓰지 않는다** —
 [melee-terrain.md](melee-terrain.md) 참고.

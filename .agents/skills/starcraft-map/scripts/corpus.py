@@ -3,7 +3,7 @@
 
 수치를 손으로 적어 넣지 않는다. 표에서 뽑는다.
 
-**전체 중앙값을 그대로 쓰면 안 된다.** 두들 개수만 해도 타일셋에 따라
+**전체 중앙값을 그대로 쓰면 안 된다.** 두뎃 개수만 해도 타일셋에 따라
 Space 0개에서 Badlands 208개까지 벌어진다. 전체 중앙값은 어느 타일셋
 에도 맞지 않는 수다. 반드시 타일셋별 값을 본다.
 
@@ -101,9 +101,9 @@ def sample_group(c: dict, tileset, rng: random.Random,
 
 
 def doodad_count(c: dict, tileset, kind: str, rng: random.Random) -> int:
-    """그 타일셋에 어울리는 두들 개수를 사분위 사이에서 뽑는다.
+    """그 타일셋에 어울리는 두뎃 개수를 사분위 사이에서 뽑는다.
 
-    Space 밀리맵의 중앙값은 0 이다. 0 이 답인 타일셋에 억지로 두들을
+    Space 밀리맵의 중앙값은 0 이다. 0 이 답인 타일셋에 억지로 두뎃을
     뿌리지 않는다.
     """
     q = stat(c, kind, tileset, "doodads")
@@ -118,7 +118,7 @@ def doodad_count(c: dict, tileset, kind: str, rng: random.Random) -> int:
 def doodad_weights(c: dict, kind: str, tileset) -> list[tuple[int, float]]:
     b = tileset_block(c, kind, tileset)
     d = {int(k): v for k, v in (b.get("doodad_weights") or {}).items()}
-    d.pop(0, None)                       # 0 은 "두들 없음" 자리다
+    d.pop(0, None)                       # 0 은 "두뎃 없음" 자리다
     tot = sum(d.values()) or 1.0
     return sorted(((g, p / tot) for g, p in d.items()), key=lambda kv: -kv[1])
 
@@ -132,7 +132,7 @@ def describe(kind: str, tileset) -> str:
     q = lambda k: b.get(k, {})
     g = pick_floor_groups(c, tileset, kind, 5)
     return (f"{_ts(tileset)} {kind} (표본 {b['n_maps']}장): "
-            f"두들 {q('doodads').get('median')}개"
+            f"두뎃 {q('doodads').get('median')}개"
             f"({q('doodads').get('q1')}~{q('doodads').get('q3')}), "
             f"타일그룹 {q('tile_groups_used').get('median')}종, "
             f"서로 다른 타일 {q('distinct_tiles').get('median')}개, "
