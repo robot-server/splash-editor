@@ -410,34 +410,32 @@ def symmetric_points(x: float, y: float, symmetry: str, count: int,
 # off 는 "고지대가 끝나는 줄/칸" 에서 블록을 몇 칸 밀지다.
 # (이름, 블록 기준값, 가로, 세로, off)
 RAMPS_BY_DIR = {
-    0: {"down":  [("Badlands", 0x4A70, 6, 6, -3), ("Badlands2", 0x4A60, 6, 6, -3)],
-        "up":    [("Badlands", 0x45D0, 6, 6, -2), ("Badlands2", 0x45C0, 6, 6, -3)],
-        "left":  [("Badlands", 0x45C0, 6, 6, -5), ("Badlands2", 0x45D0, 6, 6, -7)],
-        "right": [("Badlands", 0x45D0, 6, 6, 0),  ("Badlands2", 0x45C0, 6, 6, 0)]},
-    1: {"down":  [("Space", 0x3D60, 6, 6, 0),  ("Space2", 0x3D50, 6, 6, -1)],
-        "up":    [("Space", 0x3D60, 6, 6, -3), ("Space2", 0x3D50, 6, 6, -4)],
-        "left":  [("Space", 0x3D60, 6, 6, -5), ("Space2", 0x3D50, 6, 6, -5)],
-        "right": [("Space", 0x3D60, 6, 6, 0),  ("Space2", 0x3D50, 6, 6, 0)]},
-    3: {"down":  [("Ashworld", 0x4570, 6, 6, -4)],          # 세로 아래는 못 찾음
-        "up":    [("Ashworld", 0x5250, 6, 6, -7), ("Ashworld2", 0x5240, 6, 6, -7)],
-        "left":  [("Ashworld", 0x4570, 6, 6, -4), ("Ashworld2", 0x4560, 6, 6, -7)],
-        "right": [("Ashworld", 0x4570, 6, 6, 0),  ("Ashworld2", 0x4560, 6, 6, 0)]},
-    4: {"down":  [("Jungle", 0x4300, 6, 6, -3), ("Jungle2", 0x4310, 6, 6, -3)],
-        "up":    [("Jungle", 0x4300, 6, 6, -5), ("Jungle2", 0x4310, 6, 6, -5)],
-        "left":  [("Jungle", 0x4300, 6, 6, -7), ("Jungle2", 0x4310, 6, 6, -7)],
-        "right": [("Jungle", 0x4300, 6, 6, 0),  ("Jungle2", 0x4310, 6, 6, 0)]},
-    5: {"down":  [("Desert", 0x3320, 6, 6, -4)],            # 세로 아래는 못 찾음
-        "up":    [("Desert", 0x35D0, 6, 6, -6), ("Desert2", 0x35C0, 6, 6, -6)],
-        "left":  [("Desert", 0x3330, 6, 6, -4), ("Desert2", 0x3320, 6, 6, -4)],
-        "right": [("Desert", 0x3310, 6, 6, 1),  ("Desert2", 0x3300, 6, 6, 1)]},
-    6: {"down":  [("Ice", 0x65A0, 6, 6, -3), ("Ice2", 0x6590, 6, 6, -3)],
-        "up":    [("Ice", 0x65A0, 6, 6, -6), ("Ice2", 0x6590, 6, 6, -6)],
-        "left":  [("Ice", 0x65A0, 6, 6, -7), ("Ice2", 0x6590, 6, 6, -7)],
-        "right": [("Ice", 0x65A0, 6, 6, 1),  ("Ice2", 0x6590, 6, 6, 1)]},
-    7: {"down":  [("Twilight", 0x34D0, 6, 6, 0),  ("Twilight2", 0x34C0, 6, 6, -1)],
-        "up":    [("Twilight", 0x34E0, 6, 6, -2), ("Twilight2", 0x34D0, 6, 6, -3)],
-        "left":  [("Twilight", 0x34E0, 6, 6, -5), ("Twilight2", 0x34D0, 6, 6, -5)],
-        "right": [("Twilight", 0x34E0, 6, 6, 0),  ("Twilight2", 0x34D0, 6, 6, 0)]},
+    # **타일이 다 있는지 먼저 보고, 미니타일 길찾기로 검증했다.**
+    # 앞서 실은 표는 거의 전부 없는 타일을 찍고 있었다 — 그룹만 보고
+    # 타일 존재를 안 봐서, 여섯 칸 중 네 칸만 있어도 그 네 칸으로 길이
+    # 뚫려 "통과" 로 나왔다. 나머지 두 칸은 화면에 검은 구멍이 된다.
+    #
+    # 여기 없는 타일셋(Space 1, Desert 5, Ice 6, Twilight 7)은 **통하는
+    # 램프를 아직 못 찾았다.** 그 타일셋에서는 본진을 평지에 둔다.
+    # 없는 것을 억지로 찍으면 검은 구멍이 난 맵이 나온다.
+    0: {   # Badlands
+        "down": [("Badlands", 0x4a70, 6, 6, -3), ("Badlands2", 0x4a60, 6, 6, -3), ("Badlands3", 0x4a50, 6, 6, -3)],
+        "up": [("Badlands", 0x4a70, 6, 6, -5), ("Badlands2", 0x4a60, 6, 6, -5), ("Badlands3", 0x4a50, 6, 6, -5)],
+        "left": [("Badlands", 0x4a70, 6, 6, -7), ("Badlands2", 0x4a60, 6, 6, -7), ("Badlands3", 0x4a50, 6, 6, -7)],
+        "right": [("Badlands", 0x4a70, 6, 6, 0), ("Badlands2", 0x4a60, 6, 6, 0), ("Badlands3", 0x4a50, 6, 6, 0)],
+    },
+    3: {   # Ashworld — 좌우만 찾았다
+        "down": [],
+        "up": [],
+        "left": [("Ashworld", 0x4560, 6, 4, -7), ("Ashworld2", 0x4550, 6, 4, -7), ("Ashworld3", 0x4540, 6, 6, -7)],
+        "right": [("Ashworld", 0x4560, 6, 4, 0), ("Ashworld2", 0x4550, 6, 4, 0), ("Ashworld3", 0x4540, 6, 6, 0)],
+    },
+    4: {   # Jungle
+        "down": [("Jungle", 0x4320, 6, 6, -3), ("Jungle2", 0x4310, 6, 6, -3), ("Jungle3", 0x4300, 6, 6, -3)],
+        "up": [("Jungle", 0x4320, 6, 6, -5), ("Jungle2", 0x4310, 6, 6, -5), ("Jungle3", 0x4300, 6, 6, -5)],
+        "left": [("Jungle", 0x4320, 6, 6, -7), ("Jungle2", 0x4310, 6, 6, -7), ("Jungle3", 0x4300, 6, 6, -7)],
+        "right": [("Jungle", 0x4320, 6, 6, 0), ("Jungle2", 0x4310, 6, 6, 0), ("Jungle3", 0x4300, 6, 6, 0)],
+    },
 }
 
 # 옛 이름 — 방향을 가리지 않는다. 새 코드는 RAMPS_BY_DIR 을 쓴다.
