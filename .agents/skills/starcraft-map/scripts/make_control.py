@@ -273,7 +273,10 @@ def main(argv=None):
     print("트리거를 짭니다...")
     cli.apply_triggers(build_triggers(a.players, a.goal, a.respawn, names))
     if a.name:
-        cli.set_map_name(a.name)
+        cli.set_map_name(a.name,
+            f"가운데 싸움터에서 {a.players}명이 겨룹니다. 먼저 {a.goal}킬 하면 이깁니다. "
+            f"주머니 안 비콘에서 부대를 100원에 삽니다. 죽으면 {a.respawn}초 뒤 다시 나옵니다. "
+            f"잡으면 돈이 들어옵니다.")
 
     info = cli.info()
     print(f"\n만들었습니다: {a.out}")

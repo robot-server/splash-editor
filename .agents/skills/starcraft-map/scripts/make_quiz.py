@@ -279,7 +279,10 @@ def main(argv=None):
     print("트리거를 짭니다...")
     cli.apply_triggers(build_triggers(a.players, questions, a.lives, a.seconds))
     if a.name:
-        cli.set_map_name(a.name)
+        cli.set_map_name(a.name,
+            f"OX 문제 {len(questions)}개. 문제가 뜨면 {a.seconds}초 안에 "
+            f"왼쪽 O 나 오른쪽 X 발판으로 옮기세요. 틀리면 목숨이 하나 줍니다"
+            f"({a.lives}개). 끝까지 살아남으면 이깁니다.")
 
     info = cli.info()
     print(f"\n만들었습니다: {a.out}")

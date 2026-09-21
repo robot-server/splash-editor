@@ -59,9 +59,11 @@ BOSS = ("Torrasque (Ultralisk)", 1)
 #   1..waves      : 그 웨이브를 이미 냈는가
 #   waves+1       : 보스를 냈는가
 #   waves+2..     : 경기장마다 이번 웨이브 보상을 이미 줬는가
-UPGRADE_SHOPS = [("Terran Engineering Bay", "보병 공격"),
-                 ("Terran Armory", "기계 공격"),
-                 ("Protoss Forge", "방어막")]
+# 상점 셋은 **서로 다른 일을 한다.** (이름, 값, 하는 일)
+SHOPS = [("머린 4기", 120, "marine"),
+         ("성큰 1기", 200, "sunken"),
+         ("전체 수리", 80, "heal")]
+UPGRADE_SHOPS = SHOPS          # 자리 잡는 쪽에서 쓰는 이름
 
 
 # ---------------------------------------------------------------- 자리잡기
@@ -107,44 +109,44 @@ def floor_tile(cli, tileset, rng):
 # ---------------------------------------------------------------- 트리거
 
 def build_triggers(players, waves, enemy, boss_p, arena_names):
-    """트리거를 글로 짠다. 하나하나 하는 일이 있어야 한다 —
-    수를 채우려고 빈 트리거를 넣지 않는다."""
+    """트리거를 글로 짠다. 하나하나 하는 일이 있어야 한다.
+
+    **승리는 사람마다 따로 판정한다.** 여섯 경기장을 모두 검사하면
+    빈 슬롯의 경기장에 생긴 보스를 아무도 잡을 수 없어 게임이 영영
+    안 끝난다 (경기장끼리 벽으로 갈려 있으므로 대신 가 줄 수도 없다).
+    """
     T = []
     add = T.append
-    # **하이퍼 트리거를 맨 앞에, 적(컴퓨터)에게 세 벌.**
-    # 없으면 트리거가 약 1.26초에 한 번만 돌아 비콘·스폰·판정이 모두
-    # 한 박자 늦는다. 사람에게 걸면 그 사람의 다른 Wait 가 먹통이 된다.
-    T.extend(scmap.hyper_triggers(enemy))
-    # 들어오지 않은 자리를 치운다. 안 치우면 빈 자리 유닛이 필드에
-    # 남아 적이 그걸 때리러 가고 전멸 판정이 영영 참이 안 된다.
-    T.extend(scmap.absent_player_cleanup(players, enemy))
-    HUMANS = [f"Player {p}" for p in range(1, players + 1)]
+    HUMANS = ",".join(f'"Player {p}"' for p in range(1, players + 1))
 
-    # --- 시작 ---
-    add(f'''Trigger({",".join(f'"{h}"' for h in HUMANS)}){{
+    T.extend(scmap.hyper_triggers(enemy))
+    T.extend(scmap.absent_player_cleanup(players, enemy))
+
+    add(f'''Trigger({HUMANS}){{
 Conditions:
 \tAlways();
 
 Actions:
 \tSet Resources("Current Player", Set To, 250, ore);
 \tSet Deaths("Current Player", "{LIFE_COUNTER}", Set To, 20);
-\tSet Score("Current Player", Set To, 0, Custom);
-\tDisplay Text Message(Always Display, "\\x04사각 디펜스\\x02 — \\x07목숨 20개\\x02. 적이 서쪽 출구에 닿으면 하나씩 줍니다.");
-\tDisplay Text Message(Always Display, "\\x03가운데 섬에서 막으세요. 비콘을 밟으면 업그레이드를 삽니다.");
+\tSet Score("Current Player", Set To, 20, Custom);
+\tDisplay Text Message(Always Display, "\\x04사각 디펜스\\x02 — \\x07목숨 20\\x02. 적이 서쪽 출구에 닿으면 하나씩 줍니다.");
+\tDisplay Text Message(Always Display, "\\x03가운데 섬에서 막으세요. 비콘: \\x07머린 120\\x03 · \\x07성큰 200\\x03 · \\x07회복 80\\x03.");
+\tSet Mission Objectives("\\x04사각 디펜스\\x02\\n\\x03- 웨이브 {waves}개를 막고 보스를 잡으면 이깁니다\\n- 적이 서쪽 출구에 닿으면 목숨이 하나 줍니다 (20개)\\n- 비콘: 머린 120 · 성큰 200 · 회복 80\\n- 리더보드는 남은 목숨입니다");
 \tSet Countdown Timer(Set To, 30);
 }}''')
 
-    # --- 순위표 (실측 82% 가 쓴다) ---
-    add(f'''Trigger("All players"){{
+    # 리더보드로 남은 목숨을 늘 보여 준다 (안 보이면 방어 판단을 못 한다)
+    add('''Trigger("All players"){
 Conditions:
 \tAlways();
 
 Actions:
-\tLeader Board Points("\\x07점수", Custom);
+\tLeader Board Points("\\x07남은 목숨", Custom);
 \tPreserve Trigger();
-}}''')
+}''')
 
-    # --- 웨이브 시계 ---
+    # 웨이브 시계
     add(f'''Trigger("{enemy}"){{
 Conditions:
 \tCountdown Timer(At most, 0);
@@ -156,46 +158,52 @@ Actions:
 \tPreserve Trigger();
 }}''')
 
-    # --- 웨이브마다 스폰 ---
+    # 웨이브 스폰 — **사람이 들어온 경기장에만** 낸다
     for w in range(1, waves + 1):
         unit, n = WAVE_TABLE[(w - 1) % len(WAVE_TABLE)]
         n = n + (w - 1) // len(WAVE_TABLE) * 2
-        spawns = "\n".join(
-            f'\tCreate Unit("{enemy}", "{unit}", {n}, "{a} Spawn");'
-            for a in arena_names)
-        add(f'''Trigger("{enemy}"){{
+        for i, a in enumerate(arena_names):
+            add(f'''Trigger("{enemy}"){{
 Conditions:
 \tDeaths("{enemy}", "{WAVE_COUNTER}", Exactly, {w});
-\tSwitch("Switch {w}", not set);
+\tDeaths("Player {i + 1}", "{scmap.PRESENCE_UNIT}", At least, 1);
+\tSwitch("Switch {(w - 1) * 8 + i + 1}", not set);
 
 Actions:
-\tSet Switch("Switch {w}", set);
-{spawns}
+\tSet Switch("Switch {(w - 1) * 8 + i + 1}", set);
+\tCreate Unit("{enemy}", "{unit}", {n}, "{a} Spawn");
+\tPreserve Trigger();
+}}''')
+        add(f'''Trigger({HUMANS}){{
+Conditions:
+\tDeaths("{enemy}", "{WAVE_COUNTER}", Exactly, {w});
+
+Actions:
 \tDisplay Text Message(Always Display, "\\x07웨이브 {w}\\x02 — {unit} x{n}");
 \tPlay WAV("sound\\\\Misc\\\\Button.wav", 300);
 \tPreserve Trigger();
 }}''')
 
-    # --- 보스 ---
+    # 보스 — 사람이 들어온 경기장에만
     bu, bn = BOSS
-    bspawn = "\n".join(
-        f'\tCreate Unit with Properties("{boss_p}", "{bu}", {bn}, "{a} Spawn", 1);'
-        for a in arena_names)
-    add(f'''Trigger("{boss_p}"){{
+    for i, a in enumerate(arena_names):
+        add(f'''Trigger("{boss_p}"){{
 Conditions:
-\tDeaths("{enemy}", "{WAVE_COUNTER}", Exactly, {waves + 1});
-\tSwitch("Switch {waves + 1}", not set);
+\tDeaths("{enemy}", "{WAVE_COUNTER}", At least, {waves + 1});
+\tDeaths("Player {i + 1}", "{scmap.PRESENCE_UNIT}", At least, 1);
+\tSwitch("Switch {240 + i}", not set);
 
 Actions:
-\tSet Switch("Switch {waves + 1}", set);
-{bspawn}
+\tSet Switch("Switch {240 + i}", set);
+\tCreate Unit with Properties("{boss_p}", "{bu}", 1, "{a} Spawn", 1);
 \tDisplay Text Message(Always Display, "\\x06보스\\x02 — {bu}. 이것만 잡으면 끝입니다.");
 \tPreserve Trigger();
 }}''')
 
-    # --- 경기장마다: 길 안내 · 리크 · 보상 · 패배 ---
+    # 경기장마다
     for i, a in enumerate(arena_names):
         p = f"Player {i + 1}"
+        # 길 안내 — 적과 보스 모두 공격 이동으로
         for who in (enemy, boss_p):
             add(f'''Trigger("{who}"){{
 Conditions:
@@ -208,50 +216,87 @@ Actions:
 \tOrder("{who}", "Any unit", "{a} SW", "{a} Exit", attack);
 \tPreserve Trigger();
 }}''')
-        # **지킬 유닛을 제자리에 묶는다.** 안 묶으면 첫 웨이브를 쫓아
-        # 나가서 섬을 비우고, 다음 웨이브가 그대로 통과한다.
+        # 지킬 유닛을 섬에 묶는다 (안 묶으면 첫 웨이브를 쫓아 나간다)
         add(f'''Trigger("{p}"){{
 Conditions:
 \tAlways();
 
 Actions:
-\tOrder("{p}", "Men", "{a} Center", "{a} Center", move);
+\tOrder("{p}", "Men", "{a} All", "{a} Center", move);
 \tPreserve Trigger();
 }}''')
-        add(f'''Trigger("{p}"){{
+        # 누수 — **한 번에 한 기씩** 지우고 목숨 하나를 깎는다.
+        # 통째로 지우면 다섯이 새어도 목숨이 하나만 준다.
+        for who in (enemy, boss_p):
+            add(f'''Trigger("{p}"){{
 Conditions:
-\tBring("{enemy}", "Any unit", "{a} Exit", At least, 1);
+\tBring("{who}", "Any unit", "{a} Exit", At least, 1);
 
 Actions:
-\tRemove Unit At Location("{enemy}", "Any unit", All, "{a} Exit");
+\tRemove Unit At Location("{who}", "Any unit", 1, "{a} Exit");
 \tSet Deaths("{p}", "{LIFE_COUNTER}", Subtract, 1);
-\tDisplay Text Message(Always Display, "\\x06새어 나갔습니다!\\x02 목숨이 줄었습니다.");
+\tSet Score("{p}", Subtract, 1, Custom);
 \tMinimap Ping("{a} Exit");
 \tPlay WAV("sound\\\\Misc\\\\PowerDown.wav", 500);
 \tPreserve Trigger();
 }}''')
+        # 웨이브를 막으면 보상
         add(f'''Trigger("{p}"){{
 Conditions:
 \tBring("{enemy}", "Any unit", "{a} All", Exactly, 0);
 \tDeaths("{enemy}", "{WAVE_COUNTER}", At least, 1);
-\tSwitch("Switch {waves + 2 + i}", not set);
+\tSwitch("Switch {230 + i}", not set);
 
 Actions:
-\tSet Switch("Switch {waves + 2 + i}", set);
+\tSet Switch("Switch {230 + i}", set);
 \tSet Resources("{p}", Add, 120, ore);
-\tSet Score("{p}", Add, 100, Custom);
 \tDisplay Text Message(Always Display, "\\x07웨이브를 막았습니다. \\x03+120");
 \tPreserve Trigger();
 }}''')
         add(f'''Trigger("{p}"){{
 Conditions:
 \tBring("{enemy}", "Any unit", "{a} All", At least, 1);
-\tSwitch("Switch {waves + 2 + i}", set);
+\tSwitch("Switch {230 + i}", set);
 
 Actions:
-\tSet Switch("Switch {waves + 2 + i}", clear);
+\tSet Switch("Switch {230 + i}", clear);
 \tPreserve Trigger();
 }}''')
+        # 상점 — **셋이 서로 다른 일을 한다.** 앞서는 셋 다 체력만
+        # 고쳤는데, 이름이 거짓말이었고 병력을 잃으면 복구할 길도 없었다.
+        for k, (label, cost, kind) in enumerate(SHOPS):
+            if kind == "marine":
+                body = (f'\tCreate Unit("{p}", "Terran Marine", 4, "{a} Center");')
+            elif kind == "sunken":
+                body = (f'\tCreate Unit("{p}", "Zerg Sunken Colony", 1, "{a} Center");')
+            else:
+                body = (f'\tModify Unit Hit Points("{p}", "Men", 12, 100, "{a} All");\n'
+                        f'\tModify Unit Hit Points("{p}", "Buildings", 12, 100, "{a} All");')
+            add(f'''Trigger("{p}"){{
+Conditions:
+\tBring("{p}", "Men", "{a} Shop{k + 1}", At least, 1);
+\tAccumulate("{p}", At least, {cost}, ore);
+
+Actions:
+\tSet Resources("{p}", Subtract, {cost}, ore);
+{body}
+\tMove Unit("{p}", "Men", All, "{a} Shop{k + 1}", "{a} Center");
+\tDisplay Text Message(Always Display, "\\x03{label} 구입! \\x02-{cost}");
+\tPlay WAV("sound\\\\Misc\\\\Button.wav", 300);
+\tPreserve Trigger();
+}}''')
+        # 병력이 0이 되면 최소 병력을 다시 준다 (구경만 하다 지지 않게)
+        add(f'''Trigger("{p}"){{
+Conditions:
+\tCommand("{p}", "Men", At most, 0);
+\tDeaths("{p}", "{LIFE_COUNTER}", At least, 1);
+
+Actions:
+\tCreate Unit("{p}", "Terran Marine", 4, "{a} Center");
+\tDisplay Text Message(Always Display, "\\x03병력이 다 죽어 새로 받았습니다.");
+\tPreserve Trigger();
+}}''')
+        # 패배
         add(f'''Trigger("{p}"){{
 Conditions:
 \tDeaths("{p}", "{LIFE_COUNTER}", Exactly, 0);
@@ -260,39 +305,18 @@ Actions:
 \tDisplay Text Message(Always Display, "\\x06목숨이 다했습니다.");
 \tDefeat();
 }}''')
-        # 업그레이드 상점 — 비콘을 밟으면 산다.
-        # **산 뒤에 비콘 밖으로 밀어낸다.** 안 밀어내면 하이퍼 트리거와
-        # 맞물려 서 있는 동안 매 프레임 사들여 돈이 순식간에 증발한다.
-        for k, (bld, label) in enumerate(UPGRADE_SHOPS):
-            add(f'''Trigger("{p}"){{
+        # **개인 승리** — 내 경기장의 보스를 잡으면 나는 이긴다.
+        add(f'''Trigger("{p}"){{
 Conditions:
-\tBring("{p}", "Any unit", "{a} Shop{k + 1}", At least, 1);
-\tAccumulate("{p}", At least, 150, ore);
+\tSwitch("Switch {240 + i}", set);
+\tBring("{boss_p}", "Any unit", "{a} All", Exactly, 0);
+\tDeaths("{p}", "{LIFE_COUNTER}", At least, 1);
 
 Actions:
-\tSet Resources("{p}", Subtract, 150, ore);
-\tModify Unit Hit Points("{p}", "Any unit", 60, 110, "{a} Center");
-\tMove Unit("{p}", "Men", All, "{a} Shop{k + 1}", "{a} Center");
-\tSet Score("{p}", Add, 50, Custom);
-\tDisplay Text Message(Always Display, "\\x03{label} 강화! \\x02-150");
-\tPlay WAV("sound\\\\Misc\\\\Button.wav", 300);
-\tPreserve Trigger();
-}}''')
-
-    # --- 승리 ---
-    all_clear = "\n".join(f'\tBring("{boss_p}", "Any unit", "{a} All", Exactly, 0);'
-                          for a in arena_names)
-    add(f'''Trigger({",".join(f'"{h}"' for h in HUMANS)}){{
-Conditions:
-\tDeaths("{enemy}", "{WAVE_COUNTER}", At least, {waves + 1});
-\tSwitch("Switch {waves + 1}", set);
-{all_clear}
-
-Actions:
-\tDisplay Text Message(Always Display, "\\x07모든 웨이브를 막았습니다!");
+\tDisplay Text Message(Always Display, "\\x07보스를 잡았습니다!");
 \tVictory();
 }}''')
-    return "\n\n//-----------------------------------------------------------------//\n\n".join(T)
+    return scmap.TRIGGER_SEP.join(T)
 
 
 # ---------------------------------------------------------------- 본체
@@ -421,9 +445,10 @@ def main(argv=None):
                          (ix0 + w_isl - 3, iy0 + h_isl - 3)):
             cli.place("Zerg Sunken Colony", px, py, owner=p)
         cli.place("Terran Civilian", cx, cy + 4, owner=p)     # 비콘 밟을 말
-        for k, (bld, _) in enumerate(UPGRADE_SHOPS):         # 업그레이드 상점
+        for k, (label, _cost, _kind) in enumerate(SHOPS):    # 상점 셋
             bx = cx - 5 + k * 5
-            cli.place(bld, bx + 1, cy + 6, owner=p)
+            cli.place(("Terran Engineering Bay", "Zerg Creep Colony",
+                       "Terran Academy")[k], bx + 1, cy + 6, owner=p)
             cli.place("Terran Beacon", bx + 1, cy + 9, owner=p)
     # 적·보스도 스타팅이 있어야 슬롯이 산다. 첫 경기장 통로 구석에 둔다.
     bx, by, bw, bh = boxes[0]
@@ -440,7 +465,12 @@ def main(argv=None):
     cli.apply_triggers(text)
 
     if a.name:
-        cli.set_map_name(a.name)
+        # **설명을 반드시 넣는다.** 안 넣으면 에디터 기본값
+        # "Destroy all enemy buildings." 가 그대로 남아 맵과 어긋난다.
+        cli.set_map_name(a.name,
+            f"경기장 {a.players}개. 웨이브 {a.waves}개를 막고 보스를 잡으면 이깁니다. "
+            f"적이 서쪽 출구에 닿으면 목숨이 하나 줍니다(20개). "
+            f"가운데 섬 비콘에서 머린 120 · 성큰 200 · 수리 80 에 삽니다.")
 
     info = cli.info()
     print(f"\n만들었습니다: {a.out}")

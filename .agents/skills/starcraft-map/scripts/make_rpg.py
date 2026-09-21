@@ -343,7 +343,10 @@ def main(argv=None):
     print("트리거를 짭니다...")
     cli.apply_triggers(build_triggers(a.players, a.zones, enemy, boss_p, th))
     if a.name:
-        cli.set_map_name(a.name)
+        cli.set_map_name(a.name,
+            f"마을에서 나가 구역 {a.zones}개를 깨고 보스를 잡으면 이깁니다. "
+            f"잡으면 돈이 들어옵니다. 마을에서는 공짜로, 구역 발판에서는 "
+            f"{HEAL_COST}원에 체력을 채웁니다. 죽으면 마을에서 다시 시작합니다.")
 
     info = cli.info()
     print(f"\n만들었습니다: {a.out}")
