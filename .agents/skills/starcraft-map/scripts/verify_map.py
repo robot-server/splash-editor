@@ -224,6 +224,95 @@ def measure(cli: Cli) -> dict:
     }
 
 
+def shape_metrics(cli: Cli, m: dict) -> dict:
+    """지형의 **형상**을 잰다 — 슬롭을 실제로 가르는 두 수.
+
+    타일 패치가 실제 맵 사전에 있는지 세는 방법(패치 커버리지)은 쓰지
+    않는다. 재 보니 빈 흙 맵이 공식 맵보다 높은 점수를 받았다. 까닭은
+    ISOM 평지가 그룹 짝(2↔3 등) 체커보드라, 흙만 칠하면 가장 흔한
+    패치로 도배한 셈이 되기 때문이다.
+
+    대신 형상을 본다. 실측으로 갈린다:
+
+    | | 균일창 % | 고지덩이 채움 |
+    | --- | --- | --- |
+    | 공식 맵 | 3 ~ 18 | 0.40 ~ 0.75 |
+    | 절차 생성 슬롭 | 69 ~ 91 | 0.90 ~ 0.91 |
+    """
+    out = {}
+    try:
+        t = scmap.Terrain(cli, 0, 0, m["width"], m["height"], m["tileset_id"])
+        W, H = m["width"], m["height"]
+        # (1) 4x4 창이 지형 한두 가지로만 이루어진 비율 = 평평한 벌판
+        n = u = 0
+        for y in range(0, H - 3, 2):
+            for x in range(0, W - 3, 2):
+                n += 1
+                gs = {t.tiles[y + dy][x + dx] >> 4
+                      for dy in range(4) for dx in range(4)}
+                if len(gs) <= 2:
+                    u += 1
+        out["uniform_pct"] = 100.0 * u / n if n else 0.0
+
+        # (2) 고지 덩이가 얼마나 직사각형인가. 1.0 = 완전 네모
+        from collections import deque
+        hi = [[1 if t.elevation(x, y) >= 1 else 0 for x in range(W)]
+              for y in range(H)]
+        seen = [[0] * W for _ in range(H)]
+        fills = []
+        for y in range(H):
+            for x in range(W):
+                if not hi[y][x] or seen[y][x]:
+                    continue
+                q = deque([(y, x)]); seen[y][x] = 1; cells = []
+                while q:
+                    cy, cx = q.popleft(); cells.append((cy, cx))
+                    for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        ny, nx = cy + dy, cx + dx
+                        if 0 <= ny < H and 0 <= nx < W and hi[ny][nx] \
+                                and not seen[ny][nx]:
+                            seen[ny][nx] = 1; q.append((ny, nx))
+                if len(cells) < 60:
+                    continue
+                ys = [c[0] for c in cells]; xs = [c[1] for c in cells]
+                area = (max(ys) - min(ys) + 1) * (max(xs) - min(xs) + 1)
+                fills.append((len(cells), len(cells) / area))
+        fills.sort(reverse=True)
+        out["blob_fills"] = [round(f, 2) for _, f in fills[:5]]
+    except Exception as e:
+        out["error"] = str(e)
+    return out
+
+
+def check_shape(cli: Cli, m: dict) -> list[tuple[str, str]]:
+    """형상이 사람이 그린 것 같은가. 밀리맵에만 쓴다."""
+    sm = shape_metrics(cli, m)
+    if "error" in sm:
+        return [("?", f"형상을 못 쟀습니다: {sm['error']}")]
+    out = []
+    u = sm["uniform_pct"]
+    if u >= 60:
+        out.append(("!!", f"4x4 창의 {u:.0f}%가 지형 한두 가지뿐입니다 "
+                          f"(공식 맵 3~18%). 절벽·수풀 없는 벌판입니다 — "
+                          f"절차 생성 슬롭이 늘 여기 걸립니다."))
+    elif u >= 30:
+        out.append(("?", f"4x4 창의 {u:.0f}%가 지형 한두 가지뿐입니다 "
+                         f"(공식 맵 3~18%). 지형이 성깁니다."))
+    else:
+        out.append(("ok", f"지형이 고르게 섞여 있습니다 (균일 창 {u:.0f}%)."))
+    f = sm.get("blob_fills") or []
+    if f:
+        worst = max(f)
+        if worst >= 0.88:
+            out.append(("!!", f"고지 덩이가 직사각형입니다 (채움 {worst:.2f}, "
+                              f"공식 맵 0.40~0.75). 네모난 언덕은 사람이 "
+                              f"그린 것으로 보이지 않습니다."))
+        else:
+            out.append(("ok", f"고지 덩이 모양이 네모나지 않습니다 "
+                              f"(채움 {f})."))
+    return out
+
+
 def classify(m: dict) -> str:
     """밀리인가 유즈맵인가. 전수조사에서 쓴 것과 같은 잣대다.
 
@@ -592,6 +681,12 @@ def report(m: dict) -> int:
             problems += 1
         print(f"  [{mark:2}] {text}")
 
+    print("\n-- 지형 형상 --")
+    for mark, text in check_shape(_CLI[0], m):
+        if mark == "!!":
+            problems += 1
+        print(f"  [{mark:2}] {text}")
+
     print("\n-- 종족 밸런스 기울기 --")
     lever = check_race_balance(m)
     if not lever:
@@ -626,6 +721,7 @@ def main(argv=None):
         if m["kind"] == "usemap":
             m["usemap"] = [{"mark": a, "text": b} for a, b in check_usemap(cli, m)]
         m["fairness"] = [{"mark": a, "text": b} for a, b in check_fairness(m)]
+        m["shape"] = shape_metrics(cli, m)
         m["race_balance"] = [{"race": a, "dir": b, "text": c}
                              for a, b, c in check_race_balance(m)]
         print(json.dumps(m, ensure_ascii=False, indent=1))
