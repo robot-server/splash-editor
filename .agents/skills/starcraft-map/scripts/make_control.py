@@ -221,10 +221,6 @@ def main(argv=None):
             cli.edit("terrain", "fill", cli.path, str(max(0, gx - 3)),
                      str(max(0, gy - 3)), "7", "7", str(floor))
 
-    print("바닥을 칠합니다 (그룹을 섞어)...")
-    scmap.paint_floor_mixed(cli, ts, rng, regions, groups)
-    ch = scmap.scatter_tile_variants(cli, ts, rng, chance=0.5)
-    print(f"  변종 {ch}칸")
 
     print("플레이어 슬롯을 정합니다...")
     scmap.setup_usemap_players(cli, a.players, [8])   # P8 = 하이퍼용 시스템 컴퓨터

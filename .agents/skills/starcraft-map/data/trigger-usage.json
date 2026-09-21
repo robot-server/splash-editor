@@ -1,0 +1,793 @@
+{
+ "_about": "실제 유즈맵의 트리거를 뜯어, 동작·조건마다 **인자가 어떤 꼴로 쓰이는지** 센 표. 이름만 세면 사용법을 못 배운다 — Modify Unit Hit Points 의 인자 차례를 거꾸로 알고도 컴파일이 통과해 모르고 지나간 적이 있다.",
+ "_shape": "괄호 안은 인자 모양이다. s = 문자열, 숫자는 그 값 그대로, 낱말(At least·Set To·ore…)은 그대로 적었다.",
+ "n_maps": 150,
+ "usage": {
+  "Always": {
+   "()": 6783
+  },
+  "Set Resources": {
+   "(s, Add, 1, ore)": 3515,
+   "(s, Add, 1, gas)": 690,
+   "(s, Add, 75, gas)": 337,
+   "(s, Add, 3, ore)": 333,
+   "(s, Add, 2, ore)": 298,
+   "(s, Add, 20, ore)": 226,
+   "(s, Add, 5, ore)": 218,
+   "(s, Add, 9999999, ore and gas)": 194,
+   "(s, Add, 1000, ore)": 185,
+   "(s, Subtract, 7, ore)": 177,
+   "(s, Add, 100, ore)": 152,
+   "(s, Add, 1, ore and gas)": 152
+  },
+  "Move Location": {
+   "(s, s, s, s)": 1435,
+   "(s, s, s, 201)": 112,
+   "(s, s, 138, 245)": 60,
+   "(s, s, 236, 245)": 60,
+   "(s, s, 87, 245)": 48,
+   "(s, s, 88, 245)": 48,
+   "(s, s, 89, 245)": 48,
+   "(s, s, 90, 245)": 48,
+   "(s, s, 91, 245)": 48,
+   "(s, s, 92, 245)": 48,
+   "(s, s, 84, 245)": 48,
+   "(s, s, 82, 245)": 48
+  },
+  "Preserve Trigger": {
+   "()": 27725
+  },
+  "Bring": {
+   "(s, s, s, At least, 1)": 11420,
+   "(s, s, s, At most, 0)": 1918,
+   "(s, s, s, Exactly, 0)": 1621,
+   "(s, s, s, Exactly, 1)": 1030,
+   "(s, s, 141, At least, 1)": 649,
+   "(s, s, 141, At most, 5)": 296,
+   "(s, s, 19, At least, 1)": 272,
+   "(s, s, 23, At least, 1)": 232,
+   "(s, s, s, At least, 3)": 231,
+   "(s, s, 60, At least, 1)": 211,
+   "(s, s, 6, At least, 1)": 177,
+   "(s, s, s, At most, 4)": 172
+  },
+  "Remove Unit At Location": {
+   "(s, s, 1, s)": 2446,
+   "(s, s, All, s)": 2072,
+   "(s, s, All, 141)": 155,
+   "(s, s, 1, 60)": 137,
+   "(s, s, 3, s)": 132,
+   "(s, s, 5, s)": 129,
+   "(s, s, 1, 201)": 115,
+   "(s, s, 1, 1)": 108,
+   "(s, s, All, 101)": 105,
+   "(s, s, 1, 72)": 102,
+   "(s, s, 1, 75)": 102,
+   "(s, s, 1, 74)": 102
+  },
+  "Create Unit": {
+   "(s, s, 1, s)": 12859,
+   "(s, s, 10, s)": 3505,
+   "(s, s, 6, s)": 1699,
+   "(s, s, 20, s)": 1624,
+   "(s, s, 30, s)": 1399,
+   "(s, s, 2, s)": 922,
+   "(s, s, 5, s)": 881,
+   "(s, s, 15, s)": 829,
+   "(s, s, 4, s)": 798,
+   "(s, s, 50, s)": 732,
+   "(s, s, 1, 7)": 580,
+   "(s, s, 3, s)": 443
+  },
+  "Set Doodad State": {
+   "(s, s, s, disabled)": 276,
+   "(s, s, s, toggle)": 33,
+   "(s, s, s, enabled)": 28,
+   "(s, s, 9, disabled)": 17,
+   "(s, s, 12, disabled)": 14,
+   "(255, 255, No Location, 255)": 4,
+   "(s, s, 23, disabled)": 3,
+   "(s, s, 238, disabled)": 3,
+   "(s, s, 76, disabled)": 3,
+   "(s, s, 225, disabled)": 3,
+   "(s, s, 5, disabled)": 2,
+   "(s, s, 6, disabled)": 2
+  },
+  "Command": {
+   "(s, s, At least, 1)": 3370,
+   "(s, s, Exactly, 0)": 1444,
+   "(s, s, At most, 0)": 766,
+   "(s, s, Exactly, 1)": 298,
+   "(s, s, At most, 6)": 141,
+   "(s, s, At least, 2)": 78,
+   "(s, s, At most, 1000)": 54,
+   "(s, s, At least, 3)": 46,
+   "(s, s, Exactly, 2)": 44,
+   "(s, s, At least, 5)": 38,
+   "(s, s, At most, 100)": 36,
+   "(s, s, At most, 1)": 33
+  },
+  "Give Units to Player": {
+   "(s, s, s, All, s)": 922,
+   "(s, s, s, 1, s)": 627,
+   "(s, s, s, 14, 244)": 96,
+   "(s, s, s, All, 96)": 55,
+   "(s, s, s, 1, 80)": 41,
+   "(s, s, s, 1, 4)": 36,
+   "(s, s, s, 1, 6)": 36,
+   "(s, s, s, All, 147)": 36,
+   "(s, s, s, 1, 1)": 30,
+   "(s, s, s, 1, 244)": 30,
+   "(s, s, s, 1, 5)": 21,
+   "(s, s, s, 1, 3)": 21
+  },
+  "Wait": {
+   "(0)": 14428,
+   "(1000)": 1119,
+   "(10)": 944,
+   "(3000)": 757,
+   "(5000)": 748,
+   "(2000)": 603,
+   "(1)": 555,
+   "(200)": 491,
+   "(500)": 457,
+   "(84)": 378,
+   "(100)": 304,
+   "(20)": 303
+  },
+  "Set Alliance Status": {
+   "(s, Ally)": 424,
+   "(s, Enemy)": 198,
+   "(s, Allied Victory)": 105,
+   "(s, 33773)": 3,
+   "(s, 33766)": 2,
+   "(1670688840, Enemy)": 1,
+   "(1068463971, Ally)": 1,
+   "(s, 33761)": 1,
+   "(1670688839, 33769)": 1,
+   "(1670688836, 33769)": 1,
+   "(1670688835, 33766)": 1,
+   "(1670688836, 33773)": 1
+  },
+  "Deaths": {
+   "(s, s, At least, 1)": 3645,
+   "(s, s, Exactly, 0)": 3026,
+   "(s, s, Exactly, 2)": 1914,
+   "(s, s, Exactly, 1)": 1857,
+   "(s, s, At most, 0)": 836,
+   "(s, s, Exactly, 4)": 787,
+   "(s, s, Exactly, 3)": 591,
+   "(s, s, Exactly, 5)": 454,
+   "(s, s, Exactly, 8)": 380,
+   "(s, s, Exactly, 6)": 302,
+   "(s, s, At most, 3)": 297,
+   "(s, s, At most, 1)": 279
+  },
+  "Set Invincibility": {
+   "(s, s, s, enabled)": 2572,
+   "(s, s, s, disabled)": 485,
+   "(s, s, s, toggle)": 23,
+   "(s, 39550, No Location, 180)": 18,
+   "(s, s, 2, disabled)": 12,
+   "(s, s, 89, enabled)": 11,
+   "(s, 39562, No Location, 180)": 8,
+   "(s, 39553, No Location, 180)": 8,
+   "(s, 39558, No Location, 180)": 6,
+   "(s, s, 7, disabled)": 6,
+   "(s, s, 91, enabled)": 6,
+   "(s, s, 3, disabled)": 5
+  },
+  "Modify Unit Hit Points": {
+   "(s, s, 100, 0, s)": 634,
+   "(s, s, 0, 0, s)": 223,
+   "(s, s, 10, 0, s)": 88,
+   "(s, s, 50, 0, s)": 87,
+   "(s, s, 30, 0, s)": 80,
+   "(s, s, 1, 0, s)": 68,
+   "(s, s, 100, 1, s)": 59,
+   "(s, s, 70, 0, s)": 56,
+   "(s, s, 80, 0, s)": 53,
+   "(s, s, 60, 0, s)": 53,
+   "(s, s, 90, 0, s)": 51,
+   "(s, s, 40, 0, s)": 50
+  },
+  "Run AI Script At Location": {
+   "(s, s)": 824,
+   "(s, 1)": 10,
+   "(s, 7)": 8,
+   "(s, 38)": 8,
+   "(s, 109)": 8,
+   "(s, 102)": 8,
+   "(s, 42)": 7,
+   "(s, 3)": 7,
+   "(s, 104)": 7,
+   "(s, 6)": 6,
+   "(s, 4)": 6,
+   "(s, 15)": 6
+  },
+  "Display Text Message": {
+   "(Always Display, s)": 17628,
+   "(Always Display, 222)": 364,
+   "(Don't Always Display, s)": 330,
+   "(Always Display)": 236,
+   "(Always Display, 0)": 73,
+   "(Always Display, 682)": 55,
+   "(Always Display, 224)": 39,
+   "(Always Display, 310)": 21,
+   "(Always Display, 309)": 21,
+   "(Always Display, 306)": 20,
+   "(Always Display, 264)": 17,
+   "(Always Display, 312)": 16
+  },
+  "Comment": {
+   "(4294967146)": 95311,
+   "(s)": 7404,
+   "(0)": 607,
+   "()": 17,
+   "(1023)": 5,
+   "(1679865942)": 4,
+   "(317)": 3,
+   "(324)": 2,
+   "(322)": 2,
+   "(222)": 2,
+   "(243)": 2,
+   "(245)": 2
+  },
+  "Leader Board Points": {
+   "(s, Custom)": 58,
+   "(s, Kills and razings)": 28,
+   "(s, Kills)": 19,
+   "(323, Custom)": 2,
+   "(s, Buildings)": 2,
+   "(0, 65)": 1,
+   "(1679865944, 198)": 1,
+   "(76, Kills and razings)": 1,
+   "(8, Kills and razings)": 1,
+   "(s, Razings)": 1,
+   "(, Kills and razings)": 1,
+   "(184, Kills and razings)": 1
+  },
+  "Leaderboard Computer Players": {
+   "(disabled)": 182,
+   "(enabled)": 2
+  },
+  "Score": {
+   "(s, Custom, Exactly, 0)": 252,
+   "(s, Custom, Exactly, 1)": 165,
+   "(s, Custom, At most, 0)": 161,
+   "(s, Custom, At least, 2)": 143,
+   "(s, Custom, At least, 1)": 80,
+   "(s, Kills and razings, At least, 10000)": 74,
+   "(s, Kills and razings, At least, 1000)": 62,
+   "(s, Kills, At least, 1)": 58,
+   "(s, Kills, At least, 10000)": 37,
+   "(s, Kills and razings, At least, 25000)": 35,
+   "(s, Custom, Exactly, 2)": 29,
+   "(s, Kills, At least, 2100)": 28
+  },
+  "Set Score": {
+   "(s, Add, 1, Custom)": 624,
+   "(s, Subtract, 1, Custom)": 222,
+   "(s, Set To, 0, Custom)": 179,
+   "(s, Add, 10000, Kills)": 143,
+   "(s, Set To, 0, Kills)": 102,
+   "(s, Add, 20000, Kills and razings)": 84,
+   "(s, Add, 3000, Kills and razings)": 67,
+   "(s, Add, 10000, Kills and razings)": 52,
+   "(s, Add, 5000, Kills and razings)": 49,
+   "(s, Add, 500000, Kills)": 45,
+   "(s, Subtract, 1000, Kills and razings)": 44,
+   "(s, Subtract, 10000, Kills and razings)": 38
+  },
+  "Run AI Script": {
+   "(s)": 946,
+   "(0)": 4
+  },
+  "Order": {
+   "(s, s, s, s, patrol)": 4341,
+   "(s, s, s, s, move)": 1159,
+   "(s, s, s, s, attack)": 918,
+   "(s, s, 182, 186, patrol)": 27,
+   "(s, s, 183, 187, patrol)": 27,
+   "(s, s, 184, 188, patrol)": 27,
+   "(s, s, 185, 189, patrol)": 27,
+   "(s, s, 74, 60, patrol)": 13,
+   "(s, s, 75, 73, patrol)": 13,
+   "(s, s, 53, 15, patrol)": 13,
+   "(s, s, 48, 48, move)": 12,
+   "(s, s, s, 13, patrol)": 10
+  },
+  "Create Unit with Properties": {
+   "(s, s, 1, s, 1)": 293,
+   "(s, s, 10, s, 2)": 107,
+   "(s, s, 1, s, 2)": 92,
+   "(s, s, 1, s, 6)": 45,
+   "(s, s, 8, s, 1)": 39,
+   "(s, s, 1, s, 3)": 37,
+   "(s, s, 3, s, 1)": 34,
+   "(s, s, 10, s, 1)": 31,
+   "(s, s, 5, s, 1)": 28,
+   "(s, s, 2, s, 1)": 27,
+   "(s, s, 1, s, 5)": 24,
+   "(s, s, 1, s, 4)": 23
+  },
+  "Kill": {
+   "(s, s, At least, 1)": 459,
+   "(s, s, Exactly, 1)": 103,
+   "(s, s, At least, 2)": 93,
+   "(s, s, At least, 5)": 65,
+   "(s, s, At least, 3)": 62,
+   "(s, s, At least, 10)": 62,
+   "(s, s, At least, 4)": 61,
+   "(s, s, At least, 100)": 52,
+   "(s, s, At least, 8)": 49,
+   "(s, s, At least, 20)": 49,
+   "(s, s, At least, 7)": 49,
+   "(s, s, At least, 500)": 47
+  },
+  "Center View": {
+   "(s)": 2234,
+   "(7)": 137,
+   "(No Location)": 116,
+   "(21)": 81,
+   "(71)": 67,
+   "(10)": 63,
+   "(41)": 41,
+   "(8)": 40,
+   "(17)": 34,
+   "(44)": 34,
+   "(18)": 34,
+   "(11)": 32
+  },
+  "Defeat": {
+   "()": 369
+  },
+  "Kill Unit At Location": {
+   "(s, s, All, s)": 1271,
+   "(s, s, 1, s)": 1229,
+   "(s, s, All, 19)": 1153,
+   "(s, s, 2, s)": 202,
+   "(s, s, 3, s)": 176,
+   "(s, s, 5, s)": 156,
+   "(s, s, 1, 19)": 90,
+   "(s, s, All, 22)": 63,
+   "(s, s, 15, s)": 60,
+   "(s, s, 4, s)": 50,
+   "(s, s, 1, 3)": 50,
+   "(s, s, All, 23)": 47
+  },
+  "Victory": {
+   "()": 252
+  },
+  "Elapsed Time": {
+   "(At least, 5)": 101,
+   "(At least, 1)": 72,
+   "(At least, 6)": 50,
+   "(At most, 3)": 48,
+   "(At least, 180)": 45,
+   "(At least, 60)": 41,
+   "(At least, 10)": 37,
+   "(At least, 12)": 27,
+   "(At least, 2000)": 25,
+   "(At least, 0)": 20,
+   "(At least, 500)": 20,
+   "(At least, 150)": 19
+  },
+  "Accumulate": {
+   "(s, At least, 1, ore)": 195,
+   "(s, At least, 1, gas)": 189,
+   "(s, At least, 7, ore)": 182,
+   "(s, At least, 1000, ore)": 124,
+   "(s, At least, 5, ore)": 83,
+   "(s, At least, 10, gas)": 80,
+   "(s, Exactly, 0, gas)": 68,
+   "(s, At least, 150, ore)": 62,
+   "(s, At most, 6, gas)": 61,
+   "(s, At most, 6, ore)": 60,
+   "(s, At least, 7000, ore)": 57,
+   "(s, At least, 6, ore)": 56
+  },
+  "Play WAV": {
+   "(s, 0)": 829,
+   "(184, 0)": 678,
+   "(s, 403)": 622,
+   "(s, 1900)": 393,
+   "(s, 180)": 178,
+   "(s, 638)": 177,
+   "(s, 218)": 159,
+   "(s, 106)": 106,
+   "(s, 1217)": 101,
+   "(s, 534)": 97,
+   "(s, 402)": 76,
+   "(198, 0)": 66
+  },
+  "Set Switch": {
+   "(s, clear)": 2832,
+   "(s, set)": 2758,
+   "(s, randomize)": 848,
+   "(s, 78)": 77,
+   "(s, 100)": 62,
+   "(1679865947, 100)": 7,
+   "(993131081, 78)": 6,
+   "(s, toggle)": 5,
+   "(993131082, 78)": 4,
+   "(1679865944, 100)": 2,
+   "(993131074, 78)": 2,
+   "(1679865955, 100)": 2
+  },
+  "Switch": {
+   "(s, set)": 13528,
+   "(s, not set)": 9695
+  },
+  "Kill Unit": {
+   "(s, s)": 5159,
+   "(s, 13611)": 1,
+   "(1068463981, s)": 1,
+   "(s, 13588)": 1,
+   "(1068463956, s)": 1
+  },
+  "Move Unit": {
+   "(s, s, All, s, s)": 2053,
+   "(s, s, 1, 244, 245)": 1368,
+   "(s, s, 1, s, s)": 754,
+   "(s, s, 1, 206, 148)": 308,
+   "(s, s, 1, 206, 150)": 308,
+   "(s, s, 1, 206, 149)": 308,
+   "(s, s, 1, 206, 151)": 308,
+   "(s, s, All, 141, 119)": 154,
+   "(s, s, All, s, 2)": 71,
+   "(s, s, All, 1, 12)": 65,
+   "(s, s, 2, s, s)": 60,
+   "(s, s, All, s, 8)": 53
+  },
+  "Leader Board Kills": {
+   "(s, s)": 84,
+   "(, s)": 3,
+   "(204, s)": 3,
+   "(0, 56188)": 2,
+   "(0, 56171)": 2,
+   "(0, 56179)": 2,
+   "(216, s)": 1,
+   "(243, s)": 1
+  },
+  "Never": {
+   "()": 247
+  },
+  "Modify Unit Hanger Count": {
+   "(s, s, 10, 0, s)": 37,
+   "(s, s, 8, 0, s)": 29,
+   "(s, s, 5, 0, s)": 21,
+   "(s, s, 3, 0, s)": 14,
+   "(s, s, 4, 2, s)": 12,
+   "(s, s, 1, 0, s)": 4,
+   "(s, s, 1, 0, 101)": 4,
+   "(s, s, 3, 0, 19)": 3,
+   "(s, s, 9, 0, s)": 2,
+   "(s, s, 4, 0, s)": 2,
+   "(s, s, 255, 0, s)": 2,
+   "(s, s, 6, 0, s)": 2
+  },
+  "Set Deaths": {
+   "(s, s, Set To, 0)": 7205,
+   "(s, s, Set To, 1)": 2001,
+   "(s, s, Set To, 2)": 1773,
+   "(s, s, Add, 1)": 1721,
+   "(s, s, Subtract, 1)": 956,
+   "(s, s, Set To, 3)": 508,
+   "(s, s, Set To, 24)": 303,
+   "(s, s, Set To, 12)": 281,
+   "(s, s, Set To, 18)": 261,
+   "(s, s, Set To, 360)": 231,
+   "(s, s, Set To, 4)": 218,
+   "(s, s, Add, 4)": 156
+  },
+  "Modify Unit Shield Points": {
+   "(s, s, 100, 0, s)": 283,
+   "(s, s, 0, 0, s)": 171,
+   "(s, s, 0, 0, 13)": 13,
+   "(s, s, 0, 0, 23)": 13,
+   "(s, s, 0, 0, 18)": 13,
+   "(s, s, 0, 0, 17)": 13,
+   "(s, s, 0, 0, 24)": 13,
+   "(s, s, 0, 0, 25)": 13,
+   "(s, s, 100, 0, 19)": 12,
+   "(s, s, 10, 0, s)": 6,
+   "(s, s, 0, 0, 1)": 6,
+   "(s, s, 2, 0, 1)": 6
+  },
+  "Command the Least At": {
+   "(s, s)": 424
+  },
+  "Remove Unit": {
+   "(s, s)": 1765,
+   "(s, 41229)": 4,
+   "(s, 41234)": 4,
+   "(s, 41238)": 2,
+   "(1670688850, s)": 1
+  },
+  "Memory Masked": {
+   "(15388, At least, 1, 0x100)": 2,
+   "(15388, At least, 1, 0x400000)": 2,
+   "(15388, At least, 1, 0x1000000)": 2,
+   "(15388, At least, 1, 0x100000)": 2,
+   "(15388, At least, 1, 0x200)": 2,
+   "(15388, At least, 1, 0x4000)": 2,
+   "(15388, At least, 1, 0x10000000)": 2,
+   "(15388, At least, 1, 0x10000)": 2,
+   "(15388, At least, 1, 0x200000)": 2,
+   "(15388, At least, 1, 0x40000)": 2,
+   "(15388, At least, 1, 0x20000000)": 2,
+   "(15388, At least, 1, 0x20)": 2
+  },
+  "Set Memory": {
+   "(203155, Set To, 4294852561)": 9,
+   "(203155, Set To, 4294852573)": 9,
+   "(203155, Set To, 4294852552)": 9,
+   "(203155, Set To, 4294852570)": 9,
+   "(203155, Set To, 4294852567)": 9,
+   "(203155, Set To, 4294852555)": 9,
+   "(203155, Set To, 4294852564)": 9,
+   "(203155, Set To, 4294852558)": 9,
+   "(203155, Set To, 4293515048)": 9,
+   "(203155, Add, 8192)": 9,
+   "(203155, Add, 2097152)": 9,
+   "(203155, Add, 16777216)": 9
+  },
+  "Custom": {
+   "(No Location, s, 0, 34549, 237, 225, 0, 0, Disabled)": 9,
+   "(No Location, 0, 0, 0, s, 0, 30553, 175, 63, 0, 0, Disabled)": 8,
+   "(No Location, 0, 0, 0, s, 0, 15819, 187, 13, 0, 0, Disabled)": 8,
+   "(No Location, s, 0, 43421, 227, 55, 0, 0, Disabled)": 7,
+   "(No Location, 0, 0, 0, s, 0, 15922, 204, 18, 0, 0, Disabled)": 6,
+   "(No Location, 0, 0, 0, s, 0, 6813, 245, 182, 0, 0, Disabled)": 6,
+   "(No Location, 0, 0, 0, s, 0, 45116, 148, 99, 0, 0, Disabled)": 6,
+   "(No Location, 0, 0, 0, s, 0, 45113, 148, 99, 0, 0, Disabled)": 6,
+   "(No Location, 0, 0, 0, s, 0, 63620, 137, 41, 0, 0, Disabled)": 6,
+   "(No Location, s, 0, 13530, 239, 63, 0, 0, Disabled)": 6,
+   "(No Location, s, 0, s, At least, 115, 0, 0, Disabled)": 6,
+   "(No Location, 0, 0, 0, s, 0, 6819, 245, 182, 0, 0, Disabled)": 6
+  },
+  "Set Next Scenario": {
+   "(0)": 144,
+   "(4110031259)": 4,
+   "(3925095239)": 2,
+   "(1680611586)": 2,
+   "(1680689841)": 2,
+   "(4110031270)": 2,
+   "(1680611585)": 2,
+   "(1680689842)": 1,
+   "(4110031264)": 1,
+   "(1680689834)": 1,
+   "(1680689833)": 1,
+   "(3361379667)": 1
+  },
+  "Leader Board Control At Location": {
+   "(s, s, s)": 3,
+   "(1679865955, 33774, No Location)": 1,
+   "(0, 33774, No Location)": 1,
+   "(0, 33771, No Location)": 1
+  },
+  "Minimap Ping": {
+   "(s)": 2116,
+   "(32)": 93,
+   "(37)": 81,
+   "(48)": 57,
+   "(45)": 56,
+   "(30)": 54,
+   "(40)": 54,
+   "(46)": 54,
+   "(43)": 53,
+   "(51)": 53,
+   "(53)": 53,
+   "(35)": 52
+  },
+  "Leaderboard Goal Kills": {
+   "(0, 42571, 0)": 1,
+   "(0, 18762, 1679865947)": 1
+  },
+  "Memory": {
+   "(15388, At least, 2147483648)": 6,
+   "(15388, At least, 1073741824)": 6,
+   "(15388, At least, 536870912)": 6,
+   "(15388, At least, 268435456)": 6,
+   "(15388, At least, 134217728)": 6,
+   "(15388, At least, 67108864)": 6,
+   "(15388, At least, 33554432)": 6,
+   "(15388, At least, 16777216)": 6,
+   "(15388, At least, 8388608)": 6,
+   "(15388, At least, 4194304)": 6,
+   "(15388, At least, 2097152)": 6,
+   "(15388, At least, 1048576)": 6
+  },
+  "Mute Unit Speech": {
+   "()": 2
+  },
+  "Least Kills": {
+   "(15926)": 10,
+   "(15914)": 10,
+   "(15922)": 6,
+   "(15918)": 5,
+   "(15913)": 5,
+   "(s)": 5,
+   "(15917)": 4,
+   "(15911)": 3,
+   "(15919)": 3,
+   "(15923)": 2,
+   "(15925)": 1,
+   "(15921)": 1
+  },
+  "Leader Board Control": {
+   "(0, 60350)": 1,
+   "(0, 60289)": 1,
+   "(0, 60255)": 1,
+   "(0, 60392)": 1,
+   "(1509827071, 60400)": 1,
+   "(3019654160, 60314)": 1,
+   "(s, s)": 1,
+   "(0, 60378)": 1
+  },
+  "Transmission": {
+   "(Always Display, s, s, s, Set To, 3000, s, 403)": 62,
+   "(Always Display, s, s, s, Set To, 3000, s, 47500)": 54,
+   "(Always Display, s, s, s, Set To, 20000, s, 777)": 44,
+   "(Always Display, 0, s, s, Set To, 0, s, 0)": 42,
+   "(Always Display, s, s, s, Set To, 0, s, 995)": 36,
+   "(Always Display, s, s, s, Set To, 0, s, 1412)": 30,
+   "(Always Display, s, s, s, Set To, 5000, s, 1640)": 18,
+   "(Always Display, 0, s, 10, Set To, 0, s, 0)": 17,
+   "(Always Display, 0, s, 1, Set To, 0, s, 0)": 16,
+   "(Always Display, 0, s, 4, Set To, 0, s, 0)": 16,
+   "(Always Display, 0, s, 6, Set To, 0, s, 0)": 16,
+   "(Always Display, 0, s, 8, Set To, 0, s, 0)": 16
+  },
+  "Countdown Timer": {
+   "(At least, 1)": 590,
+   "(Exactly, 0)": 218,
+   "(At most, 1)": 147,
+   "(At most, 0)": 146,
+   "(At least, 30)": 50,
+   "(Exactly, 1)": 35,
+   "(At most, 120)": 22,
+   "(At least, 51)": 21,
+   "(At most, 100)": 12,
+   "(Exactly, 100)": 12,
+   "(At most, 200)": 11,
+   "(Exactly, 60)": 11
+  },
+  "Leaderboard Goal Resources": {
+   "(0, 0, 196)": 1,
+   "(0, 1661201323, 23)": 1,
+   "(1679865950, 1661201335, 241)": 1,
+   "(1679865951, 0, 252)": 1,
+   "(0, 0, 241)": 1,
+   "(s, 1001553, ore and gas)": 1
+  },
+  "Talking Portrait": {
+   "(s, 4000)": 54,
+   "(s, 1000)": 21,
+   "(s, 2000)": 14,
+   "(s, 5000)": 12,
+   "(s, 3000)": 8,
+   "(s, 10000)": 4,
+   "(s, 9000)": 3,
+   "(s, 8000)": 2,
+   "(s, 20000)": 2,
+   "(s, 6500)": 2,
+   "(s, 199879326)": 1,
+   "(s, 1270350237)": 1
+  },
+  "Leader Board Resources": {
+   "(s, ore)": 6,
+   "(s, gas)": 5,
+   "(3221316598, 28)": 2,
+   "(0, 25)": 2,
+   "(s, 227)": 2,
+   "(0, 24)": 2,
+   "(0, 18)": 2,
+   "(3359732224, 238)": 1,
+   "(1679866316, 227)": 1,
+   "(s, 230)": 1,
+   "(s, 235)": 1,
+   "(s, 234)": 1
+  },
+  "Modify Unit Resource Amount": {
+   "(3069516445, 0, 41, No Location)": 1,
+   "(106030411, 100, 166, s)": 1,
+   "(s, 10000, 0, s)": 1
+  },
+  "Unpause Timer": {
+   "()": 15
+  },
+  "Pause Timer": {
+   "()": 51
+  },
+  "Set Mission Objectives": {
+   "(s)": 458,
+   "(206)": 44,
+   "(0)": 4,
+   "(2570819503)": 1,
+   "(269)": 1,
+   "(320)": 1,
+   "(12)": 1,
+   "(3019654152)": 1,
+   "()": 1,
+   "(236)": 1,
+   "(308)": 1,
+   "(222)": 1
+  },
+  "Leaderboard Goal Control At Location": {
+   "(0, 13644, 100, s)": 1
+  },
+  "Set Countdown Timer": {
+   "(Set To, 190)": 73,
+   "(Set To, 30)": 57,
+   "(Set To, 40)": 44,
+   "(Set To, 160)": 32,
+   "(Set To, 50)": 32,
+   "(Set To, 60)": 30,
+   "(Set To, 120)": 28,
+   "(Set To, 240)": 25,
+   "(Set To, 170)": 19,
+   "(Set To, 150)": 18,
+   "(Set To, 300)": 17,
+   "(Set To, 4)": 15
+  },
+  "Unpause Game": {
+   "()": 3
+  },
+  "Modify Unit Energy": {
+   "(s, s, 100, 0, s)": 405,
+   "(s, s, 0, 0, s)": 116,
+   "(s, s, 30, 0, s)": 13,
+   "(s, s, 100, 1, s)": 8,
+   "(s, s, 100, 0, 20)": 6,
+   "(s, s, 80, 0, s)": 5,
+   "(s, s, 0, 0, 65)": 3,
+   "(s, s, 0, 0, 66)": 3,
+   "(s, s, 0, 0, 67)": 3,
+   "(s, s, 0, 0, 68)": 3,
+   "(s, s, 0, 0, 69)": 3,
+   "(s, s, 0, 0, 70)": 3
+  },
+  "Draw": {
+   "()": 26
+  },
+  "Pause Game": {
+   "()": 4
+  },
+  "Leaderboard Goal Control": {
+   "(0, 34003, 0)": 1,
+   "(0, 33824, 0)": 1,
+   "(0, 6851, 0)": 1
+  },
+  "Unmute Unit Speech": {
+   "()": 3
+  },
+  "Lowest Score": {
+   "(Custom)": 22
+  },
+  "Leaderboard Greed": {
+   "(9999999)": 1
+  },
+  "Disable Debug Mode": {
+   "()": 1
+  },
+  "Opponents": {
+   "(s, At least, 1)": 16,
+   "(s, At most, 2)": 4,
+   "(s, At most, 4)": 1,
+   "(s, At most, 3)": 1,
+   "(s, At least, 6)": 1,
+   "(s, At least, 5)": 1,
+   "(s, At least, 4)": 1,
+   "(s, At least, 3)": 1,
+   "(s, Exactly, 0)": 1
+  },
+  "Leaderboard Goal Points": {
+   "(s, Custom, 0)": 24
+  },
+  "Most Kills": {
+   "(s)": 40
+  }
+ }
+}

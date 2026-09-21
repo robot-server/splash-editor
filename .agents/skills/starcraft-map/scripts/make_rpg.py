@@ -148,8 +148,8 @@ Conditions:
 \tBring("Player {p}", "Any unit", "Town", At least, 1);
 
 Actions:
-\tModify Unit Hit Points("Player {p}", "Any unit", 12, 100, "Town");
-\tModify Unit Energy("Player {p}", "Any unit", 12, 100, "Town");
+\tModify Unit Hit Points("Player {p}", "Any unit", 100, 0, "Town");
+\tModify Unit Energy("Player {p}", "Any unit", 100, 0, "Town");
 \tPreserve Trigger();
 }}''')
         # 구역마다 회복 발판 — 값을 내고 그 자리에서 채운다
@@ -161,7 +161,7 @@ Conditions:
 
 Actions:
 \tSet Resources("Player {p}", Subtract, {HEAL_COST}, ore);
-\tModify Unit Hit Points("Player {p}", "Any unit", 12, 100, "Zone{z + 1}");
+\tModify Unit Hit Points("Player {p}", "Any unit", 100, 0, "Zone{z + 1}");
 \tMove Unit("Player {p}", "Men", All, "Heal{z + 1}", "Zone{z + 1}");
 \tDisplay Text Message(Always Display, "\\x03체력을 채웠습니다. \\x02-{HEAL_COST}");
 \tPlay WAV("sound\\\\Misc\\\\Button.wav", 300);
@@ -193,7 +193,7 @@ Conditions:
 
 Actions:
 \tSet Resources("Player {p}", Subtract, {cost}, ore);
-\tModify Unit Hit Points("Player {p}", "{HERO}", 1, 100, "Shop{k + 1}");
+\tModify Unit Hit Points("Player {p}", "{HERO}", 100, 0, "Shop{k + 1}");
 \tMove Unit("Player {p}", "Men", All, "Shop{k + 1}", "P{p} Home");
 \tCreate Unit("Player {p}", "Terran Marine", 2, "P{p} Home");
 \tSet Score("Player {p}", Add, 100, Custom);
@@ -276,10 +276,6 @@ def main(argv=None):
             x0 = ax + aw // 2 - 3
             fill(x0, ay + ah, 6, GAP, floor)
 
-    print("바닥을 칠합니다 (그룹을 섞어)...")
-    n = scmap.paint_floor_mixed(cli, ts, rng, cells, groups)
-    ch = scmap.scatter_tile_variants(cli, ts, rng, chance=0.5)
-    print(f"  {n}칸 칠하고 변종 {ch}칸")
 
     print("플레이어 슬롯을 정합니다...")
     scmap.setup_usemap_players(cli, a.players, [enemy_no, boss_no])

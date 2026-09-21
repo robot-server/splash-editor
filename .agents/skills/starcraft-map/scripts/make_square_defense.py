@@ -17,7 +17,7 @@
 
 바닥 타일과 두들은 짐작하지 않는다 — `data/corpus.json` 의 타일셋별
 실측 분포에서 뽑는다. 타일 값 하나로 도배하면 주기성 100% 가 되므로
-`scatter_tile_variants` 로 흩는다 (유즈맵 실측 중앙값은 15.7%).
+바닥은 단색으로 반듯하게 둔다 — 유즈맵은 네모난 방이지 경관이 아니다.
 
 보기:
     python3 make_square_defense.py out.scx --players 6 --waves 15
@@ -43,6 +43,9 @@ VOID_TILE = 0            # 걸을 수 없고 검게 그려진다 — 벽으로 �
 # 된다. **unused unit 은 쓰지 않는다** (허락을 받아야 하는 것이다).
 WAVE_COUNTER = "Scanner Sweep"
 LIFE_COUNTER = "Dark Swarm"
+# 안내를 사람마다 한 번만 띄우기 위한 잠금. 스위치는 맵 전체에 하나뿐
+# 이라 첫 사람만 걸리고 나머지는 지나가므로 플레이어별 죽음 수를 쓴다.
+SEEN_COUNTER = "Protoss Scarab"
 
 # 웨이브마다 나오는 것. 뒤로 갈수록 세진다.
 WAVE_TABLE = [
@@ -174,11 +177,15 @@ Actions:
 \tCreate Unit("{enemy}", "{unit}", {n}, "{a} Spawn");
 \tPreserve Trigger();
 }}''')
+        # 안내는 **사람마다 한 번만.** 조건이 35초 내내 참이라
+        # 잠금이 없으면 매 프레임 글과 소리가 도배된다.
         add(f'''Trigger({HUMANS}){{
 Conditions:
 \tDeaths("{enemy}", "{WAVE_COUNTER}", Exactly, {w});
+\tDeaths("Current Player", "{SEEN_COUNTER}", At most, {w - 1});
 
 Actions:
+\tSet Deaths("Current Player", "{SEEN_COUNTER}", Set To, {w});
 \tDisplay Text Message(Always Display, "\\x07웨이브 {w}\\x02 — {unit} x{n}");
 \tPlay WAV("sound\\\\Misc\\\\Button.wav", 300);
 \tPreserve Trigger();
@@ -196,7 +203,20 @@ Conditions:
 Actions:
 \tSet Switch("Switch {240 + i}", set);
 \tCreate Unit with Properties("{boss_p}", "{bu}", 1, "{a} Spawn", 1);
+\tPreserve Trigger();
+}}''')
+
+    # 보스 안내는 **사람이 띄운다.** Display Text Message 는 그 트리거를
+    # 실행하는 플레이어에게만 보인다 — 컴퓨터가 띄우면 아무도 못 본다.
+    add(f'''Trigger({HUMANS}){{
+Conditions:
+\tDeaths("{enemy}", "{WAVE_COUNTER}", At least, {waves + 1});
+\tDeaths("Current Player", "{SEEN_COUNTER}", At most, {waves});
+
+Actions:
+\tSet Deaths("Current Player", "{SEEN_COUNTER}", Set To, {waves + 1});
 \tDisplay Text Message(Always Display, "\\x06보스\\x02 — {bu}. 이것만 잡으면 끝입니다.");
+\tPlay WAV("sound\\\\Misc\\\\PowerDown.wav", 500);
 \tPreserve Trigger();
 }}''')
 
@@ -216,15 +236,10 @@ Actions:
 \tOrder("{who}", "Any unit", "{a} SW", "{a} Exit", attack);
 \tPreserve Trigger();
 }}''')
-        # 지킬 유닛을 섬에 묶는다 (안 묶으면 첫 웨이브를 쫓아 나간다)
-        add(f'''Trigger("{p}"){{
-Conditions:
-\tAlways();
-
-Actions:
-\tOrder("{p}", "Men", "{a} All", "{a} Center", move);
-\tPreserve Trigger();
-}}''')
+        # **지킬 유닛을 묶지 않는다.** 앞서 Always + Preserve 로 가운데로
+        # 보내는 명령을 넣었는데, 하이퍼 트리거와 맞물려 매 프레임 강제
+        # 이동이 나가 플레이어가 유닛을 조작할 수 없었다. 섬은 벽으로
+        # 갇혀 있어 어차피 쫓아 나갈 수 없으니 묶을 필요가 없다.
         # 누수 — **한 번에 한 기씩** 지우고 목숨 하나를 깎는다.
         # 통째로 지우면 다섯이 새어도 목숨이 하나만 준다.
         for who in (enemy, boss_p):
@@ -270,8 +285,8 @@ Actions:
             elif kind == "sunken":
                 body = (f'\tCreate Unit("{p}", "Zerg Sunken Colony", 1, "{a} Center");')
             else:
-                body = (f'\tModify Unit Hit Points("{p}", "Men", 12, 100, "{a} All");\n'
-                        f'\tModify Unit Hit Points("{p}", "Buildings", 12, 100, "{a} All");')
+                body = (f'\tModify Unit Hit Points("{p}", "Men", 100, 0, "{a} All");\n'
+                        f'\tModify Unit Hit Points("{p}", "Buildings", 100, 0, "{a} All");')
             add(f'''Trigger("{p}"){{
 Conditions:
 \tBring("{p}", "Men", "{a} Shop{k + 1}", At least, 1);
@@ -375,7 +390,6 @@ def main(argv=None):
              w - 2 * (RING + WALL), h - 2 * (RING + WALL), tile)          # 섬
 
     # 3) 바닥에 결을 준다 — 그룹을 섞고 변종을 흩는다
-    print("바닥을 칠합니다 (그룹을 섞어)...")
     walk = []
     for (x, y, w, h) in boxes:
         walk.append((x, y, w, RING))                               # 위 통로
@@ -385,10 +399,6 @@ def main(argv=None):
         walk.append((x + RING + WALL, y + RING + WALL,
                      w - 2 * (RING + WALL), h - 2 * (RING + WALL)))  # 섬
     groups = corpus.pick_floor_groups(corpus.load(), ts, "usemap", 14)
-    n = scmap.paint_floor_mixed(cli, ts, rng, walk, groups)
-    print(f"  그룹 {groups} 를 섞어 {n}칸을 칠했습니다")
-    changed = scmap.scatter_tile_variants(cli, ts, rng, chance=0.5)
-    print(f"  변종으로 다시 {changed}칸을 흩었습니다")
 
     # 4) 플레이어 슬롯
     print("플레이어 슬롯을 정합니다...")

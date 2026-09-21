@@ -36,7 +36,11 @@ TILESETS = {"badlands": 0, "space": 1, "ashworld": 3, "jungle": 4,
             "desert": 5, "ice": 6, "twilight": 7}
 VOID_TILE = 0
 LIFE = "Dark Swarm"          # 맵에 한 번도 놓지 않는다 — 순수한 변수
-QNUM = "Scanner Sweep"       # 문제 번호
+QNUM = "Scanner Sweep"       # 문제 번호 (P8)
+# 사람마다 따로 잠가야 해서 스위치가 아니라 플레이어별 죽음 수를 쓴다.
+# 스위치는 맵 전체에 하나뿐이라 첫 사람만 걸리고 나머지는 지나간다.
+SHOWN = "Protoss Scarab"     # 이 사람에게 몇 번까지 문제를 보여 줬나
+JUDGED = "Protoss Interceptor"  # 이 사람의 몇 번까지 채점했나
 
 
 def read_questions(path: str) -> list[tuple[str, str]]:
@@ -59,14 +63,26 @@ def read_questions(path: str) -> list[tuple[str, str]]:
 
 
 def build_triggers(players, questions, lives, secs):
+    """퀴즈 트리거.
+
+    **두 가지를 지킨다.**
+
+    1. `Display Text Message` 는 **그 트리거를 실행하는 플레이어에게만**
+       보인다. 컴퓨터가 띄우면 아무도 못 본다 — 안내는 전부 사람이
+       실행하는 트리거에 둔다.
+    2. 하이퍼 트리거를 깔면 매 프레임 돈다. **조건이 한동안 계속 참인
+       트리거에는 반드시 한 번만 걸리는 잠금**을 건다. 안 걸면 12초
+       내내 목숨이 깎여 즉사한다.
+
+    잠금은 사람마다 따로여야 하므로 스위치가 아니라 **플레이어별 죽음 수
+    카운터**로 만든다 (스위치는 맵 전체에 하나뿐이다).
+    """
     T = []
     add = T.append
     HUMANS = ",".join(f'"Player {p}"' for p in range(1, players + 1))
     nq = len(questions)
 
-    # 하이퍼 트리거 — 없으면 발판 판정이 한 박자 늦는다
     T.extend(scmap.hyper_triggers("Player 8"))
-    # 들어오지 않은 자리를 치운다 (빈 자리 시민이 발판에 남지 않게)
     T.extend(scmap.absent_player_cleanup(players, "Player 8"))
 
     add(f'''Trigger({HUMANS}){{
@@ -75,9 +91,12 @@ Conditions:
 
 Actions:
 \tSet Deaths("Current Player", "{LIFE}", Set To, {lives});
+\tSet Deaths("Current Player", "{SHOWN}", Set To, 0);
+\tSet Deaths("Current Player", "{JUDGED}", Set To, 0);
 \tSet Score("Current Player", Set To, 0, Custom);
 \tDisplay Text Message(Always Display, "\\x04OX 퀴즈\\x02 — 문제 {nq}개. 목숨 \\x07{lives}개\\x02.");
-\tDisplay Text Message(Always Display, "\\x03문제가 뜨면 {secs}초 안에 \\x04왼쪽 O\\x02 나 \\x06오른쪽 X\\x02 발판으로 옮기세요.");
+\tDisplay Text Message(Always Display, "\\x03문제가 뜨면 {secs}초 안에 \\x04왼쪽 O\\x03 나 \\x06오른쪽 X\\x03 발판으로 옮기세요.");
+\tSet Mission Objectives("\\x04OX 퀴즈\\x02\\n\\x03- 문제 {nq}개, 한 문제에 {secs}초\\n- 왼쪽이 O, 오른쪽이 X 입니다\\n- 틀리면 목숨이 하나 줍니다 (목숨 {lives}개)\\n- 끝까지 살아남으면 이깁니다");
 \tSet Countdown Timer(Set To, {secs});
 }}''')
 
@@ -90,7 +109,7 @@ Actions:
 \tPreserve Trigger();
 }''')
 
-    # 시계가 끝나면 다음 문제로
+    # 문제 번호를 올리는 시계 — 컴퓨터가 돌린다 (안내는 하지 않는다)
     add(f'''Trigger("Player 8"){{
 Conditions:
 \tCountdown Timer(At most, 0);
@@ -104,64 +123,71 @@ Actions:
 
     for i, (q, ans) in enumerate(questions, 1):
         wrong = "X" if ans == "O" else "O"
-        # 문제를 띄운다 (번호가 바뀌는 순간 한 번)
-        add(f'''Trigger("Player 8"){{
+        # 문제 띄우기 — **사람이 실행한다.** 사람마다 한 번만.
+        add(f'''Trigger({HUMANS}){{
 Conditions:
 \tDeaths("Player 8", "{QNUM}", Exactly, {i});
-\tSwitch("Switch {i}", not set);
+\tDeaths("Current Player", "{SHOWN}", At most, {i - 1});
 
 Actions:
-\tSet Switch("Switch {i}", set);
+\tSet Deaths("Current Player", "{SHOWN}", Set To, {i});
 \tDisplay Text Message(Always Display, "\\x07{i}번.\\x02 {q}");
 \tPlay WAV("sound\\\\Misc\\\\Button.wav", 300);
 \tPreserve Trigger();
 }}''')
-        # 판정 — 다음 문제로 넘어가는 순간, 틀린 발판에 있으면 목숨을 깎는다
+        # 판정 — 다음 문제로 넘어가는 순간, 사람마다 **한 번만**.
         add(f'''Trigger({HUMANS}){{
 Conditions:
-\tDeaths("Player 8", "{QNUM}", Exactly, {i + 1});
-\tBring("Current Player", "Any unit", "Pad {wrong}", At least, 1);
-
-Actions:
-\tSet Deaths("Current Player", "{LIFE}", Subtract, 1);
-\tDisplay Text Message(Always Display, "\\x06{i}번 틀렸습니다.\\x02 답은 {ans} 입니다.");
-\tPlay WAV("sound\\\\Misc\\\\PowerDown.wav", 500);
-\tPreserve Trigger();
-}}''')
-        add(f'''Trigger({HUMANS}){{
-Conditions:
-\tDeaths("Player 8", "{QNUM}", Exactly, {i + 1});
+\tDeaths("Player 8", "{QNUM}", At least, {i + 1});
+\tDeaths("Current Player", "{JUDGED}", At most, {i - 1});
 \tBring("Current Player", "Any unit", "Pad {ans}", At least, 1);
 
 Actions:
+\tSet Deaths("Current Player", "{JUDGED}", Set To, {i});
 \tSet Score("Current Player", Add, 1, Custom);
 \tDisplay Text Message(Always Display, "\\x07{i}번 정답!");
+\tMove Unit("Current Player", "Men", All, "Pad {ans}", "Lobby");
 \tPreserve Trigger();
 }}''')
-        # 다음 문제로 넘어가면 대기 구역으로 되돌린다
         add(f'''Trigger({HUMANS}){{
 Conditions:
-\tDeaths("Player 8", "{QNUM}", Exactly, {i + 1});
+\tDeaths("Player 8", "{QNUM}", At least, {i + 1});
+\tDeaths("Current Player", "{JUDGED}", At most, {i - 1});
+\tBring("Current Player", "Any unit", "Pad {wrong}", At least, 1);
 
 Actions:
-\tMove Unit("Current Player", "Any unit", All, "Pad O", "Lobby");
-\tMove Unit("Current Player", "Any unit", All, "Pad X", "Lobby");
+\tSet Deaths("Current Player", "{JUDGED}", Set To, {i});
+\tSet Deaths("Current Player", "{LIFE}", Subtract, 1);
+\tDisplay Text Message(Always Display, "\\x06{i}번 틀렸습니다.\\x02 답은 {ans} 입니다.");
+\tPlay WAV("sound\\\\Misc\\\\PowerDown.wav", 500);
+\tMove Unit("Current Player", "Men", All, "Pad {wrong}", "Lobby");
+\tPreserve Trigger();
+}}''')
+        # 어느 발판에도 없으면 안 고른 것 — 목숨을 깎고 넘어간다
+        add(f'''Trigger({HUMANS}){{
+Conditions:
+\tDeaths("Player 8", "{QNUM}", At least, {i + 1});
+\tDeaths("Current Player", "{JUDGED}", At most, {i - 1});
+
+Actions:
+\tSet Deaths("Current Player", "{JUDGED}", Set To, {i});
+\tSet Deaths("Current Player", "{LIFE}", Subtract, 1);
+\tDisplay Text Message(Always Display, "\\x06{i}번 — 고르지 않았습니다.\\x02 답은 {ans} 입니다.");
 \tPreserve Trigger();
 }}''')
 
-    # 목숨이 다하면 진다
     add(f'''Trigger({HUMANS}){{
 Conditions:
-\tDeaths("Current Player", "{LIFE}", Exactly, 0);
+\tDeaths("Current Player", "{LIFE}", At most, 0);
 
 Actions:
 \tDisplay Text Message(Always Display, "\\x06목숨이 다했습니다.");
 \tDefeat();
 }}''')
-    # 끝까지 살아남으면 이긴다
     add(f'''Trigger({HUMANS}){{
 Conditions:
 \tDeaths("Player 8", "{QNUM}", At least, {nq + 1});
+\tDeaths("Current Player", "{JUDGED}", At least, {nq});
 \tDeaths("Current Player", "{LIFE}", At least, 1);
 
 Actions:
@@ -179,7 +205,7 @@ def main(argv=None):
     ap.add_argument("--players", type=int, default=6)
     ap.add_argument("--lives", type=int, default=3)
     ap.add_argument("--seconds", type=int, default=12)
-    ap.add_argument("--size", default="96x96")
+    ap.add_argument("--size", default="64x64")   # 대기 구역 + 발판 둘이면 충분하다
     ap.add_argument("--tileset", default="space", choices=sorted(TILESETS))
     ap.add_argument("--name", default="OX 퀴즈")
     ap.add_argument("--seed", type=int, default=1)
@@ -227,9 +253,6 @@ def main(argv=None):
         cli.edit("terrain", "fill", cli.path, str(px + pw // 2 - 3),
                  str(M + lobby[3]), "6", str(GAP), str(floor))
 
-    print("바닥을 칠합니다...")
-    scmap.paint_floor_mixed(cli, ts, rng, [lobby, pad_o, pad_x], groups)
-    scmap.scatter_tile_variants(cli, ts, rng, chance=0.5)
 
     print("플레이어 슬롯을 정합니다...")
     scmap.setup_usemap_players(cli, a.players, [8])

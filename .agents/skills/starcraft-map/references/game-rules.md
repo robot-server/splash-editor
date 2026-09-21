@@ -222,3 +222,26 @@ T.extend(scmap.absent_player_cleanup(humans, system_owner="Player 8"))
 ## 13. 승리·패배 트리거에는 `Preserve Trigger` 를 붙이지 않는다
 
 붙이면 매 틱 재발동해 메시지가 도배된다. 실측 맵도 예외가 없다.
+
+---
+
+## 14. `Modify Unit ...` 은 **퍼센트가 먼저**다
+
+```
+Modify Unit Hit Points(플레이어, 유닛, 퍼센트, 개수, 로케이션);
+                                      ~~~~~~  ~~~~
+```
+
+개수 `0` 이 "전부" 다. 실제 맵이 쓰는 꼴:
+
+```
+Modify Unit Hit Points("Current Player", "Men", 100, 0, "Anywhere");   ← 전부 100% 회복
+```
+
+**차례를 바꿔 쓰면 회복이 아니라 깎는 동작이 된다.** `(..., 12, 100, ...)`
+이라고 쓰면 "체력을 12% 로 만들고 100기에 적용" 이다. 회복 트리거를
+넣었는데 체력이 줄어든다면 이것이다 — 실제로 그렇게 만들어 플레이해
+보고 지적받았다.
+
+`Modify Unit Energy`, `Modify Unit Shield Points` 도 같다. 퍼센트는
+100 을 넘길 수 없다.

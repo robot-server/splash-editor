@@ -19,6 +19,69 @@ splash-cli trigger apply <맵> trig.txt --install "$SC_INSTALL" -o out.scx
 
 ---
 
+## 0-A. 인자는 **실제 맵에서 확인하고 쓴다**
+
+컴파일이 통과한다고 맞는 게 아니다. `Modify Unit Hit Points` 의 인자
+차례를 거꾸로 알고 썼는데, 컴파일은 멀쩡히 통과하고 게임에서는 회복이
+아니라 체력을 12% 로 깎았다. 플레이해 본 사용자가 짚어 줄 때까지 몰랐다.
+
+`data/trigger-usage.json` 에 실제 맵에서 센 인자 꼴이 들어 있다.
+`scripts/check_trigger_usage.py` 로 내 맵을 대조한다.
+
+```sh
+python3 scripts/check_trigger_usage.py check <내맵.scx> data/trigger-usage.json
+```
+
+### 실측에서 확인한 인자 꼴 (숫자는 쓰인 횟수)
+
+```
+ 634  Modify Unit Hit Points(플레이어, 유닛, 100, 0, 로케이션)   ← 퍼센트가 먼저, 개수 0 = 전부
+ 405  Modify Unit Energy(플레이어, 유닛, 100, 0, 로케이션)
+ 283  Modify Unit Shield Points(플레이어, 유닛, 100, 0, 로케이션)
+
+4341  Order(플레이어, 유닛, 출발, 도착, patrol)     ← **patrol 이 1등**
+1159  Order(..., move)
+ 918  Order(..., attack)
+
+2053  Move Unit(플레이어, 유닛, All, 출발, 도착)
+2446  Remove Unit At Location(플레이어, 유닛, 1, 로케이션)   ← 한 기씩이 흔하다
+2072  Remove Unit At Location(플레이어, 유닛, All, 로케이션)
+
+7205  Set Deaths(플레이어, 유닛, Set To, 0)          ← 카운터는 자주 0 으로 되돌린다
+3515  Set Resources(플레이어, Add, 1, ore)
+ 624  Set Score(플레이어, Add, 1, Custom)
+
+2832  Set Switch(스위치, clear)
+2758  Set Switch(스위치, set)
+ 848  Set Switch(스위치, randomize)                 ← **랜덤은 이걸로 만든다**
+
+2572  Set Invincibility(플레이어, 유닛, 로케이션, enabled)
+ 485  Set Invincibility(..., disabled)
+
+  58  Leader Board Points(이름, Custom)
+  84  Leader Board Kills(이름, 유닛)
+ 458  Set Mission Objectives(글)
+2234  Center View(로케이션)
+2116  Minimap Ping(로케이션)
+ 829  Play WAV(파일, 0)                              ← 길이 0 이 흔하다
+1435  Move Location(플레이어, 유닛, 출발로케이션, 옮길로케이션)
+ 824  Run AI Script At Location(스크립트, 로케이션)
+ 424  Set Alliance Status(플레이어, Ally)
+```
+
+**읽는 법 몇 가지**
+
+- **`Order` 는 `patrol` 이 표준이다.** `move` 로 보내면 도착해서 멈추고
+  그 자리에 서 있는다. `patrol` 이면 길을 계속 오간다. 디펜스 웨이브가
+  길을 따라 도는 것은 대개 patrol 이다.
+- **랜덤은 `Set Switch(..., randomize)`.** 스위치 여러 개를 한꺼번에
+  굴리고 읽는 순간에 값이 확정된다.
+- **`Set Invincibility` 를 2572회 쓴다.** 준비 단계의 무적, 부술 수 없는
+  문·벽을 이걸로 만든다.
+- **`Play WAV` 의 두 번째 인자는 소리 길이(ms)** 인데 0 이 가장 흔하다.
+
+---
+
 ## 0. 기본기 — 이걸 모르면 트리거가 겉돈다
 
 전부 실제로 틀려 보고 배운 것이다.
@@ -96,7 +159,8 @@ Actions:
 | --- | --- |
 | `Leader Board Kills("이름")` | `Leader Board Kills("이름", "Any unit")` |
 | `Leader Board Custom Score(...)` | `Leader Board Points("이름", Custom)` |
-| `Modify Unit Hit Points(p, u, All, ...)` | 개수는 **숫자만** |
+| `Modify Unit Hit Points(p, u, All, ...)` | 개수는 **숫자만** (전부는 `0`) |
+| `Modify Unit Hit Points(p, u, 개수, 퍼센트, loc)` | **`(p, u, 퍼센트, 개수, loc)`** — 퍼센트가 먼저 |
 | `Create Unit With Properties` | `Create Unit with Properties` (소문자 with) |
 | `"Torrasque"` | `"Torrasque (Ultralisk)"` |
 
@@ -153,7 +217,7 @@ Create Unit with Properties(플레이어, 유닛, 개수, 로케이션, 프리�
 Remove Unit At Location(플레이어, 유닛, 개수|All, 로케이션);
 Move Unit(플레이어, 유닛, 개수|All, 출발로케이션, 도착로케이션);
 Order(플레이어, 유닛, 출발로케이션, 도착로케이션, attack|move|patrol);
-Modify Unit Hit Points(플레이어, 유닛, 개수, 퍼센트, 로케이션);
+Modify Unit Hit Points(플레이어, 유닛, 퍼센트, 개수, 로케이션);   ← 퍼센트가 먼저다
 Give Units to Player(주는쪽, 받는쪽, 유닛, 개수, 로케이션);
 Set Deaths(플레이어, 유닛, Set To|Add|Subtract, 값);
 Set Resources(플레이어, Set To|Add|Subtract, 값, ore|gas|ore and gas);
