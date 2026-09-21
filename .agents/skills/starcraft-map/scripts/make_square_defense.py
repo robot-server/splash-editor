@@ -71,23 +71,31 @@ UPGRADE_SHOPS = SHOPS          # 자리 잡는 쪽에서 쓰는 이름
 
 # ---------------------------------------------------------------- 자리잡기
 
-def layout(players, W, H, margin=2, gap=3):
+def layout(players, W, H, arena_w=38, arena_h=38, gap=3):
     """경기장을 격자로 늘어놓는다.
 
-    앞선 판에는 가운데에 공용 띠를 두었는데 **아무도 갈 수 없는 죽은
-    땅**이었다 — 경기장이 벽으로 봉인되어 있어 닿지 못한다. 띠를 없애고
-    그 자리를 경기장에 돌려주었다. 빈 땅을 남기지 않는다.
+    **경기장 크기를 먼저 정하고, 필요한 만큼만 쓴다.** 맵 크기에 맞춰
+    늘리지 않는다 — 참고한 실제 디펜스 맵의 경기장도 40칸 남짓이다.
+    남는 자리는 검게 둔다. 맵을 꽉 채울 이유가 없다.
+
+    앞선 판에는 가운데에 공용 띠를 두었는데 아무도 갈 수 없는 죽은
+    땅이었다 (경기장이 벽으로 봉인되어 있어 닿지 못한다).
     """
     cols = min(3, players)
     rows = (players + cols - 1) // cols
-    aw = (W - 2 * margin - (cols - 1) * gap) // cols
-    ah = (H - 2 * margin - (rows - 1) * gap) // rows
+    used_w = cols * arena_w + (cols - 1) * gap
+    used_h = rows * arena_h + (rows - 1) * gap
+    if used_w > W - 4 or used_h > H - 4:
+        raise CliError(
+            f"경기장이 맵보다 큽니다 ({used_w}x{used_h} > {W}x{H}). "
+            f"--size 를 키우거나 사람 수를 줄이세요.")
+    ox, oy = (W - used_w) // 2, (H - used_h) // 2
     boxes = []
     for i in range(players):
         r, c = divmod(i, cols)
-        boxes.append((margin + c * (aw + gap), margin + r * (ah + gap), aw, ah))
+        boxes.append((ox + c * (arena_w + gap), oy + r * (arena_h + gap),
+                      arena_w, arena_h))
     return boxes
-
 
 
 def floor_tile(cli, tileset, rng):
@@ -370,6 +378,10 @@ def main(argv=None):
     print(f"  바닥 타일 0x{tile:04x} (그룹 {grp}) — 실측 분포에서 골랐습니다")
 
     boxes = layout(a.players, W, H)
+    bx0 = min(b[0] for b in boxes); by0 = min(b[1] for b in boxes)
+    bx1 = max(b[0] + b[2] for b in boxes); by1 = max(b[1] + b[3] for b in boxes)
+    print(f"  경기장 {len(boxes)}개, 쓰는 자리 {bx1 - bx0}x{by1 - by0} "
+          f"(맵은 {W}x{H} — 나머지는 검게 둔다)")
     # 벽 두께는 **사거리보다 얇아야 한다.** 마린 사거리가 4 타일이라
     # 벽이 4 면 섬 가장자리에 딱 붙어야 겨우 닿는다. 2 로 줄인다.
     RING, WALL = 5, 2

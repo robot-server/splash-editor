@@ -54,16 +54,21 @@ def split_args(s: str) -> list[str]:
 
 
 def shape(args: list[str]) -> str:
-    """인자 모양 — 문자열은 s, 숫자는 그 값, 나머지는 그대로."""
+    """인자 모양 — 문자열은 s, 숫자는 n, 낱말은 그대로.
+
+    **숫자는 값이 아니라 자리만 본다.** 값까지 보면 `Deaths(..., 12)` 와
+    `Deaths(..., 13)` 이 서로 다른 꼴이 되어 대조가 무의미해진다.
+    값 자체는 `arg_values` 로 따로 견준다.
+    """
     parts = []
     for a in args:
         if a.startswith('"'):
             parts.append("s")
         elif re.fullmatch(r"-?\d+", a):
-            parts.append(a)
+            parts.append("n")
         else:
             parts.append(a)
-    return "(" + ", ".join(parts) + ")"
+    return "(" + ",".join(parts) + ")"
 
 
 def dump_calls(path: str, install: str) -> list[tuple[str, list[str]]]:

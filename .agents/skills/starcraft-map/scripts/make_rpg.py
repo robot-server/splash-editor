@@ -240,42 +240,52 @@ def main(argv=None):
     floor = next(t for g in groups for t in range(g * 16, g * 16 + 16)
                  if t in tiles and tiles[t][1] and tiles[t][2])
 
-    # 마을 → 구역들 → 보스방을 **뱀처럼** 늘어놓아 맵을 채운다.
-    # 가로 한 줄로만 놓으면 맵의 70% 가 검은 낭비가 된다 (실제로 그랬다).
-    MARGIN, GAP = 3, 4
+    # **맵을 꽉 채우지 않는다.** 방 크기를 먼저 정하고, 필요한 만큼만
+    # 쓴 뒤 나머지는 검게 둔다. 앞서는 맵을 다 채우려고 방을 늘렸는데
+    # 그건 "검은 여백이 아깝다" 는 잘못된 동기였다.
+    #
+    #   ┌────┐ ┌────┐ ┌────┐
+    #   │마을├─┤1구역├─┤2구역│      한 줄에 세 칸, 넘치면 아래 줄로
+    #   └────┘ └────┘ └──┬─┘       (줄바꿈은 세로 통로로 잇는다)
+    #   ┌────┐ ┌────┐ ┌──┴─┐
+    #   │보스│─┤4구역├─┤3구역│
+    #   └────┘ └────┘ └────┘
+    ROOM_W, ROOM_H, GAP = 26, 22, 4
     n_cells = a.zones + 2                       # 마을 + 구역들 + 보스
-    cols = 3 if n_cells > 4 else 2
+    cols = min(3, n_cells)
     rows = (n_cells + cols - 1) // cols
-    cw = (W - 2 * MARGIN - (cols - 1) * GAP) // cols
-    chh = (H - 2 * MARGIN - (rows - 1) * GAP) // rows
+    used_w = cols * ROOM_W + (cols - 1) * GAP
+    used_h = rows * ROOM_H + (rows - 1) * GAP
+    if used_w > W - 4 or used_h > H - 4:
+        raise CliError(f"방이 맵보다 큽니다 ({used_w}x{used_h} > {W}x{H}). "
+                       f"--size 를 키우거나 --zones 를 줄이세요.")
+    ox, oy = (W - used_w) // 2, (H - used_h) // 2
     cells = []
     for i in range(n_cells):
         r, c = divmod(i, cols)
         if r % 2:                               # 홀수 줄은 거꾸로 — 뱀
             c = cols - 1 - c
-        cells.append((MARGIN + c * (cw + GAP), MARGIN + r * (chh + GAP), cw, chh))
+        cells.append((ox + c * (ROOM_W + GAP), oy + r * (ROOM_H + GAP),
+                      ROOM_W, ROOM_H))
     band_y = cells[0][1]
-    BAND_H = chh
+    BAND_H = ROOM_H
 
     print("벽을 세웁니다...")
     cli.edit("terrain", "fill", cli.path, "0", "0", str(W), str(H), str(VOID_TILE))
     fill = lambda x, y, w, h, t: cli.edit(
         "terrain", "fill", cli.path, str(x), str(y), str(w), str(h), str(t))
 
-    print(f"마을 1 + 구역 {a.zones} + 보스방 1 을 뚫습니다...")
+    print(f"마을 1 + 구역 {a.zones} + 보스방 1 을 뚫습니다 "
+          f"({used_w}x{used_h} 만 씁니다)...")
     for (x, y, w, h) in cells:
         fill(x, y, w, h, floor)
-    # 칸 사이 통로 — 좁게 내야 문턱이 생긴다
     for i in range(n_cells - 1):
         ax, ay, aw, ah = cells[i]
         bx_, by_, bw_, bh_ = cells[i + 1]
         if ay == by_:                           # 같은 줄 — 가로 통로
-            x0 = min(ax + aw, bx_ + bw_)
-            fill(x0, ay + ah // 2 - 3, GAP, 6, floor)
+            fill(min(ax + aw, bx_ + bw_), ay + ah // 2 - 3, GAP, 6, floor)
         else:                                   # 줄바꿈 — 세로 통로
-            x0 = ax + aw // 2 - 3
-            fill(x0, ay + ah, 6, GAP, floor)
-
+            fill(ax + aw // 2 - 3, ay + ah, 6, GAP, floor)
 
     print("플레이어 슬롯을 정합니다...")
     scmap.setup_usemap_players(cli, a.players, [enemy_no, boss_no])

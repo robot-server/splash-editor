@@ -233,26 +233,32 @@ def main(argv=None):
     floor = next(t for g in groups for t in range(g * 16, g * 16 + 16)
                  if t in tiles and tiles[t][1] and tiles[t][2])
 
-    M, GAP = 4, 4
-    lobby = (M, M, W - 2 * M, (H - 2 * M - GAP) // 2)
-    pad_h = H - 2 * M - GAP - lobby[3]
-    pad_w = (W - 2 * M - GAP) // 2
-    pad_y = M + lobby[3] + GAP
-    pad_o = (M, pad_y, pad_w, pad_h)
-    pad_x = (M + pad_w + GAP, pad_y, pad_w, pad_h)
+    # **대기 구역을 따로 두지 않는다. O 와 X 사이가 대기 구역이다.**
+    # 앞서는 위쪽에 넓은 대기 구역을 두고 발판마다 통로를 냈는데,
+    # 동선이 서른 타일을 넘어 12초 안에 못 갔다. 가운데 띠에 서 있다가
+    # 문제가 뜨면 왼쪽이나 오른쪽으로 몇 타일만 옮기면 된다.
+    #
+    #        ┌────────┬──────┬────────┐
+    #        │   O    │ 대기 │   X    │
+    #        └────────┴──────┴────────┘
+    #
+    # 맵을 꽉 채우지 않는다 — 필요한 만큼만 쓰고 나머지는 검게 둔다.
+    PAD_W, PAD_H, MID_W = 14, 13, 7
+    used_w = PAD_W * 2 + MID_W
+    used_h = PAD_H
+    ox = (W - used_w) // 2
+    oy = (H - used_h) // 2
+    pad_o = (ox, oy, PAD_W, PAD_H)
+    lobby = (ox + PAD_W, oy, MID_W, PAD_H)
+    pad_x = (ox + PAD_W + MID_W, oy, PAD_W, PAD_H)
 
     print("벽을 세웁니다...")
     cli.edit("terrain", "fill", cli.path, "0", "0", str(W), str(H), str(VOID_TILE))
     fill = lambda r: cli.edit("terrain", "fill", cli.path,
                               str(r[0]), str(r[1]), str(r[2]), str(r[3]), str(floor))
-    print("대기 구역과 발판 둘을 뚫습니다...")
-    for r in (lobby, pad_o, pad_x):
+    print(f"O · 대기 · X 를 나란히 뚫습니다 ({used_w}x{used_h} 만 씁니다)...")
+    for r in (pad_o, lobby, pad_x):
         fill(r)
-    # 대기 구역 → 발판 통로 (발판마다 따로 — 한번 고르면 건너갈 수 없게)
-    for (px, _, pw, _) in (pad_o, pad_x):
-        cli.edit("terrain", "fill", cli.path, str(px + pw // 2 - 3),
-                 str(M + lobby[3]), "6", str(GAP), str(floor))
-
 
     print("플레이어 슬롯을 정합니다...")
     scmap.setup_usemap_players(cli, a.players, [8])
@@ -265,16 +271,17 @@ def main(argv=None):
     loc("Pad O", pad_o)
     loc("Pad X", pad_x)
     for p in range(1, a.players + 1):
-        sx = lobby[0] + 3 + (p - 1) * (lobby[2] - 6) // max(1, a.players)
-        cli.edit("location", "add", cli.path, str(sx), str(lobby[1] + 2),
-                 str(sx + 3), str(lobby[1] + 5), "--tiles", "--name", f"P{p} Start")
+        sy = lobby[1] + 1 + (p - 1) * (lobby[3] - 3) // max(1, a.players)
+        cli.edit("location", "add", cli.path, str(lobby[0] + 1), str(sy),
+                 str(lobby[0] + lobby[2] - 1), str(sy + 2),
+                 "--tiles", "--name", f"P{p} Start")
 
     print("유닛을 놓습니다...")
     for p in range(1, a.players + 1):
-        sx = lobby[0] + 4 + (p - 1) * (lobby[2] - 6) // max(1, a.players)
-        cli.place(scmap.START_LOCATION, sx, lobby[1] + 3, owner=p)
-        cli.place("Terran Civilian", sx, lobby[1] + 3, owner=p)
-    cli.place(scmap.START_LOCATION, lobby[0] + 1, lobby[1] + 1, owner=8)
+        sy = lobby[1] + 2 + (p - 1) * (lobby[3] - 3) // max(1, a.players)
+        cli.place(scmap.START_LOCATION, lobby[0] + lobby[2] // 2, sy, owner=p)
+        cli.place("Terran Civilian", lobby[0] + lobby[2] // 2, sy, owner=p)
+    cli.place(scmap.START_LOCATION, lobby[0] + 1, lobby[1] + lobby[3] - 2, owner=8)
     # **발판에 O 와 X 를 실제로 그린다.** 표시가 없으면 어느 쪽이
     # 어느 쪽인지 알 수가 없다. 건물을 글자 모양으로 늘어놓는다.
     import math as _m
