@@ -93,14 +93,21 @@ python3 $S/preview.py out.scx look.png
 
 유즈맵에서 다투는 것은 **재미**다. 사람을 붙잡는 것은 그래픽이 아니라
 **되먹임 고리** — 하고, 바로 알려 주고, 보상하고, 다시 하고 싶게 만드는
-것이다. 인기 유즈맵 93개를 뜯어 센 결과가
+것이다. **유즈맵 329장을 전수로 뜯어** 센 결과가
 [references/usemap-dopamine.md](references/usemap-dopamine.md) 에 있다.
 요지만 옮기면:
 
-- 트리거 중앙값 **153개**, 그중 절반이 `Preserve Trigger` 로 되풀이된다.
-- 가장 흔한 보상 통로는 **유닛 주기**(93개 중 82개 맵), 그다음이
-  **글 띄우기**(78개), **소리**(50개), **점수·순위표**(64개).
-- 로케이션은 거의 모든 맵이 **255개를 다 쓴다**. 아껴 쓸 이유가 없다.
+- 유닛 중앙값 **677개**(밀리의 다섯 배), 트리거 **237개**, 이름 붙인
+  로케이션 **114개**, 두들 **0개**.
+- `Create Unit` 과 `Preserve Trigger` 가 나란히 **98%**. "계속 도는
+  트리거가 유닛을 준다" 가 유즈맵의 기본 골격이다.
+- `Bring` 조건이 **97%** — 판정의 거의 전부가 "로케이션에 무엇이 몇 기
+  있는가" 다.
+- 빠뜨리기 쉬운 필수품: **강화**(체력·에너지 고치기) 89%, **순위표**
+  (`Leader Board *`) 82%, **화면 이동**(`Center View`) 74%.
+- **업그레이드 건물**(Armory·Forge·Evolution Chamber 등)이 50~65% 맵에
+  있다. 유즈맵은 업그레이드를 파는 구조가 기본이다.
+- `Start Location` 은 **100%**. 유즈맵도 스타팅이 있어야 한다.
 
 ```sh
 # 유즈맵 뼈대 (장르 고르면 그에 맞는 트리거 뼈대까지)
@@ -157,16 +164,37 @@ EUD 는 **오직 게임 안의 재미를 위해서만** 쓴다. 게임 상태를
 - 한글 맵은 코드 페이지를 직접 알려 준다: `--encoding cp949`.
   **CHK 에는 코드 페이지 칸이 없어** 맵에 저장되지 않는다.
 
+## 실측 데이터 — 수치를 손으로 적지 않는다
+
+`data/corpus.json` 에 밀리 182장 · 유즈 329장을 전수 덤프해 만든 표가
+있다. `scripts/corpus.py` 로 읽는다.
+
+```sh
+python3 $S/corpus.py          # 전체 표를 찍어 본다
+```
+
+```python
+import corpus
+c = corpus.load()
+corpus.describe("usemap", "ice")           # 한 줄 요약
+corpus.pick_floor_groups(c, "ice", "usemap", 3)   # 바닥으로 쓸 그룹
+corpus.doodad_count(c, "jungle", "melee", rng)    # 그 타일셋에 맞는 두들 수
+```
+
+**⚠ 전체 중앙값을 그대로 쓰지 않는다.** 두들 개수는 타일셋에 따라
+Space 밀리 **0개**에서 Badlands 밀리 **208개**까지 벌어진다. 전체
+중앙값(91)은 어느 타일셋에도 맞지 않는 수다. 반드시 타일셋별 값을 본다.
+
 ## 더 볼 것
 
 - [references/cli-cookbook.md](references/cli-cookbook.md) — 하고 싶은
   일에서 명령을 찾는 표
 - [references/melee-balance.md](references/melee-balance.md) — 자리·종족
-  밸런스, 공식 리그 맵 56개 실측값
+  밸런스, 밀리 182장 전수 실측값
 - [references/melee-terrain.md](references/melee-terrain.md) — ISOM·램프·
   대칭을 실제로 놓는 법
 - [references/usemap-dopamine.md](references/usemap-dopamine.md) — 인기
-  유즈맵 93개 실측, 재미 구조 설계
+  유즈맵 329장 전수 실측, 재미 구조 설계
 - [references/trigger-recipes.md](references/trigger-recipes.md) — 트리거
   텍스트 문법과 바로 쓰는 조각
 - [references/eud-and-limits.md](references/eud-and-limits.md) — EUD 안전

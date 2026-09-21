@@ -439,37 +439,55 @@ def main(argv=None):
     ramp_at = {}
     if not args.no_plateau:
         print("램프를 놓습니다...")
-        cy_mid = (height - 1) / 2.0
+        cx_mid, cy_mid = (width - 1) / 2.0, (height - 1) / 2.0
         for (sx, sy) in starts:
-            downward = sy < cy_mid          # 위쪽 본진은 아래로 내려간다
-            y_end = min(height - 6, sy + 16) if downward else max(4, sy - 16)
-            edge = scmap.find_elevation_edge(cli, tileset_id, sx, sy, y_end,
-                                             vertical=True)
-            if edge is None:
-                print(f"  ({sx},{sy}) 절벽 줄을 못 찾아 건너뜁니다")
-                continue
-            # 목표는 **언덕 바깥 열네 칸**. 맵 한가운데까지 요구하면 램프는
-            # 멀쩡한데 바깥 지형이 막았다는 이유로 램프가 퇴짜를 맞는다.
-            # 바깥이 막힌 것은 뒤의 연결성 복구가 길을 내어 푼다.
-            low_x = sx
-            low_y = edge + 14 if downward else edge - 14
-            low_y = max(2, min(height - 3, low_y))
-            cands = (scmap.ramp_candidates(tileset_id, downward) +
-                     scmap.ramp_candidates(tileset_id, not downward))
-            rw = max((c[2] for c in cands), default=6)
-            rx = sx - rw // 2
-            rx -= rx % 2                    # 마름모 격자에 맞춰 짝수로
-            rx = max(0, min(width - rw, rx))
-            got = scmap.place_ramp_checked(
-                cli, tileset_id, rx, edge,
-                high_point=(sx, sy), low_point=(low_x, low_y),
-                downward=downward, candidates=cands)
-            if got is None:
-                print(f"  ({sx},{sy}) 통하는 램프를 못 찾았습니다")
-            else:
-                base, ry = got
-                ramp_at[(sx, sy)] = (rx, ry, downward)
-                print(f"  ({sx},{sy}) → 램프 ({rx},{ry}) 0x{base:04x} [길찾기 통과]")
+            # **좌우를 먼저 본다.** 공식 맵에서 램프가 붙은 본진 57곳 중
+            # 왼쪽 26·오른쪽 23 이고 위아래는 8곳뿐이다. 위아래만 시도하면
+            # 대개 자리를 못 찾는다.
+            order = []
+            order.append("right" if sx < cx_mid else "left")
+            order.append("down" if sy < cy_mid else "up")
+            order += [d for d in ("left", "right", "up", "down")
+                      if d not in order]
+
+            placed = None
+            for direction in order:
+                horizontal = direction in ("left", "right")
+                step = 1 if direction in ("right", "down") else -1
+                span = scmap.MAIN_RAMP_DISTANCE + 8
+                if horizontal:
+                    end = max(2, min(width - 8, sx + step * span))
+                    edge = scmap.find_elevation_edge(cli, tileset_id, sy, sx,
+                                                     end, vertical=False)
+                else:
+                    end = max(2, min(height - 8, sy + step * span))
+                    edge = scmap.find_elevation_edge(cli, tileset_id, sx, sy,
+                                                     end, vertical=True)
+                if edge is None:
+                    continue
+                # 목표는 언덕 바깥 열네 칸. 맵 한가운데까지 요구하면 램프는
+                # 멀쩡한데 먼 지형이 막았다는 이유로 퇴짜를 맞는다.
+                if horizontal:
+                    low = (max(2, min(width - 3, edge + step * 14)), sy)
+                    fixed = sy - 3
+                    fixed = max(0, min(height - 6, fixed))
+                else:
+                    low = (sx, max(2, min(height - 3, edge + step * 14)))
+                    fixed = sx - 3
+                    fixed -= fixed % 2          # 마름모 격자에 맞춘다
+                    fixed = max(0, min(width - 6, fixed))
+                got = scmap.place_ramp_checked(
+                    cli, tileset_id, edge, fixed,
+                    high_point=(sx, sy), low_point=low, direction=direction)
+                if got:
+                    base, rx, ry = got
+                    ramp_at[(sx, sy)] = (rx, ry, direction)
+                    print(f"  ({sx},{sy}) → {direction} 램프 ({rx},{ry}) "
+                          f"0x{base:04x} [길찾기 통과]")
+                    placed = got
+                    break
+            if placed is None:
+                print(f"  ({sx},{sy}) 네 방향 모두 통하는 램프를 못 찾았습니다")
 
         # 하나라도 램프를 못 내면 **모든** 본진의 고지대를 걷어낸다.
         # 한 곳만 언덕이면 그 자리가 유리해져 밸런스가 깨진다 — 밀리맵에서
@@ -520,9 +538,12 @@ def main(argv=None):
             # 병목(언덕 바로 아래)을 건너뛰어 길이 이어지지 않는다.
             spot = ramp_at.get((sx, sy))
             if spot:
-                rx, ry, downward = spot
-                ox = rx + 3
-                oy = ry + 7 if downward else ry - 2
+                rx, ry, direction = spot
+                ox, oy = rx + 3, ry + 3
+                if direction == "down":    oy = ry + 7
+                elif direction == "up":    oy = ry - 2
+                elif direction == "right": ox = rx + 7
+                else:                      ox = rx - 2
             else:
                 ox, oy = sx, sy
             vx, vy = cx_m - ox, cy_m - oy
@@ -538,7 +559,7 @@ def main(argv=None):
                     # **램프 위는 절대 칠하지 않는다.** 칠하면 램프가 지워져
                     # 본진이 다시 갇힌다 — 길을 낼수록 더 막히는 꼴이 된다.
                     if any(rx0 - 1 <= px <= rx0 + 6 and ry0 - 1 <= ty <= ry0 + 6
-                           for (rx0, ry0, _d) in ramp_at.values()):
+                           for (rx0, ry0, _dir) in ramp_at.values()):
                         continue
                     carve.append((px - (px % 2), ty, low_terrain))
         cli.isom_batch(carve)

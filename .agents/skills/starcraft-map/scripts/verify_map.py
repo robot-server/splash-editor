@@ -132,11 +132,25 @@ def read_unit_flags(cli: Cli):
     return out
 
 
+def named_locations(cli: Cli) -> int:
+    """이름이 붙은 로케이션 수.
+
+    `info` 가 내는 로케이션 수는 **슬롯 255개**라 늘 255다. `location
+    list` 는 이름이 붙은 것만 내므로 그 줄을 센다.
+    """
+    try:
+        out = cli.run("location", "list", cli.path)
+    except Exception:
+        return 0
+    return sum(1 for line in out.splitlines() if re.match(r"^\s*\d+\s", line))
+
+
 def measure(cli: Cli) -> dict:
     info = cli.info()
     units = cli.units()
     width, height = info["width"], info["height"]
 
+    n_named = named_locations(cli)
     starts_raw = [u for u in units if u["type"] == scmap.START_LOCATION]
     minerals = [u for u in units if u["type"] in scmap.MINERALS]
     geysers = [u for u in units if u["type"] == scmap.VESPENE_GEYSER]
@@ -192,6 +206,7 @@ def measure(cli: Cli) -> dict:
         "name": info["name"], "width": width, "height": height,
         "tileset": info["tileset"], "tileset_id": info["tileset_id"],
         "version": info["version"], "protected": info["protected"],
+        "n_locations_named": n_named,
         "n_units": info["units"], "n_triggers": info["triggers"],
         "n_starts": len(starts),
         "n_start_units": len(starts_raw),
@@ -207,6 +222,65 @@ def measure(cli: Cli) -> dict:
         "resource_symmetry": point_symmetry([(c["x"], c["y"]) for c in clusters],
                                             width, height, tol=5.0),
     }
+
+
+def classify(m: dict) -> str:
+    """밀리인가 유즈맵인가. 전수조사에서 쓴 것과 같은 잣대다.
+
+    밀리맵에 유즈맵 잣대를, 유즈맵에 밀리맵 잣대를 들이대면 헛경고가
+    쏟아진다 — 봉인된 디펜스 경기장을 "지상 유닛이 갇힘" 이라 하고,
+    유즈맵에 종족 밸런스를 따지는 식이다.
+    """
+    if (m["n_triggers"] <= 12 and m.get("n_locations_named", 0) <= 3
+            and m["n_units"] <= 400):
+        return "melee"
+    return "usemap"
+
+
+def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
+    """유즈맵 잣대 — 실측 329장과 견준다."""
+    import corpus
+    c = corpus.load()
+    o = c["usemap"]["overall"]
+    out = []
+    def band(key, got, label, unit=""):
+        q = o[key]
+        if got < q["q1"]:
+            out.append(("?", f"{label} {got}{unit} — 실측 329장의 아래 사분위"
+                             f"({q['q1']}) 보다 적습니다. 중앙값은 {q['median']}{unit} 입니다."))
+        elif got > q["q3"]:
+            out.append(("i", f"{label} {got}{unit} — 실측 위 사분위({q['q3']}) 보다 "
+                             f"많습니다. 많은 것 자체는 흠이 아닙니다."))
+        else:
+            out.append(("ok", f"{label} {got}{unit} — 실측 사분위"
+                              f"({q['q1']}~{q['q3']}) 안입니다."))
+    band("units", m["n_units"], "유닛")
+    band("triggers", m["n_triggers"], "트리거")
+    band("locations_named", m.get("n_locations_named", 0), "이름 붙인 로케이션")
+
+    if m["n_triggers"] == 0:
+        out.append(("!!", "트리거가 없습니다. 유즈맵은 트리거가 내용 전부입니다."))
+    if m["n_start_units"] == 0:
+        out.append(("!!", "스타팅이 없습니다. 실측 329장 모두 스타팅이 있습니다."))
+
+    # 되풀이 — 유즈맵은 규칙적인 게 정상이되, 한 타일로 도배하면 안 된다
+    try:
+        t = scmap.Terrain(cli, 0, 0, m["width"], m["height"], m["tileset_id"])
+        flat = [t.tiles[y][x] for y in range(m["height"])
+                for x in range(m["width"])]
+        distinct = len(set(flat))
+        q = o["distinct_tiles"]
+        if distinct < 30:
+            out.append(("!!", f"서로 다른 타일이 {distinct}개뿐입니다. 한 타일로 "
+                              f"도배한 바닥입니다 — scatter_tile_variants 를 쓰세요."))
+        elif distinct < q["q1"]:
+            out.append(("?", f"서로 다른 타일 {distinct}개 — 실측 아래 사분위"
+                             f"({q['q1']}) 미만입니다. 바닥에 결이 부족합니다."))
+        else:
+            out.append(("ok", f"서로 다른 타일 {distinct}개."))
+    except Exception as e:
+        out.append(("?", f"지형을 못 쟀습니다: {e}"))
+    return out
 
 
 def check_basics(cli: Cli, m: dict) -> list[tuple[str, str]]:
@@ -229,7 +303,7 @@ def check_basics(cli: Cli, m: dict) -> list[tuple[str, str]]:
     # 정상이라 그 잣대를 쓰면 안 된다.
     n_starts = m["n_start_units"]
     # 컴퓨터는 스타팅 없이도 트리거로 유닛을 받을 수 있다. 사람 수만 맞으면 된다.
-    if n_starts and len(human) != n_starts:
+    if n_starts and len(human) != n_starts and classify(m) == "melee":
         out.append(("!!", f"사람이 앉을 슬롯 {len(human)}개와 스타팅 {n_starts}개가 "
                           f"다릅니다. 스타팅 없는 자리를 받는 사람이 생깁니다."))
     else:
@@ -277,18 +351,44 @@ def check_basics(cli: Cli, m: dict) -> list[tuple[str, str]]:
             if any(p is None for p in pts):
                 out.append(("!!", "스타팅 자리에 걸을 수 있는 땅이 없습니다."))
             else:
-                unreachable = []
-                for i in range(1, len(pts)):
-                    if not scmap.walk_reachable(grid, pts[0], pts[i]):
-                        unreachable.append(i + 1)
-                if unreachable:
-                    out.append(("!!", f"1번 스타팅에서 {unreachable} 번 스타팅으로 "
-                                      f"걸어갈 수 없습니다. 지상 유닛이 갇힙니다."))
+                # 땅덩이(연결 성분)로 가른다. **이어지지 않는다고 결함이
+                # 아니다** — 섬맵은 원래 그렇고, 실제 밀리맵 코퍼스에도
+                # 스타팅마다 따로 노는 맵이 흔하다. 공수·수송으로 논다.
+                comp = [0] * len(pts)
+                c = 0
+                for i in range(len(pts)):
+                    if comp[i]:
+                        continue
+                    c += 1
+                    comp[i] = c
+                    for j in range(i + 1, len(pts)):
+                        if not comp[j] and scmap.walk_reachable(grid, pts[i], pts[j]):
+                            comp[j] = c
+                sizes = sorted(comp.count(k) for k in range(1, c + 1))
+                if c == 1:
+                    out.append(("ok", f"스타팅 {len(pts)}곳이 모두 걸어서 이어집니다 "
+                                      f"(뭍맵)."))
+                elif classify(m) == "usemap":
+                    out.append(("i", f"땅덩이 {c}개로 갈려 있습니다. 유즈맵이라면 "
+                                     f"일부러 가른 것일 수 있습니다 (디펜스 경기장 등)."))
+                elif c == len(pts):
+                    out.append(("i", f"스타팅 {len(pts)}곳이 **모두 따로 있습니다 "
+                                     f"— 섬맵**입니다. 공중·수송 없이는 못 만납니다. "
+                                     f"드롭 견제와 공중 유닛이 강해지고, 초반 러시는 "
+                                     f"사실상 사라집니다."))
+                elif len(set(sizes)) == 1:
+                    out.append(("i", f"땅덩이 {c}개에 스타팅이 {sizes[0]}곳씩 고르게 "
+                                     f"있습니다 — 반섬맵입니다. 같은 덩이끼리는 지상으로 "
+                                     f"싸우고 건너편은 공중·수송으로 갑니다."))
                 else:
-                    out.append(("ok", f"스타팅 {len(pts)}곳이 모두 걸어서 이어집니다."))
+                    out.append(("!!", f"땅덩이마다 스타팅 수가 다릅니다 {sizes}. "
+                                      f"같은 덩이에 여럿이 있는 쪽은 지상 러시를 "
+                                      f"당하고 혼자 있는 쪽은 안 당합니다 — 자리에 "
+                                      f"따라 게임이 달라집니다."))
         except Exception as e:
             out.append(("?", f"길찾기 검사를 못 했습니다: {e}"))
 
+    # 유즈맵은 경기장을 일부러 봉인한다. 아래 검사는 밀리에만 쓴다.
     # 6) 유즈맵인데 트리거가 없는가
     if m["n_triggers"] == 0:
         out.append(("?", "트리거가 없습니다. 유즈맵이라면 아무 일도 일어나지 않습니다."))
@@ -304,9 +404,11 @@ def check_basics(cli: Cli, m: dict) -> list[tuple[str, str]]:
         high = sum(1 for y in range(m["height"]) for x in range(m["width"])
                    if t.elevation(x, y) >= 1)
         wpct, hpct = 100*walk/total, 100*high/total
-        out.append(("i", f"지형: 걷기 {wpct:.0f}% (공식 79%), 높은 땅 {hpct:.0f}% "
-                         f"(공식 36%), 타일 그룹 {len(groups_used)} (공식 484)"))
-        if len(groups_used) < 150 and m["n_starts"] >= 2:
+        ref = " (밀리 실측 걷기 79%, 높은 땅 36%, 그룹 504)" if classify(m) == "melee" \
+              else " (유즈 실측 그룹 150)"
+        out.append(("i", f"지형: 걷기 {wpct:.0f}%, 높은 땅 {hpct:.0f}%, "
+                         f"타일 그룹 {len(groups_used)}{ref}"))
+        if len(groups_used) < 150 and m["n_starts"] >= 2 and classify(m) == "melee":
             out.append(("?", "타일 그룹이 공식 맵의 3분의 1도 안 됩니다 — "
                              "지형이 거의 없는 벌판입니다."))
     except Exception as e:
@@ -454,6 +556,7 @@ _CLI = [None]
 def report(m: dict) -> int:
     print(f"== {m['name'] or m['file']} ==")
     print(f"  {m['width']}x{m['height']} {m['tileset']}  {m['version']}")
+    print(f"  갈래: {'밀리맵' if classify(m) == 'melee' else '유즈맵'}")
     print(f"  스타팅 {m['n_starts']}  자원덩이 {m['n_clusters']}"
           f" (미네랄 {m['n_mineral_patches']}, 가스 {m['n_geysers']})"
           f"  유닛 {m['n_units']}  트리거 {m['n_triggers']}")
@@ -466,6 +569,22 @@ def report(m: dict) -> int:
         if mark == "!!":
             problems += 1
         print(f"  [{mark:2}] {text}")
+
+    if classify(m) == "usemap":
+        print("\n-- 유즈맵 (실측 329장과 견주어) --")
+        for mark, text in check_usemap(_CLI[0], m):
+            if mark == "!!":
+                problems += 1
+            print(f"  [{mark:2}] {text}")
+        print("\n  ※ 밀리맵 잣대(대칭·종족 밸런스·스타팅 연결)는 건너뜁니다.")
+        print("     유즈맵에서 그것들은 결함이 아닙니다.")
+        print("     재미는 수로 못 잽니다. 그려 보고 돌려 보세요:")
+        print("     python3 preview.py <맵> out.png")
+        if problems:
+            print(f"\n고쳐야 할 것 {problems}개.")
+        else:
+            print("\n걸리는 것은 없습니다.")
+        return 1 if problems else 0
 
     print("\n-- 자리 밸런스 --")
     for mark, text in check_fairness(m):
@@ -502,7 +621,10 @@ def main(argv=None):
     _CLI[0] = cli
     m = measure(cli)
     if args.json:
+        m["kind"] = classify(m)
         m["basics"] = [{"mark": a, "text": b} for a, b in check_basics(cli, m)]
+        if m["kind"] == "usemap":
+            m["usemap"] = [{"mark": a, "text": b} for a, b in check_usemap(cli, m)]
         m["fairness"] = [{"mark": a, "text": b} for a, b in check_fairness(m)]
         m["race_balance"] = [{"race": a, "dir": b, "text": c}
                              for a, b, c in check_race_balance(m)]

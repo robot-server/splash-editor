@@ -725,70 +725,70 @@ def find_elevation_edge(cli: Cli, tileset_id: int, tx: int, y_from: int, y_to: i
     return None
 
 
-def place_ramp_checked(cli: Cli, tileset_id: int, x: int, edge_row: int,
-                       high_point, low_point, downward: bool = True,
-                       candidates=None, shifts=range(-5, 3)):
-    """램프를 찍고 **실제로 걸어서 통하는지** 확인한다.
+def place_ramp_checked(cli: Cli, tileset_id: int, edge: int, fixed: int,
+                       high_point, low_point, direction: str = "down",
+                       candidates=None, shifts=range(-7, 8)):
+    """램프를 찍고 **실제로 걸어서 통하는지** 확인한다. 안 되면 되돌린다.
+
+    direction 이 down/up 이면 `edge` 는 고지대가 끝나는 **줄**이고 `fixed`
+    는 가로 자리다. left/right 면 `edge` 가 **칸**이고 `fixed` 가 세로 자리다.
 
     타일 단위 "걸을 수 있는 칸이 하나라도 있는가" 로는 판정할 수 없다.
     게임은 미니타일 단위로 길을 찾으므로 그 격자에서 high_point 에서
-    low_point 까지 물길을 따라가 본다. 눈으로만 보고 "이어졌다"고 판단했다가
-    막힌 램프를 놓은 적이 있다.
-
-    edge_row 는 고지대가 끝나는 줄이다. 블록을 그 언저리에서 위아래로 밀어
-    보며 통하는 자리를 찾는다 — 절벽 두께가 지형마다 달라 한 번에 맞지 않는다.
+    low_point 까지 따라가 본다.
     """
+    horizontal = direction in ("left", "right")
     if candidates is None:
-        candidates = (ramp_candidates(tileset_id, downward) +
-                      ramp_candidates(tileset_id, not downward))
+        candidates = ramp_candidates(tileset_id, direction)
     if not candidates:
         return None
 
-    hx, hy = high_point
-    lx, ly = low_point
     info = cli.info()
     mw, mh = info["width"], info["height"]
-    # 길찾기 창은 맵 안에 물려야 한다. 넘치면 terrain show 가 요청보다
-    # 적게 돌려주어 격자가 어긋난다.
+    hx, hy = high_point
+    lx, ly = low_point
     rx0 = max(0, min(hx, lx) - 12)
-    ry0 = max(0, min(hy, ly) - 6)
-    rw = min(abs(hx - lx) + 24, mw - rx0)
-    rh = min(abs(hy - ly) + 12, mh - ry0)
+    ry0 = max(0, min(hy, ly) - 12)
+    rw = min(abs(hx - lx) + 26, mw - rx0)
+    rh = min(abs(hy - ly) + 26, mh - ry0)
 
     width = max(c[2] for c in candidates)
     height = max(c[3] for c in candidates)
 
-    # 후보가 제 오프셋을 들고 있으면 그것부터 — 전수 탐색으로 찾아 둔 값이다.
     tries = []
     for entry in candidates:
         name, base, w, h = entry[0], entry[1], entry[2], entry[3]
         own = entry[4] if len(entry) > 4 else None
         if own is not None:
-            tries.append((edge_row + own, name, base, w, h))
+            tries.append((edge + own, name, base, w, h))
     for shift in shifts:
         for entry in candidates:
-            name, base, w, h = entry[0], entry[1], entry[2], entry[3]
-            tries.append((edge_row + shift, name, base, w, h))
+            tries.append((edge + shift, entry[0], entry[1], entry[2], entry[3]))
 
     seen = set()
-    for ry, name, base, w, h in tries:
-        if ry < 0 or (ry, base, w, h) in seen:
+    for pos, name, base, w, h in tries:
+        if horizontal:
+            x, y = pos, fixed
+        else:
+            x, y = fixed, pos
+        if x < 0 or y < 0 or x + w > mw or y + h > mh:
             continue
-        seen.add((ry, base, w, h))
-        before = cli.tiles(x, ry, width, height)
-        if True:
-            try:
-                place_ramp(cli, x, ry, base, w, h)
-            except CliError:
-                continue
-            grid = walk_grid(cli, tileset_id, rx0, ry0, rw, rh)
-            a = nearest_walkable(grid, (hx - rx0) * 4 + 2, (hy - ry0) * 4 + 2)
-            b = nearest_walkable(grid, (lx - rx0) * 4 + 2, (ly - ry0) * 4 + 2)
-            if a and b and walk_reachable(grid, a, b):
-                return base, ry
-            cli.paste_tiles(x, ry, before)      # 되돌린다
-    return None
+        if (x, y, base, w, h) in seen:
+            continue
+        seen.add((x, y, base, w, h))
+        before = cli.tiles(x, y, width, height)
+        try:
+            place_ramp(cli, x, y, base, w, h)
+        except CliError:
+            continue
+        grid = walk_grid(cli, tileset_id, rx0, ry0, rw, rh)
+        a_ = nearest_walkable(grid, (hx - rx0) * 4 + 2, (hy - ry0) * 4 + 2)
+        b_ = nearest_walkable(grid, (lx - rx0) * 4 + 2, (ly - ry0) * 4 + 2)
+        if a_ and b_ and walk_reachable(grid, a_, b_):
+            return base, x, y
+        cli.paste_tiles(x, y, before)      # 되돌린다
 
+    return None
 
 
 # --- 미니타일 단위 길찾기 ---
@@ -798,16 +798,33 @@ def place_ramp_checked(cli: Cli, tileset_id: int, x: int, edge_row: int,
 # 없다 — 그 잣대로 램프가 이어졌다고 잘못 판단한 적이 있다.
 
 def walk_grid(cli: Cli, tileset_id: int, x: int, y: int, w: int, h: int):
-    """구역을 미니타일 격자(4배 해상도)의 걷기 여부로 편다."""
+    """구역을 미니타일 격자(4배 해상도)의 걷기 여부로 편다.
+
+    **타일마다** 걷기 비트를 본다. 그룹 단위로 보면 안 된다 — 그룹
+    하나에 변종이 열여섯인데 램프는 변종마다 걷기 비트가 다르다.
+    그룹 비트를 쓰면 램프가 통째로 막힌 것으로 잡혀, 멀쩡한 맵이
+    "스타팅이 갇혔다" 고 나온다 (실제로 그렇게 틀렸었다).
+    """
     t = Terrain(cli, x, y, w, h, tileset_id)
+    per_tile = tileset_tiles(cli, tileset_id)
     grid = [[0] * (w * 4) for _ in range(h * 4)]
     for ty in range(h):
+        row = t.tiles[ty]
         for tx in range(w):
-            mask = t.groups.get(t.tiles[ty][tx] >> 4, (0, 0, 0, 0, 0, 0))[5]
+            v = row[tx]
+            p = per_tile.get(v)
+            if p is not None:
+                mask = p[4]
+            else:                       # 표에 없는 타일은 그룹으로 물러선다
+                mask = t.groups.get(v >> 4, (0, 0, 0, 0, 0, 0))[5]
+            if not mask:
+                continue
+            base = ty * 4
             for my in range(4):
+                g = grid[base + my]
                 for mx in range(4):
                     if mask & (1 << (my * 4 + mx)):
-                        grid[ty * 4 + my][tx * 4 + mx] = 1
+                        g[tx * 4 + mx] = 1
     return grid
 
 
