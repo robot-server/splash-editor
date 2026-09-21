@@ -80,6 +80,11 @@ python3 $S/verify_map.py out.scx
 python3 $S/preview.py out.scx look.png
 ```
 
+> **밀리맵 지형 자동 생성은 아직 안 된다.** 세 번 시도해 세 번 다
+> 슬롭이 나왔다. 왜 그런지와 다음에 할 것은
+> [references/why-procedural-fails.md](references/why-procedural-fails.md)
+> 에 있다. 억지로 내놓지 말고 사용자에게 사실대로 말한다.
+
 만들어지는 것은 **뼈대**다. 가운데가 비어 있으니 지형을 얹어 완성한다.
 [references/melee-terrain.md](references/melee-terrain.md) 에 ISOM 브러시·
 램프·대칭을 놓는 법이 있다. 특히:
@@ -193,6 +198,9 @@ Space 밀리 **0개**에서 Badlands 밀리 **208개**까지 벌어진다. 전�
   밸런스, 밀리 182장 전수 실측값
 - [references/melee-terrain.md](references/melee-terrain.md) — ISOM·램프·
   대칭을 실제로 놓는 법
+- [references/why-procedural-fails.md](references/why-procedural-fails.md) —
+  **밀리맵 지형을 생성하려 든다면 먼저 읽을 것.** 세 번 실패한 기록과
+  하지 말 것(WFC·패치 점수), 할 것(기능 그래프부터)
 - [references/usemap-dopamine.md](references/usemap-dopamine.md) — 인기
   유즈맵 329장 전수 실측, 재미 구조 설계
 - [references/trigger-recipes.md](references/trigger-recipes.md) — 트리거
