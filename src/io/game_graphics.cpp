@@ -22,6 +22,32 @@
 #include <vector>
 
 namespace splash::io {
+namespace {
+
+/// 전역 난수를 잠깐 고정했다가 되돌린다.
+///
+/// MappingCore 는 방향이 정해지지 않은 유닛을 그릴 때 std::rand 를 쓴다.
+/// 같은 유닛이 늘 같은 방향을 보게 하려면 씨앗을 고정해야 하는데, 전역
+/// 난수를 그대로 두고 나오면 **지형 생성이 그 씨앗을 물려받는다** —
+/// ISOM 솔버도 같은 std::rand 를 쓰기 때문이다. 그러면 맵 전체가 한
+/// 패턴으로 깔려 바둑판처럼 보인다. 그리고 나서는 되돌려 놓는다.
+class ScopedRandSeed
+{
+public:
+    explicit ScopedRandSeed(unsigned seed) { std::srand(seed); }
+    ~ScopedRandSeed()
+    {
+        // 원래 상태는 읽을 수 없으므로, 흐르는 값으로 다시 심어 둔다.
+        static unsigned counter = 0x9E3779B9u;
+        counter = counter * 1664525u + 1013904223u;
+        std::srand(counter);
+    }
+    ScopedRandSeed(const ScopedRandSeed &) = delete;
+    ScopedRandSeed & operator=(const ScopedRandSeed &) = delete;
+};
+
+} // namespace
+
 
 struct GameGraphics::Impl
 {
@@ -1772,8 +1798,9 @@ UnitImage GameGraphics::renderUnit(std::uint16_t unitType,
         // 방향이 달라져서, 유닛을 하나 놓을 때마다 화면에 있는 유닛이 전부
         // 돌아간다. 씨앗을 유닛 종류·소유자로 고정해 같은 유닛은 언제나
         // 같은 방향으로 그린다.
-        std::srand(static_cast<unsigned>(unitType) * 2654435761u +
-                   static_cast<unsigned>(owner));
+        const ScopedRandSeed facingSeed(
+            static_cast<unsigned>(unitType) * 2654435761u +
+            static_cast<unsigned>(owner));
 
         MapActor actor {};
         impl_->anim->initializeUnitActor(actor, /*isClipboard*/ false, /*unitIndex*/ 0,
@@ -1827,8 +1854,9 @@ UnitImage GameGraphics::renderSprite(std::uint16_t spriteType,
             : Chk::Sprite::toSpriteUnitFlags(0);
 
         // 유닛과 같은 이유로 씨앗을 고정한다 (아래 renderUnit 의 설명 참고).
-        std::srand(static_cast<unsigned>(spriteType) * 2654435761u +
-                   static_cast<unsigned>(owner));
+        const ScopedRandSeed facingSeed(
+            static_cast<unsigned>(spriteType) * 2654435761u +
+            static_cast<unsigned>(owner));
 
         MapActor actor {};
         impl_->anim->initializeSpriteActor(actor, /*isClipboard*/ false, /*spriteIndex*/ 0,

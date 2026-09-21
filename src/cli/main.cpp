@@ -10,7 +10,10 @@
 #include "io/game_graphics.h"
 #include "io/map_archive.h"
 
+#include <cstdlib>
+#include <ctime>
 #include <filesystem>
+#include <unistd.h>
 #include <set>
 #include <fstream>
 #include <iomanip>
@@ -61,6 +64,7 @@ int usage(const char * argv0)
         "  " << argv0 << " has-asset <설치폴더> <아카이브경로>\n"
         "  " << argv0 << " icon-histogram <설치폴더> <아이콘번호>\n"
         "  " << argv0 << " tileset-groups <설치폴더> <타일셋>\n"
+        "  " << argv0 << " tileset-tiles <설치폴더> <타일셋>\n"
         "  " << argv0 << " tileset-ramps <설치폴더> <타일셋>\n"
         "  " << argv0 << " find-creep <설치폴더> <타일셋>\n"
         "  " << argv0 << " creep-kin <설치폴더> <타일셋> <메가타일> <개수>\n"
@@ -1096,6 +1100,43 @@ int cmdTilesetRamps(const std::string & installPath, std::uint16_t tilesetId)
 /// 지형을 수로 재려면 "이 타일이 고지대인가, 걸을 수 있는가" 를 알아야
 /// 하는데 타일 값만으로는 알 수 없다. 맵의 지형을 훑을 때 이 표를 옆에
 /// 놓고 타일 값 / 16 으로 찾아본다.
+/// 타일 하나하나의 성질을 낸다 (그룹이 아니라 변종 단위).
+///
+/// 같은 그룹 안의 변종들은 같은 지형의 다른 그림이다. 그림만 바꾸려면
+/// 높이·걷기·짓기가 **똑같은** 변종끼리만 바꿔치기해야 한다. 그러려면
+/// 변종마다의 값이 있어야 한다.
+int cmdTilesetTiles(const std::string & installPath, std::uint16_t tilesetId)
+{
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const auto info = graphics.describeTileset(tilesetId);
+    std::cout << "# 타일 높이 걷기 짓기 램프 걷기비트16진\n";
+    std::size_t emitted = 0;
+    for (std::size_t group = 0; group < info.tileGroupCount; ++group)
+    {
+        for (std::uint16_t sub = 0; sub < 16; ++sub)
+        {
+            const auto tileId = static_cast<std::uint16_t>(group * 16 + sub);
+            // 메가타일이 배정되지 않은 칸은 건너뛴다 — 찍으면 검게 나온다.
+            if (graphics.tileMegaTile(tilesetId, tileId) == 0 && sub != 0)
+                continue;
+            const auto t = graphics.tileTerrain(tilesetId, tileId);
+            std::cout << tileId << " " << t.elevation << " " << (t.walkable ? 1 : 0)
+                      << " " << (t.buildable ? 1 : 0) << " " << (t.ramp ? 1 : 0)
+                      << " " << std::hex << t.walkMask << std::dec << "\n";
+            ++emitted;
+        }
+    }
+    std::cout << "# 타일셋 " << tilesetId << " 타일 " << emitted << "개\n";
+    return 0;
+}
+
 int cmdTilesetGroups(const std::string & installPath, std::uint16_t tilesetId)
 {
     splash::io::GameGraphics graphics;
@@ -2133,6 +2174,16 @@ int briefingArgsCommand(const std::string & mapPath, const std::string & install
 
 int main(int argc, char ** argv)
 {
+    // MappingCore 의 ISOM 솔버는 같은 지형을 채울 때 어느 변종을 쓸지
+    // std::rand 로 고른다. 그런데 아무도 씨앗을 심지 않아서, 명령을 돌릴
+    // 때마다 똑같은 난수열이 나온다 — 지형이 늘 같은 무늬로 깔린다.
+    // 여기서 한 번 심는다. 같은 맵을 다시 만들고 싶으면 SPLASH_SEED 를 준다.
+    if (const char * seedText = std::getenv("SPLASH_SEED"))
+        std::srand(static_cast<unsigned>(std::strtoul(seedText, nullptr, 10)));
+    else
+        std::srand(static_cast<unsigned>(std::time(nullptr)) ^
+                   (static_cast<unsigned>(::getpid()) << 16));
+
     const std::vector<std::string> args(argv + 1, argv + argc);
     if (args.empty())
         return usage(argv[0]);
@@ -2207,6 +2258,12 @@ int main(int argc, char ** argv)
     if (command == "find-creep" && args.size() == 3)
     {
         try { return cmdFindCreep(args[1], static_cast<std::uint16_t>(std::stoul(args[2]))); }
+        catch (const std::exception &) { return usage(argv[0]); }
+    }
+
+    if (command == "tileset-tiles" && args.size() == 3)
+    {
+        try { return cmdTilesetTiles(args[1], static_cast<std::uint16_t>(std::stoul(args[2]))); }
         catch (const std::exception &) { return usage(argv[0]); }
     }
 
