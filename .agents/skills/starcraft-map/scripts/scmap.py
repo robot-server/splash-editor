@@ -451,6 +451,22 @@ def ramp_rows(base: int, width: int, height: int, first_row: int = 0):
             for r in range(first_row, first_row + height)]
 
 
+def ramp_tiles_valid(cli: Cli, tileset_id: int, base: int, w: int, h: int) -> bool:
+    """램프 블록의 타일이 **타일셋에 다 있는지** 본다.
+
+    램프는 `(기준그룹+r)*16 + (기준서브+c)` 로 펼친 직사각형인데, 그룹
+    마다 있는 변종 수가 다르다. 없는 변종을 찍으면 화면에 검은 구멍이
+    난다. 길찾기만으로는 못 걸러진다 — 반드시 먼저 이걸 본다.
+    """
+    tiles = tileset_tiles(cli, tileset_id)
+    g0, s0 = base >> 4, base & 15
+    for r in range(h):
+        for c in range(w):
+            if ((g0 + r) * 16 + (s0 + c)) not in tiles:
+                return False
+    return True
+
+
 def place_ramp(cli: Cli, tile_x: int, tile_y: int, base: int,
                width: int = 6, height: int = 6):
     """램프를 찍는다. (tile_x, tile_y) 는 램프 블록의 왼쪽 위.
@@ -756,6 +772,13 @@ def place_ramp_checked(cli: Cli, tileset_id: int, edge: int, fixed: int,
     height = max(c[3] for c in candidates)
 
     tries = []
+    # 타일이 실제로 다 있는 후보만 남긴다. 없는 변종을 찍으면 화면에
+    # 검은 구멍이 나는데, 길찾기만으로는 그걸 못 걸러낸다.
+    candidates = [c for c in candidates
+                  if ramp_tiles_valid(cli, tileset_id, c[1], c[2], c[3])]
+    if not candidates:
+        return None
+
     for entry in candidates:
         name, base, w, h = entry[0], entry[1], entry[2], entry[3]
         own = entry[4] if len(entry) > 4 else None
@@ -813,10 +836,12 @@ def walk_grid(cli: Cli, tileset_id: int, x: int, y: int, w: int, h: int):
         for tx in range(w):
             v = row[tx]
             p = per_tile.get(v)
-            if p is not None:
-                mask = p[4]
-            else:                       # 표에 없는 타일은 그룹으로 물러선다
-                mask = t.groups.get(v >> 4, (0, 0, 0, 0, 0, 0))[5]
+            if p is None:
+                # **표에 없는 타일은 깨진 타일이다.** 화면에 검게 나오고
+                # 게임도 제대로 다루지 못한다. 그룹 비트로 물러서면
+                # 무효한 램프가 "길찾기 통과" 로 나온다 — 실제로 그랬다.
+                continue
+            mask = p[4]
             if not mask:
                 continue
             base = ty * 4
