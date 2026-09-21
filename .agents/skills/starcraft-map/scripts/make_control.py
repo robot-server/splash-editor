@@ -64,6 +64,8 @@ def build_triggers(players, goal, respawn_s, arena_names):
     # **하이퍼 트리거를 맨 앞에.** 없으면 트리거가 1초에 한 번만 돌아
     # 비콘·스폰·판정이 모두 한 박자 늦는다. 유즈맵에 거의 필수다.
     T.extend(scmap.hyper_triggers("Player 8"))
+    # 들어오지 않은 자리를 치운다 (빈 주머니의 유닛이 남지 않게)
+    T.extend(scmap.absent_player_cleanup(players, "Player 8"))
     HUMANS = ",".join(f'"Player {p}"' for p in range(1, players + 1))
 
     add(f'''Trigger({HUMANS}){{
@@ -101,7 +103,8 @@ Actions:
 \tCenter View("{a} Spawn");
 \tPreserve Trigger();
 }}''')
-        # 병력 고르기 — 비콘마다 다른 부대
+        # 병력 고르기 — 비콘마다 다른 부대.
+        # **산 뒤에 비콘 밖으로 밀어낸다** (하이퍼와 맞물린 연사 방지).
         for k, (unit, n, label) in enumerate(SQUADS):
             add(f'''Trigger("{p}"){{
 Conditions:
@@ -111,6 +114,7 @@ Conditions:
 Actions:
 \tSet Resources("{p}", Subtract, 100, ore);
 \tCreate Unit("{p}", "{unit}", {n}, "{a} Gate");
+\tMove Unit("{p}", "Men", All, "{a} Buy{k + 1}", "{a} Spawn");
 \tDisplay Text Message(Always Display, "\\x03{label} 구입! \\x02-100");
 \tPlay WAV("sound\\\\Misc\\\\Button.wav", 300);
 \tPreserve Trigger();

@@ -66,6 +66,8 @@ def build_triggers(players, questions, lives, secs):
 
     # 하이퍼 트리거 — 없으면 발판 판정이 한 박자 늦는다
     T.extend(scmap.hyper_triggers("Player 8"))
+    # 들어오지 않은 자리를 치운다 (빈 자리 시민이 발판에 남지 않게)
+    T.extend(scmap.absent_player_cleanup(players, "Player 8"))
 
     add(f'''Trigger({HUMANS}){{
 Conditions:

@@ -55,6 +55,8 @@ def build_triggers(players, nzones, enemy, boss_p, town_h):
     # **하이퍼 트리거를 맨 앞에.** 없으면 트리거가 1초에 한 번만 돌아
     # 비콘·스폰·판정이 모두 한 박자 늦는다. 유즈맵에 거의 필수다.
     T.extend(scmap.hyper_triggers(enemy))
+    # 들어오지 않은 자리를 치운다
+    T.extend(scmap.absent_player_cleanup(players, enemy))
     HUMANS = ",".join(f'"Player {p}"' for p in range(1, players + 1))
 
     add(f'''Trigger({HUMANS}){{
@@ -160,6 +162,7 @@ Conditions:
 Actions:
 \tSet Resources("Player {p}", Subtract, {HEAL_COST}, ore);
 \tModify Unit Hit Points("Player {p}", "Any unit", 12, 100, "Zone{z + 1}");
+\tMove Unit("Player {p}", "Men", All, "Heal{z + 1}", "Zone{z + 1}");
 \tDisplay Text Message(Always Display, "\\x03체력을 채웠습니다. \\x02-{HEAL_COST}");
 \tPlay WAV("sound\\\\Misc\\\\Button.wav", 300);
 \tPreserve Trigger();
@@ -180,7 +183,8 @@ Actions:
 \tCenter View("P{p} Home");
 \tPreserve Trigger();
 }}''')
-        # 마을 상점 — 비콘마다 다른 강화
+        # 마을 상점 — 비콘마다 다른 강화.
+        # **산 뒤에 비콘 밖으로 밀어낸다** (하이퍼와 맞물린 연사 방지).
         for k, (bld, label, cost) in enumerate(SHOPS):
             add(f'''Trigger("Player {p}"){{
 Conditions:
@@ -190,6 +194,7 @@ Conditions:
 Actions:
 \tSet Resources("Player {p}", Subtract, {cost}, ore);
 \tModify Unit Hit Points("Player {p}", "{HERO}", 1, 100, "Shop{k + 1}");
+\tMove Unit("Player {p}", "Men", All, "Shop{k + 1}", "P{p} Home");
 \tCreate Unit("Player {p}", "Terran Marine", 2, "P{p} Home");
 \tSet Score("Player {p}", Add, 100, Custom);
 \tDisplay Text Message(Always Display, "\\x03{label} 강화! \\x02-{cost}");

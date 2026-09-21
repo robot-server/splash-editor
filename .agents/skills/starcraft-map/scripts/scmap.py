@@ -1159,3 +1159,50 @@ def kill_bounty(player: str, amount: int, per_score: int = 50,
 
 
 TRIGGER_SEP = "\n\n//-----------------------------------------------------------------//\n\n"
+
+
+# 있는지 표시하는 데 쓰는 유닛. 스펠이라 맵에 놓을 수 없고 실제로 죽는
+# 일도 없어, 죽음 수가 순수한 변수가 된다.
+PRESENCE_UNIT = "Disruption Web"
+
+
+def absent_player_cleanup(humans: int, system_owner: str,
+                          min_players: int = 1, grace: int = 3) -> list[str]:
+    """**들어오지 않은 자리를 치운다.**
+
+    유즈맵은 슬롯이 다 차지 않는 게 보통이다. 6인 맵에 넷이 들어오면
+    빈 두 자리의 유닛이 필드에 그대로 남는다. 적이 그걸 때리러 가고,
+    전멸 판정이 영영 참이 되지 않아 게임이 멈춘다.
+
+    `Always()` 를 건 `"All players"` 트리거는 **실제로 들어온 사람에게만**
+    돈다. 그걸로 표시를 찍고, 몇 초 뒤 표시가 없는 자리를 치운다.
+    실측 대표 맵 일곱 장 중 세 장이 이 검사를 한다.
+
+    `min_players` 를 1보다 크게 주면 인원 미달일 때 알리고 끝낸다.
+    """
+    out = ['Trigger("All players"){\n'
+           'Conditions:\n\tAlways();\n\n'
+           'Actions:\n'
+           f'\tSet Deaths("Current Player", "{PRESENCE_UNIT}", Set To, 1);\n'
+           '\tPreserve Trigger();\n}']
+    for p in range(1, humans + 1):
+        out.append(
+            f'Trigger("{system_owner}"){{\n'
+            'Conditions:\n'
+            f'\tElapsed Time(At least, {grace});\n'
+            f'\tDeaths("Player {p}", "{PRESENCE_UNIT}", Exactly, 0);\n\n'
+            'Actions:\n'
+            f'\tRemove Unit("Player {p}", "Any unit");\n'
+            '\tPreserve Trigger();\n}')
+    if min_players > 1:
+        who = ",".join(f'"Player {p}"' for p in range(1, humans + 1))
+        msg = (f"\\x06사람이 모자랍니다.\\x02 {min_players}명 이상 필요합니다.")
+        out.append(
+            f'Trigger({who}){{\n'
+            'Conditions:\n'
+            f'\tElapsed Time(At least, {grace + 2});\n'
+            f'\tDeaths("Player {min_players}", "{PRESENCE_UNIT}", Exactly, 0);\n\n'
+            'Actions:\n'
+            f'\tDisplay Text Message(Always Display, "{msg}");\n'
+            '\tDefeat();\n}')
+    return out

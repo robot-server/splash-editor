@@ -115,6 +115,9 @@ def build_triggers(players, waves, enemy, boss_p, arena_names):
     # 없으면 트리거가 약 1.26초에 한 번만 돌아 비콘·스폰·판정이 모두
     # 한 박자 늦는다. 사람에게 걸면 그 사람의 다른 Wait 가 먹통이 된다.
     T.extend(scmap.hyper_triggers(enemy))
+    # 들어오지 않은 자리를 치운다. 안 치우면 빈 자리 유닛이 필드에
+    # 남아 적이 그걸 때리러 가고 전멸 판정이 영영 참이 안 된다.
+    T.extend(scmap.absent_player_cleanup(players, enemy))
     HUMANS = [f"Player {p}" for p in range(1, players + 1)]
 
     # --- 시작 ---
@@ -257,7 +260,9 @@ Actions:
 \tDisplay Text Message(Always Display, "\\x06목숨이 다했습니다.");
 \tDefeat();
 }}''')
-        # 업그레이드 상점 — 비콘을 밟으면 산다 (실측: 유즈맵 절반 이상이 판다)
+        # 업그레이드 상점 — 비콘을 밟으면 산다.
+        # **산 뒤에 비콘 밖으로 밀어낸다.** 안 밀어내면 하이퍼 트리거와
+        # 맞물려 서 있는 동안 매 프레임 사들여 돈이 순식간에 증발한다.
         for k, (bld, label) in enumerate(UPGRADE_SHOPS):
             add(f'''Trigger("{p}"){{
 Conditions:
@@ -267,6 +272,7 @@ Conditions:
 Actions:
 \tSet Resources("{p}", Subtract, 150, ore);
 \tModify Unit Hit Points("{p}", "Any unit", 60, 110, "{a} Center");
+\tMove Unit("{p}", "Men", All, "{a} Shop{k + 1}", "{a} Center");
 \tSet Score("{p}", Add, 50, Custom);
 \tDisplay Text Message(Always Display, "\\x03{label} 강화! \\x02-150");
 \tPlay WAV("sound\\\\Misc\\\\Button.wav", 300);
