@@ -202,6 +202,10 @@ public:
         /// 이 유닛이 **채워 주는** 인구수. 오버로드 영웅 이그드라실처럼
         /// 일반과 크게 다른 것이 있다. supplyRequired 와 헷갈리지 않는다.
         std::uint8_t supplyProvided = 0;
+        /// Score 트리거가 쓰는 점수. 만들면 buildScore, 부수면 destroyScore
+        /// 가 쌓인다. 리더보드로 안 보여 줘도 자동으로 쌓인다.
+        std::uint16_t buildScore = 0;
+        std::uint16_t destroyScore = 0;
         bool hero = false;        ///< units.dat 의 Hero 깃발
         bool invincible = false;
         bool autoAttackAndMove = false;  ///< 스스로 무는가

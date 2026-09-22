@@ -1411,6 +1411,8 @@ int cmdUnitStats(const std::string & installPath, bool json)
                       << ", \"build_time\": " << d.buildTime
                       << ", \"supply\": " << int(d.supplyRequired)
                       << ", \"supply_provided\": " << int(d.supplyProvided)
+                      << ", \"build_score\": " << d.buildScore
+                      << ", \"destroy_score\": " << d.destroyScore
                       << ", \"ground_dmg_type\": " << int(d.groundDamageType)
                       << ", \"air_dmg_type\": " << int(d.airDamageType)
                       << ", \"ground_dmg_upgrade\": " << int(d.groundDamageUpgrade)

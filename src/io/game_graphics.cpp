@@ -559,6 +559,8 @@ GameGraphics::UnitStats GameGraphics::unitStats(std::uint16_t unitType) const
         out.buildTime = d.buildTime;
         out.supplyRequired = d.supplyRequired;
         out.supplyProvided = d.supplyProvided;
+        out.buildScore = d.buildScore;
+        out.destroyScore = d.destroyScore;
         out.aiCompIdle = d.compAIIdle;
         out.aiHumanIdle = d.humanAIIdle;
         out.aiReturnToIdle = d.returntoIdle;

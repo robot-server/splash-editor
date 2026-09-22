@@ -9,6 +9,7 @@
 | [damage.md](damage.md) | 공격 형태 × 덩치. 적힌 피해가 그대로 안 들어간다 |
 | [repair-heal.md](repair-heal.md) | 누가 누구를 살리나. 생체·기계와 편 가르기 |
 | [quirks.md](quirks.md) | 유닛별 예외. 트리거가 안 먹는 유닛, 튕기는 조합 |
+| [scores.md](scores.md) | 리더보드가 세는 점수. 만들 때와 부술 때가 다르다 |
 
 ## 한 줄 요약
 
