@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 import argparse
+import collections
 import json
 import math
 import os
@@ -367,11 +368,22 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
     # 2) 사람마다 시야가 열려 있는가
     revealer_owners = {u["owner"] for u in cli.units()
                        if u["type"] == MAP_REVEALER}
+    # 시야를 여는 길은 둘이다 — 그 플레이어 소유의 Map Revealer 를 깔거나,
+    # `Run AI Script("Turn ON Shared Vision …")` 로 시야 가진 쪽과 나누거나.
+    # 실측 563장: 리빌러 57% · AI 스크립트 72% · 둘 다 없는 맵 10%.
+    # 한쪽만 보고 잡으면 멀쩡한 맵을 절반 가까이 걸러낸다.
+    # 시야 공유 AI 스크립트는 네 글자 코드다: `+Vi<번호>` 가 켜기,
+    # `-Vi<번호>` 가 끄기. 실제 맵은 이 꼴로 쓴다 — "Vision" 이라는
+    # 글자를 찾으면 하나도 못 잡는다.
+    shares_vision = bool(re.search(r'Run AI Script\w*\(\s*"[+-]Vi', text))
     missing = [p for p in humans if p not in revealer_owners]
-    if missing:
-        out.append(("!!", f"{missing} 번 플레이어에게 Map Revealer 가 없습니다. "
-                          f"그 사람 화면은 깜깜합니다. 시야 공유만으로는 맵이 "
-                          f"밝아지지 않습니다."))
+    if missing and not shares_vision:
+        out.append(("!!", f"{missing} 번 플레이어에게 Map Revealer 도 없고 "
+                          f"시야를 나누는 AI 스크립트도 없습니다. 그 사람 화면은 "
+                          f"깜깜합니다 — 세력 시야 공유만으로는 맵이 안 밝아집니다."))
+    elif missing:
+        out.append(("i", f"{missing} 번은 Map Revealer 가 없지만 AI 스크립트로 "
+                         f"시야를 나눕니다."))
 
     # 3) 하이퍼 트리거의 주인이 **사람**이면 그 사람의 다른 Wait 가 먹통.
     #    사람 목록은 슬롯에서 읽는다 — 번호로 짐작하면 안 된다
@@ -386,12 +398,10 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
                                   f"먹통이 됩니다 — 컴퓨터에게 거세요."))
                 break
 
-    # 4) 승패에 Preserve 를 붙이면 매 틱 재발동한다
-    n = sum(1 for b in blocks
-            if ("Victory();" in b or "Defeat();" in b) and "Preserve Trigger" in b)
-    if n:
-        out.append(("!!", f"승리·패배 트리거 {n}개에 Preserve Trigger 가 붙어 "
-                          f"있습니다. 매 틱 재발동해 메시지가 도배됩니다."))
+    # 4) (뺐다) 승패에 Preserve 를 붙이는 것은 버그가 아니다.
+    #    카페 강좌 확인: Defeat 은 "End scenario in defeat for current
+    #    player" 라 그 플레이어의 시나리오가 끝나고 트리거가 다시 돌지
+    #    않는다. 실제 인기 맵 30장 중 7장이 그렇게 쓴다. 거짓 양성이었다.
 
     # 5) Modify Unit ... 의 인자 차례 — **퍼센트가 먼저**다.
     #    실측에서 개수 자리는 거의 언제나 0(=전부)이다:
@@ -438,7 +448,7 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
                 and not locked):
             n += 1
     if n:
-        out.append(("!!", f"누적 조건({{Kill·Deaths At least}})으로 보상을 주는 "
+        out.append(("?", f"누적 조건({{Kill·Deaths At least}})으로 보상을 주는 "
                           f"트리거 {n}개에 카운터를 깎는 동작이 없습니다. "
                           f"첫 성공 뒤로 매 주기 보상이 들어옵니다."))
 
@@ -457,6 +467,104 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
         out.append(("!!", f"안내 트리거 {n}개를 컴퓨터만 실행합니다. "
                           f"Display Text Message 는 그 트리거를 실행하는 "
                           f"플레이어에게만 보입니다 — 아무도 못 봅니다."))
+
+    # 9) **초기화하지 않은 카운터로 지는가.**
+    #    `Deaths(카운터, Exactly, 0) -> Defeat` 인데 그 카운터를 어디서도
+    #    `Set To` 로 찍지 않으면, 죽음 수는 처음에 0이므로 **시작하자마자
+    #    진다.** 검사기를 통과하면서 0초에 지는 맵을 실제로 받았다.
+    for blk in blocks:
+        head = blk.split("Actions:")[0]
+        body = blk.split("Actions:")[-1]
+        if "Defeat();" not in body and "Victory();" not in body:
+            continue
+        for mm in re.finditer(r'Deaths\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,'
+                              r'\s*(?:Exactly|At most)\s*,\s*0\s*\)', head):
+            counter = mm.group(2)
+            if not re.search(r'Set Deaths\([^)]*"' + re.escape(counter) +
+                             r'"[^)]*Set To,\s*[1-9]', text):
+                out.append(("!!", f'"{counter}" 죽음 수가 0이면 지는데, 그 값을 '
+                                  f'어디서도 Set To 로 찍지 않습니다. 죽음 수는 '
+                                  f'처음에 0이므로 **시작하자마자 집니다.**'))
+                break
+
+    # 10) **카운터로 쓰는 유닛이 맵에 실제로 있는가.**
+    #     죽음 수를 변수로 쓰려면 그 유닛이 실제로 죽는 일이 없어야 한다.
+    #     플레이어가 쓰는 유닛을 카운터로 삼으면 그게 죽을 때마다 값이
+    #     틀어진다 — 목숨 카운터를 마린으로 잡아 마린이 죽으면 목숨이
+    #     늘어나는 맵을 실제로 받았다.
+    placed = collections.Counter()
+    for u in cli.units():
+        placed[u.get("name") or str(u["type"])] += 1
+    used_as_counter = set(re.findall(r'Set Deaths\(\s*"[^"]+"\s*,\s*"([^"]+)"', text))
+    dirty = sorted(c for c in used_as_counter if placed.get(c))
+    if dirty:
+        out.append(("!!", f"죽음 수 카운터로 쓰는 유닛이 맵에 배치되어 있습니다: "
+                          f"{dirty[:3]}. 그 유닛이 죽을 때마다 값이 틀어집니다. "
+                          f"놓을 수 없는 스펠류(Dark Swarm · Disruption Web · "
+                          f"Scanner Sweep)를 쓰세요."))
+
+    # 11) **잠금이 글자만 있고 실제로 안 읽히는가.**
+    #     동작이 스위치나 죽음 수를 찍어도, 같은 트리거의 조건이 그것을
+    #     읽지 않으면 잠금이 아니다. 글자만 보고 통과시킨 적이 있다.
+    n = 0
+    for blk in blocks:
+        head = blk.split("Actions:")[0]
+        body = blk.split("Actions:")[-1]
+        if "Preserve Trigger" not in blk:
+            continue
+        if not re.search(r'Set (Resources|Score)\([^)]*Add', body):
+            continue
+        if not re.search(r'\b(Bring|Accumulate|Kill|Deaths)\(', head):
+            continue
+        # 동작이 찍는 잠금
+        written = set(re.findall(r'Set Switch\(\s*"([^"]+)"', body))
+        written |= set(re.findall(r'Set Deaths\(\s*"[^"]+"\s*,\s*"([^"]+)"[^)]*Set To', body))
+        # 조건이 읽는 것
+        readd = set(re.findall(r'Switch\(\s*"([^"]+)"', head))
+        readd |= set(re.findall(r'Deaths\(\s*"[^"]+"\s*,\s*"([^"]+)"', head))
+        consumed = "Subtract" in body or "Move Unit" in body or "Remove Unit" in body
+        if not consumed and not (written & readd):
+            n += 1
+    if n:
+        out.append(("?", f"보상 트리거 {n}개에 같은 트리거 안에서 도는 잠금이 "
+                         f"보이지 않습니다. 다른 트리거가 잠글 수도 있으니 "
+                         f"확인만 하세요 — 잠금이 정말 없으면 매 주기 들어옵니다."))
+
+    # 12) **유닛을 통째로 지우면서 목숨은 하나만 깎는가.**
+    for blk in blocks:
+        body = blk.split("Actions:")[-1]
+        if (re.search(r'Remove Unit At Location\([^)]*,\s*All\s*,', body)
+                and re.search(r'Set Deaths\([^)]*Subtract,\s*1\s*\)', body)):
+            out.append(("!!", "새어 나간 유닛을 All 로 통째 지우면서 목숨은 "
+                              "하나만 깎습니다. 다섯이 새어도 목숨 하나입니다 — "
+                              "한 기씩 지우세요."))
+            break
+
+    # 13) **매 프레임 안내 도배.**
+    n = 0
+    for blk in blocks:
+        head = blk.split("Actions:")[0]
+        body = blk.split("Actions:")[-1]
+        if ("Preserve Trigger" not in blk
+                or "Display Text Message" not in body):
+            continue
+        if re.search(r'\b(Switch|Countdown Timer)\(', head):
+            continue
+        written = set(re.findall(r'Set Switch\(\s*"([^"]+)"', body))
+        written |= set(re.findall(r'Set Deaths\(\s*"[^"]+"\s*,\s*"([^"]+)"[^)]*Set To', body))
+        readd = set(re.findall(r'Deaths\(\s*"[^"]+"\s*,\s*"([^"]+)"', head))
+        readd |= set(re.findall(r'Switch\(\s*"([^"]+)"', head))
+        if not (written & readd) and "Move Unit" not in body and "Remove" not in body:
+            n += 1
+    if n >= 3:
+        out.append(("?", f"잠금 없이 되풀이되는 안내 트리거가 {n}개입니다. "
+                         f"조건이 한동안 계속 참이면 매 프레임 도배됩니다."))
+
+    # 14) **빈 슬롯 정리가 있는가.**
+    if not re.search(r'Remove Unit\(\s*"Player \d+"\s*,\s*"Any unit"', text):
+        out.append(("?", "들어오지 않은 자리를 치우는 트리거가 없습니다. "
+                         "슬롯이 다 안 차면 빈 자리 유닛이 필드에 남아 "
+                         "전멸 판정이 영영 참이 되지 않습니다."))
 
     if not out:
         out.append(("ok", "유즈맵 바닥 검사를 모두 통과했습니다."))
