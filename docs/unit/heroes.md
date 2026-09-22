@@ -133,11 +133,14 @@ python3 $S/measure_heroes.py                   # 영웅 ↔ 일반 짝 비교
 | 무기 | 쓰는 유닛 |
 | --- | --- |
 | 69 | **Tassadar (Templar) · Aldaris (Templar)** |
-| 21 | Arcturus Mengsk · Norad II · Gerard DuGalle (배틀크루저) |
+| **21 (지상) · 22 (공중)** | Arcturus Mengsk · Norad II · Gerard DuGalle (배틀크루저) — **지상·공중 둘 다** |
 | 97 · 98 | Left/Right Wall Missile Trap · Flame Trap |
 
-타사다르(템플러)와 알다리스(템플러)는 **공격력을 공유한다.** 둘을 서로 다른 세기로
-쓰려던 계획은 처음부터 안 된다.
+타사다르(템플러)와 알다리스(템플러)는 **공격력을 공유한다.** 둘을 서로
+다른 세기로 쓰려던 계획은 처음부터 안 된다.
+
+배틀크루저 영웅 셋은 **지상 21 · 공중 22 를 모두** 나눠 쓴다. 지상만
+공유한다고 적어 두었다가 적대적 검토에서 잡혔다 — 직접 세어 확인했다.
 
 ### 배틀크루저 영웅 넷
 

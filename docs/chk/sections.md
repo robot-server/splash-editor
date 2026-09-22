@@ -15,7 +15,7 @@ def sections(chk: bytes):
         name = chk[i:i+4]
         (n,) = struct.unpack("<i", chk[i+4:i+8])
         i += 8
-        if n < 0:            # 음수 길이 = 앞 섹션을 잘라 내는 수법
+        if n < 0:            # 음수 = jump section (뒤로 이동). 여기선 건너뛴다
             continue
         out[name].append(chk[i:i+n])
         i += n
