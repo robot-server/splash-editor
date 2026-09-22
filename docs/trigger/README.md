@@ -9,7 +9,9 @@
 | [actions.md](actions.md) | 액션 전부. 못 만드는 유닛, 64가지 제한 |
 | [execution.md](execution.md) | **먼저 읽는다.** 트리거가 도는 순서, 웨잇 꼬임, 하이퍼 |
 | [death-counts.md](death-counts.md) | 죽음 수 = 유즈맵의 변수. 어느 유닛을 쓸 수 있나 |
+| [locations.md](locations.md) | 로케이션. 높이 조건·뒤집기·이름 규칙 |
 | [bring-command.md](bring-command.md) | `Bring`·`Command` 가 무엇을 세나. 견줌마다 다르다 |
+| [ai-scripts.md](ai-scripts.md) | 컴퓨터를 실제로 움직이는 법. Order 로는 잘 안 된다 |
 | [recipes.md](recipes.md) | 문법과 바로 쓰는 조각 |
 
 ## 실측 — 사람들이 실제로 쓰는 것
@@ -31,8 +33,10 @@
 | --- | --- |
 | 하이퍼를 사람 플레이어에 검 | [execution.md](execution.md) |
 | 한 플레이어에 웨잇 트리거 둘 | [execution.md](execution.md) |
-| 누적 조건 + `Preserve` = 무한 보상 | [recipes.md](recipes.md) |
+| 누적 조건 + `Preserve` = 무한 보상 | [ai-scripts.md](ai-scripts.md) | 컴퓨터를 실제로 움직이는 법. Order 로는 잘 안 된다 |
+| [recipes.md](recipes.md) |
 | 맵에 있는 유닛을 변수 칸으로 씀 | [death-counts.md](death-counts.md) |
-| `At least 1` 의 반대를 `At most 0` 으로 씀 | [bring-command.md](bring-command.md) |
+| `At least 1` 의 반대를 `At most 0` 으로 씀 | [locations.md](locations.md) | 로케이션. 높이 조건·뒤집기·이름 규칙 |
+| [bring-command.md](bring-command.md) |
 | **인자 순서를 에디터 창 기준으로 씀** (`Bring` 포함 36가지가 다르다) | **[api.md](api.md)** |
 | 스위치로 사람별 상태를 담으려 함 | [death-counts.md](death-counts.md) |

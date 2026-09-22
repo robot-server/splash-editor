@@ -68,6 +68,9 @@ Seeker Spores Overlay (Spore Colony)   Subterranean Spines (Lurker)
 
 ## 4. Active(Disable) 시킨 일부 Unit Sprite
 
+놓기만 해도 튕기는 스프라이트 목록은
+[../tileset/sprites.md](../tileset/sprites.md) 에 옮겨 적었다.
+
 리마스터로 대부분 괜찮아졌지만 **프로브·아콘 등은 여전히 튕긴다.**
 
 > **시즈탱크(시즈 모드)** 는 에디터를 먹통으로 만들고, 그 상태에서 잘못
