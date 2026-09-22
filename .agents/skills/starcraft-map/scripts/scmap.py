@@ -1398,21 +1398,40 @@ class Palette:
                 f"(고도 {self.elevation}, 색 차 {self.color_gap:.0f})")
 
 
-def cover_map(cli: "Cli", pal: Palette, width: int, height: int):
-    """**맵 전체를 벽 지형으로 덮는다.**
+def cover_map(cli: "Cli", pal: Palette, width: int, height: int,
+              margin: int = 0):
+    """맵 바탕을 깐다. **기본은 걸을 수 있는 바닥이다.**
 
-    앞서 `terrain fill … 0` 으로 검게 덮고 방만 뚫었다. 실측 유즈맵
+    처음에는 `terrain fill … 0` 으로 검게 덮고 방만 뚫었다. 실측 유즈맵
     485장의 검은 칸 중앙값은 0.0% 다 — 아무도 그렇게 하지 않는다.
+
+    그래서 검은 칸 대신 **못 걷는 지형(물·용암)** 으로 덮었는데, 이번에는
+    다른 데서 걸렸다 — **못 걷는 지형이 맵의 66% 를 넘으면 게임이
+    튕긴다** (docs/game/crashes.md). 퀴즈 맵이 89%, 좀비 맵이 80% 였다.
+
+    그래서 뒤집었다. **바닥을 먼저 깔고**, 벽은 방 둘레에만 두른다.
+    `margin` 을 주면 맵 가장자리만 벽으로 두른다 (맵 밖으로 나가는 것을
+    막는 용도).
     """
-    pal.fill(cli, "wall", 0, 0, width, height)
+    pal.fill(cli, "floor", 0, 0, width, height)
+    if margin > 0:
+        pal.fill(cli, "wall", 0, 0, width, margin)
+        pal.fill(cli, "wall", 0, height - margin, width, margin)
+        pal.fill(cli, "wall", 0, margin, margin, height - 2 * margin)
+        pal.fill(cli, "wall", width - margin, margin, margin,
+                 height - 2 * margin)
 
 
 def room(cli: "Cli", pal: Palette, x: int, y: int, w: int, h: int,
-         rim: int = 1, role: str = "floor"):
+         rim: int = 1, role: str = "floor", wall: bool = False):
     """방 하나를 판다 — 바닥을 깔고 **테두리를 다른 지형으로** 두른다.
 
     테두리가 있어야 방이 방으로 읽힌다. 실제 인기 디펜스 맵은 예외 없이
     방마다 테두리를 둘렀다.
+
+    `wall=True` 면 테두리를 **못 걷는 지형**으로 두른다 — 방을 실제로
+    가둘 때 쓴다. 기본은 걸을 수 있는 `rim` 이라 **66% 한계에 여유를
+    남긴다**.
     """
     pal.fill(cli, role, x, y, w, h)
     if rim > 0 and w > 2 * rim and h > 2 * rim:

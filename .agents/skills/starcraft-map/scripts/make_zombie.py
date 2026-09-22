@@ -152,7 +152,15 @@ def main(argv=None):
                         install=a.install)
 
     # **필요한 만큼만 쓴다.** 피난처 · 벌판 · 묘지를 가로로 잇는다.
-    SH_W, FIELD_W, GY_W, ROOM_H, GAP = 26, 44, 20, 40, 5
+    # **맵 크기에 맞춰 늘린다.** 못 박아 두었더니 128x128 맵에서
+    # 100x40 만 쓰고 나머지가 텅 빈 벌판이 되었다. 벽으로 덮어 가릴
+    # 수도 없다 — 못 걷는 지형이 66% 를 넘으면 튕긴다.
+    MARGIN, GAP = 4, max(5, W // 20)
+    inner_w = W - 2 * MARGIN - 2 * GAP
+    SH_W = max(26, int(inner_w * 0.28))
+    GY_W = max(20, int(inner_w * 0.22))
+    FIELD_W = inner_w - SH_W - GY_W
+    ROOM_H = max(40, H - 2 * MARGIN)
     used_w = SH_W + FIELD_W + GY_W + GAP * 2
     ox, oy = (W - used_w) // 2, (H - ROOM_H) // 2
     shelter = (ox, oy, SH_W, ROOM_H)
@@ -167,10 +175,10 @@ def main(argv=None):
     print(f"  지형: {pal.describe()}")
 
     print("벽을 세웁니다...")
-    scmap.cover_map(cli, pal, W, H)
+    scmap.cover_map(cli, pal, W, H, margin=2)
     print(f"피난처 · 벌판 · 묘지를 뚫습니다 ({used_w}x{ROOM_H} 만 씁니다)...")
     for r in (shelter, field, grave):
-        scmap.room(cli, pal, r[0], r[1], r[2], r[3], rim=1)
+        scmap.room(cli, pal, r[0], r[1], r[2], r[3], rim=1, wall=True)
     # 이음 통로 — 좁게 내야 생존자가 버틸 자리가 생긴다
     for (a_, b_) in ((shelter, field), (field, grave)):
         pal.fill(cli, "path", a_[0] + a_[2], oy + ROOM_H // 2 - 3, GAP, 6)

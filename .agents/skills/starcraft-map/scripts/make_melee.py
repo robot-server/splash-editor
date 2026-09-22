@@ -309,6 +309,7 @@ def main(argv=None):
                   f"못 놓았습니다 {[(t, x, y) for t, x, y in _skip[:3]]}")
 
     # 4) 앞마당 — 본진에서 가운데 쪽으로 한 걸음.
+    nat_placed = []
     if args.natural_minerals > 0:
         print("앞마당을 놓습니다...")
         cx, cy = (width - 1) / 2.0, (height - 1) / 2.0
@@ -319,15 +320,47 @@ def main(argv=None):
             ny = int(round(sy + vy / length * args.natural_distance))
             nx = max(8, min(width - 9, nx))
             ny = max(8, min(height - 9, ny))
-            _, _skip = scmap.place_base(cli, nx, ny, owner=12,
+            _placed, _skip = scmap.place_base(cli, nx, ny, owner=12,
                              minerals=args.natural_minerals,
                              gas=args.natural_gas,
                              out_x=-1 if nx <= cx else 1,
                              out_y=-1 if ny <= cy else 1,
                              width=width, height=height,
                              start_location=False, tileset_id=tileset_id)
+            nat_placed.append((nx, ny, len(_placed), _skip))
             if _skip:
                 print(f"  !! 앞마당 {i+1}: 자원 {len(_skip)}개를 못 놓았습니다")
+
+        # **하나라도 덜 놓였으면 전부 그만큼으로 맞춘다.**
+        #
+        # 램프와 같은 원칙이다 — 밀리맵에서 자리 차이는 지형 차이보다
+        # 나쁘다. [8,8,8,5] 처럼 한 자리만 적으면 그 자리를 받은 사람이
+        # 손해를 본다. 그럴 바엔 넷 다 5 로 맞춘다.
+        #
+        # **미네랄과 가스를 따로 센다.** 합쳐 세었더니 가스를 못 놓은
+        # 자리가 미네랄을 하나 더 가져 [4,4,4,5] · [1,1,1,0] 이 됐다.
+        if nat_placed:
+            def near(u, nx, ny):
+                return (abs(u["x"] // 32 - nx) <= 8
+                        and abs(u["y"] // 32 - ny) <= 8)
+
+            for kind, label in (("Mineral Field", "미네랄"),
+                                ("Vespene Geyser", "가스")):
+                counts = []
+                for (nx, ny, _c, _s) in nat_placed:
+                    counts.append(sum(1 for u in cli.units()
+                                      if kind in u["type_name"]
+                                      and near(u, nx, ny)))
+                if len(set(counts)) <= 1:
+                    continue
+                lo = min(counts)
+                print(f"  앞마당 {label}이 자리마다 달라({counts}) "
+                      f"**모두 {lo}개로 맞춥니다** — 자리 차이가 지형보다 나쁩니다")
+                for (nx, ny, _c, _s), have in zip(nat_placed, counts):
+                    drop = [u["index"] for u in cli.units()
+                            if kind in u["type_name"] and near(u, nx, ny)]
+                    for idx in sorted(drop, reverse=True)[:have - lo]:
+                        cli.edit("unit", "remove", cli.path, str(idx))
 
     # 5) 바깥 멀티 — 스타팅마다 같은 상대 위치에 놓아 대칭을 지킨다.
     #    공식 맵은 스타팅당 자원 덩이가 중앙값 4곳이다 (본진·앞마당 포함).

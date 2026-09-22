@@ -240,7 +240,15 @@ def main(argv=None):
     #
     # **필요한 만큼만 쓴다.** 맵이 크다고 다 쓸 이유도, 무조건 작게
     # 만들 이유도 없다. 이 놀이는 좌우로 몇 칸이면 닿아야 하므로 좁다.
-    PAD_W, PAD_H, MID_W = 14, 13, 7
+    # **맵 크기에 맞춰 늘린다.** 앞서 14x13 로 못 박아 두었더니 64x64
+    # 맵에서 35x13 만 쓰고 나머지가 텅 빈 바닥이 되었다. 벽으로 덮어
+    # 가릴 수도 없다 — 못 걷는 지형이 66% 를 넘으면 튕긴다.
+    #
+    # 좌우로 몇 칸이면 닿아야 하는 놀이라 발판은 지나치게 넓히지 않고,
+    # 대신 **세로를 맵에 맞춰** 길게 뽑는다.
+    MID_W = max(7, W // 8)
+    PAD_W = max(14, (W - 2 * 3 - MID_W) // 2)
+    PAD_H = max(13, H - 2 * 3)
     used_w = PAD_W * 2 + MID_W
     used_h = PAD_H
     ox = (W - used_w) // 2
@@ -257,12 +265,12 @@ def main(argv=None):
     print(f"  지형: {pal.describe()}")
 
     print("벽을 세웁니다...")
-    scmap.cover_map(cli, pal, W, H)
+    scmap.cover_map(cli, pal, W, H, margin=2)
     print(f"O · 대기 · X 를 나란히 뚫습니다 ({used_w}x{used_h} 만 씁니다)...")
     # 발판 둘은 방으로, 가운데 대기 통로는 통로 지형으로 — 셋이 눈에
     # 따로 보여야 어디가 O 이고 어디가 기다리는 자리인지 읽힌다.
     for r in (pad_o, pad_x):
-        scmap.room(cli, pal, r[0], r[1], r[2], r[3], rim=1)
+        scmap.room(cli, pal, r[0], r[1], r[2], r[3], rim=1, wall=True)
     pal.fill(cli, "path", lobby[0], lobby[1], lobby[2], lobby[3])
 
     # 같은 지형 안의 **변종만** 흩는다. 그룹을 섞으면 얼룩덜룩한 덩이
