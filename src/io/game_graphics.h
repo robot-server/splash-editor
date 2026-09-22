@@ -186,6 +186,9 @@ public:
         std::uint16_t vespeneCost = 0;
         std::uint16_t buildTime = 0;
         std::uint8_t supplyRequired = 0;
+        /// 이 유닛이 **채워 주는** 인구수. 오버로드 영웅 이그드라실처럼
+        /// 일반과 크게 다른 것이 있다. supplyRequired 와 헷갈리지 않는다.
+        std::uint8_t supplyProvided = 0;
         bool hero = false;        ///< units.dat 의 Hero 깃발
         bool invincible = false;
         bool autoAttackAndMove = false;  ///< 스스로 무는가

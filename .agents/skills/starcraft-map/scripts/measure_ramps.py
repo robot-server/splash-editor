@@ -212,9 +212,12 @@ def main(argv=None):
                    or "없음"))
     path = os.path.normpath(OUT)
     with open(path, "w", encoding="utf-8") as f:
-        json.dump({"_about": "타일셋에서 찾아 **걸어서 검증한** 램프. "
-                             "measure_ramps.py 가 만든다. base 는 왼위 타일 "
-                             "번호, w·h 는 타일 수, dir 는 고지대가 있는 쪽.",
+        json.dump({"_about": "타일셋의 **램프 두뎃** 목록. measure_ramps.py 가 "
+                             "실측해 만든다. id 는 두뎃 번호(doodad place 에 "
+                             "넣는 값), w·h 는 타일 수, kind 는 두뎃 갈래, "
+                             "dir 는 **내려가는 쪽**(램프칸이 고지대 덩이의 "
+                             "어느 쪽에 붙어 있나), ramp_tiles 는 Ramp 깃발이 "
+                             "선 미니타일을 가진 칸 수.",
                    "ramps": data}, f, ensure_ascii=False, indent=1)
     print(f"\n썼습니다: {path}")
     return 0

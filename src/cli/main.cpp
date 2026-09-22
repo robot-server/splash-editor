@@ -1408,6 +1408,7 @@ int cmdUnitStats(const std::string & installPath, bool json)
                       << ", \"gas\": " << d.vespeneCost
                       << ", \"build_time\": " << d.buildTime
                       << ", \"supply\": " << int(d.supplyRequired)
+                      << ", \"supply_provided\": " << int(d.supplyProvided)
                       << ", \"ground_dmg_upgrade\": " << int(d.groundDamageUpgrade)
                       << ", \"air_dmg_upgrade\": " << int(d.airDamageUpgrade)
                       << ", \"hero\": " << (d.hero ? "true" : "false")

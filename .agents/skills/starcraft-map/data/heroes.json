@@ -8,6 +8,24 @@
   "same_sight": 26,
   "same_damage_upgrade": 34
  },
+ "heroless": [
+  "Terran SCV",
+  "Terran Dropship",
+  "Spider Mine",
+  "Terran Civilian",
+  "Terran Medic",
+  "Zerg Broodling",
+  "Zerg Drone",
+  "Zerg Scourge",
+  "Terran Valkyrie",
+  "Protoss Dark Templar",
+  "Zerg Devourer",
+  "Protoss Dark Archon",
+  "Protoss Probe",
+  "Protoss Shuttle",
+  "Protoss Observer",
+  "Zerg Lurker"
+ ],
  "shared_weapons": {
   "21": [
    "Arcturus Mengsk (Battlecruiser)",

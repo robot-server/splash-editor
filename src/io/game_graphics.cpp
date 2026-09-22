@@ -554,6 +554,7 @@ GameGraphics::UnitStats GameGraphics::unitStats(std::uint16_t unitType) const
         out.vespeneCost = d.vespeneCost;
         out.buildTime = d.buildTime;
         out.supplyRequired = d.supplyRequired;
+        out.supplyProvided = d.supplyProvided;
         out.aiCompIdle = d.compAIIdle;
         out.aiHumanIdle = d.humanAIIdle;
         out.aiReturnToIdle = d.returntoIdle;

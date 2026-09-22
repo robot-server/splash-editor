@@ -303,7 +303,7 @@ def main(argv=None):
         _, _skip = scmap.place_base(cli, sx, sy, owner=i + 1,
                          minerals=args.main_minerals, gas=args.main_gas,
                          out_x=out_x, out_y=out_y, width=width, height=height,
-                         tileset_id=ts)
+                         tileset_id=tileset_id)
         if _skip:
             print(f"  !! 본진 {i+1}: 지을 수 없는 자리라 자원 {len(_skip)}개를 "
                   f"못 놓았습니다 {[(t, x, y) for t, x, y in _skip[:3]]}")
@@ -325,7 +325,7 @@ def main(argv=None):
                              out_x=-1 if nx <= cx else 1,
                              out_y=-1 if ny <= cy else 1,
                              width=width, height=height,
-                             start_location=False, tileset_id=ts)
+                             start_location=False, tileset_id=tileset_id)
             if _skip:
                 print(f"  !! 앞마당 {i+1}: 자원 {len(_skip)}개를 못 놓았습니다")
 
@@ -352,7 +352,7 @@ def main(argv=None):
                                  minerals=args.expansion_minerals,
                                  gas=args.expansion_gas,
                                  facing=facing, width=width, height=height,
-                                 start_location=False, tileset_id=ts)
+                                 start_location=False, tileset_id=tileset_id)
                 if _skip:
                     print(f"  !! 멀티 {i+1}-{k+1}: 자원 {len(_skip)}개를 "
                           f"못 놓았습니다")
@@ -436,8 +436,8 @@ def main(argv=None):
     #      에 타일셋마다 재 두었다.
     if args.doodads > 0:
         print(f"두뎃을 놓습니다 (목표 {args.doodads}개)...")
-        safe = scmap.doodad_walk_table(ts)
-        gname = scmap.group_terrain_name(ts)
+        safe = scmap.doodad_walk_table(tileset_id)
+        gname = scmap.group_terrain_name(tileset_id)
         cat = cli.doodad_catalogue()
         picks = [d for d in cat
                  if d["w"] <= 4 and d["h"] <= 4
@@ -556,10 +556,10 @@ def main(argv=None):
                     cli, tileset_id, edge, fixed,
                     high_point=(sx, sy), low_point=low, direction=direction)
                 if got:
-                    base, rx, ry = got
+                    did, rx, ry = got
                     ramp_at[(sx, sy)] = (rx, ry, direction)
                     print(f"  ({sx},{sy}) → {direction} 램프 ({rx},{ry}) "
-                          f"0x{base:04x} [길찾기 통과]")
+                          f"두뎃 {did} [길찾기 통과]")
                     placed = got
                     break
             if placed is None:

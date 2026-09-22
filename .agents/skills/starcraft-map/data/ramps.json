@@ -1,986 +1,5716 @@
 {
- "_about": "타일셋에서 찾아 **걸어서 검증한** 램프. measure_ramps.py 가 만든다. base 는 왼위 타일 번호, w·h 는 타일 수, dir 는 고지대가 있는 쪽.",
+ "_about": "타일셋의 **램프 두뎃** 목록. measure_ramps.py 가 실측해 만든다. id 는 두뎃 번호(doodad place 에 넣는 값), w·h 는 타일 수, kind 는 두뎃 갈래, dir 는 **내려가는 쪽**(램프칸이 고지대 덩이의 어느 쪽에 붙어 있나), ramp_tiles 는 Ramp 깃발이 선 미니타일을 가진 칸 수.",
  "ramps": {
   "badlands": [
    {
-    "id": 78,
+    "id": 77,
     "w": 6,
     "h": 6,
     "kind": "Cliff",
-    "dir": "down"
-   },
-   {
-    "id": 78,
-    "w": 6,
-    "h": 6,
-    "kind": "Cliff",
-    "dir": "up"
+    "dir": "left",
+    "ramp_tiles": 7
    },
    {
     "id": 78,
     "w": 6,
     "h": 6,
     "kind": "Cliff",
-    "dir": "left"
-   },
-   {
-    "id": 78,
-    "w": 6,
-    "h": 6,
-    "kind": "Cliff",
-    "dir": "right"
+    "dir": "right",
+    "ramp_tiles": 7
    },
    {
     "id": 363,
     "w": 8,
     "h": 5,
     "kind": "Cliff",
-    "dir": "down"
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 364,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 365,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 366,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 367,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 368,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 369,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 370,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 371,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 372,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 373,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 374,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 375,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 376,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 377,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 378,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 379,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 380,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 381,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 382,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 383,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 384,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 385,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 386,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 387,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 388,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 389,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 390,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 391,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 392,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 393,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 394,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 45,
+    "w": 4,
+    "h": 4,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 6
+   },
+   {
+    "id": 46,
+    "w": 4,
+    "h": 4,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 6
+   },
+   {
+    "id": 331,
+    "w": 8,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 332,
+    "w": 4,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 333,
+    "w": 6,
+    "h": 6,
+    "kind": "Structure Wall",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 334,
+    "w": 6,
+    "h": 6,
+    "kind": "Structure Wall",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 335,
+    "w": 4,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 336,
+    "w": 6,
+    "h": 6,
+    "kind": "Structure Wall",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 337,
+    "w": 6,
+    "h": 6,
+    "kind": "Structure Wall",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 338,
+    "w": 8,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 339,
+    "w": 8,
+    "h": 3,
+    "kind": "Structure Wall",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 340,
+    "w": 8,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 341,
+    "w": 8,
+    "h": 3,
+    "kind": "Structure Wall",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 342,
+    "w": 2,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 343,
+    "w": 4,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 344,
+    "w": 2,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 345,
+    "w": 4,
+    "h": 6,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 346,
+    "w": 5,
+    "h": 6,
+    "kind": "Structure Wall",
+    "dir": "left",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 347,
+    "w": 5,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 348,
+    "w": 4,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 349,
+    "w": 6,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "left",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 350,
+    "w": 6,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 351,
+    "w": 2,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 352,
+    "w": 4,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 353,
+    "w": 2,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 354,
+    "w": 4,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 355,
+    "w": 6,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 356,
+    "w": 6,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 357,
+    "w": 4,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 358,
+    "w": 6,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 359,
+    "w": 6,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 360,
+    "w": 8,
+    "h": 3,
+    "kind": "Structure Wall",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 361,
+    "w": 8,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "left",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 362,
+    "w": 8,
+    "h": 3,
+    "kind": "Structure Wall",
+    "dir": "left",
+    "ramp_tiles": 1
+   }
+  ],
+  "space": [
+   {
+    "id": 262,
+    "w": 6,
+    "h": 6,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 263,
+    "w": 6,
+    "h": 6,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 264,
+    "w": 8,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 265,
+    "w": 4,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 266,
+    "w": 6,
+    "h": 6,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 267,
+    "w": 6,
+    "h": 6,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 268,
+    "w": 4,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 269,
+    "w": 6,
+    "h": 6,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 270,
+    "w": 6,
+    "h": 6,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 271,
+    "w": 8,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 272,
+    "w": 8,
+    "h": 3,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 273,
+    "w": 8,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 274,
+    "w": 8,
+    "h": 3,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 275,
+    "w": 2,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 276,
+    "w": 4,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 277,
+    "w": 2,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 278,
+    "w": 4,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 279,
+    "w": 6,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "up",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 280,
+    "w": 6,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 281,
+    "w": 4,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 282,
+    "w": 6,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "left",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 283,
+    "w": 6,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 284,
+    "w": 2,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 285,
+    "w": 4,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 286,
+    "w": 2,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 287,
+    "w": 4,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 288,
+    "w": 6,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 289,
+    "w": 6,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 290,
+    "w": 4,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 291,
+    "w": 6,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 292,
+    "w": 6,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 293,
+    "w": 8,
+    "h": 3,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 294,
+    "w": 8,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "left",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 295,
+    "w": 8,
+    "h": 3,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 196,
+    "w": 6,
+    "h": 4,
+    "kind": "Low Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 197,
+    "w": 6,
+    "h": 4,
+    "kind": "Low Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 296,
+    "w": 8,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 297,
+    "w": 4,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 298,
+    "w": 6,
+    "h": 6,
+    "kind": "Low Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 299,
+    "w": 6,
+    "h": 6,
+    "kind": "Low Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 300,
+    "w": 4,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 301,
+    "w": 6,
+    "h": 6,
+    "kind": "Low Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 302,
+    "w": 6,
+    "h": 6,
+    "kind": "Low Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 303,
+    "w": 8,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 304,
+    "w": 8,
+    "h": 3,
+    "kind": "Low Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 305,
+    "w": 8,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 306,
+    "w": 8,
+    "h": 3,
+    "kind": "Low Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 307,
+    "w": 2,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 308,
+    "w": 4,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 309,
+    "w": 2,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 310,
+    "w": 4,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 311,
+    "w": 6,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 312,
+    "w": 6,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 313,
+    "w": 4,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 314,
+    "w": 6,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 315,
+    "w": 6,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 316,
+    "w": 2,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 317,
+    "w": 4,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 318,
+    "w": 2,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 319,
+    "w": 4,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 320,
+    "w": 6,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 321,
+    "w": 6,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 322,
+    "w": 4,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 323,
+    "w": 6,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 324,
+    "w": 6,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 325,
+    "w": 8,
+    "h": 3,
+    "kind": "Low Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 326,
+    "w": 8,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 327,
+    "w": 8,
+    "h": 3,
+    "kind": "Low Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 156,
+    "w": 4,
+    "h": 4,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 157,
+    "w": 4,
+    "h": 4,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 158,
+    "w": 8,
+    "h": 6,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 9
+   },
+   {
+    "id": 159,
+    "w": 8,
+    "h": 6,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 9
+   },
+   {
+    "id": 360,
+    "w": 8,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 361,
+    "w": 4,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 362,
+    "w": 6,
+    "h": 6,
+    "kind": "Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 7
    },
    {
     "id": 363,
+    "w": 6,
+    "h": 6,
+    "kind": "Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 364,
+    "w": 4,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 365,
+    "w": 6,
+    "h": 6,
+    "kind": "Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 366,
+    "w": 6,
+    "h": 6,
+    "kind": "Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 367,
+    "w": 8,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 368,
+    "w": 8,
+    "h": 3,
+    "kind": "Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 369,
+    "w": 8,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 370,
+    "w": 8,
+    "h": 3,
+    "kind": "Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 371,
+    "w": 2,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 372,
+    "w": 4,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 373,
+    "w": 2,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 374,
+    "w": 4,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 375,
+    "w": 6,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 376,
+    "w": 6,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 377,
+    "w": 4,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 378,
+    "w": 6,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 379,
+    "w": 6,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 380,
+    "w": 2,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 381,
+    "w": 4,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 382,
+    "w": 2,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 383,
+    "w": 4,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 384,
+    "w": 6,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 385,
+    "w": 6,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 386,
+    "w": 4,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 387,
+    "w": 6,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 388,
+    "w": 6,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 389,
+    "w": 8,
+    "h": 3,
+    "kind": "Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 390,
+    "w": 8,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 391,
+    "w": 8,
+    "h": 3,
+    "kind": "Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 328,
+    "w": 8,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 329,
+    "w": 4,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 330,
+    "w": 6,
+    "h": 6,
+    "kind": "Rusty Pit Wall",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 331,
+    "w": 6,
+    "h": 6,
+    "kind": "Rusty Pit Wall",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 332,
+    "w": 4,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 333,
+    "w": 6,
+    "h": 6,
+    "kind": "Rusty Pit Wall",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 334,
+    "w": 6,
+    "h": 6,
+    "kind": "Rusty Pit Wall",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 335,
+    "w": 8,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 336,
+    "w": 8,
+    "h": 3,
+    "kind": "Rusty Pit Wall",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 337,
+    "w": 8,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 338,
+    "w": 8,
+    "h": 3,
+    "kind": "Rusty Pit Wall",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 339,
+    "w": 2,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 340,
+    "w": 4,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 341,
+    "w": 2,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 342,
+    "w": 4,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 343,
+    "w": 6,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "up",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 344,
+    "w": 6,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 345,
+    "w": 4,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 346,
+    "w": 6,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "left",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 347,
+    "w": 6,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 348,
+    "w": 2,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 349,
+    "w": 4,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 350,
+    "w": 2,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 351,
+    "w": 4,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 352,
+    "w": 6,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 353,
+    "w": 6,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 354,
+    "w": 4,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 355,
+    "w": 6,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 356,
+    "w": 6,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 357,
+    "w": 8,
+    "h": 3,
+    "kind": "Rusty Pit Wall",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 358,
+    "w": 8,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "left",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 359,
+    "w": 8,
+    "h": 3,
+    "kind": "Rusty Pit Wall",
+    "dir": "left",
+    "ramp_tiles": 1
+   }
+  ],
+  "installation": [
+   {
+    "id": 71,
+    "w": 4,
+    "h": 5,
+    "kind": "Substructure Wall",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 72,
+    "w": 4,
+    "h": 5,
+    "kind": "Substructure Wall",
+    "dir": "left",
+    "ramp_tiles": 4
+   }
+  ],
+  "ashworld": [
+   {
+    "id": 45,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 6
+   },
+   {
+    "id": 46,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 6
+   },
+   {
+    "id": 143,
     "w": 8,
     "h": 5,
     "kind": "Cliff",
-    "dir": "up"
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 144,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 145,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 146,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 147,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 148,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 149,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 150,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 151,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 152,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 153,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 154,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 155,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 156,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 157,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 158,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 159,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 160,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 161,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 162,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 163,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 164,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 165,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 166,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 167,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 168,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 169,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 170,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 171,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 172,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 173,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 174,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1
+   }
+  ],
+  "jungle": [
+   {
+    "id": 12,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 13,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 272,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 273,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 274,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 275,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 276,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 277,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 278,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 279,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 280,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 281,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 282,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 283,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 284,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 285,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 286,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 287,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 288,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 289,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 290,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 291,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 292,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 293,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 294,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 295,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 296,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 297,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 298,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 299,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 300,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 301,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 302,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 303,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 224,
+    "w": 8,
+    "h": 7,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 225,
+    "w": 8,
+    "h": 7,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 336,
+    "w": 8,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 337,
+    "w": 4,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 338,
+    "w": 6,
+    "h": 6,
+    "kind": "High Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 339,
+    "w": 6,
+    "h": 6,
+    "kind": "High Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 340,
+    "w": 4,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 341,
+    "w": 6,
+    "h": 6,
+    "kind": "High Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 342,
+    "w": 6,
+    "h": 6,
+    "kind": "High Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 343,
+    "w": 8,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 344,
+    "w": 8,
+    "h": 3,
+    "kind": "High Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 345,
+    "w": 8,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 346,
+    "w": 8,
+    "h": 3,
+    "kind": "High Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 347,
+    "w": 2,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 348,
+    "w": 4,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 349,
+    "w": 2,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 350,
+    "w": 4,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 351,
+    "w": 6,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 352,
+    "w": 6,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 353,
+    "w": 4,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 354,
+    "w": 6,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 355,
+    "w": 6,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 356,
+    "w": 2,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 357,
+    "w": 4,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 358,
+    "w": 2,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 359,
+    "w": 4,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 360,
+    "w": 6,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 361,
+    "w": 6,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 362,
+    "w": 4,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 1
    },
    {
     "id": 363,
+    "w": 6,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 364,
+    "w": 6,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 365,
+    "w": 8,
+    "h": 3,
+    "kind": "High Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 366,
+    "w": 8,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 367,
+    "w": 8,
+    "h": 3,
+    "kind": "High Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 222,
+    "w": 8,
+    "h": 7,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 223,
+    "w": 8,
+    "h": 7,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 304,
+    "w": 8,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 305,
+    "w": 4,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 306,
+    "w": 6,
+    "h": 6,
+    "kind": "Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 307,
+    "w": 6,
+    "h": 6,
+    "kind": "Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 308,
+    "w": 4,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 309,
+    "w": 6,
+    "h": 6,
+    "kind": "Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 310,
+    "w": 6,
+    "h": 6,
+    "kind": "Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 311,
+    "w": 8,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 312,
+    "w": 8,
+    "h": 3,
+    "kind": "Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 313,
+    "w": 8,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 314,
+    "w": 8,
+    "h": 3,
+    "kind": "Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 315,
+    "w": 2,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 316,
+    "w": 4,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 317,
+    "w": 2,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 318,
+    "w": 4,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 319,
+    "w": 6,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 320,
+    "w": 6,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 321,
+    "w": 4,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 322,
+    "w": 6,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 323,
+    "w": 6,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 324,
+    "w": 2,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 325,
+    "w": 4,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 326,
+    "w": 2,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 327,
+    "w": 4,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 328,
+    "w": 6,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 329,
+    "w": 6,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 330,
+    "w": 4,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 331,
+    "w": 6,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 332,
+    "w": 6,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 333,
+    "w": 8,
+    "h": 3,
+    "kind": "Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 334,
+    "w": 8,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 335,
+    "w": 8,
+    "h": 3,
+    "kind": "Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 1
+   }
+  ],
+  "desert": [
+   {
+    "id": 230,
+    "w": 10,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 15
+   },
+   {
+    "id": 231,
+    "w": 10,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 17
+   },
+   {
+    "id": 372,
     "w": 8,
     "h": 5,
     "kind": "Cliff",
-    "dir": "left"
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 373,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 374,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 375,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 376,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 377,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 378,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 379,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 380,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 381,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 382,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 383,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 384,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 385,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 386,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 387,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 388,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 389,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 390,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 391,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 392,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 393,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 394,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 395,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 396,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 397,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 398,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 399,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 400,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 401,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 402,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 403,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 190,
+    "w": 8,
+    "h": 7,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 191,
+    "w": 8,
+    "h": 7,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 244,
+    "w": 8,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 245,
+    "w": 4,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 246,
+    "w": 6,
+    "h": 6,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 247,
+    "w": 6,
+    "h": 6,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 248,
+    "w": 4,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 249,
+    "w": 6,
+    "h": 6,
+    "kind": "Compound",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 250,
+    "w": 6,
+    "h": 6,
+    "kind": "Compound",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 251,
+    "w": 8,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 252,
+    "w": 8,
+    "h": 3,
+    "kind": "Compound",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 253,
+    "w": 8,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 254,
+    "w": 8,
+    "h": 3,
+    "kind": "Compound",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 255,
+    "w": 2,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 256,
+    "w": 4,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 257,
+    "w": 2,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 258,
+    "w": 4,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 259,
+    "w": 6,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 260,
+    "w": 6,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 261,
+    "w": 4,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 262,
+    "w": 6,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "left",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 263,
+    "w": 6,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 264,
+    "w": 2,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 265,
+    "w": 4,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 266,
+    "w": 2,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 267,
+    "w": 4,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 268,
+    "w": 6,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 269,
+    "w": 6,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 270,
+    "w": 4,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 271,
+    "w": 6,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 272,
+    "w": 6,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 273,
+    "w": 8,
+    "h": 3,
+    "kind": "Compound",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 274,
+    "w": 8,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "left",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 275,
+    "w": 8,
+    "h": 3,
+    "kind": "Compound",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 197,
+    "w": 8,
+    "h": 7,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 198,
+    "w": 8,
+    "h": 7,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 276,
+    "w": 8,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 277,
+    "w": 4,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 278,
+    "w": 6,
+    "h": 6,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 279,
+    "w": 6,
+    "h": 6,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 280,
+    "w": 4,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 281,
+    "w": 6,
+    "h": 6,
+    "kind": "High Compound",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 282,
+    "w": 6,
+    "h": 6,
+    "kind": "High Compound",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 283,
+    "w": 8,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 284,
+    "w": 8,
+    "h": 3,
+    "kind": "High Compound",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 285,
+    "w": 8,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 286,
+    "w": 8,
+    "h": 3,
+    "kind": "High Compound",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 287,
+    "w": 2,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 288,
+    "w": 4,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 289,
+    "w": 2,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 290,
+    "w": 4,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 291,
+    "w": 6,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 292,
+    "w": 6,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 293,
+    "w": 4,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 294,
+    "w": 6,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "left",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 295,
+    "w": 6,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 296,
+    "w": 2,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 297,
+    "w": 4,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 298,
+    "w": 2,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 299,
+    "w": 4,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 300,
+    "w": 6,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 301,
+    "w": 6,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 302,
+    "w": 4,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 303,
+    "w": 6,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 304,
+    "w": 6,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 305,
+    "w": 8,
+    "h": 3,
+    "kind": "High Compound",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 306,
+    "w": 8,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "left",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 307,
+    "w": 8,
+    "h": 3,
+    "kind": "High Compound",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 340,
+    "w": 8,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 341,
+    "w": 4,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 342,
+    "w": 6,
+    "h": 6,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 343,
+    "w": 6,
+    "h": 6,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 344,
+    "w": 4,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 345,
+    "w": 6,
+    "h": 6,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 346,
+    "w": 6,
+    "h": 6,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 347,
+    "w": 8,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 348,
+    "w": 8,
+    "h": 3,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 349,
+    "w": 8,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 350,
+    "w": 8,
+    "h": 3,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 351,
+    "w": 2,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 352,
+    "w": 4,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 353,
+    "w": 2,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 354,
+    "w": 4,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 355,
+    "w": 6,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 356,
+    "w": 6,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 357,
+    "w": 4,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 358,
+    "w": 6,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 359,
+    "w": 6,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 360,
+    "w": 2,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 361,
+    "w": 4,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 362,
+    "w": 2,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 2
    },
    {
     "id": 363,
+    "w": 4,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 364,
+    "w": 6,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 365,
+    "w": 6,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 366,
+    "w": 4,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 367,
+    "w": 6,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 368,
+    "w": 6,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 369,
+    "w": 8,
+    "h": 3,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 370,
     "w": 8,
     "h": 5,
-    "kind": "Cliff",
-    "dir": "right"
-   },
-   {
-    "id": 365,
-    "w": 6,
-    "h": 6,
-    "kind": "Cliff",
-    "dir": "down"
-   },
-   {
-    "id": 365,
-    "w": 6,
-    "h": 6,
-    "kind": "Cliff",
-    "dir": "up"
-   },
-   {
-    "id": 365,
-    "w": 6,
-    "h": 6,
-    "kind": "Cliff",
-    "dir": "left"
-   },
-   {
-    "id": 365,
-    "w": 6,
-    "h": 6,
-    "kind": "Cliff",
-    "dir": "right"
-   },
-   {
-    "id": 367,
-    "w": 4,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "down"
-   },
-   {
-    "id": 367,
-    "w": 4,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "up"
-   },
-   {
-    "id": 367,
-    "w": 4,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "left"
-   },
-   {
-    "id": 367,
-    "w": 4,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "right"
-   },
-   {
-    "id": 368,
-    "w": 6,
-    "h": 6,
-    "kind": "Cliff",
-    "dir": "down"
-   },
-   {
-    "id": 368,
-    "w": 6,
-    "h": 6,
-    "kind": "Cliff",
-    "dir": "up"
-   },
-   {
-    "id": 368,
-    "w": 6,
-    "h": 6,
-    "kind": "Cliff",
-    "dir": "left"
-   },
-   {
-    "id": 368,
-    "w": 6,
-    "h": 6,
-    "kind": "Cliff",
-    "dir": "right"
+    "kind": "High Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 4
    },
    {
     "id": 371,
     "w": 8,
     "h": 3,
-    "kind": "Cliff",
-    "dir": "down"
+    "kind": "High Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 1
    },
    {
-    "id": 371,
+    "id": 308,
+    "w": 8,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 309,
+    "w": 4,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 310,
+    "w": 6,
+    "h": 6,
+    "kind": "Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 311,
+    "w": 6,
+    "h": 6,
+    "kind": "Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 312,
+    "w": 4,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 313,
+    "w": 6,
+    "h": 6,
+    "kind": "Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 314,
+    "w": 6,
+    "h": 6,
+    "kind": "Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 315,
+    "w": 8,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 316,
     "w": 8,
     "h": 3,
-    "kind": "Cliff",
-    "dir": "up"
+    "kind": "Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 1
    },
    {
-    "id": 371,
+    "id": 317,
+    "w": 8,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 318,
     "w": 8,
     "h": 3,
-    "kind": "Cliff",
-    "dir": "left"
+    "kind": "Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 1
    },
    {
-    "id": 371,
-    "w": 8,
-    "h": 3,
-    "kind": "Cliff",
-    "dir": "right"
-   },
-   {
-    "id": 372,
-    "w": 8,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "down"
-   },
-   {
-    "id": 372,
-    "w": 8,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "up"
-   },
-   {
-    "id": 372,
-    "w": 8,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "left"
-   },
-   {
-    "id": 372,
-    "w": 8,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "right"
-   },
-   {
-    "id": 373,
-    "w": 8,
-    "h": 3,
-    "kind": "Cliff",
-    "dir": "down"
-   },
-   {
-    "id": 373,
-    "w": 8,
-    "h": 3,
-    "kind": "Cliff",
-    "dir": "up"
-   },
-   {
-    "id": 373,
-    "w": 8,
-    "h": 3,
-    "kind": "Cliff",
-    "dir": "left"
-   },
-   {
-    "id": 373,
-    "w": 8,
-    "h": 3,
-    "kind": "Cliff",
-    "dir": "right"
-   },
-   {
-    "id": 377,
-    "w": 4,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "down"
-   },
-   {
-    "id": 377,
-    "w": 4,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "up"
-   },
-   {
-    "id": 377,
-    "w": 4,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "left"
-   },
-   {
-    "id": 377,
-    "w": 4,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "right"
-   },
-   {
-    "id": 378,
-    "w": 6,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "down"
-   },
-   {
-    "id": 378,
-    "w": 6,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "up"
-   },
-   {
-    "id": 378,
-    "w": 6,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "left"
-   },
-   {
-    "id": 378,
-    "w": 6,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "right"
-   },
-   {
-    "id": 381,
-    "w": 6,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "down"
-   },
-   {
-    "id": 381,
-    "w": 6,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "up"
-   },
-   {
-    "id": 381,
-    "w": 6,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "left"
-   },
-   {
-    "id": 381,
-    "w": 6,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "right"
-   },
-   {
-    "id": 384,
-    "w": 4,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "down"
-   },
-   {
-    "id": 384,
-    "w": 4,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "up"
-   },
-   {
-    "id": 384,
-    "w": 4,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "left"
-   },
-   {
-    "id": 384,
-    "w": 4,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "right"
-   },
-   {
-    "id": 385,
+    "id": 319,
     "w": 2,
     "h": 5,
-    "kind": "Cliff",
-    "dir": "down"
+    "kind": "Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 2
    },
    {
-    "id": 385,
+    "id": 320,
+    "w": 4,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 321,
     "w": 2,
     "h": 5,
-    "kind": "Cliff",
-    "dir": "up"
+    "kind": "Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 2
    },
    {
-    "id": 385,
+    "id": 322,
+    "w": 4,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 323,
+    "w": 6,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 324,
+    "w": 6,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 325,
+    "w": 4,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 326,
+    "w": 6,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 327,
+    "w": 6,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 328,
     "w": 2,
     "h": 5,
-    "kind": "Cliff",
-    "dir": "left"
+    "kind": "Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 2
    },
    {
-    "id": 385,
+    "id": 329,
+    "w": 4,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 330,
     "w": 2,
     "h": 5,
-    "kind": "Cliff",
-    "dir": "right"
-   },
-   {
-    "id": 386,
-    "w": 4,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "down"
-   },
-   {
-    "id": 386,
-    "w": 4,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "up"
-   },
-   {
-    "id": 386,
-    "w": 4,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "left"
-   },
-   {
-    "id": 386,
-    "w": 4,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "right"
-   },
-   {
-    "id": 387,
-    "w": 6,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "down"
-   },
-   {
-    "id": 387,
-    "w": 6,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "up"
-   },
-   {
-    "id": 387,
-    "w": 6,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "left"
-   },
-   {
-    "id": 387,
-    "w": 6,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "right"
-   },
-   {
-    "id": 388,
-    "w": 6,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "down"
-   },
-   {
-    "id": 388,
-    "w": 6,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "up"
-   },
-   {
-    "id": 388,
-    "w": 6,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "left"
-   },
-   {
-    "id": 388,
-    "w": 6,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "right"
-   },
-   {
-    "id": 390,
-    "w": 6,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "down"
-   },
-   {
-    "id": 390,
-    "w": 6,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "up"
-   },
-   {
-    "id": 390,
-    "w": 6,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "left"
-   },
-   {
-    "id": 390,
-    "w": 6,
-    "h": 5,
-    "kind": "Cliff",
-    "dir": "right"
-   },
-   {
-    "id": 45,
-    "w": 4,
-    "h": 4,
-    "kind": "Structure Wall",
-    "dir": "down"
-   },
-   {
-    "id": 45,
-    "w": 4,
-    "h": 4,
-    "kind": "Structure Wall",
-    "dir": "up"
-   },
-   {
-    "id": 45,
-    "w": 4,
-    "h": 4,
-    "kind": "Structure Wall",
-    "dir": "left"
-   },
-   {
-    "id": 45,
-    "w": 4,
-    "h": 4,
-    "kind": "Structure Wall",
-    "dir": "right"
-   },
-   {
-    "id": 46,
-    "w": 4,
-    "h": 4,
-    "kind": "Structure Wall",
-    "dir": "down"
-   },
-   {
-    "id": 46,
-    "w": 4,
-    "h": 4,
-    "kind": "Structure Wall",
-    "dir": "up"
-   },
-   {
-    "id": 46,
-    "w": 4,
-    "h": 4,
-    "kind": "Structure Wall",
-    "dir": "left"
-   },
-   {
-    "id": 46,
-    "w": 4,
-    "h": 4,
-    "kind": "Structure Wall",
-    "dir": "right"
+    "kind": "Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 2
    },
    {
     "id": 331,
-    "w": 8,
+    "w": 4,
     "h": 5,
-    "kind": "Structure Wall",
-    "dir": "down"
+    "kind": "Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 1
    },
    {
-    "id": 331,
-    "w": 8,
+    "id": 332,
+    "w": 6,
     "h": 5,
-    "kind": "Structure Wall",
-    "dir": "up"
-   },
-   {
-    "id": 331,
-    "w": 8,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "left"
-   },
-   {
-    "id": 331,
-    "w": 8,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "right"
+    "kind": "Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 5
    },
    {
     "id": 333,
     "w": 6,
-    "h": 6,
-    "kind": "Structure Wall",
-    "dir": "down"
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 1
    },
    {
-    "id": 333,
+    "id": 334,
+    "w": 4,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 335,
     "w": 6,
-    "h": 6,
-    "kind": "Structure Wall",
-    "dir": "up"
-   },
-   {
-    "id": 333,
-    "w": 6,
-    "h": 6,
-    "kind": "Structure Wall",
-    "dir": "left"
-   },
-   {
-    "id": 333,
-    "w": 6,
-    "h": 6,
-    "kind": "Structure Wall",
-    "dir": "right"
-   },
-   {
-    "id": 335,
-    "w": 4,
     "h": 5,
-    "kind": "Structure Wall",
-    "dir": "down"
-   },
-   {
-    "id": 335,
-    "w": 4,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "up"
-   },
-   {
-    "id": 335,
-    "w": 4,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "left"
-   },
-   {
-    "id": 335,
-    "w": 4,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "right"
+    "kind": "Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 5
    },
    {
     "id": 336,
     "w": 6,
-    "h": 6,
-    "kind": "Structure Wall",
-    "dir": "down"
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 1
    },
    {
-    "id": 336,
-    "w": 6,
-    "h": 6,
-    "kind": "Structure Wall",
-    "dir": "up"
+    "id": 337,
+    "w": 8,
+    "h": 3,
+    "kind": "Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 1
    },
    {
-    "id": 336,
-    "w": 6,
-    "h": 6,
-    "kind": "Structure Wall",
-    "dir": "left"
-   },
-   {
-    "id": 336,
-    "w": 6,
-    "h": 6,
-    "kind": "Structure Wall",
-    "dir": "right"
+    "id": 338,
+    "w": 8,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 4
    },
    {
     "id": 339,
     "w": 8,
     "h": 3,
-    "kind": "Structure Wall",
-    "dir": "down"
+    "kind": "Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 1
+   }
+  ],
+  "ice": [
+   {
+    "id": 0,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 1,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 268,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 269,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 270,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 271,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 272,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 273,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 274,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 275,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 276,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 277,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 278,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 279,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 280,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 281,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 282,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 283,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 284,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 285,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 286,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 287,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 288,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 289,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 290,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 291,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 292,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 293,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 294,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 295,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 296,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 297,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 298,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 299,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 171,
+    "w": 8,
+    "h": 7,
+    "kind": "High Outpost",
+    "dir": "left",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 172,
+    "w": 8,
+    "h": 7,
+    "kind": "High Outpost",
+    "dir": "up",
+    "ramp_tiles": 9
+   },
+   {
+    "id": 300,
+    "w": 8,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 301,
+    "w": 4,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 302,
+    "w": 6,
+    "h": 6,
+    "kind": "High Outpost",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 303,
+    "w": 6,
+    "h": 6,
+    "kind": "High Outpost",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 304,
+    "w": 4,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 305,
+    "w": 6,
+    "h": 6,
+    "kind": "High Outpost",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 306,
+    "w": 6,
+    "h": 6,
+    "kind": "High Outpost",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 307,
+    "w": 8,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 308,
+    "w": 8,
+    "h": 3,
+    "kind": "High Outpost",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 309,
+    "w": 8,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 310,
+    "w": 8,
+    "h": 3,
+    "kind": "High Outpost",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 311,
+    "w": 2,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 312,
+    "w": 4,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 313,
+    "w": 2,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 314,
+    "w": 4,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 315,
+    "w": 6,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "up",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 316,
+    "w": 6,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 317,
+    "w": 4,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 318,
+    "w": 6,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "left",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 319,
+    "w": 6,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 320,
+    "w": 2,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 321,
+    "w": 4,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 322,
+    "w": 2,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 323,
+    "w": 4,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 324,
+    "w": 6,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 325,
+    "w": 6,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 326,
+    "w": 4,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 327,
+    "w": 6,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 328,
+    "w": 6,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 329,
+    "w": 8,
+    "h": 3,
+    "kind": "High Outpost",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 330,
+    "w": 8,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "left",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 331,
+    "w": 8,
+    "h": 3,
+    "kind": "High Outpost",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 163,
+    "w": 8,
+    "h": 7,
+    "kind": "Outpost",
+    "dir": "left",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 164,
+    "w": 8,
+    "h": 7,
+    "kind": "Outpost",
+    "dir": "up",
+    "ramp_tiles": 9
+   },
+   {
+    "id": 236,
+    "w": 8,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 237,
+    "w": 4,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 238,
+    "w": 6,
+    "h": 6,
+    "kind": "Outpost",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 239,
+    "w": 6,
+    "h": 6,
+    "kind": "Outpost",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 240,
+    "w": 4,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 241,
+    "w": 6,
+    "h": 6,
+    "kind": "Outpost",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 242,
+    "w": 6,
+    "h": 6,
+    "kind": "Outpost",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 243,
+    "w": 8,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 244,
+    "w": 8,
+    "h": 3,
+    "kind": "Outpost",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 245,
+    "w": 8,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 246,
+    "w": 8,
+    "h": 3,
+    "kind": "Outpost",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 247,
+    "w": 2,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 248,
+    "w": 4,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 249,
+    "w": 2,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 250,
+    "w": 4,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 251,
+    "w": 6,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "up",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 252,
+    "w": 6,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 253,
+    "w": 4,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 254,
+    "w": 6,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "left",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 255,
+    "w": 6,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 256,
+    "w": 2,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 257,
+    "w": 4,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 258,
+    "w": 2,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 259,
+    "w": 4,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 260,
+    "w": 6,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 261,
+    "w": 6,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 262,
+    "w": 4,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 263,
+    "w": 6,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 264,
+    "w": 6,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 265,
+    "w": 8,
+    "h": 3,
+    "kind": "Outpost",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 266,
+    "w": 8,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "left",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 267,
+    "w": 8,
+    "h": 3,
+    "kind": "Outpost",
+    "dir": "left",
+    "ramp_tiles": 1
+   }
+  ],
+  "twilight": [
+   {
+    "id": 154,
+    "w": 8,
+    "h": 7,
+    "kind": "Basilica",
+    "dir": "right",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 155,
+    "w": 8,
+    "h": 7,
+    "kind": "Basilica",
+    "dir": "left",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 247,
+    "w": 8,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 248,
+    "w": 4,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 249,
+    "w": 6,
+    "h": 6,
+    "kind": "Basilica",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 250,
+    "w": 6,
+    "h": 6,
+    "kind": "Basilica",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 251,
+    "w": 4,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 252,
+    "w": 6,
+    "h": 6,
+    "kind": "Basilica",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 253,
+    "w": 6,
+    "h": 6,
+    "kind": "Basilica",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 254,
+    "w": 8,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 255,
+    "w": 8,
+    "h": 3,
+    "kind": "Basilica",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 256,
+    "w": 8,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 257,
+    "w": 8,
+    "h": 3,
+    "kind": "Basilica",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 258,
+    "w": 2,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 259,
+    "w": 4,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 260,
+    "w": 2,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 261,
+    "w": 4,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 262,
+    "w": 6,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "up",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 263,
+    "w": 6,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 264,
+    "w": 4,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 265,
+    "w": 6,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "left",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 266,
+    "w": 6,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 267,
+    "w": 2,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 268,
+    "w": 4,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 269,
+    "w": 2,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 270,
+    "w": 4,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 271,
+    "w": 6,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 272,
+    "w": 6,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 273,
+    "w": 4,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 274,
+    "w": 6,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 275,
+    "w": 6,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 276,
+    "w": 8,
+    "h": 3,
+    "kind": "Basilica",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 277,
+    "w": 8,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "left",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 278,
+    "w": 8,
+    "h": 3,
+    "kind": "Basilica",
+    "dir": "left",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 0,
+    "w": 6,
+    "h": 4,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 9
+   },
+   {
+    "id": 1,
+    "w": 6,
+    "h": 4,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 9
+   },
+   {
+    "id": 311,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 312,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 313,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 314,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 315,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 316,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 317,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 318,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 319,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 320,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 321,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 322,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 323,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 324,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 325,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 326,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 327,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 328,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 329,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 330,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 331,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 332,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 333,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 334,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 335,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 336,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 337,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 338,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5
    },
    {
     "id": 339,
-    "w": 8,
-    "h": 3,
-    "kind": "Structure Wall",
-    "dir": "up"
-   },
-   {
-    "id": 339,
-    "w": 8,
-    "h": 3,
-    "kind": "Structure Wall",
-    "dir": "left"
-   },
-   {
-    "id": 339,
-    "w": 8,
-    "h": 3,
-    "kind": "Structure Wall",
-    "dir": "right"
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1
    },
    {
     "id": 340,
     "w": 8,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "down"
-   },
-   {
-    "id": 340,
-    "w": 8,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "up"
-   },
-   {
-    "id": 340,
-    "w": 8,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "left"
-   },
-   {
-    "id": 340,
-    "w": 8,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "right"
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1
    },
    {
     "id": 341,
     "w": 8,
-    "h": 3,
-    "kind": "Structure Wall",
-    "dir": "down"
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 4
    },
    {
-    "id": 341,
+    "id": 342,
     "w": 8,
     "h": 3,
-    "kind": "Structure Wall",
-    "dir": "up"
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1
    },
    {
-    "id": 341,
+    "id": 161,
+    "w": 8,
+    "h": 7,
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 162,
+    "w": 8,
+    "h": 7,
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 279,
+    "w": 8,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "right",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 280,
+    "w": 4,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "up",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 281,
+    "w": 6,
+    "h": 6,
+    "kind": "High Basilica",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 282,
+    "w": 6,
+    "h": 6,
+    "kind": "High Basilica",
+    "dir": "up",
+    "ramp_tiles": 7
+   },
+   {
+    "id": 283,
+    "w": 4,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 284,
+    "w": 6,
+    "h": 6,
+    "kind": "High Basilica",
+    "dir": "right",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 285,
+    "w": 6,
+    "h": 6,
+    "kind": "High Basilica",
+    "dir": "left",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 286,
+    "w": 8,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "left",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 287,
     "w": 8,
     "h": 3,
-    "kind": "Structure Wall",
-    "dir": "left"
+    "kind": "High Basilica",
+    "dir": "right",
+    "ramp_tiles": 1
    },
    {
-    "id": 341,
+    "id": 288,
+    "w": 8,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "right",
+    "ramp_tiles": 4
+   },
+   {
+    "id": 289,
     "w": 8,
     "h": 3,
-    "kind": "Structure Wall",
-    "dir": "right"
+    "kind": "High Basilica",
+    "dir": "right",
+    "ramp_tiles": 1
    },
    {
-    "id": 345,
-    "w": 4,
-    "h": 6,
-    "kind": "Structure Wall",
-    "dir": "down"
-   },
-   {
-    "id": 345,
-    "w": 4,
-    "h": 6,
-    "kind": "Structure Wall",
-    "dir": "up"
-   },
-   {
-    "id": 345,
-    "w": 4,
-    "h": 6,
-    "kind": "Structure Wall",
-    "dir": "left"
-   },
-   {
-    "id": 345,
-    "w": 4,
-    "h": 6,
-    "kind": "Structure Wall",
-    "dir": "right"
-   },
-   {
-    "id": 346,
-    "w": 5,
-    "h": 6,
-    "kind": "Structure Wall",
-    "dir": "down"
-   },
-   {
-    "id": 346,
-    "w": 5,
-    "h": 6,
-    "kind": "Structure Wall",
-    "dir": "up"
-   },
-   {
-    "id": 346,
-    "w": 5,
-    "h": 6,
-    "kind": "Structure Wall",
-    "dir": "left"
-   },
-   {
-    "id": 346,
-    "w": 5,
-    "h": 6,
-    "kind": "Structure Wall",
-    "dir": "right"
-   },
-   {
-    "id": 349,
-    "w": 6,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "down"
-   },
-   {
-    "id": 349,
-    "w": 6,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "up"
-   },
-   {
-    "id": 349,
-    "w": 6,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "left"
-   },
-   {
-    "id": 349,
-    "w": 6,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "right"
-   },
-   {
-    "id": 352,
-    "w": 4,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "down"
-   },
-   {
-    "id": 352,
-    "w": 4,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "up"
-   },
-   {
-    "id": 352,
-    "w": 4,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "left"
-   },
-   {
-    "id": 352,
-    "w": 4,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "right"
-   },
-   {
-    "id": 353,
+    "id": 290,
     "w": 2,
     "h": 5,
-    "kind": "Structure Wall",
-    "dir": "down"
+    "kind": "High Basilica",
+    "dir": "up",
+    "ramp_tiles": 2
    },
    {
-    "id": 353,
+    "id": 291,
+    "w": 4,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "up",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 292,
     "w": 2,
     "h": 5,
-    "kind": "Structure Wall",
-    "dir": "up"
+    "kind": "High Basilica",
+    "dir": "up",
+    "ramp_tiles": 2
    },
    {
-    "id": 353,
+    "id": 293,
+    "w": 4,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 294,
+    "w": 6,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "up",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 295,
+    "w": 6,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 296,
+    "w": 4,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 2
+   },
+   {
+    "id": 297,
+    "w": 6,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "left",
+    "ramp_tiles": 10
+   },
+   {
+    "id": 298,
+    "w": 6,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "up",
+    "ramp_tiles": 3
+   },
+   {
+    "id": 299,
     "w": 2,
     "h": 5,
-    "kind": "Structure Wall",
-    "dir": "left"
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 2
    },
    {
-    "id": 353,
+    "id": 300,
+    "w": 4,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 8
+   },
+   {
+    "id": 301,
     "w": 2,
     "h": 5,
-    "kind": "Structure Wall",
-    "dir": "right"
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 2
    },
    {
-    "id": 354,
+    "id": 302,
     "w": 4,
     "h": 5,
-    "kind": "Structure Wall",
-    "dir": "down"
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 1
    },
    {
-    "id": 354,
+    "id": 303,
+    "w": 6,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 5
+   },
+   {
+    "id": 304,
+    "w": 6,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "right",
+    "ramp_tiles": 1
+   },
+   {
+    "id": 305,
     "w": 4,
     "h": 5,
-    "kind": "Structure Wall",
-    "dir": "up"
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 1
    },
    {
-    "id": 354,
-    "w": 4,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "left"
-   },
-   {
-    "id": 354,
-    "w": 4,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "right"
-   },
-   {
-    "id": 355,
+    "id": 306,
     "w": 6,
     "h": 5,
-    "kind": "Structure Wall",
-    "dir": "down"
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 5
    },
    {
-    "id": 355,
+    "id": 307,
     "w": 6,
     "h": 5,
-    "kind": "Structure Wall",
-    "dir": "up"
+    "kind": "High Basilica",
+    "dir": "left",
+    "ramp_tiles": 1
    },
    {
-    "id": 355,
-    "w": 6,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "left"
+    "id": 308,
+    "w": 8,
+    "h": 3,
+    "kind": "High Basilica",
+    "dir": "left",
+    "ramp_tiles": 1
    },
    {
-    "id": 355,
-    "w": 6,
+    "id": 309,
+    "w": 8,
     "h": 5,
-    "kind": "Structure Wall",
-    "dir": "right"
+    "kind": "High Basilica",
+    "dir": "left",
+    "ramp_tiles": 4
    },
    {
-    "id": 356,
-    "w": 6,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "down"
-   },
-   {
-    "id": 356,
-    "w": 6,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "up"
-   },
-   {
-    "id": 356,
-    "w": 6,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "left"
-   },
-   {
-    "id": 356,
-    "w": 6,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "right"
-   },
-   {
-    "id": 358,
-    "w": 6,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "down"
-   },
-   {
-    "id": 358,
-    "w": 6,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "up"
-   },
-   {
-    "id": 358,
-    "w": 6,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "left"
-   },
-   {
-    "id": 358,
-    "w": 6,
-    "h": 5,
-    "kind": "Structure Wall",
-    "dir": "right"
+    "id": 310,
+    "w": 8,
+    "h": 3,
+    "kind": "High Basilica",
+    "dir": "left",
+    "ramp_tiles": 1
    }
   ]
  }

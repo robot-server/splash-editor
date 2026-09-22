@@ -227,6 +227,36 @@ def main(argv=None):
         for gw, names in sorted(shared.items()):
             print(f"  무기 {gw:3d}: {', '.join(names)}")
 
+    # **영웅판이 아예 없는 유닛.** 있는 줄 알고 찾으면 시간만 버린다.
+    # 유닛을 고를 때 "영웅으로 바꾸면 되지" 가 안 통하는 자리다.
+    paired_base = {b["id"] for b, _, _ in pairs}
+    NOT_PLAYABLE = ("turret", "cocoon", "egg", "larva", "scarab",
+                    "interceptor", "critter", "spell", "map revealer",
+                    "start location", "nuclear", "scanner", "disruption",
+                    "dark swarm", "left ", "right ", "floor ", "unused",
+                    "cave", "ruins", "khaydarin", "trap", "door", "beacon")
+    heroless = []
+    for u in sorted(stats.values(), key=lambda x: x["id"]):
+        if u["hero"] or u["id"] in paired_base:
+            continue
+        name = u["name"].lower()
+        if any(k in name for k in NOT_PLAYABLE):
+            continue
+        if u.get("building") or not u.get("can_attack"):
+            pass
+        if u.get("supply", 0) == 0 and not u.get("can_attack"):
+            continue
+        # 건물은 뺀다 — units.dat 의 Building 깃발은 flags BIT_0
+        if u.get("flags", 0) & 1:
+            continue
+        heroless.append(u["name"])
+    if heroless:
+        print("=" * 62)
+        print(f"**영웅판이 없는 유닛** {len(heroless)}기 — "
+              f"영웅으로 바꿔 쓸 수 없다")
+        for i in range(0, len(heroless), 3):
+            print("  " + " · ".join(f"{n:26s}" for n in heroless[i:i + 3]))
+
     path = os.path.normpath(OUT)
     with open(path, "w", encoding="utf-8") as f:
         json.dump({"_about": "영웅 유닛과 같은 겉모습(flingy)을 쓰는 일반 "
@@ -241,6 +271,7 @@ def main(argv=None):
                                 "same_speed": n_same_speed,
                                 "same_sight": n_same_sight,
                                 "same_damage_upgrade": n_same_upg},
+                   "heroless": heroless,
                    "shared_weapons": {str(k): v
                                       for k, v in sorted(shared.items())},
                    "pairs": out}, f, ensure_ascii=False, indent=1)

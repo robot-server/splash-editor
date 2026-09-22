@@ -187,6 +187,19 @@ class Cli:
                               "h": int(m.group(3)), "kind": m.group(4).strip()})
         return items
 
+    def doodads(self) -> list[dict]:
+        """이 맵에 **놓여 있는** 두뎃. 목록 차례가 곧 `doodad remove` 번호다."""
+        out = self.run("doodad", "list", self.path, "--install", self.install)
+        items = []
+        for line in out.splitlines():
+            m = re.match(r"^\s*(\d+)\s+\((\d+), *(\d+)\)\s+타일 "
+                         r"\((\d+), *(\d+)\)\s+두들 (\d+)", line)
+            if m:
+                items.append({"index": int(m.group(1)),
+                              "x": int(m.group(4)), "y": int(m.group(5)),
+                              "id": int(m.group(6))})
+        return items
+
     def terrain_types(self) -> dict[str, int]:
         """이 맵 타일셋의 ISOM 지형 이름 → 브러시 번호."""
         out = self.run("terrain", "types", self.path, "--install", self.install)
@@ -427,128 +440,79 @@ def symmetric_points(x: float, y: float, symmetry: str, count: int,
 
 # --- 램프 ---
 #
-# ISOM 브러시에는 램프가 없다. `terrain types` 에 램프 항목이 없고, 고지대를
-# 칠하면 절벽만 생긴다 (직접 확인함). 램프는 VF4 램프 비트가 선 타일을 직접
-# 찍어야 놓인다.
+# **램프는 생타일이 아니라 두뎃이다.** 이걸 몰라서 세 번 틀렸다.
 #
-# 램프 한 벌은 "연속한 타일 그룹 몇 줄 x 연속한 서브타일 몇 칸" 의
-# 직사각 블록이다:
-#     tile(r, c) = (기준그룹 + r) * 16 + (기준서브 + c)
-# 아래 값은 공식 리그 맵 56개에서 쓰인 램프를 세어 가장 흔한 것을 골랐다.
-# 첫 줄이 4칸인 것은 공식 맵이 그렇게 놓기 때문이다 — 오른쪽 위 두 칸은
-# 둘레 지형을 그대로 둔다.
-# **크기는 타일셋마다 다르다.** 6x6 인 줄 알고 Twilight 에 찍었더니 블록
-# 밖 타일까지 건드려 검게 깨졌다 — 크기를 꼭 함께 쓴다.
+#   1. 손으로 적은 표에 "기준 타일값 0x4a70" 처럼 적어 두었는데, 그
+#      값은 사실 **두뎃 번호**였다.
+#   2. 한 세트에서 **행 오프셋만 바꿔** 네 방향에 붙였다. 방향마다
+#      아예 다른 두뎃을 써야 한다.
+#   3. "Space·Desert·Ice·Twilight 는 램프가 없다" 고 적었다. 실은
+#      그 넷이 가장 많다 (Desert 166개, Space 136개).
 #
-# (이름, 기준값, 가로, 세로)
-# 방향마다 쓸 램프 블록. **전수 탐색으로 찾아 미니타일 길찾기로 검증했다.**
+# StarEdit 은 램프 세트가 절벽에 붙는지를 이미 알고 있다. 그러니 타일을
+# 손으로 펼치지 말고 **두뎃을 그대로 놓는다.**
 #
-# 찾은 방법: 타일셋마다 고지대를 **맵을 가로지르는 벽**으로 세운 시험 맵을
-# 만들고(세로 벽·가로 벽 두 벌), 램프 비트가 선 (그룹, 서브) 을 모두 후보로
-# 찍어 본 뒤 벽 양쪽이 걸어서 이어지는지 확인했다.
-#
-# 벽으로 만드는 것이 중요하다. 고지대를 덩이로 두면 램프를 지나지 않고
-# 옆으로 돌아가도 "통했다"가 되어 엉뚱한 값이 뽑힌다 — 실제로 그렇게
-# 잘못된 표를 만들었다가 되돌렸다.
-#
-# **램프는 좌우로 나는 것이 더 흔하다.** 공식 밀리맵 46장에서 램프가 붙은
-# 본진 57곳을 세어 보니 왼쪽 26, 오른쪽 23, 위 5, 아래 3 이었다. 위아래만
-# 시도하면 대개 자리를 찾지 못한다.
-#
-# off 는 "고지대가 끝나는 줄/칸" 에서 블록을 몇 칸 밀지다.
-# (이름, 블록 기준값, 가로, 세로, off)
-RAMPS_BY_DIR = {
-    # **타일이 다 있는지 먼저 보고, 미니타일 길찾기로 검증했다.**
-    # 앞서 실은 표는 거의 전부 없는 타일을 찍고 있었다 — 그룹만 보고
-    # 타일 존재를 안 봐서, 여섯 칸 중 네 칸만 있어도 그 네 칸으로 길이
-    # 뚫려 "통과" 로 나왔다. 나머지 두 칸은 화면에 검은 구멍이 된다.
-    #
-    # 여기 없는 타일셋(Space 1, Desert 5, Ice 6, Twilight 7)은 **통하는
-    # 램프를 아직 못 찾았다.** 그 타일셋에서는 본진을 평지에 둔다.
-    # 없는 것을 억지로 찍으면 검은 구멍이 난 맵이 나온다.
-    0: {   # Badlands
-        "down": [("Badlands", 0x4a70, 6, 6, -3), ("Badlands2", 0x4a60, 6, 6, -3), ("Badlands3", 0x4a50, 6, 6, -3)],
-        "up": [("Badlands", 0x4a70, 6, 6, -5), ("Badlands2", 0x4a60, 6, 6, -5), ("Badlands3", 0x4a50, 6, 6, -5)],
-        "left": [("Badlands", 0x4a70, 6, 6, -7), ("Badlands2", 0x4a60, 6, 6, -7), ("Badlands3", 0x4a50, 6, 6, -7)],
-        "right": [("Badlands", 0x4a70, 6, 6, 0), ("Badlands2", 0x4a60, 6, 6, 0), ("Badlands3", 0x4a50, 6, 6, 0)],
-    },
-    3: {   # Ashworld — 좌우만 찾았다
-        "down": [],
-        "up": [],
-        "left": [("Ashworld", 0x4560, 6, 4, -7), ("Ashworld2", 0x4550, 6, 4, -7), ("Ashworld3", 0x4540, 6, 6, -7)],
-        "right": [("Ashworld", 0x4560, 6, 4, 0), ("Ashworld2", 0x4550, 6, 4, 0), ("Ashworld3", 0x4540, 6, 6, 0)],
-    },
-    4: {   # Jungle
-        "down": [("Jungle", 0x4320, 6, 6, -3), ("Jungle2", 0x4310, 6, 6, -3), ("Jungle3", 0x4300, 6, 6, -3)],
-        "up": [("Jungle", 0x4320, 6, 6, -5), ("Jungle2", 0x4310, 6, 6, -5), ("Jungle3", 0x4300, 6, 6, -5)],
-        "left": [("Jungle", 0x4320, 6, 6, -7), ("Jungle2", 0x4310, 6, 6, -7), ("Jungle3", 0x4300, 6, 6, -7)],
-        "right": [("Jungle", 0x4320, 6, 6, 0), ("Jungle2", 0x4310, 6, 6, 0), ("Jungle3", 0x4300, 6, 6, 0)],
-    },
-}
-
-# 옛 이름 — 방향을 가리지 않는다. 새 코드는 RAMPS_BY_DIR 을 쓴다.
-RAMPS = {ts: [(n, b, w, h) for (n, b, w, h, _o) in d["down"]]
-         for ts, d in RAMPS_BY_DIR.items()}
+# 표는 `data/ramps.json` — `measure_ramps.py` 가 여덟 타일셋에 실제로
+# 놓아 보고, 램프 깃발이 선 칸이 고지대 덩이의 어느 쪽에 붙는지로
+# 방향을 가려 만든다. 612개를 찾았다.
 
 
-def ramp_rows(base: int, width: int, height: int, first_row: int = 0):
-    group, sub = base // 16, base % 16
-    return [[(group + r) * 16 + sub + c for c in range(width)]
-            for r in range(first_row, first_row + height)]
+def _ramp_table() -> dict:
+    """`data/ramps.json` — 타일셋마다 램프 두뎃과 그 방향."""
+    global _RAMP_TABLE
+    try:
+        return _RAMP_TABLE
+    except NameError:
+        pass
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "..", "data", "ramps.json")
+    try:
+        with open(os.path.normpath(path), encoding="utf-8") as f:
+            _RAMP_TABLE = json.load(f).get("ramps", {})
+    except OSError:
+        _RAMP_TABLE = {}
+    return _RAMP_TABLE
 
 
-def ramp_tiles_valid(cli: Cli, tileset_id: int, base: int, w: int, h: int) -> bool:
-    """램프 블록의 타일이 **타일셋에 다 있는지** 본다.
-
-    램프는 `(기준그룹+r)*16 + (기준서브+c)` 로 펼친 직사각형인데, 그룹
-    마다 있는 변종 수가 다르다. 없는 변종을 찍으면 화면에 검은 구멍이
-    난다. 길찾기만으로는 못 걸러진다 — 반드시 먼저 이걸 본다.
-    """
-    tiles = tileset_tiles(cli, tileset_id)
-    g0, s0 = base >> 4, base & 15
-    for r in range(h):
-        for c in range(w):
-            if ((g0 + r) * 16 + (s0 + c)) not in tiles:
-                return False
-    return True
+TILESET_NAMES = ("badlands", "space", "installation", "ashworld",
+                 "jungle", "desert", "ice", "twilight")
 
 
-def place_ramp(cli: Cli, tile_x: int, tile_y: int, base: int,
-               width: int = 6, height: int = 6):
-    """램프를 찍는다. (tile_x, tile_y) 는 램프 블록의 왼쪽 위.
+def ramp_candidates(tileset_id: int, direction="down") -> list[dict]:
+    """그 타일셋·방향에서 쓸 **램프 두뎃** 목록. 실측 표에서 읽는다.
 
-    tile_y 는 **고지대가 끝나고 절벽이 시작되는 줄**에 맞춘다. tile_x 는
-    짝수로 둔다 (ISOM 마름모 격자가 타일 두 칸이라 홀수면 어긋난다).
+    direction 은 "down"/"up"/"left"/"right" — **내려가는 쪽**이다. 옛
+    코드를 위해 참/거짓도 받는다 (참이면 down).
 
-    첫 줄은 두 칸 좁게 찍는다 — 공식 맵이 그렇게 놓는다. 오른쪽 위 두
-    칸은 둘레 지형을 그대로 둔다.
-    """
-    cli.paste_tiles(tile_x, tile_y, ramp_rows(base, max(1, width - 2), 1, 0))
-    if height > 1:
-        cli.paste_tiles(tile_x, tile_y + 1, ramp_rows(base, width, height - 1, 1))
-
-
-def ramp_candidates(tileset_id: int, direction="down"):
-    """그 타일셋·방향에서 시도해 볼 램프 목록.
-
-    direction 은 "down"/"up"/"left"/"right", 또는 옛 코드를 위해 참/거짓
-    (참이면 down, 거짓이면 up).
+    돌려주는 것은 `{"id", "w", "h", "kind", "dir", "ramp_tiles"}` 목록.
+    램프 칸이 많은 것부터 준다 — 넓은 램프가 막힐 일이 적다.
     """
     if isinstance(direction, bool):
         direction = "down" if direction else "up"
-    d = RAMPS_BY_DIR.get(tileset_id & 7)
-    if not d:
-        return []
-    return d.get(direction, [])
+    name = TILESET_NAMES[tileset_id & 7]
+    rows = [r for r in (_ramp_table().get(name) or [])
+            if r.get("dir") == direction]
+    rows.sort(key=lambda r: -r.get("ramp_tiles", 0))
+    return rows
+
+
+def place_ramp(cli: Cli, tile_x: int, tile_y: int, doodad_id: int,
+               width: int, height: int):
+    """램프를 놓는다. **(tile_x, tile_y) 는 램프의 가운데**다.
+
+    `doodad place` 가 가운데 기준이므로 `place_doodad` 를 거친다.
+    """
+    place_doodad(cli, doodad_id, tile_x, tile_y, width, height)
 
 
 def default_ramp(tileset_id: int):
-    """옛 이름. (기준값, 가로, 세로) 또는 None."""
-    entries = ramp_candidates(tileset_id, True)
+    """옛 이름. (두뎃번호, 가로, 세로) 또는 None."""
+    entries = ramp_candidates(tileset_id, "down")
     if not entries:
         return None
-    _, base, width, height = entries[0]
-    return base, width, height
+    e = entries[0]
+    return e["id"], e["w"], e["h"]
+
 
 
 # --- 자원 ---
@@ -866,14 +830,15 @@ def find_elevation_edge(cli: Cli, tileset_id: int, tx: int, y_from: int, y_to: i
 def place_ramp_checked(cli: Cli, tileset_id: int, edge: int, fixed: int,
                        high_point, low_point, direction: str = "down",
                        candidates=None, shifts=range(-7, 8)):
-    """램프를 찍고 **실제로 걸어서 통하는지** 확인한다. 안 되면 되돌린다.
+    """램프 두뎃을 놓고 **실제로 걸어서 통하는지** 확인한다. 안 되면 뺀다.
 
-    direction 이 down/up 이면 `edge` 는 고지대가 끝나는 **줄**이고 `fixed`
-    는 가로 자리다. left/right 면 `edge` 가 **칸**이고 `fixed` 가 세로 자리다.
+    direction 은 **내려가는 쪽**이다. down/up 이면 `edge` 는 고지대가
+    끝나는 **줄**이고 `fixed` 는 가로 자리, left/right 면 `edge` 가
+    **칸**이고 `fixed` 가 세로 자리다.
 
-    타일 단위 "걸을 수 있는 칸이 하나라도 있는가" 로는 판정할 수 없다.
-    게임은 미니타일 단위로 길을 찾으므로 그 격자에서 high_point 에서
-    low_point 까지 따라가 본다.
+    "눈으로 보니 이어졌다" 는 검증이 아니다. 게임은 **미니타일** 단위로
+    길을 찾으므로 그 격자에서 high_point → low_point 를 따라가 본다.
+    멀쩡해 보이는 램프가 실제로는 막혀 있던 적이 있다.
     """
     horizontal = direction in ("left", "right")
     if candidates is None:
@@ -890,48 +855,40 @@ def place_ramp_checked(cli: Cli, tileset_id: int, edge: int, fixed: int,
     rw = min(abs(hx - lx) + 26, mw - rx0)
     rh = min(abs(hy - ly) + 26, mh - ry0)
 
-    width = max(c[2] for c in candidates)
-    height = max(c[3] for c in candidates)
-
-    tries = []
-    # 타일이 실제로 다 있는 후보만 남긴다. 없는 변종을 찍으면 화면에
-    # 검은 구멍이 나는데, 길찾기만으로는 그걸 못 걸러낸다.
-    candidates = [c for c in candidates
-                  if ramp_tiles_valid(cli, tileset_id, c[1], c[2], c[3])]
-    if not candidates:
-        return None
-
-    for entry in candidates:
-        name, base, w, h = entry[0], entry[1], entry[2], entry[3]
-        own = entry[4] if len(entry) > 4 else None
-        if own is not None:
-            tries.append((edge + own, name, base, w, h))
-    for shift in shifts:
-        for entry in candidates:
-            tries.append((edge + shift, entry[0], entry[1], entry[2], entry[3]))
-
     seen = set()
-    for pos, name, base, w, h in tries:
-        if horizontal:
-            x, y = pos, fixed
-        else:
-            x, y = fixed, pos
-        if x < 0 or y < 0 or x + w > mw or y + h > mh:
-            continue
-        if (x, y, base, w, h) in seen:
-            continue
-        seen.add((x, y, base, w, h))
-        before = cli.tiles(x, y, width, height)
-        try:
-            place_ramp(cli, x, y, base, w, h)
-        except CliError:
-            continue
-        grid = walk_grid(cli, tileset_id, rx0, ry0, rw, rh)
-        a_ = nearest_walkable(grid, (hx - rx0) * 4 + 2, (hy - ry0) * 4 + 2)
-        b_ = nearest_walkable(grid, (lx - rx0) * 4 + 2, (ly - ry0) * 4 + 2)
-        if a_ and b_ and walk_reachable(grid, a_, b_):
-            return base, x, y
-        cli.paste_tiles(x, y, before)      # 되돌린다
+    for shift in shifts:
+        for e in candidates:
+            did, w, h = e["id"], e["w"], e["h"]
+            pos = edge + shift
+            x, y = (pos, fixed) if horizontal else (fixed, pos)
+            if x < 0 or y < 0 or x + w > mw or y + h > mh:
+                continue
+            if (x, y, did) in seen:
+                continue
+            seen.add((x, y, did))
+
+            before = cli.tiles(x, y, w, h)
+            n_before = len(cli.doodads())
+            try:
+                # 두뎃은 가운데 기준이다. 왼위를 가운데로 옮겨 넘긴다.
+                cx, cy = doodad_anchor(x, y, w, h)
+                place_doodad(cli, did, cx, cy, w, h)
+            except CliError:
+                continue
+
+            grid = walk_grid(cli, tileset_id, rx0, ry0, rw, rh)
+            a_ = nearest_walkable(grid, (hx - rx0) * 4 + 2, (hy - ry0) * 4 + 2)
+            b_ = nearest_walkable(grid, (lx - rx0) * 4 + 2, (ly - ry0) * 4 + 2)
+            if a_ and b_ and walk_reachable(grid, a_, b_):
+                return did, x, y
+
+            # 안 통하면 두뎃 항목과 타일을 함께 되돌린다. 두뎃만 빼면
+            # 지형이 남고, 타일만 되돌리면 DD2 에 유령이 남는다.
+            n_after = len(cli.doodads())
+            if n_after > n_before:
+                cli.edit("doodad", "remove", cli.path, str(n_after - 1),
+                         "--install", cli.install)
+            cli.paste_tiles(x, y, before)
 
     return None
 
@@ -1563,31 +1520,154 @@ def isom_blob(cli: Cli, terrain: int, rng, center_x: int, center_y: int,
     return done
 
 
-def isom_terrain_ids(cli: Cli) -> dict:
-    """이 타일셋의 지형 종류 이름 → 번호. 쓰기 좋게 몫도 같이 고른다.
+def isom_landscape(cli: Cli, tileset_id: int, rng, width: int, height: int,
+                   keep_clear=(), walls: int = 12, rises: int = 18,
+                   patches: int = 22, area: int = 70, margin: int = 3) -> dict:
+    """**돌아다니는 맵의 지형**을 ISOM 으로 짓는다.
 
-    돌려주는 것: {"names": {…}, "low": n, "high": n|None,
-                  "water": n|None, "highest": n|None}
+    사각형 방식(`cover_map` 으로 다 덮고 `room` 으로 뚫기)과 뒤집힌
+    순서다. 여기서는 **바닥이 먼저**고, 그 위에 지형 덩이를 키운다.
+    그래야 길이 네모나지 않고 실제 지형처럼 보인다.
+
+    실측 RPG 유즈맵의 타일 그룹 중앙값이 **248개**다 (디펜스는 15개).
+    지형 자체가 콘텐츠인 장르라 이렇게 짓는다 — docs/usemap/terrain.md.
+
+    덩이를 **세 갈래로** 놓는다. 한 갈래만 쓰면 노는 자리가 텅 비고,
+    지형을 세 종류만 쓰면 바닥이 한 가지 색으로 남는다 — 둘 다 겪었다.
+
+    | 갈래 | 지형 | 걷는가 | 어디에 |
+    | --- | --- | --- | --- |
+    | `patches` | 낮고 걷는 지형 여럿 (흙·진흙·수풀·돌) | 걷는다 | 아무 데나 |
+    | `rises` | 높고 걷는 지형 여럿 | 걷는다 | **노는 자리 안까지** |
+    | `walls` | 물·용암 | **못 걷는다** | `keep_clear` 를 피해서만 |
+
+    걸을 수 있는 지형은 길을 막지 않으므로 마을·구역 위에 얹어도 된다.
+    그래야 노는 자리에도 지형이 생긴다.
+
+    `keep_clear` 는 못 걷는 지형이 들어가면 안 되는 네모들
+    `(x, y, w, h)`.
+    """
+    ids = isom_terrain_ids(cli, tileset_id)
+    if not ids["low"]:
+        raise CliError("이 타일셋에서 낮고 걷는 지형을 못 찾았습니다")
+    base = ids["low"][0]
+
+    # 1) 바닥부터. 덩이는 이 위에 얹는다.
+    isom_fill(cli, base, 0, 0, width, height)
+
+    def clear_of(tx, ty, pad=2):
+        for (kx, ky, kw, kh) in keep_clear:
+            if (kx - pad <= tx < kx + kw + pad
+                    and ky - pad <= ty < ky + kh + pad):
+                return False
+        return True
+
+    def grow(choices, count, avoid_clear: bool, blob_area: int):
+        placed, tries = [], 0
+        if not choices:
+            return placed
+        while len(placed) < count and tries < count * 40:
+            tries += 1
+            cx = rng.randrange(margin, max(margin + 1, width - margin))
+            cy = rng.randrange(margin, max(margin + 1, height - margin))
+            cx -= cx % 2                # ISOM 은 가로 두 칸이 한 걸음
+            shape = organic_blob(rng, rng.randrange(blob_area // 2,
+                                                    blob_area + 1),
+                                 elongate=rng.uniform(0.6, 1.6))
+            cells = [(cx + dx, cy + dy) for dx, dy in sorted(shape)]
+            if any(not (margin <= x < width - margin
+                        and margin <= y < height - margin)
+                   for x, y in cells):
+                continue
+            if avoid_clear and any(not clear_of(x, y, 2) for x, y in cells):
+                continue
+            terrain = rng.choice(choices)
+            cli.isom_batch([(x, y, terrain) for x, y in cells])
+            placed.append((cx, cy, terrain))
+        return placed
+
+    out = dict(ids)
+    out["base"] = base
+    # 낮은 땅부터 여러 종류로 얼룩지게 — 바닥이 한 색으로 남지 않게.
+    out["patches"] = grow(ids["low"][1:] or ids["low"], patches, False, area)
+    # 걸을 수 있는 높은 땅. 노는 자리 위에도 얹는다.
+    out["rises"] = grow(ids["high"], rises, False, area)
+    # 못 걷는 물은 나중에, 비워 둘 자리를 피해서.
+    out["walls"] = grow(ids["blocked"], walls, True, area)
+    return out
+
+
+def isom_terrain_ids(cli: Cli, tileset_id: int | None = None) -> dict:
+    """이 타일셋의 지형 종류를 **걷는가 · 고도** 로 갈라 놓는다.
+
+    앞서는 이름에 "high"·"water" 가 들어갔는지로 골랐다. 그러면 정글
+    13종 중 3종밖에 안 쓰게 된다 — 실측 RPG 유즈맵의 타일 그룹 중앙값이
+    **248개**인데 3종으로는 어림없다.
+
+    여기서는 두 가지 실측을 겹쳐 본다.
+
+    - `data/terrain-types.json` — 지형 종류마다 **어느 타일 그룹**이
+      나오고 **고도**가 얼마인지. `measure_terrain_types.py` 가 실제로
+      칠해 보고 잰 것이다.
+    - `terrain_groups()` — 그 타일 그룹을 **걸을 수 있는지**.
+
+    돌려주는 것::
+
+        {"names": {이름: 번호},
+         "low":     [낮고 걷는 지형 번호들],
+         "high":    [높고 걷는 지형 번호들],
+         "blocked": [못 걷는 지형 번호들],
+         "by_level": {고도: [번호들]}}
     """
     types = cli.terrain_types()
-    low = high = water = highest = None
+    out = {"names": types, "low": [], "high": [], "blocked": [],
+           "by_level": {}}
+    if tileset_id is None:
+        return _isom_ids_by_name(types, out)
+
+    table = terrain_types_table(tileset_id)
+    if not table:
+        return _isom_ids_by_name(types, out)
+    groups = terrain_groups(cli, tileset_id)
+
     for name, num in types.items():
-        lower = name.lower()
-        if water is None and ("water" in lower or "lava" in lower
-                              or "magma" in lower or "空" in lower):
-            water = num
-        if lower.startswith("high ") and high is None:
-            high = num
-        if "highest" in lower and highest is None:
-            highest = num
-    # 낮은 땅 = 이름에 high/highest/water 가 안 붙은 첫 지형
+        info = table.get(name)
+        if not info:
+            continue
+        gs = info.get("groups") or []
+        if isinstance(gs, str):
+            gs = json.loads(gs)
+        lv = info.get("levels") or {}
+        if isinstance(lv, str):
+            lv = json.loads(lv.replace("'", '"'))
+        level = int(max(lv, key=lambda k: lv[k])) if lv else 0
+        # 그 지형이 내는 타일 그룹 가운데 걸을 수 있는 것이 반을 넘으면
+        # 걷는 지형으로 본다. 가장자리 그룹은 못 걷는 것이 섞인다.
+        walk = [groups.get(g, (0, 0))[1] for g in gs if g in groups]
+        walkable = bool(walk) and sum(1 for w in walk if w) * 2 >= len(walk)
+        out["by_level"].setdefault(level, []).append(num)
+        if not walkable:
+            out["blocked"].append(num)
+        elif level >= 1:
+            out["high"].append(num)
+        else:
+            out["low"].append(num)
+    if not out["low"] and not out["high"]:
+        return _isom_ids_by_name(types, out)
+    return out
+
+
+def _isom_ids_by_name(types: dict, out: dict) -> dict:
+    """실측 표가 없을 때 쓰는 이름 짐작. 되도록 쓰지 않는다."""
     for name, num in types.items():
-        lower = name.lower()
-        if not lower.startswith("high") and num != water:
-            low = num
-            break
-    return {"names": types, "low": low, "high": high,
-            "water": water, "highest": highest}
+        low = name.lower()
+        if "water" in low or "lava" in low or "magma" in low:
+            out["blocked"].append(num)
+        elif low.startswith("high") or "raised" in low:
+            out["high"].append(num)
+        else:
+            out["low"].append(num)
+    return out
 
 
 def hyper_trigger(owner: str, waits: int = 63) -> str:
