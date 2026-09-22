@@ -1468,6 +1468,128 @@ def pad(cli: "Cli", pal: Palette, tile_x: int, tile_y: int,
     """
     pal.fill(cli, "pad", tile_x - w // 2, tile_y - h // 2, w, h)
 
+# ---------------------------------------------------------------------------
+# 지형을 놓는 두 가지 길 — **ISOM 이냐 사각형이냐는 장르가 정한다**
+#
+# 내가 "밀리=ISOM, 유즈맵=사각형" 으로 못 박아 두고 있었다. 틀렸다.
+#
+#   밀리맵은 ISOM 만 쓰는 것이 맞다. 절벽이 이어져야 하고 길찾기가
+#   지형을 그대로 읽기 때문이다.
+#
+#   유즈맵은 **컨셉과 장르가 정한다.**
+#     - OX 퀴즈처럼 지형이 주인공이 아닌 것 → 사각형. O 칸과 X 칸이
+#       또렷하게 갈려야 하지 자연스러울 까닭이 없다.
+#     - RPG 처럼 돌아다니는 것이 재미인 것 → ISOM. 사각형이면 심심하다.
+#       진짜 같은 지형이 있어야 걸어다닐 맛이 난다.
+#
+# 장르별 실측은 data/isom-usage.json, 설명은 docs/usemap/terrain.md.
+# ---------------------------------------------------------------------------
+
+def terrain_mode(genre: str, default: str = "rect") -> str:
+    """이 장르는 ISOM 으로 짓는가 사각형으로 짓는가. 실측에서 읽는다.
+
+    기준은 **ISOM 다양도 중앙값**이다. "한 번이라도 붓질했나" 로 재면
+    퀴즈까지 ISOM 으로 잡힌다 — 실제로는 거의 균일한데 귀퉁이 몇 번
+    건드린 맵이 섞여서 그렇다. 중앙값이 0.2 를 넘어야 "이 장르는 지형을
+    ISOM 으로 짓는다" 고 할 수 있다.
+
+    유즈맵 479장 실측 (트리거 지문으로 장르를 붙임):
+
+        rpg     0.445   blood  0.616   ← ISOM
+        zombie  0.000   defense 0.000  control 0.000  escape 0.000
+        quiz    0.073   tag    0.046   land 0.000     ← 사각형
+    """
+    d = _isom_usage().get(genre)
+    if not d:
+        return default
+    return "isom" if d.get("isom_variety_median", 0) >= 0.2 else "rect"
+
+
+def _isom_usage() -> dict:
+    global _ISOM_USAGE
+    try:
+        return _ISOM_USAGE
+    except NameError:
+        pass
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "..", "data", "isom-usage.json")
+    try:
+        with open(os.path.normpath(path), encoding="utf-8") as f:
+            _ISOM_USAGE = json.load(f).get("by_genre", {})
+    except OSError:
+        _ISOM_USAGE = {}
+    return _ISOM_USAGE
+
+
+def isom_fill(cli: Cli, terrain: int, x: int, y: int, w: int, h: int,
+              brush: int | None = None):
+    """네모를 **ISOM 붓질로** 채운다 — 가장자리가 저절로 이어진다.
+
+    `terrain fill` 과 달리 타일 값을 직접 쓰지 않는다. 브러시가 한 번에
+    한 타일 남짓을 덮으므로 가로는 두 칸, 세로는 한 칸 간격으로 찍는다.
+    그래야 마름모 격자에 맞아 어긋나지 않는다.
+    """
+    strokes = []
+    for ty in range(y, y + h):
+        for tx in range(x - (x % 2), x + w, 2):
+            if x <= tx < x + w:
+                strokes.append((tx, ty, terrain)
+                               if brush is None else (tx, ty, terrain, brush))
+    if strokes:
+        cli.isom_batch(strokes)
+
+
+def isom_blob(cli: Cli, terrain: int, rng, center_x: int, center_y: int,
+              area: int, elongate: float = 1.0, bounds=None,
+              brush: int | None = None) -> set:
+    """덩이 하나를 ISOM 으로 놓는다. 실제로 찍은 타일 자리를 돌려준다.
+
+    `organic_blob` 이 만든 모양을 그대로 붓질로 옮긴다. 네모가 아니므로
+    RPG·좀비처럼 "돌아다니는" 맵의 지형이 된다.
+    """
+    cells = organic_blob(rng, area, elongate)
+    strokes, done = [], set()
+    for dx, dy in sorted(cells):
+        tx, ty = center_x + dx, center_y + dy
+        if bounds is not None:
+            bx, by, bw, bh = bounds
+            if not (bx <= tx < bx + bw and by <= ty < by + bh):
+                continue
+        done.add((tx, ty))
+        strokes.append((tx, ty, terrain)
+                       if brush is None else (tx, ty, terrain, brush))
+    if strokes:
+        cli.isom_batch(strokes)
+    return done
+
+
+def isom_terrain_ids(cli: Cli) -> dict:
+    """이 타일셋의 지형 종류 이름 → 번호. 쓰기 좋게 몫도 같이 고른다.
+
+    돌려주는 것: {"names": {…}, "low": n, "high": n|None,
+                  "water": n|None, "highest": n|None}
+    """
+    types = cli.terrain_types()
+    low = high = water = highest = None
+    for name, num in types.items():
+        lower = name.lower()
+        if water is None and ("water" in lower or "lava" in lower
+                              or "magma" in lower or "空" in lower):
+            water = num
+        if lower.startswith("high ") and high is None:
+            high = num
+        if "highest" in lower and highest is None:
+            highest = num
+    # 낮은 땅 = 이름에 high/highest/water 가 안 붙은 첫 지형
+    for name, num in types.items():
+        lower = name.lower()
+        if not lower.startswith("high") and num != water:
+            low = num
+            break
+    return {"names": types, "low": low, "high": high,
+            "water": water, "highest": highest}
+
+
 def hyper_trigger(owner: str, waits: int = 63) -> str:
     """하이퍼(터보) 트리거 한 벌 — **유즈맵에 거의 필수다.**
 
