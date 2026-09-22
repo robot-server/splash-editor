@@ -676,7 +676,19 @@ def setup_usemap_players(cli: Cli, humans: int, computers: list[int],
         else:
             cli.edit("player", "set", cli.path, str(p),
                      "--race", "inactive", "--slot", "inactive")
-    # 사람끼리는 한 편 — 협동 유즈맵의 기본이다.
+    # **세력 깃발(Allied·Shared Vision·Enable Allied Victory)은 켜도
+    # 적용되지 않는다.** 스타 에디터 아카데미 [기초4] 유즈맵의 필수 요소:
+    #
+    #   "그 외 Allied, Shared Vision, Enable Allied Victory는 체크하든
+    #    말든 적용 안되니 무시해도 됩니다. … 같은 세력에 넣었다고 자동으로
+    #    서로 동맹이 되고 다른 세력이라고 자동으로 적이 되고 이런건 없습니다."
+    #
+    # 기본 상태는 이렇다: 컴퓨터끼리는 동맹, 사람↔컴퓨터는 적, **사람끼리도
+    # 적**이다. 협동으로 만들려면 트리거에서 `Set Alliance Status` 로
+    # 직접 묶어야 한다 (`part_ally_humans`).
+    #
+    # 앞서 여기서 깃발을 켜 놓고 "사람끼리는 한 편" 이라고 적어 두었다.
+    # 실제로는 아무 일도 안 일어났다.
     #
     # **시작 위치 섞기는 끈다.** 켜 두면 플레이어가 스타팅에 무작위로
     # 배정되어, P1 을 가리키는 트리거가 엉뚱한 자리를 본다. 자리마다
@@ -2048,6 +2060,26 @@ def briefing_text(lines: list[str], objectives: str | None = None,
 # 부품은 트리거 글 조각(list[str])을 돌려준다. 이어 붙여서
 # `TRIGGER_SEP.join(...)` 으로 만들고 `cli.apply_triggers()` 에 넘긴다.
 # ===================================================================
+
+
+def part_ally_humans(humans: list[str]) -> list[str]:
+    """**사람끼리 동맹을 트리거로 묶는다.**
+
+    세력(Forces) 의 Allied·Shared Vision·Enable Allied Victory 깃발은
+    켜도 적용되지 않는다 (카페 [기초4]). 기본은 **사람끼리도 적**이다.
+    협동 유즈맵이면 반드시 트리거로 묶어야 한다.
+
+    맵 시작에 한 번만 돌면 된다 — `Preserve` 를 붙이지 않는다.
+    """
+    out = []
+    for h in humans:
+        others = ",".join(f'"{o}"' for o in humans if o != h)
+        if not others:
+            continue
+        out.append(f'Trigger("{h}"){{\nConditions:\n\tAlways();\n\n'
+                   f'Actions:\n'
+                   f'\tSet Alliance Status({others}, Allied Victory);\n}}')
+    return out
 
 def part_intro(humans: list[str], lines: list[str], ore: int = 0,
                objectives: str | None = None, timer: int | None = None,

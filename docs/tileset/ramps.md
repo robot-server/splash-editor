@@ -45,14 +45,27 @@
 `measure_ramps.py` 가 타일셋마다 두뎃을 하나씩 놓아 보고, **램프 표시가
 붙은 타일이 나오는 것**을 고른다. 결과는 `data/ramps.json`.
 
-| 타일셋 | 램프 두뎃 | 갈래 이름 |
+| 타일셋 | 램프 두뎃 | 갈래 |
 | --- | --- | --- |
-| Space Platform | 34종 | **`Elevated Catwalk Ramps`** (이름이 대놓고 램프다) |
-| Badlands | 35종 | `Cliff`, `Structure Wall` 에 섞여 있다 |
-| 나머지 | 측정 중 | 대개 `Cliff` 계열 |
+| Desert | **86종** | Cliff 18, Compound 18, High Compound 18, (High) Sandy Sunken Pit 32 |
+| Space Platform | **72종** | **Elevated Catwalk Ramps** 18, Platform Wall 20, Low Platform Wall 18, Rusty Pit Wall 16 |
+| Ice | 54종 | Cliff 18, Outpost 18, High Outpost 18 |
+| Twilight | 53종 | Cliff 18, Basilica 18, High Basilica 17 |
+| Jungle | 51종 | Cliff 17, Temple Wall 17, High Temple Wall 17 |
+| Badlands | 35종 | Cliff 17, Structure Wall 18 |
+| Ashworld | 17종 | Cliff 17 |
+| Installation | **1종** | Substructure Wall (실내라 고지대가 거의 없다) |
 
-크기는 `2x5`·`4x5`·`4x6`·`5x6`·`6x5`·`6x6`·`8x3`·`8x5` 가 섞여 있다.
-**6x6 하나가 아니다.**
+**여덟 타일셋 전부 램프가 있다.** 내 표는 "Space·Desert·Ice·Twilight 는
+램프가 없다" 고 적어 두었는데, 정작 그 넷이 램프가 가장 많다.
+
+갈래가 여럿인 까닭은 **고지대 종류마다 램프가 따로** 있기 때문이다 —
+Ice 라면 Cliff(흙 절벽)·Outpost·High Outpost 로 셋. 올라가는 곳의 지형에
+맞는 갈래를 골라야 한다.
+
+크기는 `2x5`·`4x4`·`4x5`·`4x6`·`5x6`·`6x4`·`6x5`·`6x6`·`8x3`·`8x5`·
+`8x6`·`8x7`·`10x6` 이 섞여 있다. **6x6 하나가 아니다.**
+가장 흔한 것은 `6x5`(전체의 약 30%)와 `4x5`.
 
 ## 방향을 어떻게 가리나
 
