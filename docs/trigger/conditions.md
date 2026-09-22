@@ -26,7 +26,7 @@
 | 조건 | 문장 | 뜻 |
 | --- | --- | --- |
 | **`Always`** | Always | 항상 참 |
-| `Never` | Never | 절대 안 참. **버그 찾을 때** 트리거를 죽여 두는 용도 |
+| `Never` | Never | 절대 안 참. **버그를 이분법으로 찾는다** (아래) |
 | **`Bring`** | (a)Player brings (b)cmp (c)N (d)units to (e)'loc' | 로케이션 안의 유닛 수 |
 | **`Command`** | (a)Player commands (b)cmp (c)N (d)units | `Bring` 에서 로케이션을 뺀 것. **Anywhere 를 쓸 바엔 이쪽** |
 | **`Accumulate`** | (a)Player accumulates (b)cmp (c)N (d)ore | 자원량 |
@@ -51,6 +51,20 @@
 > **`Deaths` 는 전투로 죽은 것만 센다.** 트리거로 죽인 것(`Kill Unit`)은
 > 안 들어간다. 다만 `Set Deaths` 액션으로 **직접 값을 쓸 수는 있다** —
 > 그래서 데스값을 변수처럼 쓴다 → [death-counts.md](death-counts.md).
+
+## `Never` 로 버그를 찾는다
+
+트리거가 수백 개인데 어디서 잘못되는지 모를 때.
+
+> 의심 가는 트리거마다 **차례로 `Never` 를 넣고 게임을 돌려 본다.**
+> 증상이 사라지면 그 트리거가 범인이다.
+
+조건에 `Never` 를 더하면 그 트리거만 죽는다 — 지우지 않아도 되고
+되돌리기도 쉽다. 절반씩 나눠 넣으면 **이분법으로** 빨리 좁힌다.
+
+실측 유즈맵의 트리거 중앙값이 193개, 90% 지점이 761개다
+([../chk/anatomy.md](../chk/anatomy.md)). 눈으로 읽어 찾을 수 있는
+규모가 아니다.
 
 ## 인자 — 여기가 함정이다
 

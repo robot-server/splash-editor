@@ -43,7 +43,7 @@
 | **`Create Units with Properties` 의 속성** | **한 맵에 64가지**뿐이다. "체력 1%" 와 "체력 1% + 무적" 은 서로 다른 가지로 센다 |
 | **`Give Units`** | 받는 쪽에 **업그레이드가 자동으로 연구된다** (공격력·방어력은 빼고) |
 | **`Order` 의 Attack** | 컴퓨터는 **공격받기 전엔 안 움직이는 유닛이 많다.** `Patrol` 이 훨씬 낫다 (패트롤도 공격한다) |
-| `Modify Unit Hangar Count` | **더하기만 있다.** 빼거나 정해 넣는 액션이 없다 |
+| `Modify Unit Hangar Count` | **더하기만 있다.** 빼거나 정해 넣는 액션이 없다. **벌쳐의 스파이더 마인은 이것으로 못 채운다** |
 | **`Set Doodad State`** | 이름에 s 가 붙어 있지만 **한 기에만 걸린다.** 여러 개면 로케이션을 하나씩 씌워야 한다 |
 | `Remove Unit` | 죽는 게 아니므로 **데스값이 안 오른다** → [death-counts.md](death-counts.md) |
 
