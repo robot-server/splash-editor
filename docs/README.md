@@ -53,7 +53,17 @@
 | [usemap/](usemap/) | 유즈맵 — 지형 문법·재미 구조·장르 |
 | [eud/](eud/) | EUD 와 안전 규칙 |
 | [tools/](tools/) | 에디터·CLI·유틸리티 |
-| [method/](method/) | 재는 법. 어떤 자로 쟀는지, 어디서 틀렸는지 |
+| [method/](method/) | **재는 법과 실측 색인.** 어떤 자로 쟀는지, 어디서 틀렸는지 |
+
+## 어디서부터 읽나
+
+| 하려는 일 | 먼저 볼 것 |
+| --- | --- |
+| 무엇을 이미 쟀는지 알고 싶다 | **[method/corpus.md](method/corpus.md)** |
+| 트리거를 짠다 | [trigger/api.md](trigger/api.md) → [trigger/execution.md](trigger/execution.md) |
+| 유닛을 고른다 | [unit/README.md](unit/README.md) |
+| 지형을 짓는다 | [usemap/terrain.md](usemap/terrain.md) · [tileset/README.md](tileset/README.md) |
+| 맵이 안 열린다 | [game/crashes.md](game/crashes.md) |
 
 ## 출처
 

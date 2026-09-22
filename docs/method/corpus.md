@@ -1,0 +1,103 @@
+# 실측 자료 한눈에 — 무엇을 재서 어디에 두었나
+
+**같은 조사를 두 번 하지 않으려고 만든 색인이다.** 재는 법과 자는
+[measuring.md](measuring.md) 에 있고, 여기에는 **무엇이 어디 있는지**를
+적는다.
+
+## 두 갈래 출처
+
+| 출처 | 무엇을 준다 | 규칙 |
+| --- | --- | --- |
+| **scmscx.com 맵** | 사람들이 **실제로 어떻게 만드는가** | **원본 맵은 커밋하지 않는다.** 통계만 남긴다 |
+| **게임 설치본** | 게임이 **실제로 어떻게 구는가** | `splash-cli` 로 읽는다. 짐작하지 않는다 |
+| 스타 에디터 아카데미 | 사람이 정리한 관용구와 함정 | 문장마다 링크를 단다 |
+
+## 표 — `data/*.json`
+
+전부 스크립트가 만든다. **손으로 고치지 않는다.**
+
+| 파일 | 무엇 | 어디서 | 만드는 것 |
+| --- | --- | --- | --- |
+| `corpus.json` | 지형·두뎃·타일 그룹 분포 | scmscx 밀리 260 · 유즈 421 | 덤프 스크립트 |
+| `trigger-usage.json` | 조건·액션 사용 비율과 **인자가 어떤 꼴로 쓰이나** | scmscx **772장** | `check_trigger_usage.py` |
+| `trigger-api.json` | **인자 순서 정본** (text · classic) | MappingCore `chk.cpp` + 실전 대조 | `measure_trigger_api.py` |
+| `unitdefs.json` | 유즈맵이 유닛을 어떻게 고치나 | scmscx 유즈 **479장** | `measure_unitdefs.py` |
+| `isom-usage.json` | **장르별 ISOM/사각형** | scmscx 유즈 479장 | `measure_isom_usage.py` |
+| `genres.json` · `genre-fingerprints.json` | 장르를 **트리거 지문**으로 가르기 (정확도 76%) | scmscx 유즈 | `classify_genre.py` |
+| `heroes.json` | 영웅 ↔ 일반 37짝, 무기 공유, 영웅 없는 유닛 | 게임 데이터 | `measure_heroes.py` |
+| `ramps.json` | 램프 **두뎃** 612개와 방향 | 게임 데이터 (8 타일셋) | `measure_ramps.py` |
+| `terrain-types.json` | 지형 종류 → 타일 그룹·고도 | 게임 데이터 | `measure_terrain_types.py` |
+| `doodad-walk.json` | 두뎃이 **걷기를 막는가** | 게임 데이터 | `measure_doodads.py` |
+| `tile-colors.json` | 타일 그룹 평균 RGB | 렌더러 | `measure_tile_colors.py` |
+
+게임 데이터를 바로 읽는 길도 있다 — `splash-cli unit-stats "$SC_INSTALL"
+--json` 은 유닛 228종의 체력 · 사거리 · 공격 형태 · 투사체 수 · 점수 ·
+깃발을 그대로 낸다.
+
+## scmscx 에서 배운 것 — 요약
+
+숫자의 출처와 자세한 설명은 각 문서에 있다.
+
+### 유즈맵
+
+| | |
+| --- | --- |
+| 유닛 중앙 | **677개** (밀리의 다섯 배) |
+| 트리거 중앙 | 237개 |
+| 이름 붙인 로케이션 중앙 | 114개 |
+| `Create Unit` + `Preserve Trigger` | **98%** |
+| `Bring` 조건 | **97%** |
+| 유닛 설정을 고치는 맵 | **98%** (중앙 90종) |
+| 강화(체력·에너지) | 89% |
+| 순위표 | 82% |
+| 미션 브리핑 | 85% (중앙 2트리거) |
+| 검은 칸 | **중앙 0.0%** |
+| 1% 넘게 쓰는 타일 그룹 | 중앙 10개 |
+| 걷는 자리 덩어리 | **중앙 31** (400 넘으면 맵이 안 열릴 수 있다) |
+
+→ [../usemap/dopamine.md](../usemap/dopamine.md) ·
+[../usemap/terrain.md](../usemap/terrain.md) ·
+[../unit/settings.md](../unit/settings.md)
+
+### 장르가 지형을 정한다
+
+| 장르 | ISOM 다양도 중앙 | 타일 그룹 중앙 |
+| --- | ---: | ---: |
+| blood | 0.616 | 66 |
+| rpg | 0.445 | 248 |
+| quiz | 0.073 | 35 |
+| tag | 0.046 | 88 |
+| zombie | 0.000 | 77 |
+| defense | 0.000 | 15 |
+| control | 0.000 | 62 |
+| escape | 0.000 | 25 |
+| sports | 0.000 | 145 |
+| land | 0.000 | 18 |
+
+→ [../usemap/terrain.md](../usemap/terrain.md)
+
+### 밀리맵
+
+| | |
+| --- | --- |
+| 2인용 공식 맵 | 잰 4개 모두 **180도 회전 대칭** |
+| 본진 미네랄 | 9개가 가장 흔하다 (229곳 중 144곳) |
+| 본진 가스 | 1개 (219곳) |
+| 두뎃 수 | **타일셋마다 크게 다르다** — Space 0 ~ Badlands 208 |
+
+→ [../melee/balance.md](../melee/balance.md)
+
+## 아직 안 잰 것
+
+정직하게 남겨 둔다.
+
+- 게임이 실제로 거부하는 길찾기 덩어리 수
+- 사거리 업그레이드가 영웅에게 걸리는가 (dat 에 없다)
+- 컴퓨터가 쥔 영웅이 끝까지 쫓아가는가
+- 유닛별 이동 속도 (타일/초) — 지금은 눈대중 값을 쓴다
+- 카페 상급5A~C · 6A~D (epScript · eudplib) — 카페북 목차 밖이라 못 찾았다
+
+## 관련
+
+- [measuring.md](measuring.md) — **자를 어떻게 정했나.** 틀렸던 기록
+- [../README.md](../README.md) — 문서 전체
