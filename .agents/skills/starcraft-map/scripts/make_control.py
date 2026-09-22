@@ -177,49 +177,62 @@ def main(argv=None):
     print("  " + corpus.describe("usemap", a.tileset))
     cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False,
                         install=a.install)
-    groups = corpus.pick_floor_groups(corpus.load(), ts, "usemap", 14)
+    # 바닥·통로·테두리·발판·벽을 **다섯 몫으로** 나눠 쓴다. 한 가지로
+    # 깔고 벽만 검게 뚫던 앞판은 실측과 어긋났다 (실측 유즈맵 486장의
+    # 검은 칸 중앙값 0.0%, 1% 넘게 쓰는 그룹 중앙값 10개 — 내 것은
+    # 검은 칸 55~89%, 그룹 1개였다. 그려 놓고 나란히 보고서야 알았다).
+    pal = scmap.Palette(cli, ts, rng, "usemap")
+    print(f"  지형: {pal.describe()}")
 
     spots = pocket_spots(a.players, W, H, POCKET)
     cx, cy = W // 2, H // 2
     AR = min(W, H) // 2 - POCKET - 4          # 싸움터 반지름
 
     print("벽을 세웁니다...")
-    cli.edit("terrain", "fill", cli.path, "0", "0", str(W), str(H), str(VOID_TILE))
+    scmap.cover_map(cli, pal, W, H)
 
-    # 싸움터를 둥글게 뚫는다 (네모로 뚫으면 형상 검사에 걸린다)
+    # 싸움터를 둥글게 뚫는다 (네모로 뚫으면 형상 검사에 걸린다).
+    # 가장자리 한 칸은 테두리 지형으로 둘러 방처럼 읽히게 한다.
     print("싸움터를 뚫습니다...")
-    tiles = scmap.tileset_tiles(cli, ts)
-    floor = None
-    for g in groups:
-        good = [t for t in range(g * 16, g * 16 + 16)
-                if t in tiles and tiles[t][1] and tiles[t][2]]
-        if good:
-            floor = good[0]
-            break
     grid = cli.tiles(0, 0, W, H)
     for y in range(H):
         for x in range(W):
             d = math.hypot(x - cx, (y - cy) * 1.15)
             wob = 3.0 * math.sin(math.atan2(y - cy, x - cx) * 3 + 1.1)
-            if d < AR + wob:
-                grid[y][x] = floor
+            if d < AR + wob - 1.5:
+                grid[y][x] = pal.tile("floor")
+            elif d < AR + wob:
+                grid[y][x] = pal.tile("rim")
     cli.paste_tiles(0, 0, grid)
 
     print(f"스폰 주머니 {len(spots)}개와 통로를 뚫습니다...")
     regions = [(max(0, cx - AR - 4), max(0, cy - AR - 4),
                 min(W, 2 * AR + 8), min(H, 2 * AR + 8))]
     for (px, py) in spots:
-        cli.edit("terrain", "fill", cli.path, str(px), str(py),
-                 str(POCKET), str(POCKET), str(floor))
+        scmap.room(cli, pal, px, py, POCKET, POCKET, rim=1)
         regions.append((px, py, POCKET, POCKET))
-        # 주머니 → 싸움터 통로
+        # 주머니 → 싸움터 통로.
+        #
+        # **싸움터 안까지 그리면 안 된다.** 통로 지형이 바닥과 다른 색이
+        # 되고 나서 알았다 — 여섯 통로가 가운데까지 뻗어 둥근 싸움터가
+        # 여섯 조각 별 모양으로 갈렸다. 앞서는 통로와 바닥이 같은 타일
+        # 이라 안 보였을 뿐 지형은 똑같이 잘못이었다.
+        #
+        # 테두리를 뚫고 들어가 **가장자리에서 멈춘다.**
         sx, sy = px + POCKET // 2, py + POCKET // 2
         steps = int(math.hypot(sx - cx, sy - cy))
         for t in range(steps + 1):
             gx = int(sx + (cx - sx) * t / max(1, steps))
             gy = int(sy + (cy - sy) * t / max(1, steps))
-            cli.edit("terrain", "fill", cli.path, str(max(0, gx - 3)),
-                     str(max(0, gy - 3)), "7", "7", str(floor))
+            if math.hypot(gx - cx, (gy - cy) * 1.15) < AR - 2:
+                break
+            # **주머니 안은 건드리지 않는다.** 방 가운데에서 시작해 그리니
+            # 통로가 방을 가로질러 검은 골처럼 그려졌다. 테두리만 뚫고
+            # 나간다.
+            if (px + 1 <= gx - 3 and gx + 3 <= px + POCKET - 2
+                    and py + 1 <= gy - 3 and gy + 3 <= py + POCKET - 2):
+                continue
+            pal.fill(cli, "path", max(0, gx - 3), max(0, gy - 3), 7, 7)
 
 
     # 같은 지형 안의 **변종만** 흩는다. 그룹을 섞으면 얼룩덜룩한 덩이
@@ -257,6 +270,7 @@ def main(argv=None):
         for k in range(len(SQUADS)):
             bx = px + 4 + (k % 2) * 9
             by = py + 12 + (k // 2) * 5
+            scmap.pad(cli, pal, bx, by, 3, 3)
             cli.place("Terran Beacon", bx, by, owner=p)
         # 업그레이드 건물 — 실측상 유즈맵 절반 이상이 둔다
         cli.place("Terran Engineering Bay", px + POCKET - 5, py + 3, owner=p)

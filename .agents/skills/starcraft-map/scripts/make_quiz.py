@@ -228,10 +228,6 @@ def main(argv=None):
     print("  " + corpus.describe("usemap", a.tileset))
     cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False,
                         install=a.install)
-    groups = corpus.pick_floor_groups(corpus.load(), ts, "usemap", 14)
-    tiles = scmap.tileset_tiles(cli, ts)
-    floor = next(t for g in groups for t in range(g * 16, g * 16 + 16)
-                 if t in tiles and tiles[t][1] and tiles[t][2])
 
     # **대기 구역을 따로 두지 않는다. O 와 X 사이가 대기 구역이다.**
     # 앞서는 위쪽에 넓은 대기 구역을 두고 발판마다 통로를 냈는데,
@@ -253,13 +249,21 @@ def main(argv=None):
     lobby = (ox + PAD_W, oy, MID_W, PAD_H)
     pad_x = (ox + PAD_W + MID_W, oy, PAD_W, PAD_H)
 
+    # 바닥·통로·테두리·발판·벽을 **다섯 몫으로** 나눠 쓴다. 한 가지로
+    # 깔고 벽만 검게 뚫던 앞판은 실측과 어긋났다 (실측 유즈맵 486장의
+    # 검은 칸 중앙값 0.0%, 1% 넘게 쓰는 그룹 중앙값 10개 — 내 것은
+    # 검은 칸 55~89%, 그룹 1개였다. 그려 놓고 나란히 보고서야 알았다).
+    pal = scmap.Palette(cli, ts, rng, "usemap")
+    print(f"  지형: {pal.describe()}")
+
     print("벽을 세웁니다...")
-    cli.edit("terrain", "fill", cli.path, "0", "0", str(W), str(H), str(VOID_TILE))
-    fill = lambda r: cli.edit("terrain", "fill", cli.path,
-                              str(r[0]), str(r[1]), str(r[2]), str(r[3]), str(floor))
+    scmap.cover_map(cli, pal, W, H)
     print(f"O · 대기 · X 를 나란히 뚫습니다 ({used_w}x{used_h} 만 씁니다)...")
-    for r in (pad_o, lobby, pad_x):
-        fill(r)
+    # 발판 둘은 방으로, 가운데 대기 통로는 통로 지형으로 — 셋이 눈에
+    # 따로 보여야 어디가 O 이고 어디가 기다리는 자리인지 읽힌다.
+    for r in (pad_o, pad_x):
+        scmap.room(cli, pal, r[0], r[1], r[2], r[3], rim=1)
+    pal.fill(cli, "path", lobby[0], lobby[1], lobby[2], lobby[3])
 
     # 같은 지형 안의 **변종만** 흩는다. 그룹을 섞으면 얼룩덜룩한 덩이
     # 무늬가 생겨 네모난 방과 안 어울린다 — 변종은 잔 알갱이만 남는다.
@@ -307,6 +311,7 @@ def main(argv=None):
         for (px, py) in sorted(set(pts)):
             if r[0] + 1 <= px < r[0] + r[2] - 1 and r[1] + 1 <= py < r[1] + r[3] - 1:
                 cli.place("Protoss Pylon", px, py, owner=12)
+        scmap.pad(cli, pal, cx, r[1] + 2, 3, 3)
         cli.place("Terran Beacon", cx, r[1] + 2, owner=12)
 
     print("시야를 엽니다...")

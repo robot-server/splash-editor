@@ -165,6 +165,48 @@ Actions:
 | `Countdown Timer(At most, 0)` + `Set Countdown Timer` | 되풀이되는 주기 |
 | `Set Deaths` 로 센 카운터 | 그 밖의 모든 것 |
 
+**카운트다운 타이머는 맵에 하나뿐이고, 순위표도 하나뿐이다.** 두 곳에서
+각자 걸면 뒤에 건 것이 앞의 것을 지운다. `scmap.MapResources` 로 한 번만
+잡는다.
+
+### 죽음 수를 변수로 쓸 때 — 아무 유닛이나 쓰면 안 된다
+
+`Set Deaths(플레이어, 유닛, Set To/Add, N)` 은 스타크래프트 유즈맵의
+변수다. 그런데 **그 유닛이 게임 안에서 실제로 죽으면 값이 틀어진다.**
+그래서 "맵에 놓을 수 없고 게임이 저절로 만들지도 않는" 유닛을 골라야
+한다.
+
+문제는 **무엇이 안전한지가 맵마다 다르다**는 것이다. `Protoss
+Interceptor` 를 기본 카운터로 쓰던 적이 있는데, 캐리어가 있는 맵에서는
+인터셉터가 끊임없이 생기고 죽어 값이 엉망이 된다.
+
+| 칸 | 이것이 맵에 있으면 못 쓴다 |
+| --- | --- |
+| `Dark Swarm` | 디파일러 |
+| `Disruption Web` | 커세어 |
+| `Scanner Sweep` | 컴샛·커맨드 센터 |
+| `Protoss Scarab` | 리버 |
+| `Protoss Interceptor` | 캐리어 |
+| `Spider Mine` | 벌처 |
+| `Nuclear Missile` | 고스트·핵 사일로 |
+| `Zerg Cocoon` | 뮤탈리스크 |
+| `Zerg Lurker Egg` | 히드라리스크 |
+| `Zerg Egg` | 라바·해처리 계열 |
+
+직접 고르지 말고 등록소에서 받는다:
+
+```python
+res = scmap.MapResources(in_play=scmap.units_in_play(cli, trigger_text))
+life = res.counter("목숨")        # 이 맵에서 안전한 칸을 골라 준다
+wave = res.counter("웨이브")      # 같은 이름은 늘 같은 칸
+sw   = res.switch("문 열림")      # 스위치는 1~255 번호뿐이다
+res.claim_countdown("Player 8")  # 두 번 부르면 막는다
+res.claim_leaderboard("Custom")
+```
+
+**`Subtract` 는 이 이야기와 다르다.** 실제 죽은 수를 하나씩 빼면서 그만큼
+보상하는 것은 오히려 권장하는 관용구다 (바로 아래).
+
 ### 누적 조건으로 보상을 주지 않는다
 
 `Kill`·`Deaths` 는 **누적**이다. `Preserve Trigger` 와 같이 쓰면 조건이

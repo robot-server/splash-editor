@@ -235,10 +235,6 @@ def main(argv=None):
     print("  " + corpus.describe("usemap", a.tileset))
     cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False,
                         install=a.install)
-    groups = corpus.pick_floor_groups(corpus.load(), ts, "usemap", 14)
-    tiles = scmap.tileset_tiles(cli, ts)
-    floor = next(t for g in groups for t in range(g * 16, g * 16 + 16)
-                 if t in tiles and tiles[t][1] and tiles[t][2])
 
     # **필요한 만큼만 쓴다.** 방 크기를 먼저 정하고 그만큼만 뚫는다.
     # 앞서는 맵을 다 채우려고 방을 늘렸는데 "검은 여백이 아깝다" 는
@@ -271,22 +267,28 @@ def main(argv=None):
     band_y = cells[0][1]
     BAND_H = ROOM_H
 
+    # 바닥·통로·테두리·발판·벽을 **다섯 몫으로** 나눠 쓴다. 한 가지로
+    # 깔고 벽만 검게 뚫던 앞판은 실측과 어긋났다 (실측 유즈맵 486장의
+    # 검은 칸 중앙값 0.0%, 1% 넘게 쓰는 그룹 중앙값 10개 — 내 것은
+    # 검은 칸 55~89%, 그룹 1개였다. 그려 놓고 나란히 보고서야 알았다).
+    pal = scmap.Palette(cli, ts, rng, "usemap")
+    print(f"  지형: {pal.describe()}")
+
     print("벽을 세웁니다...")
-    cli.edit("terrain", "fill", cli.path, "0", "0", str(W), str(H), str(VOID_TILE))
-    fill = lambda x, y, w, h, t: cli.edit(
-        "terrain", "fill", cli.path, str(x), str(y), str(w), str(h), str(t))
+    scmap.cover_map(cli, pal, W, H)
 
     print(f"마을 1 + 구역 {a.zones} + 보스방 1 을 뚫습니다 "
           f"({used_w}x{used_h} 만 씁니다)...")
     for (x, y, w, h) in cells:
-        fill(x, y, w, h, floor)
+        scmap.room(cli, pal, x, y, w, h, rim=1)
     for i in range(n_cells - 1):
         ax, ay, aw, ah = cells[i]
         bx_, by_, bw_, bh_ = cells[i + 1]
         if ay == by_:                           # 같은 줄 — 가로 통로
-            fill(min(ax + aw, bx_ + bw_), ay + ah // 2 - 3, GAP, 6, floor)
+            pal.fill(cli, "path", min(ax + aw, bx_ + bw_), ay + ah // 2 - 3,
+                     GAP, 6)
         else:                                   # 줄바꿈 — 세로 통로
-            fill(ax + aw // 2 - 3, ay + ah, 6, GAP, floor)
+            pal.fill(cli, "path", ax + aw // 2 - 3, ay + ah, 6, GAP)
 
     # 같은 지형 안의 **변종만** 흩는다. 그룹을 섞으면 얼룩덜룩한 덩이
     # 무늬가 생겨 네모난 방과 안 어울린다 — 변종은 잔 알갱이만 남는다.
@@ -330,6 +332,7 @@ def main(argv=None):
     for k, (bld, _, _) in enumerate(SHOPS):
         sx = tx + 4 + k * 6
         cli.place(bld, sx, ty + th - 11, owner=12)
+        scmap.pad(cli, pal, sx, ty + th - 6, 3, 3)
         cli.place("Terran Beacon", sx, ty + th - 6, owner=12)
     # 구역마다 몬스터를 미리 깔아 둔다 (트리거가 채우기 전에도 보이게)
     for z in range(a.zones):
@@ -343,6 +346,7 @@ def main(argv=None):
     # 구역마다 회복 발판 — 눈에 띄게 비콘과 건물을 함께 둔다
     for z in range(a.zones):
         zx, zy, zw, zh = cells[z + 1]
+        scmap.pad(cli, pal, zx + 4, zy + zh - 4, 3, 3)
         cli.place("Terran Beacon", zx + 4, zy + zh - 4, owner=12)
         cli.place("Zerg Creep Colony", zx + 4, zy + zh - 8, owner=12)
     cli.place(scmap.START_LOCATION, cells[1][0] + 2, band_y + 2, owner=enemy_no)

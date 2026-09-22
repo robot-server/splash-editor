@@ -35,6 +35,9 @@ export SC_INSTALL=/경로/StarCraft
 4. **손으로 다듬는다** — CLI 로 지형·유닛·트리거를 얹는다.
 5. **재고 본다** — `verify_map.py` 로 숫자를, `preview.py` 로 그림을.
    **숫자만 보고 끝내지 않는다. 반드시 한 번은 그려 본다.**
+   그리고 **그린 것을 실제로 본다.** 여섯 장을 그려 놓고도 안 보다가,
+   나란히 놓고 본 뒤에야 바닥이 통째로 틀린 것을 찾았다. 견줄 것이
+   있으면 실측 맵도 한 장 같이 그려 옆에 놓는다.
 6. **저장본을 다시 연다** — 고치는 명령은 저장 뒤 스스로 다시 열어
    확인하고 한 줄로 찍는다. 그 줄을 읽는다.
 
@@ -118,6 +121,22 @@ python3 $S/preview.py out.scx look.png
 > 종족을 "선택 가능" 으로 두면 배치한 유닛이 통째로 무시되고 본진 +
 > 일꾼으로 시작한다. 하이퍼 트리거가 없으면 모든 판정이 1초씩 늦는다.
 > 미사일 터렛은 지상을 못 때린다. 전부 실제로 틀려 본 것이다.
+
+### 지형은 `scmap.Palette` 로 깐다
+
+**검은 칸으로 벽을 뚫지 않는다.** 실측 유즈맵 485장의 검은 칸 중앙값은
+0.0% 이고, 1% 넘게 쓰는 타일 그룹은 중앙 10개다. 한 가지로 깔고 벽만
+검게 뚫으면 게임에서 맵에 구멍이 난 것처럼 보이고, 어디가 길이고 어디를
+밟아야 하는지 안 읽힌다. 자세한 것은
+[references/usemap-terrain.md](references/usemap-terrain.md).
+
+```python
+pal = scmap.Palette(cli, ts, rng, "usemap")   # 바닥·통로·테두리·발판·벽
+scmap.cover_map(cli, pal, W, H)               # 맵 전체를 못 걷는 지형으로
+scmap.room(cli, pal, x, y, w, h, rim=1)       # 방 + 다른 지형 테두리
+pal.fill(cli, "path", x, y, w, h)             # 통로
+scmap.pad(cli, pal, bx, by, 3, 3)             # 비콘 밟을 자리 (실측 94%)
+```
 
 ## 유즈맵을 만드는 방식 — 생성기가 아니라 부품
 
@@ -248,6 +267,9 @@ Space 밀리 **0개**에서 Badlands 밀리 **208개**까지 벌어진다. 전�
   하지 말 것(WFC·패치 점수), 할 것(기능 그래프부터)
 - [references/usemap-dopamine.md](references/usemap-dopamine.md) — 인기
   유즈맵 329장 전수 실측, 재미 구조 설계
+- [references/usemap-terrain.md](references/usemap-terrain.md) — **유즈맵
+  바닥의 문법.** 검은 칸을 왜 쓰면 안 되는지, 방·통로·발판·벽을 어떻게
+  나누는지. 그림으로 보고서야 찾은 것이다
 - [references/genres.md](references/genres.md) — 장르마다 무엇이
   들어가는가. 유즈맵 563장을 갈라 실측
 - [references/game-rules.md](references/game-rules.md) —

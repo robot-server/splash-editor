@@ -122,13 +122,20 @@ def rpg_triggers(enemy: str, boss: str) -> str:
     tiers = [("Zerg Zergling", "Zerg Hydralisk", 10, "히드라리스크"),
              ("Zerg Hydralisk", "Zerg Lurker", 25, "럴커"),
              ("Zerg Lurker", "Zerg Ultralisk", 45, "울트라리스크")]
+    # **`Kill(..., At least, 1)` 은 누적이다.** "지금까지 몇 기 죽였나" 라
+    # 한 번 참이 되면 영원히 참이고, `Preserve` 와 함께 쓰면 매 주기
+    # 경험치가 들어온다 (하이퍼 트리거를 쓰면 1초에 스물네 번). 앞판이
+    # 그랬다. **킬 스코어를 깎아서** 잡은 만큼만 준다 — 킬 스코어는
+    # 플레이어별로 쌓이므로 누가 잡았는지도 가려진다.
+    #
+    # 저글링 한 마리가 50점이다 (미네랄x2 + 가스x4, 영웅은 두 배).
     text = f'''Trigger("All players"){{
 Conditions:
-\tKill("Current Player", "Men", At least, 1);
+\tScore("Current Player", Kills, At least, 50);
 
 Actions:
+\tSet Score("Current Player", Subtract, 50, Kills);
 \tSet Deaths("Current Player", "Terran Civilian", Add, 1);
-\tSet Score("Current Player", Add, 10, Kills);
 \tPreserve Trigger();
 }}
 '''
@@ -208,13 +215,18 @@ Actions:
 }}
 
 //--------------- 한 판 이김 ---------------//
+//
+// `Kill(..., At least, 6)` 은 누적이라 여섯 기를 잡은 뒤로는 계속 참이다.
+// 그대로 두면 매 주기 +1점이 들어왔다. **킬 스코어를 깎아** 한 판에
+// 한 번만 준다. 마린 여섯이면 600점이다 (마린 100점).
 
 Trigger("All players"){{
 Conditions:
-\tKill("Current Player", "Terran Marine", At least, 6);
+\tScore("Current Player", Kills, At least, 600);
 
 Actions:
-\tSet Score("Current Player", Add, 1, Kills);
+\tSet Score("Current Player", Subtract, 600, Kills);
+\tSet Deaths("Current Player", "Terran Civilian", Add, 1);
 \tDisplay Text Message(Always Display, "\\x07이겼습니다! \\x04+1점");
 \tPlay WAV("sound\\\\Misc\\\\Button.wav", 300);
 \tPreserve Trigger();

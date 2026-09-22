@@ -149,10 +149,6 @@ def main(argv=None):
     print("  " + corpus.describe("usemap", a.tileset))
     cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False,
                         install=a.install)
-    tiles = scmap.tileset_tiles(cli, ts)
-    floor = next(t for g in corpus.pick_floor_groups(corpus.load(), ts, "usemap", 14)
-                 for t in range(g * 16, g * 16 + 16)
-                 if t in tiles and tiles[t][1] and tiles[t][2])
 
     # **필요한 만큼만 쓴다.** 피난처 · 벌판 · 묘지를 가로로 잇는다.
     SH_W, FIELD_W, GY_W, ROOM_H, GAP = 26, 44, 20, 40, 5
@@ -162,17 +158,21 @@ def main(argv=None):
     field = (ox + SH_W + GAP, oy, FIELD_W, ROOM_H)
     grave = (ox + SH_W + GAP + FIELD_W + GAP, oy, GY_W, ROOM_H)
 
+    # 바닥·통로·테두리·발판·벽을 **다섯 몫으로** 나눠 쓴다. 한 가지로
+    # 깔고 벽만 검게 뚫던 앞판은 실측과 어긋났다 (실측 유즈맵 486장의
+    # 검은 칸 중앙값 0.0%, 1% 넘게 쓰는 그룹 중앙값 10개 — 내 것은
+    # 검은 칸 55~89%, 그룹 1개였다. 그려 놓고 나란히 보고서야 알았다).
+    pal = scmap.Palette(cli, ts, rng, "usemap")
+    print(f"  지형: {pal.describe()}")
+
     print("벽을 세웁니다...")
-    cli.edit("terrain", "fill", cli.path, "0", "0", str(W), str(H), str(VOID_TILE))
-    fill = lambda r: cli.edit("terrain", "fill", cli.path, str(r[0]), str(r[1]),
-                              str(r[2]), str(r[3]), str(floor))
+    scmap.cover_map(cli, pal, W, H)
     print(f"피난처 · 벌판 · 묘지를 뚫습니다 ({used_w}x{ROOM_H} 만 씁니다)...")
     for r in (shelter, field, grave):
-        fill(r)
+        scmap.room(cli, pal, r[0], r[1], r[2], r[3], rim=1)
     # 이음 통로 — 좁게 내야 생존자가 버틸 자리가 생긴다
     for (a_, b_) in ((shelter, field), (field, grave)):
-        cli.edit("terrain", "fill", cli.path, str(a_[0] + a_[2]),
-                 str(oy + ROOM_H // 2 - 3), str(GAP), "6", str(floor))
+        pal.fill(cli, "path", a_[0] + a_[2], oy + ROOM_H // 2 - 3, GAP, 6)
 
     # 같은 지형 안의 **변종만** 흩는다. 그룹을 섞으면 얼룩덜룩한 무늬가
     # 생겨 네모난 방과 안 어울린다. 변종끼리는 게임 동작이 같아 밸런스에
@@ -210,6 +210,7 @@ def main(argv=None):
         cli.place("Terran Civilian", hx, hy + 3, owner=p)
     for k, (_l, _c, _u, _n) in enumerate(SHOPS):
         sx = shelter[0] + 5 + k * 7
+        scmap.pad(cli, pal, sx, shelter[1] + ROOM_H - 5, 3, 3)
         cli.place("Terran Beacon", sx, shelter[1] + ROOM_H - 5, owner=12)
         cli.place(("Terran Barracks", "Terran Academy",
                    "Terran Engineering Bay")[k], sx, shelter[1] + ROOM_H - 10,

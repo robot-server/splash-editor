@@ -6,6 +6,8 @@
 """
 from __future__ import annotations
 
+import itertools
+import json
 import math
 import os
 import re
@@ -1119,6 +1121,294 @@ def paint_floor_mixed(cli: Cli, tileset_id: int, rng, regions, groups,
     return painted
 
 
+
+# ------------------------------------------------------------ 지형 팔레트
+#
+# **왜 있는가.** 만든 맵 여섯 장을 실제 인기 유즈맵과 나란히 그려 보고
+# 알았다. 트리거가 아니라 **바닥**이 달랐다. 실측 인기 유즈맵 86장:
+#
+#     1% 넘게 쓰는 타일 그룹   중앙 10개 (사분위 6~12)
+#     검은 칸(그룹 0)          중앙 0.0% (사분위 0.0~0.0)
+#     비콘이 둘레와 다른 지형 위에 놓인 비율   624개 중 94%
+#
+# 내가 만든 여섯 장은 전부 **그룹 1개 · 검은 칸 55~89% · 발판 0%** 였다.
+# 한 가지 바닥을 깔고 벽 자리를 검게 뚫는 식이었다. 그러면 게임에서
+# 맵에 구멍이 난 것처럼 보이고, 어디가 길이고 어디가 발판인지 읽히지
+# 않는다. 실제 맵은 **지형을 맵 전체에 깔고** 못 걷는 지형(물·용암)으로
+# 막으며, 방·통로·발판을 서로 다른 그룹으로 나눈다.
+#
+# 여기서 그 네 가지 몫을 타일셋마다 실측 분포에서 고른다.
+
+PALETTE_ROLES = ("floor", "path", "rim", "pad", "wall")
+
+_COLOR_CACHE: dict | None = None
+_TS_NAMES = {0: "badlands", 1: "space", 2: "installation", 3: "ashworld",
+             4: "jungle", 5: "desert", 6: "ice", 7: "twilight"}
+
+
+def _tile_colors(tileset_id: int) -> dict[int, tuple[int, int, int]]:
+    """타일 그룹 → 렌더러로 잰 평균 RGB. `measure_tile_colors.py` 가 만든다."""
+    global _COLOR_CACHE
+    if _COLOR_CACHE is None:
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "..", "data", "tile-colors.json")
+        try:
+            with open(os.path.normpath(path), encoding="utf-8") as f:
+                raw = json.load(f)["colors"]
+        except Exception:
+            raw = {}
+        _COLOR_CACHE = {n: {int(k): tuple(v) for k, v in d.items()}
+                        for n, d in raw.items()}
+    return _COLOR_CACHE.get(_TS_NAMES.get(tileset_id & 7, ""), {})
+
+
+def _color_dist(a, b) -> float:
+    """두 색이 얼마나 다른가. 하나라도 모르면 '아주 멀다' 로 친다."""
+    if not a or not b:
+        return 999.0
+    return sum((x - y) ** 2 for x, y in zip(a, b)) ** 0.5
+
+
+class Palette:
+    """방·통로·발판·벽에 쓸 지형 한 벌.
+
+    - `floor` 방 바닥, `path` 통로, `pad` 비콘·시작 발판 — 셋 다 걷을 수
+      있고 **고도가 같다.** (낮은 데서 높은 데를 치면 46.9% 빗나간다.)
+    - `wall` 은 걸을 수 없는 그룹이다. **검은 칸(그룹 0)이 아니다.**
+
+    고르는 차례: 실측 유즈맵이 그 타일셋에서 많이 쓴 그룹 순으로 보고,
+    타일 표에서 실제로 걷을 수 있는지·고도가 같은지 확인해 담는다.
+    """
+
+    def __init__(self, cli: "Cli", tileset_id: int, rng,
+                 kind: str = "usemap", elevation: int | None = None):
+        import corpus as _corpus
+        self.rng = rng
+        self.tileset_id = tileset_id & 7
+        tiles = tileset_tiles(cli, self.tileset_id)
+        try:
+            order = _corpus.pick_floor_groups(
+                _corpus.load(), self.tileset_id, kind, 64)
+        except Exception:
+            order = []
+        try:
+            wgt0 = _corpus.group_weights(_corpus.load(), kind, self.tileset_id)
+        except Exception:
+            wgt0 = {}
+        # **실측이 넓게 깐 그룹만 쓴다.** 그러지 않으면 전이 타일이나
+        # 두뎃 밑그림 그룹이 바닥으로 뽑혀 통짜로 깔았을 때 깨져 보인다.
+        order = [g for g in order if wgt0.get(g, 0.0) >= 0.005] or order
+        seen = set(order)
+        order += [g for g in sorted({t >> 4 for t in tiles}) if g not in seen]
+
+        # **물·용암 그룹은 타일이 여섯 개뿐이다.** 앞서 "변종 여덟 개
+        # 이상" 을 걸었더니 벽으로 쓸 그룹이 하나도 안 잡혀 검은 칸으로
+        # 물러섰다. 걷는 바닥은 결이 필요하니 넷 이상, 벽은 하나면 된다.
+        def variants(g, want_walk, least):
+            out = [t for t in range(g * 16, g * 16 + 16)
+                   if t in tiles and bool(tiles[t][1]) == want_walk]
+            return out if len(out) >= least else []
+
+        # 걷는 그룹을 고도별로 모은다
+        by_lvl: dict[int, list[tuple[int, list[int]]]] = {}
+        blocked: list[tuple[int, list[int]]] = []
+        for g in order:
+            # 그룹 0 은 검은 칸. 그룹 1 은 어느 타일셋에서나 같은 갈회색
+            # 이 나오는 빈 자리용이다 — 바닥으로 쓰면 안 된다.
+            # 1024 부터는 두뎃 밑그림이라 통짜로 깔면 깨져 보인다.
+            if g <= 1 or g >= 1024:
+                continue
+            w = variants(g, True, 4)
+            if w:
+                by_lvl.setdefault(tiles[w[0]][0], []).append((g, w))
+                continue
+            b = variants(g, False, 1)
+            if b:
+                blocked.append((g, b))
+        if not by_lvl:
+            raise CliError(f"타일셋 {self.tileset_id} 에서 걸을 수 있는 "
+                           f"그룹을 찾지 못했습니다.")
+        # **고도는 실측이 많이 쓴 쪽으로 고른다.** 그룹 개수로 고르면
+        # Badlands 가 고지대(고도 2)로 잡힌다 — 실제 유즈맵 바닥은
+        # 낮은 흙이다.
+        try:
+            wgt = _corpus.group_weights(_corpus.load(), kind, self.tileset_id)
+        except Exception:
+            wgt = {}
+        if elevation is None or elevation not in by_lvl:
+            elevation = max(by_lvl, key=lambda l: (
+                sum(wgt.get(g, 0.0) for g, _ in by_lvl[l]), len(by_lvl[l])))
+        self.elevation = elevation
+        walkable = by_lvl[elevation]
+
+        # 몫을 나눈다. **겹치면 안 된다** — 겹치면 눈으로 구분이 안 된다.
+        # 몫 하나에 그룹 하나다. 여럿 담아 칸마다 뽑으면 소금후추처럼
+        # 얼룩진다 (그렇게 만들어 보고 지웠다). 실제 맵은 구획마다 한
+        # 그룹을 쭉 깔고, 구획이 바뀔 때 그룹이 바뀐다.
+        #
+        # **많이 쓰는 순서대로 넷을 집으면 안 된다.** Ice 의 그룹 2 와 3 은
+        # 둘 다 눈밭이라 화면에서 한 덩어리로 보인다. 렌더러로 잰 색
+        # (`data/tile-colors.json`) 을 보고 **서로 먼 색**을 고른다.
+        order4 = [g for g, _ in walkable]
+        col = _tile_colors(self.tileset_id)
+        head = order4[:14]                   # 실측이 넓게 쓴 것 안에서만 고른다
+        # **바닥은 벽보다 밝아야 한다.** 가장 많이 쓴 그룹을 그냥 바닥으로
+        # 삼으니 Badlands 에서 (28,27,28) 짜리 거의 검은 지형이 뽑혔다.
+        # 지형은 제대로 깔렸는데 그림은 여전히 구멍처럼 보였다. 실제
+        # 인기 맵은 방 바닥이 둘레보다 밝다 — 그래야 방으로 읽힌다.
+        lum = lambda g: sum(col.get(g, (90, 90, 90))) / 3.0
+
+        # **벽을 먼저 고른다.** 걷는 네 몫은 벽보다 밝아야 한다 — 통로가
+        # 벽보다 어두우면 길이 구멍처럼 보인다 (Badlands 에서 통로 밝기
+        # 27, 벽 44 가 나와 실제로 그렇게 그려졌다). 벽을 나중에 고르면
+        # 그 검사를 할 수가 없다.
+        blocked_head = [g for g, _ in blocked[:8]]
+        top_walk = max((lum(g) for g in head[:8]), default=90.0)
+        dark = [g for g in blocked_head if lum(g) < top_walk - 8]
+        self.wall = (dark or blocked_head)[:1]
+        wall_lum = lum(self.wall[0]) if self.wall else 0.0
+
+        # 걷는 몫 후보: 벽보다 밝은 것. 넷이 안 되면 밝은 순으로 채운다.
+        bright = [g for g in head if lum(g) > wall_lum + 6]
+        if len(bright) < 4:
+            bright = sorted(head, key=lum, reverse=True)[:max(4, len(bright))]
+        # **색이 같은 그룹은 하나만 남긴다.** Jungle 의 그룹 14 와 15 는
+        # 잰 색이 똑같다 — 둘을 다른 몫에 넣으면 나눈 셈만 되고 화면은
+        # 그대로다. 색을 굵게 묶어 대표만 남기고, 실측을 많이 쓴 쪽을
+        # 대표로 둔다.
+        seen_col, uniq = set(), []
+        for g in bright:
+            c = col.get(g)
+            key = tuple(v // 12 for v in c) if c else ("?", g)
+            if key in seen_col:
+                continue
+            seen_col.add(key)
+            uniq.append(g)
+        # 넷이 안 남으면 **묶은 것을 풀어서** 채운다. 색이 좀 가까운 것이
+        # 같은 그룹을 두 몫에 넣는 것보다 낫다 (그렇게 해서 테두리와
+        # 바닥이 같은 그룹으로 나온 판이 있었다).
+        for extra in (bright, sorted(head, key=lum, reverse=True)):
+            for g in extra:
+                if len(uniq) >= 4:
+                    break
+                if g not in uniq:
+                    uniq.append(g)
+        bright = uniq
+
+        # **넷을 한꺼번에 고른다.** 하나씩 탐욕적으로 집으면 앞의 몫만
+        # 대비가 좋고 뒤로 갈수록 남은 것끼리 비슷해진다 — 섬과 통로가
+        # 똑같은 눈밭으로 나왔다. 후보가 열두 개를 넘지 않으니 네 개
+        # 조합을 다 훑어 **가장 가까운 두 색의 거리가 가장 큰** 조합을
+        # 쓴다 (495가지, 셈이 가볍다).
+        pool = bright[:12]
+        best_set, best_gap = None, -1.0
+        if len(pool) >= 4:
+            for combo in itertools.combinations(pool, 4):
+                gap = min(_color_dist(col.get(x), col.get(y))
+                          for x, y in itertools.combinations(combo, 2))
+                if gap > best_gap:
+                    best_gap, best_set = gap, combo
+        if best_set is None:
+            best_set = tuple((pool * 4)[:4]) if pool else (1, 1, 1, 1)
+            best_gap = 0.0
+
+        # 몫을 나눈다. 바닥은 가장 밝은 것 — 방이 둘레보다 밝아야 방으로
+        # 읽힌다. 나머지 셋은 **맞닿는 짝**을 보고 배치한다. 화면에서
+        # 서로 붙는 짝은 셋뿐이다:
+        #
+        #     바닥–발판 (발판은 바닥 위에 놓인다)
+        #     바닥–테두리 (테두리가 방을 두른다)
+        #     통로–테두리 (통로가 방 테두리와 만난다)
+        #
+        # "바닥과 먼 순서" 로 그냥 꽂으면 남은 둘이 통로와 테두리가 되어
+        # 서로 똑같은 색이 될 수 있다 (Jungle 그룹 14·15 는 잰 색이 같다).
+        # 여섯 가지 배치를 다 보고 맞닿는 짝의 최솟값이 큰 쪽을 쓴다.
+        rest = list(best_set)
+        floor_g = max(rest, key=lum)
+        rest.remove(floor_g)
+        d = lambda x, y: _color_dist(col.get(x), col.get(y))
+        best_asg, best_score = None, -1.0
+        for pad_g, path_g, rim_g in itertools.permutations(rest):
+            score = min(d(floor_g, pad_g), d(floor_g, rim_g), d(path_g, rim_g))
+            if score > best_score:
+                best_score, best_asg = score, (pad_g, path_g, rim_g)
+        chosen = [floor_g] + list(best_asg)
+        best_gap = min(best_gap, best_score) if best_gap >= 0 else best_score
+        self.floor, self.pad, self.path, self.rim = ([g] for g in chosen[:4])
+        self.color_gap = best_score
+        self.void_wall = not self.wall      # 물러설 곳이 없으면 검은 칸
+        self._pool = {g: v for g, v in walkable}
+        self._pool.update({g: v for g, v in blocked})
+
+    # -- 쓰는 쪽 ---------------------------------------------------------
+    def groups(self, role: str) -> list[int]:
+        return getattr(self, role)
+
+    def tile(self, role: str) -> int:
+        """그 몫의 타일 하나 — **그룹은 하나로 고정**, 변종만 바뀐다."""
+        gs = self.groups(role)
+        if not gs:
+            return 0
+        return self.rng.choice(self._pool[gs[0]])
+
+    def fill(self, cli: "Cli", role: str, x: int, y: int, w: int, h: int):
+        """네모 한 칸을 그 몫으로 칠한다.
+
+        **한 구획은 한 그룹이다.** 칸마다 그룹을 다시 뽑으면 눈밭·풀밭·
+        흙바닥이 뒤섞인 소금후추 무늬가 된다 — 실제로 그렇게 그려 보고
+        걷어냈다. 그룹은 고정하고 **같은 그룹 안의 변종만** 흩어서 결을
+        낸다 (실측 유즈맵의 서로 다른 타일 수 중앙값이 141개다).
+        """
+        if w <= 0 or h <= 0:
+            return
+        gs = self.groups(role)
+        if not gs and role == "wall":
+            cli.edit("terrain", "fill", cli.path, str(x), str(y),
+                     str(w), str(h), "0")
+            return
+        rows = [[self.tile(role) for _ in range(w)] for _ in range(h)]
+        cli.paste_tiles(x, y, rows)
+
+    def describe(self) -> str:
+        return (f"바닥 {self.floor[0]} · 통로 {self.path[0]} · "
+                f"테두리 {self.rim[0]} · 발판 {self.pad[0]} · "
+                f"벽 {self.wall[0] if self.wall else '검은 칸(물러섬)'} "
+                f"(고도 {self.elevation}, 색 차 {self.color_gap:.0f})")
+
+
+def cover_map(cli: "Cli", pal: Palette, width: int, height: int):
+    """**맵 전체를 벽 지형으로 덮는다.**
+
+    앞서 `terrain fill … 0` 으로 검게 덮고 방만 뚫었다. 실측 유즈맵
+    485장의 검은 칸 중앙값은 0.0% 다 — 아무도 그렇게 하지 않는다.
+    """
+    pal.fill(cli, "wall", 0, 0, width, height)
+
+
+def room(cli: "Cli", pal: Palette, x: int, y: int, w: int, h: int,
+         rim: int = 1, role: str = "floor"):
+    """방 하나를 판다 — 바닥을 깔고 **테두리를 다른 지형으로** 두른다.
+
+    테두리가 있어야 방이 방으로 읽힌다. 실제 인기 디펜스 맵은 예외 없이
+    방마다 테두리를 둘렀다.
+    """
+    pal.fill(cli, role, x, y, w, h)
+    if rim > 0 and w > 2 * rim and h > 2 * rim:
+        pal.fill(cli, "rim", x, y, w, rim)
+        pal.fill(cli, "rim", x, y + h - rim, w, rim)
+        pal.fill(cli, "rim", x, y + rim, rim, h - 2 * rim)
+        pal.fill(cli, "rim", x + w - rim, y + rim, rim, h - 2 * rim)
+
+
+def pad(cli: "Cli", pal: Palette, tile_x: int, tile_y: int,
+        w: int = 3, h: int = 3):
+    """비콘·시작 자리 밑에 **발판**을 깐다.
+
+    실측 비콘 624개 중 590개(94%)가 둘레와 다른 지형 위에 놓여 있었다.
+    발판이 없으면 "여기 서라" 가 화면에서 안 보인다.
+    """
+    pal.fill(cli, "pad", tile_x - w // 2, tile_y - h // 2, w, h)
+
 def hyper_trigger(owner: str, waits: int = 63) -> str:
     """하이퍼(터보) 트리거 한 벌 — **유즈맵에 거의 필수다.**
 
@@ -1175,6 +1465,157 @@ def kill_bounty(player: str, amount: int, per_score: int = 50,
 TRIGGER_SEP = "\n\n//-----------------------------------------------------------------//\n\n"
 
 
+
+# ------------------------------------------------- 맵에서 나눠 쓰는 것들
+#
+# **왜 있는가.** 죽음 수 칸·스위치 번호·카운트다운·순위표는 맵 하나에
+# 하나씩뿐인 자원이다. 부품마다 제 마음대로 고르면 두 부품이 같은 칸을
+# 써서 서로의 값을 망가뜨린다. 실제로 그렇게 될 자리가 여러 곳 있었다.
+#
+# 게다가 죽음 수 칸으로 아무 유닛이나 쓰면 안 된다. **게임이 저절로
+# 만드는 유닛**을 칸으로 쓰면 그게 죽을 때마다 값이 틀어진다. 캐리어가
+# 있는 맵에서 `Protoss Interceptor` 를 카운터로 쓰던 것이 그 예다 —
+# 인터셉터는 캐리어가 계속 만들고 계속 죽는다.
+#
+# 아래 표는 "이 칸을 쓰면 안 되는 조건" 이다. 맵이 쓰는 유닛을 알려
+# 주면 걸리는 칸을 건너뛴다.
+
+COUNTER_SLOTS = [
+    # (죽음 수 칸으로 쓸 유닛, 이것을 만들어 내는 것들)
+    ("Dark Swarm",          ("Zerg Defiler", "Zerg Defiler Mound")),
+    ("Disruption Web",      ("Protoss Corsair",)),
+    ("Scanner Sweep",       ("Terran Comsat Station", "Terran Command Center")),
+    ("Protoss Scarab",      ("Protoss Reaver", "Protoss Robotics Support Bay")),
+    ("Protoss Interceptor", ("Protoss Carrier", "Gantrithor", "Protoss Stargate")),
+    ("Spider Mine",         ("Terran Vulture", "Jim Raynor (Vulture)",
+                             "Terran Machine Shop")),
+    ("Nuclear Missile",     ("Terran Ghost", "Sarah Kerrigan",
+                             "Terran Nuclear Silo")),
+    ("Zerg Cocoon",         ("Zerg Mutalisk", "Kukulza (Mutalisk)",
+                             "Zerg Greater Spire")),
+    ("Zerg Lurker Egg",     ("Zerg Hydralisk", "Hunter Killer",
+                             "Zerg Hydralisk Den")),
+    ("Zerg Egg",            ("Zerg Larva", "Zerg Hatchery", "Zerg Lair",
+                             "Zerg Hive")),
+]
+
+
+def units_in_play(cli: Cli, trigger_text: str = "") -> set[str]:
+    """맵에 실제로 나타날 유닛 이름. 배치된 것 + 트리거가 만드는 것."""
+    names = set()
+    try:
+        for u in cli.units():
+            n = u.get("type_name")
+            if n:
+                names.add(n)
+    except Exception:
+        pass
+    for m in re.finditer(r'Create Unit(?:\s*with\s*Properties)?\('
+                         r'\s*"[^"]*"\s*,\s*"([^"]+)"', trigger_text):
+        names.add(m.group(1))
+    for m in re.finditer(r'Give Units to Player\([^,]*,[^,]*,\s*"([^"]+)"',
+                         trigger_text):
+        names.add(m.group(1))
+    return names
+
+
+class MapResources:
+    """맵 하나에서 나눠 쓰는 것을 한 곳에서 준다.
+
+        res = scmap.MapResources(in_play={"Terran Marine", "Zerg Sunken Colony"})
+        life  = res.counter("목숨")          # 'Dark Swarm'
+        wave  = res.counter("웨이브")        # 'Disruption Web'
+        sw    = res.switch("문 열림")        # 1
+        res.claim_countdown("Player 8")     # 맵에 하나뿐 — 두 번 부르면 raise
+        res.claim_leaderboard("Custom")     # 순위표도 하나뿐
+
+    같은 이름으로 다시 부르면 **같은 것**을 준다. 부품이 서로를 몰라도
+    이름만 맞추면 한 칸을 함께 쓸 수 있다.
+    """
+
+    def __init__(self, in_play: "set[str] | None" = None):
+        self.in_play = set(in_play or ())
+        self._counters: dict[str, str] = {}
+        self._switches: dict[str, int] = {}
+        self._countdown: str | None = None
+        self._leaderboard: str | None = None
+
+    # -- 죽음 수 칸 ------------------------------------------------------
+    def counter(self, purpose: str) -> str:
+        if purpose in self._counters:
+            return self._counters[purpose]
+        taken = set(self._counters.values())
+        for name, makers in COUNTER_SLOTS:
+            if name in taken:
+                continue
+            if any(mk in self.in_play for mk in makers):
+                continue          # 이 맵에서는 저절로 생긴다 — 값이 틀어진다
+            if name in self.in_play:
+                continue          # 맵에 직접 놓여 있다
+            self._counters[purpose] = name
+            return name
+        raise CliError(
+            f"죽음 수 칸이 모자랍니다 ('{purpose}'). 이미 {len(taken)}개를 "
+            f"쓰고 있고, 남은 칸은 이 맵이 쓰는 유닛과 겹칩니다. 쓰는 유닛을 "
+            f"줄이거나 스위치(Switch)로 바꾸세요.")
+
+    def why_not(self, name: str) -> str | None:
+        """그 칸을 왜 못 쓰는지 — 검사기가 사람에게 말해 줄 때 쓴다."""
+        for slot, makers in COUNTER_SLOTS:
+            if slot != name:
+                continue
+            bad = [mk for mk in makers if mk in self.in_play]
+            if bad:
+                return f"{bad[0]} 이 이 맵에 있어 {name} 이 저절로 생기고 죽는다"
+        if name in self.in_play:
+            return f"{name} 이 맵에 직접 놓여 있다"
+        return None
+
+    # -- 스위치 ----------------------------------------------------------
+    def switch(self, purpose: str) -> int:
+        """스위치는 **이름을 못 쓴다** — 1~255 번호뿐이다."""
+        if purpose in self._switches:
+            return self._switches[purpose]
+        n = len(self._switches) + 1
+        if n > 255:
+            raise CliError("스위치는 255개까지입니다.")
+        self._switches[purpose] = n
+        return n
+
+    # -- 하나뿐인 것 -----------------------------------------------------
+    def claim_countdown(self, owner: str) -> None:
+        """카운트다운 타이머는 **맵 전체에 하나**다.
+
+        두 부품이 각자 `Set Countdown Timer` 를 걸면 서로 시간을 덮어
+        쓴다. 먼저 잡은 쪽만 쓰게 한다.
+        """
+        if self._countdown is not None and self._countdown != owner:
+            raise CliError(
+                f"카운트다운 타이머는 맵에 하나뿐입니다. 이미 "
+                f"'{self._countdown}' 가 쓰고 있어 '{owner}' 는 못 씁니다.")
+        self._countdown = owner
+
+    def claim_leaderboard(self, kind: str) -> None:
+        """순위표도 하나다. 종류를 바꿔 걸면 앞의 것이 사라진다."""
+        if self._leaderboard is not None and self._leaderboard != kind:
+            raise CliError(
+                f"순위표는 하나뿐입니다. 이미 '{self._leaderboard}' 로 걸려 "
+                f"있어 '{kind}' 로 또 걸면 앞의 것이 사라집니다.")
+        self._leaderboard = kind
+
+    def describe(self) -> str:
+        out = [f"죽음 수 칸 {len(self._counters)}개: " +
+               ", ".join(f"{k}={v}" for k, v in self._counters.items())]
+        if self._switches:
+            out.append(f"스위치 {len(self._switches)}개: " +
+                       ", ".join(f"{k}=Switch {v}"
+                                 for k, v in self._switches.items()))
+        if self._countdown:
+            out.append(f"카운트다운: {self._countdown}")
+        if self._leaderboard:
+            out.append(f"순위표: {self._leaderboard}")
+        return " · ".join(out)
+
 # 있는지 표시하는 데 쓰는 유닛. 스펠이라 맵에 놓을 수 없고 실제로 죽는
 # 일도 없어, 죽음 수가 순수한 변수가 된다.
 PRESENCE_UNIT = "Disruption Web"
@@ -1182,7 +1623,7 @@ PRESENCE_UNIT = "Disruption Web"
 
 def absent_player_cleanup(humans: int, system_owner: str,
                           min_players: int = 1, grace: int = 3,
-                          count_slot: str = "Protoss Interceptor") -> list[str]:
+                          count_slot: str = "Disruption Web") -> list[str]:
     """**들어오지 않은 자리를 치우고, 인원이 모자라면 끝낸다.**
 
     유즈맵은 슬롯이 다 차지 않는 게 보통이다. 6인 맵에 넷이 들어오면
@@ -1195,6 +1636,12 @@ def absent_player_cleanup(humans: int, system_owner: str,
     **인원은 세어야 한다.** 앞서 `min_players=3` 일 때 "P3 이 있는가" 만
     보았는데, P1·P2·P4 셋이 들어와도 지고 P3 혼자 들어오면 통과했다.
     들어온 사람마다 시스템 칸을 하나씩 올려 그 합을 본다.
+
+    `count_slot` 은 **그 맵에 절대 나타나지 않는 유닛**이어야 한다.
+    앞서 기본값이 `Protoss Interceptor` 였는데, 캐리어가 있는 맵에서는
+    인터셉터가 끊임없이 생기고 죽어 인원수가 엉망이 된다. 어느 칸이
+    안전한지는 맵이 쓰는 유닛에 따라 다르니 `MapResources.counter()`
+    로 받아 쓰는 것이 옳다 — 기본값은 코르세어 없는 맵을 가정한다.
     """
     out = ['Trigger("All players"){\nConditions:\n\tAlways();\n'
            '\tDeaths("Current Player", "%s", Exactly, 0);\n\n'

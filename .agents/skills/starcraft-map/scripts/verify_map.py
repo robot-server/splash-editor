@@ -496,13 +496,23 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
     placed = collections.Counter()
     for u in cli.units():
         placed[u.get("type_name") or str(u["type"])] += 1
-    used_as_counter = set(re.findall(r'Set Deaths\(\s*"[^"]+"\s*,\s*"([^"]+)"', text))
-    dirty = sorted(c for c in used_as_counter if placed.get(c))
+    #
+    #     **`Subtract` 는 여기에 걸지 않는다.** 죽은 수를 하나씩 빼면서
+    #     그만큼 보상하는 것은 오히려 권장하는 관용구다 (누적 조건으로
+    #     무한 보상이 되는 것을 막는 방법이다). 변수로 쓰는 것은
+    #     `Set To` 와 `Add` 다 — 그때만 실제 죽음이 값을 망친다.
+    #     앞서 이 구분 없이 잡아 성한 키우기 맵을 틀렸다고 했다.
+    used_as_var = set(re.findall(
+        r'Set Deaths\(\s*"[^"]+"\s*,\s*"([^"]+)"\s*,\s*(?:Set To|Add)\b',
+        text))
+    dirty = sorted(c for c in used_as_var if placed.get(c))
     if dirty:
-        out.append(("!!", f"죽음 수 카운터로 쓰는 유닛이 맵에 배치되어 있습니다: "
-                          f"{dirty[:3]}. 그 유닛이 죽을 때마다 값이 틀어집니다. "
-                          f"놓을 수 없는 스펠류(Dark Swarm · Disruption Web · "
-                          f"Scanner Sweep)를 쓰세요."))
+        out.append(("!!", f"죽음 수를 **변수로** 쓰는 유닛이 맵에 배치되어 "
+                          f"있습니다: {dirty[:3]}. 그 유닛이 죽을 때마다 값이 "
+                          f"틀어집니다. 놓을 수 없는 스펠류(Dark Swarm · "
+                          f"Disruption Web · Scanner Sweep)를 쓰거나, "
+                          f"scmap.MapResources.counter() 로 안전한 칸을 "
+                          f"받아 쓰세요."))
 
     # 11) **잠금이 글자만 있고 실제로 안 읽히는가.**
     #     동작이 스위치나 죽음 수를 찍어도, 같은 트리거의 조건이 그것을
@@ -566,6 +576,61 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
         out.append(("?", "들어오지 않은 자리를 치우는 트리거가 없습니다. "
                          "슬롯이 다 안 차면 빈 자리 유닛이 필드에 남아 "
                          "전멸 판정이 영영 참이 되지 않습니다."))
+
+    # 15) **지형을 눈으로 본 결과를 검사로 굳힌다.**
+    #     만든 맵 여섯 장을 실제 인기 유즈맵과 나란히 그려 보고서야
+    #     알았다 — 트리거가 아니라 바닥이 달랐다. 그림을 안 그려도
+    #     걸리도록 여기에 넣는다.
+    #
+    #     실측 인기 유즈맵 86장 (scmscx 내려받기 상위):
+    #        1% 넘게 쓰는 타일 그룹   중앙 10개 (사분위 6~12)
+    #        검은 칸(그룹 0)          중앙 0.0% (485장 중 404장이 1% 미만)
+    #        비콘이 둘레와 다른 지형 위   624개 중 590개 = 94%
+    try:
+        W, H = m["width"], m["height"]
+        g = cli.tiles(0, 0, W, H)
+        cnt = collections.Counter(v >> 4 for r in g for v in r)
+        void = 100.0 * cnt.get(0, 0) / (W * H)
+        big = [k for k, n in cnt.items() if k and n >= W * H * 0.01]
+        if void > 20:
+            out.append(("!!", f"맵의 {void:.0f}% 가 **검은 칸**입니다. 실측 "
+                              f"유즈맵 485장의 중앙값은 0.0% 이고 84% 가 "
+                              f"1% 미만입니다. 못 걷게 막으려면 검게 뚫지 "
+                              f"말고 **못 걷는 지형**(물·용암)을 까세요 — "
+                              f"scmap.Palette 의 'wall' 몫."))
+        elif void > 5:
+            out.append(("?", f"검은 칸이 {void:.0f}% 입니다 (실측 중앙 0.0%). "
+                             f"게임에서 맵에 구멍이 난 것처럼 보입니다."))
+        if len(big) <= 2:
+            out.append(("!!", f"1% 넘게 쓰는 타일 그룹이 {len(big)}개뿐입니다 "
+                              f"(실측 중앙 10개, 아래 사분위 6개). 바닥을 한 "
+                              f"가지로 깔면 어디가 길이고 어디가 발판인지 "
+                              f"화면에서 안 읽힙니다."))
+        # 비콘 발판
+        BEACONS = {"Terran Beacon", "Protoss Beacon", "Zerg Beacon",
+                   "Terran Flag Beacon", "Protoss Flag Beacon",
+                   "Zerg Flag Beacon"}
+        pads = same = 0
+        for u in cli.units():
+            if (u.get("type_name") or "") not in BEACONS:
+                continue
+            tx, ty = int(u["x"] // 32), int(u["y"] // 32)
+            if not (6 <= tx < W - 6 and 6 <= ty < H - 6):
+                continue
+            here = g[ty][tx] >> 4
+            away = [g[ty + dy][tx + dx] >> 4
+                    for dx, dy in ((6, 0), (-6, 0), (0, 6), (0, -6))]
+            away = [x for x in away if x]
+            if not here or not away:
+                continue
+            pads += 1
+            same += all(x == here for x in away)
+        if pads and same * 2 > pads:
+            out.append(("?", f"비콘 {pads}개 중 {same}개가 둘레와 **같은 지형** "
+                             f"위에 있습니다. 실측에서는 624개 중 94% 가 따로 "
+                             f"깐 발판 위였습니다 — 밟을 자리가 안 보입니다."))
+    except Exception as e:
+        out.append(("?", f"지형을 못 쟀습니다: {e}"))
 
     if not out:
         out.append(("ok", "유즈맵 바닥 검사를 모두 통과했습니다."))

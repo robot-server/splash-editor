@@ -168,13 +168,23 @@ def check(cli: Cli, info: dict, text: str) -> list[tuple[str, str]]:
     # --- 3) 제한 시간 안에 갈 수 있는가 ------------------------------
     # `Set Countdown Timer(Set To, N)` 이 있고 `Bring(…, 로케이션)` 으로
     # 자리를 고르게 하면, 시작 자리에서 그 자리까지 걸어갈 수 있어야 한다.
+    # **아무 `Bring` 이나 재면 안 된다.** 카운트다운과 상관없는 상점
+    # 비콘까지 재서, 다른 사람 경기장 상점까지 158타일이라고 성한 맵을
+    # 틀렸다고 한 적이 있다. 카운트다운과 `Bring` 을 **같은 트리거의
+    # 조건에서 함께 읽는** 것만 본다 — 그게 "시간 안에 저기로 가라" 다.
     secs = [int(x) for x in re.findall(
         r'Set Countdown Timer\(\s*Set To\s*,\s*(\d+)\s*\)', text)]
     if secs:
         limit = min(secs)
-        choice = [n for n in set(re.findall(
-            r'Bring\(\s*"[^"]+"\s*,\s*"[^"]+"\s*,\s*"([^"]+)"', text))
-            if n in locs]
+        choice = []
+        for blk in re.split(r'(?=Trigger\()', text):
+            head = blk.split("Actions:")[0]
+            if "Countdown Timer(" not in head:
+                continue
+            choice += [n for n in re.findall(
+                r'Bring\(\s*"[^"]+"\s*,\s*"[^"]+"\s*,\s*"([^"]+)"', head)
+                if n in locs]
+        choice = sorted(set(choice))
         starts = [(u["x"] / TILE, u["y"] / TILE) for u in units
                   if u["type"] == scmap.START_LOCATION]
         if choice and starts:

@@ -375,43 +375,34 @@ def main(argv=None):
 
     cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False,
                         install=a.install)
-    tile, grp = floor_tile(cli, ts, rng)
-    print(f"  바닥 타일 0x{tile:04x} (그룹 {grp}) — 실측 분포에서 골랐습니다")
+    # 바닥·통로·발판·벽을 **네 몫으로** 나눠 쓴다. 한 가지로 깔고 벽만
+    # 검게 뚫던 앞판은 실측과 어긋났다 (실측 검은 칸 중앙 0.0%, 1% 넘게
+    # 쓰는 그룹 중앙 10개 — 내 것은 검은 칸 55%, 그룹 1개였다).
+    pal = scmap.Palette(cli, ts, rng, "usemap")
+    print(f"  지형: {pal.describe()}")
 
     boxes = layout(a.players, W, H)
     bx0 = min(b[0] for b in boxes); by0 = min(b[1] for b in boxes)
     bx1 = max(b[0] + b[2] for b in boxes); by1 = max(b[1] + b[3] for b in boxes)
     print(f"  경기장 {len(boxes)}개, 쓰는 자리 {bx1 - bx0}x{by1 - by0} "
-          f"(맵은 {W}x{H} — 나머지는 검게 둔다)")
+          f"(맵은 {W}x{H} — 나머지는 못 걷는 지형)")
     # 벽 두께는 **사거리보다 얇아야 한다.** 마린 사거리가 4 타일이라
     # 벽이 4 면 섬 가장자리에 딱 붙어야 겨우 닿는다. 2 로 줄인다.
     RING, WALL = 5, 2
 
-    # 1) 전부 벽으로 덮는다
+    # 1) **맵 전체를 못 걷는 지형으로 덮는다.** 검은 칸이 아니다.
     print("벽을 세웁니다...")
-    cli.edit("terrain", "fill", cli.path, "0", "0", str(W), str(H), str(VOID_TILE))
+    scmap.cover_map(cli, pal, W, H)
 
-    fill = lambda x, y, w, h, t: cli.edit(
-        "terrain", "fill", cli.path, str(x), str(y), str(w), str(h), str(t))
-
-    # 2) 경기장: 통로 → 벽 고리 → 가운데 섬
+    # 2) 경기장: 통로 → 벽 고리 → 가운데 섬(테두리 두른 방)
     print(f"경기장 {len(boxes)}개를 뚫습니다 (통로/벽/섬)...")
     for (x, y, w, h) in boxes:
-        fill(x, y, w, h, tile)                                    # 통로까지 포함
-        fill(x + RING, y + RING, w - 2 * RING, h - 2 * RING, VOID_TILE)   # 벽
-        fill(x + RING + WALL, y + RING + WALL,
-             w - 2 * (RING + WALL), h - 2 * (RING + WALL), tile)          # 섬
-
-    # 3) 바닥에 결을 준다 — 그룹을 섞고 변종을 흩는다
-    walk = []
-    for (x, y, w, h) in boxes:
-        walk.append((x, y, w, RING))                               # 위 통로
-        walk.append((x, y + h - RING, w, RING))                    # 아래 통로
-        walk.append((x, y + RING, RING, h - 2 * RING))             # 왼 통로
-        walk.append((x + w - RING, y + RING, RING, h - 2 * RING))  # 오른 통로
-        walk.append((x + RING + WALL, y + RING + WALL,
-                     w - 2 * (RING + WALL), h - 2 * (RING + WALL)))  # 섬
-    groups = corpus.pick_floor_groups(corpus.load(), ts, "usemap", 14)
+        pal.fill(cli, "path", x, y, w, h)                          # 바깥 통로
+        pal.fill(cli, "wall", x + RING, y + RING,
+                 w - 2 * RING, h - 2 * RING)                       # 벽 고리
+        scmap.room(cli, pal, x + RING + WALL, y + RING + WALL,
+                   w - 2 * (RING + WALL), h - 2 * (RING + WALL),
+                   rim=1)                                          # 섬
 
     # 4) 플레이어 슬롯
     # 같은 지형 안의 **변종만** 흩는다. 그룹을 섞으면 얼룩덜룩한 덩이
@@ -449,6 +440,7 @@ def main(argv=None):
     for i, (x, y, w, h) in enumerate(boxes):
         p = i + 1
         cx, cy = x + w // 2, y + h // 2
+        scmap.pad(cli, pal, cx, cy, 5, 5)          # 시작 자리 발판
         cli.place(scmap.START_LOCATION, cx, cy, owner=p)
         # 시작 병력도 섬 가장자리에 붙여 둔다. 가운데 모아 두면
         # 사거리가 링에 닿지 않아 한 발도 못 쏜다.
@@ -477,6 +469,7 @@ def main(argv=None):
             bx = cx - 5 + k * 5
             cli.place(("Terran Engineering Bay", "Zerg Creep Colony",
                        "Terran Academy")[k], bx + 1, cy + 6, owner=p)
+            scmap.pad(cli, pal, bx + 1, cy + 9, 3, 3)   # 밟을 자리를 눈에 보이게
             cli.place("Terran Beacon", bx + 1, cy + 9, owner=p)
     # 적·보스도 스타팅이 있어야 슬롯이 산다. 첫 경기장 통로 구석에 둔다.
     bx, by, bw, bh = boxes[0]
