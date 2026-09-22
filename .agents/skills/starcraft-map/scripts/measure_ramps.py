@@ -104,128 +104,87 @@ def ramp_candidates(cli: Cli, tiles: dict[int, tuple], tmp: str,
     return out
 
 
-def _isom_half(c: Cli, ts: int, direction: str, low_idx: int, high_idx: int):
-    """한쪽을 **ISOM 으로** 고지대로 올린다 — 그래야 진짜 절벽이 생긴다.
+def ramp_direction(cli: Cli, d: dict, tiles: dict, tmp: str,
+                   base_path: str, low: int) -> tuple[str, int]:
+    """**램프칸이 고지대 덩이의 어느 쪽에 붙어 있나**로 방향을 읽는다.
 
-    생타일로 채우면 고지대와 저지대가 맞닿기만 하고 절벽이 안 생겨
-    **그냥 걸어 넘어간다.** 처음 판이 그랬고, 그래서 후보가 전부
-    네 방향을 다 통과했다 (140개 전원 통과 = 시험이 아무것도 안 잼).
-    """
-    strokes = []
-    for j in range(MAPH):
-        for i in range(j & 1, MAPW // 2, 2):
-            x = 2 * i
-            if direction == "down":
-                hi = j < MAPH // 2
-            elif direction == "up":
-                hi = j >= MAPH // 2
-            elif direction == "left":
-                hi = x < MAPW // 2
-            else:
-                hi = x >= MAPW // 2
-            strokes.append((x, j, high_idx if hi else low_idx, 1))
-    c.isom_batch(strokes)
+    앞서 세 방법이 다 실패했다 (고도 무늬·통과 여부·CLI 거절). 되는 것은
+    이것이다: 두뎃을 평지에 놓고 제가 쓴 타일만 보면,
 
+        두뎃 340 (8x5)          두뎃 78 (6x6)
+        000000R0                0000RR
+        000000R0                000RRR
+        000000R0                000RR0
+        ......R0
 
-def _connected(c: Cli, ts: int, hp, lp) -> bool:
-    grid = scmap.walk_grid(c, ts, 0, 0, MAPW, MAPH)
-    a2 = scmap.nearest_walkable(grid, hp[0] * 4 + 2, hp[1] * 4 + 2, radius=8)
-    b2 = scmap.nearest_walkable(grid, lp[0] * 4 + 2, lp[1] * 4 + 2, radius=8)
-    if a2 is None or b2 is None:
-        return False
-    return scmap.walk_reachable(grid, a2, b2)
+    고지대 덩이(숫자)와 램프칸(R)이 나뉘어 있고, **R 이 놓인 쪽이 내려
+    가는 쪽**이다. 340 은 오른쪽, 78 은 오른쪽 아래다.
 
-
-def try_direction(cli: Cli, ts: int, dood: dict, direction: str,
-                  tiles: dict[int, tuple], tmp: str,
-                  low_idx: int, high_idx: int) -> bool:
-    """**절벽으로 막힌 자리를 램프가 뚫는가** — 차이를 잰다.
-
-    한쪽을 ISOM 으로 올려 절벽을 세우고,
-
-      1. 램프 없이 고지대↔저지대가 **막혀 있는지** 먼저 본다.
-         안 막혀 있으면 이 시험은 아무것도 재지 못한다 — 건너뛴다.
-      2. 램프를 경계에 놓는다. `doodad place` 가 거절하면 그 방향이
-         아니다 (`DoodadPlacibility` 가 붙는 자리를 안다).
-      3. 그제야 통하면 그 두뎃이 그 방향의 램프다.
-
-    1번이 없으면 "원래 통하던 것" 을 램프 덕이라고 세게 된다.
+    두뎃 크기와 실제로 쓰는 칸이 다르다는 것도 여기서 드러난다 — 6x6
+    이라고 적혀 있어도 3x3 만 쓰기도 한다.
     """
     import shutil
-    p = os.path.join(tmp, "dir.scx")
-    shutil.copy(cli.path, p)
+    p = os.path.join(tmp, "dirprobe.scx")
+    shutil.copy(base_path, p)
     c = Cli(p)
-    _isom_half(c, ts, direction, low_idx, high_idx)
-    cx, cy = MAPW // 2, MAPH // 2
-    w, h = dood["w"], dood["h"]
-    if direction == "down":
-        hp, lp = (cx, cy - 10), (cx, cy + 10)
-    elif direction == "up":
-        hp, lp = (cx, cy + 10), (cx, cy - 10)
-    elif direction == "left":
-        hp, lp = (cx - 10, cy), (cx + 10, cy)
-    else:
-        hp, lp = (cx + 10, cy), (cx - 10, cy)
-    if _connected(c, ts, hp, lp):
-        return False                      # 절벽이 안 섰다 — 잴 수 없다
-    ax, ay = cx - w // 2, cy - h // 2
-    for dy in (-2, -1, 0, 1, 2):          # 경계 높이가 한두 칸 밀릴 수 있다
-        q = os.path.join(tmp, "try.scx")
-        shutil.copy(p, q)
-        cq = Cli(q)
-        try:
-            cq.edit("doodad", "place", q, str(dood["id"]),
-                    str(ax if direction in ("down", "up") else ax + dy),
-                    str(ay + dy if direction in ("down", "up") else ay),
-                    "--install", cq.install)
-        except CliError:
-            continue
-        if _connected(cq, ts, hp, lp):
-            return True
-    return False
+    w, h = d["w"], d["h"]
+    try:
+        scmap.place_doodad(c, d["id"], 20, 20, w, h)
+    except CliError:
+        return "?", 0
+    g = c.tiles(20, 20, w, h)
+    hi, rp = [], []
+    for y, row in enumerate(g):
+        for x, v in enumerate(row):
+            if v == low:
+                continue
+            pr = tiles.get(v)
+            if pr is None:
+                continue
+            (rp if pr[3] else hi).append((x, y))
+    if not rp or not hi:
+        return "?", len(rp)
+    hx = sum(p2[0] for p2 in hi) / len(hi)
+    hy = sum(p2[1] for p2 in hi) / len(hi)
+    rx = sum(p2[0] for p2 in rp) / len(rp)
+    ry = sum(p2[1] for p2 in rp) / len(rp)
+    dx, dy = rx - hx, ry - hy
+    if abs(dx) >= abs(dy):
+        return ("right" if dx > 0 else "left"), len(rp)
+    return ("down" if dy > 0 else "up"), len(rp)
 
 
-def measure(tmp: str, ts: int, install: str, verbose=False) -> list[dict]:
+def measure_one(tmp: str, ts: int, install: str, verbose=False) -> list[dict]:
+    """한 타일셋의 램프를 찾아 방향까지 매긴다."""
+    import shutil
     path = os.path.join(tmp, f"r{ts}.scx")
     cli = scmap.new_map(path, MAPW, MAPH, ts, terrain=None, melee=True,
                         install=install)
     tiles = scmap.tileset_tiles(cli, ts)
-    # ISOM 으로 절벽을 세우려면 저지대·고지대 지형 번호가 필요하다
-    types = cli.terrain_types()
-    tt = scmap.terrain_types_table(ts)
-    def lev(name):
-        v = tt.get(name, {}).get("levels") or {}
-        return int(max(v, key=v.get)) if v else 0
-    lows = sorted((n for n in types if lev(n) == 0), key=lambda n: types[n])
-    highs = sorted((n for n in types if lev(n) > 0), key=lambda n: types[n])
-    if not lows or not highs:
-        if verbose:
-            print("    저지대/고지대 지형을 못 찾음 — 이 타일셋은 건너뜀")
+    low = next((t for t in sorted(tiles)
+                if t >= 32 and tiles[t][1] and tiles[t][2]), None)
+    if low is None:
         return []
-    low_idx, high_idx = types[lows[0]], types[highs[0]]
-    if verbose:
-        print(f"    절벽: {lows[0]}({low_idx}) ↔ {highs[0]}({high_idx})")
+    cli.edit("terrain", "fill", cli.path, "0", "0",
+             str(MAPW), str(MAPH), str(low))
+    base = os.path.join(tmp, f"base{ts}.scx")
+    shutil.copy(cli.path, base)
 
-    cands = ramp_candidates(cli, tiles, tmp, ts)
-    if verbose:
-        print(f"    램프 후보 두뎃 {len(cands)}종")
-    found = []
-    for d in cands:
-        dirs = []
-        for direction in ("down", "up", "left", "right"):
-            try:
-                if try_direction(cli, ts, d, direction, tiles, tmp,
-                                 low_idx, high_idx):
-                    dirs.append(direction)
-            except Exception:
-                pass
-        if dirs and verbose:
-            print(f"    두뎃 {d['id']:4d} {d['w']}x{d['h']} {d['kind']:15s} "
-                  f"→ {', '.join(dirs)}")
-        for direction in dirs:
-            found.append({"id": d["id"], "w": d["w"], "h": d["h"],
-                          "kind": d["kind"], "dir": direction})
-    return found
+    out = []
+    for d in cli.doodad_catalogue():
+        direction, n = ramp_direction(cli, d, tiles, tmp, base, low)
+        if n == 0:
+            continue
+        if verbose:
+            print(f"    두뎃 {d['id']:4d} {d['w']}x{d['h']} {d['kind']:22s} "
+                  f"→ {direction:5s} (램프칸 {n})")
+        out.append({"id": d["id"], "w": d["w"], "h": d["h"],
+                    "kind": d["kind"], "dir": direction, "ramp_tiles": n})
+    return out
+
+
+def measure(tmp, ts, install, verbose=False):
+    return measure_one(tmp, ts, install, verbose)
 
 
 def main(argv=None):

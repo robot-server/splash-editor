@@ -595,12 +595,43 @@ def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
                facing: int = 0, width: int = 128, height: int = 128,
                mineral_amount: int = MINERAL_AMOUNT,
                gas_amount: int = GAS_AMOUNT,
-               start_location: bool = True):
+               start_location: bool = True,
+               tileset_id: int | None = None, check_terrain: bool = True):
     """스타팅 한 곳을 통째로 놓는다 — 스타팅 표시 + 미네랄 + 가스.
 
     facing 은 90도 단위 회전 수다. 대칭으로 놓은 스타팅마다 같은 모양을
     돌려 쓰기 위한 것이다.
+
+    **지형을 보고 놓는다.** 앞서 자리만 계산해 그냥 박았다 — 자원이
+    절벽·물 위에 얹혀도 모르고 지나갔다. 자원은 **건물을 지을 수 있는
+    평지**에 있어야 일꾼이 붙는다. `tileset_id` 를 주면 놓기 전에
+    확인하고, 안 되는 자리는 건너뛰며 무엇을 건너뛰었는지 돌려준다.
+
+    돌려주는 것은 `(놓은 것 목록, 건너뛴 것 목록)` 이다.
     """
+    tiles = tileset_tiles(cli, tileset_id) if (check_terrain and
+                                               tileset_id is not None) else None
+    grid = None
+    if tiles is not None:
+        grid = cli.tiles(0, 0, width, height)
+
+    def buildable(px_x: int, px_y: int, w: int, h: int) -> bool:
+        """자원이 놓일 칸이 다 **짓기 가능**한가.
+
+        미네랄은 1x1, 베스핀은 4x2 를 차지한다. 그 칸이 물·절벽이면
+        일꾼이 못 붙는다.
+        """
+        if grid is None:
+            return True
+        tx, ty = px_x // TILE, px_y // TILE
+        for yy in range(ty - h // 2, ty + (h + 1) // 2):
+            for xx in range(tx - w // 2, tx + (w + 1) // 2):
+                if not (0 <= yy < len(grid) and 0 <= xx < len(grid[0])):
+                    return False
+                p = tiles.get(grid[yy][xx])
+                if p is None or not p[1] or not p[2]:   # 걷기·짓기
+                    return False
+        return True
     if start_location:
         cli.place(START_LOCATION, tile_x, tile_y, owner)
 
@@ -612,22 +643,29 @@ def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
         """
         return dx * (1 if out_x < 0 else -1), dy * (1 if out_y < 0 else -1)
 
-    placed = []
+    placed, skipped = [], []
     kinds = (MINERAL_1, MINERAL_2, MINERAL_3)
     for i in range(minerals):
         dx, dy = MAIN_MINERAL_OFFSETS[i % len(MAIN_MINERAL_OFFSETS)]
         dx, dy = turn(dx, dy)
+        px, py = tile_x * TILE + dx, tile_y * TILE + dy
+        if not buildable(px, py, 2, 1):
+            skipped.append(("mineral", px // TILE, py // TILE))
+            continue
         cli.edit("unit", "place", cli.path, str(kinds[i % 3]),
-                 str(tile_x * TILE + dx), str(tile_y * TILE + dy), "--owner", "12")
+                 str(px), str(py), "--owner", "12")
         placed.append(("mineral", dx, dy))
     for i in range(gas):
         dx, dy = turn(*MAIN_GAS_OFFSET)
+        px, py = tile_x * TILE + dx, tile_y * TILE + dy + i * 96
+        if not buildable(px, py, 4, 2):
+            skipped.append(("gas", px // TILE, py // TILE))
+            continue
         cli.edit("unit", "place", cli.path, str(VESPENE_GEYSER),
-                 str(tile_x * TILE + dx), str(tile_y * TILE + dy + i * 96),
-                 "--owner", "12")
+                 str(px), str(py), "--owner", "12")
         placed.append(("gas", dx, dy))
 
-    return placed
+    return placed, skipped
 
 
 def setup_melee_players(cli: Cli, players: int):
@@ -1593,6 +1631,34 @@ def group_terrain_name(tileset_id: int) -> dict[int, str]:
 
 DECOR_SKIP_KINDS = ("Bridges", "Cliff", "Water", "Coastal")
 
+
+# 두뎃은 **가운데를 기준으로** 놓인다. `doodad place x y` 의 (x, y) 는
+# 왼위가 아니라 한가운데다 — 6x6 두뎃을 (20,20) 에 놓으면 (17,17)~(22,22)
+# 를 덮는다. 실제로 찍어 보고 확인했다.
+#
+# 앞서 이걸 왼위로 알고 썼다. 모든 두뎃이 제 크기의 절반만큼 밀려 놓여
+# 방 테두리를 뚫거나 벽 위에 얹혔다.
+
+def doodad_anchor(tile_x: int, tile_y: int, w: int, h: int) -> tuple[int, int]:
+    """왼위 좌표 → `doodad place` 에 넘길 가운데 좌표."""
+    return tile_x + w // 2, tile_y + h // 2
+
+
+def doodad_topleft(center_x: int, center_y: int, w: int, h: int) -> tuple[int, int]:
+    """가운데 좌표 → 실제로 덮는 왼위 좌표."""
+    return center_x - w // 2, center_y - h // 2
+
+
+def place_doodad(cli: Cli, doodad_id: int, tile_x: int, tile_y: int,
+                 w: int, h: int, owner: int | None = None):
+    """**왼위 좌표로** 두뎃을 놓는다. 가운데 변환을 여기서 한다."""
+    cx, cy = doodad_anchor(tile_x, tile_y, w, h)
+    args = ["doodad", "place", cli.path, str(doodad_id), str(cx), str(cy)]
+    if owner is not None:
+        args += ["--owner", str(owner)]
+    args += ["--install", cli.install]
+    cli.edit(*args)
+
 _DOODAD_WALK: dict | None = None
 
 
@@ -1782,8 +1848,8 @@ def decorate_rim(cli: Cli, tileset_id: int, rooms, rng,
                 if overlaps(tx, ty, dw, dh):
                     continue
                 try:
-                    cli.edit("doodad", "place", cli.path, str(did),
-                             str(tx), str(ty), "--install", cli.install)
+                    # **가운데 기준으로 바꿔 넘긴다** — (tx, ty) 는 왼위다
+                    place_doodad(cli, did, tx, ty, dw, dh)
                     placed += 1
                     area += dw * dh
                     taken.append((tx, ty, dw, dh))

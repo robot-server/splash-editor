@@ -300,9 +300,13 @@ def main(argv=None):
         # 자원은 맵 바깥쪽으로 — 안쪽(램프 쪽)을 비워 둔다.
         out_x = -1 if sx <= cx_mid else 1
         out_y = -1 if sy <= cy_mid else 1
-        scmap.place_base(cli, sx, sy, owner=i + 1,
+        _, _skip = scmap.place_base(cli, sx, sy, owner=i + 1,
                          minerals=args.main_minerals, gas=args.main_gas,
-                         out_x=out_x, out_y=out_y, width=width, height=height)
+                         out_x=out_x, out_y=out_y, width=width, height=height,
+                         tileset_id=ts)
+        if _skip:
+            print(f"  !! 본진 {i+1}: 지을 수 없는 자리라 자원 {len(_skip)}개를 "
+                  f"못 놓았습니다 {[(t, x, y) for t, x, y in _skip[:3]]}")
 
     # 4) 앞마당 — 본진에서 가운데 쪽으로 한 걸음.
     if args.natural_minerals > 0:
@@ -315,13 +319,15 @@ def main(argv=None):
             ny = int(round(sy + vy / length * args.natural_distance))
             nx = max(8, min(width - 9, nx))
             ny = max(8, min(height - 9, ny))
-            scmap.place_base(cli, nx, ny, owner=12,
+            _, _skip = scmap.place_base(cli, nx, ny, owner=12,
                              minerals=args.natural_minerals,
                              gas=args.natural_gas,
                              out_x=-1 if nx <= cx else 1,
                              out_y=-1 if ny <= cy else 1,
                              width=width, height=height,
-                             start_location=False)
+                             start_location=False, tileset_id=ts)
+            if _skip:
+                print(f"  !! 앞마당 {i+1}: 자원 {len(_skip)}개를 못 놓았습니다")
 
     # 5) 바깥 멀티 — 스타팅마다 같은 상대 위치에 놓아 대칭을 지킨다.
     #    공식 맵은 스타팅당 자원 덩이가 중앙값 4곳이다 (본진·앞마당 포함).
@@ -342,11 +348,14 @@ def main(argv=None):
                 ey = int(round(sy + dist * math.sin(a)))
                 ex = max(8, min(width - 9, ex))
                 ey = max(8, min(height - 9, ey))
-                scmap.place_base(cli, ex, ey, owner=12,
+                _, _skip = scmap.place_base(cli, ex, ey, owner=12,
                                  minerals=args.expansion_minerals,
                                  gas=args.expansion_gas,
                                  facing=facing, width=width, height=height,
-                                 start_location=False)
+                                 start_location=False, tileset_id=ts)
+                if _skip:
+                    print(f"  !! 멀티 {i+1}-{k+1}: 자원 {len(_skip)}개를 "
+                          f"못 놓았습니다")
 
     # 6) 가운데 지형 — 본진 언덕만 있으면 맵이 아니라 벌판이다.
     if not args.no_center and not args.no_plateau:
@@ -414,42 +423,87 @@ def main(argv=None):
         cli.isom_batch(feature_strokes)
 
     # 7) 지형지물 — 두뎃. 공식 맵 57개 중앙값이 135개다. 없으면 벌판이다.
+    #
+    # **세 가지를 지킨다. 셋 다 지적받고 고친 것이다.**
+    #
+    # (가) **자원 둘레에는 놓지 않는다.** 본진 미네랄 옆에 바위가 끼면
+    #      일꾼 동선이 막히고 눈에 거슬린다. 자원·스타팅 둘레 다섯 칸을
+    #      비운다.
+    # (나) **그 자리 지형에 맞는 갈래만 쓴다.** 두뎃 갈래 이름은 지형
+    #      종류 이름과 같다 (High Dirt·Grass·Rocky Ground…). 흙 두뎃을
+    #      고지대에 올리면 안 어울린다.
+    # (다) **걷기를 막는 것은 미리 걸러 낸다.** `data/doodad-walk.json`
+    #      에 타일셋마다 재 두었다.
     if args.doodads > 0:
         print(f"두뎃을 놓습니다 (목표 {args.doodads}개)...")
+        safe = scmap.doodad_walk_table(ts)
+        gname = scmap.group_terrain_name(ts)
         cat = cli.doodad_catalogue()
-        # 길을 막지 않는 작은 장식만 고른다 (4x4 이하, 절벽·다리 제외)
         picks = [d for d in cat
                  if d["w"] <= 4 and d["h"] <= 4
-                 and d["kind"] not in ("Cliff", "Bridges", "Wall")]
-        if not picks:
+                 and not any(k in d["kind"]
+                             for k in ("Cliff", "Bridges", "Wall", "Water"))
+                 and (not safe or safe.get(d["id"], {}).get("walk"))]
+        by_kind: dict[str, list] = {}
+        for d in picks:
+            by_kind.setdefault(d["kind"], []).append(d)
+
+        # 비워 둘 자리 — 자원과 스타팅 둘레
+        keep_clear = []
+        for u in cli.units():
+            t = u["type"]
+            if t in scmap.MINERALS or t == scmap.VESPENE_GEYSER \
+                    or t == scmap.START_LOCATION:
+                keep_clear.append((u["x"] // 32 - 5, u["y"] // 32 - 5, 11, 11))
+
+        def blocked(px, py, dw, dh):
+            for (cx0, cy0, cw, ch) in keep_clear:
+                if not (px + dw <= cx0 or cx0 + cw <= px
+                        or py + dh <= cy0 or cy0 + ch <= py):
+                    return True
+            return False
+
+        if not by_kind:
             print("  놓을 만한 두뎃이 없어 건너뜁니다")
         else:
+            tile_rows = cli.tiles(0, 0, width, height)
             rng = random.Random(args.seed)
-            placed = 0
+            placed = skipped_res = skipped_kind = 0
             tries = 0
-            per_sector = max(1, args.doodads // max(1, len(starts)))
-            while placed < args.doodads and tries < args.doodads * 6:
+            while placed < args.doodads and tries < args.doodads * 12:
                 tries += 1
-                d = rng.choice(picks)
                 bx = rng.randrange(4, width - 8)
                 by = rng.randrange(4, height - 8)
-                # 대칭 자리마다 같은 두뎃을 놓는다
                 spots = scmap.symmetric_points(bx, by, symmetry, args.players,
                                                width, height)
-                ok = True
+                spots = [(int(round(px)), int(round(py))) for px, py in spots]
+                if any(not (2 <= px < width - 6 and 2 <= py < height - 6)
+                       for px, py in spots):
+                    continue
+                # 대칭 자리 전부가 같은 지형이어야 같은 두뎃을 놓을 수 있다
+                kinds = {gname.get(tile_rows[py][px] >> 4) for px, py in spots}
+                if len(kinds) != 1 or None in kinds:
+                    skipped_kind += 1
+                    continue
+                pool = by_kind.get(kinds.pop())
+                if not pool:
+                    skipped_kind += 1
+                    continue
+                d = rng.choice(pool)
+                if any(blocked(px, py, d["w"], d["h"]) for px, py in spots):
+                    skipped_res += 1
+                    continue
                 for (px, py) in spots:
-                    px, py = int(round(px)), int(round(py))
-                    if not (2 <= px < width - 6 and 2 <= py < height - 6):
-                        ok = False
-                        break
                     try:
-                        cli.edit("doodad", "place", cli.path, str(d["id"]),
-                                 str(px), str(py), "--install", cli.install)
+                        # 두뎃은 **가운데 기준**으로 놓인다 — 왼위로 주면
+                        # 제 크기의 절반만큼 밀린다
+                        scmap.place_doodad(cli, d["id"], px, py,
+                                           d["w"], d["h"])
                         placed += 1
                     except CliError:
-                        ok = False
                         break
-            print(f"  두뎃 {placed}개")
+            print(f"  두뎃 {placed}개 (자원 둘레라 건너뜀 {skipped_res}, "
+                  f"지형이 안 맞아 건너뜀 {skipped_kind})")
 
     # 7b) 램프 — 지형을 다 얹은 **뒤에** 낸다.
     #
