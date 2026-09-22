@@ -222,6 +222,11 @@ def main(argv=None):
                      str(max(0, gy - 3)), "7", "7", str(floor))
 
 
+    # 같은 지형 안의 **변종만** 흩는다. 그룹을 섞으면 얼룩덜룩한 덩이
+    # 무늬가 생겨 네모난 방과 안 어울린다 — 변종은 잔 알갱이만 남는다.
+    # 실제 사각 디펜스 맵도 타일 53~65종을 쓴다.
+    scmap.scatter_tile_variants(cli, ts, rng, chance=0.5)
+
     print("플레이어 슬롯을 정합니다...")
     scmap.setup_usemap_players(cli, a.players, [8])   # P8 = 하이퍼용 시스템 컴퓨터
 

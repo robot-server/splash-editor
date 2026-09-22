@@ -1446,3 +1446,57 @@ def usemap_floor(humans: int, system_owner: str,
     """
     return hyper_triggers(system_owner) + \
         absent_player_cleanup(humans, system_owner, min_players)
+
+
+def part_infection(humans: list[str], zombie: str, mark: str,
+                   zombie_unit: str, spawn_at: str) -> list[str]:
+    """감염 — 병력을 다 잃은 사람이 좀비 편으로 넘어간다.
+
+    실측 좀비 맵 35장 중 91% 가 `Set Alliance Status` 를 쓴다. 관용구는
+    **죽음 수로 표시를 찍고, 그 표시를 보고 편을 바꾸는 것**이다.
+    한 트리거에서 다 하려 들면 편이 바뀐 뒤에도 조건이 참이라 되풀이된다.
+    """
+    out = []
+    who = ",".join(f'"{h}"' for h in humans)
+    # 1) 병력을 다 잃으면 표시를 찍는다 (사람이 실행)
+    out.append(
+        f'Trigger({who}){{\nConditions:\n'
+        f'\tCommand("Current Player", "Men", At most, 0);\n'
+        f'\tDeaths("Current Player", "{mark}", Exactly, 0);\n\n'
+        f'Actions:\n'
+        f'\tSet Deaths("Current Player", "{mark}", Set To, 1);\n'
+        f'\tDisplay Text Message(Always Display, '
+        f'"\\x06감염되었습니다.\\x02 이제 좀비입니다.");\n'
+        f'\tPlay WAV("sound\\\\Zerg\\\\Advisor\\\\ZAdUpd00.wav", 0);\n'
+        f'\tPreserve Trigger();\n}}')
+    # 2) 표시가 찍힌 사람을 좀비 편으로 (좀비가 실행)
+    for h in humans:
+        out.append(
+            f'Trigger("{zombie}"){{\nConditions:\n'
+            f'\tDeaths("{h}", "{mark}", At least, 1);\n\n'
+            f'Actions:\n'
+            f'\tSet Alliance Status("{h}", Ally);\n'
+            f'\tPreserve Trigger();\n}}')
+    # 3) 좀비가 된 사람에게 좀비 유닛을 준다
+    out.append(
+        f'Trigger({who}){{\nConditions:\n'
+        f'\tDeaths("Current Player", "{mark}", At least, 1);\n'
+        f'\tCommand("Current Player", "Men", At most, 0);\n\n'
+        f'Actions:\n'
+        f'\tSet Alliance Status("{zombie}", Ally);\n'
+        f'\tCreate Unit("Current Player", "{zombie_unit}", 2, "{spawn_at}");\n'
+        f'\tCenter View("{spawn_at}");\n'
+        f'\tPreserve Trigger();\n}}')
+    return out
+
+
+def part_survive_timer(humans: list[str], seconds: int,
+                       msg: str = "\\x07끝까지 버텼습니다!") -> list[str]:
+    """정해진 시간을 버티면 이긴다. 블러드·좀비·술래잡기의 끝맺음."""
+    who = ",".join(f'"{h}"' for h in humans)
+    return [f'Trigger({who}){{\nConditions:\n'
+            f'\tElapsed Time(At least, {seconds});\n'
+            f'\tCommand("Current Player", "Men", At least, 1);\n\n'
+            f'Actions:\n'
+            f'\tDisplay Text Message(Always Display, "{msg}");\n'
+            f'\tVictory();\n}}']

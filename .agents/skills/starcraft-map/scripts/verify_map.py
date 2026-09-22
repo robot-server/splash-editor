@@ -358,15 +358,24 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
         flat = [t.tiles[y][x] for y in range(m["height"])
                 for x in range(m["width"])]
         distinct = len(set(flat))
-        q = o["distinct_tiles"]
-        if distinct < 30:
-            out.append(("!!", f"서로 다른 타일이 {distinct}개뿐입니다. 한 타일로 "
-                              f"도배한 바닥입니다 — scatter_tile_variants 를 쓰세요."))
-        elif distinct < q["q1"]:
-            out.append(("?", f"서로 다른 타일 {distinct}개 — 실측 아래 사분위"
-                             f"({q['q1']}) 미만입니다. 바닥에 결이 부족합니다."))
+        # **네모난 방으로 된 유즈맵의 기준은 따로다.** 전체 중앙값 654 는
+        # 실제 지형이 있는 맵까지 섞인 수다. 실제 사각 디펜스 맵을 재 보니
+        # 타일 53~65종, 그룹 15~25종이었다.
+        #
+        # 그렇다고 한 값으로 도배하면 안 된다. 같은 지형 안의 **변종**을
+        # 흩으면 (scatter_tile_variants) 얼룩 없이 잔 알갱이만 생긴다.
+        # 그룹을 섞는 것(paint_floor_mixed)은 덩이 무늬가 되어 네모난
+        # 방과 안 어울린다.
+        if distinct < 10:
+            out.append(("!!", f"서로 다른 타일이 {distinct}개뿐입니다. 한 값으로 "
+                              f"도배한 바닥입니다 — scatter_tile_variants 로 "
+                              f"같은 지형의 변종을 흩으세요."))
+        elif distinct < 40:
+            out.append(("?", f"서로 다른 타일 {distinct}개 — 네모난 방으로 된 "
+                             f"실제 유즈맵은 53~65개다. 변종을 더 흩어도 된다."))
         else:
-            out.append(("ok", f"서로 다른 타일 {distinct}개."))
+            out.append(("ok", f"서로 다른 타일 {distinct}개 "
+                              f"(방으로 된 실제 유즈맵 53~65)."))
     except Exception as e:
         out.append(("?", f"지형을 못 쟀습니다: {e}"))
     return out
