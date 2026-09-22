@@ -454,7 +454,7 @@ def symmetric_points(x: float, y: float, symmetry: str, count: int,
 #
 # 표는 `data/ramps.json` — `measure_ramps.py` 가 여덟 타일셋에 실제로
 # 놓아 보고, 램프 깃발이 선 칸이 고지대 덩이의 어느 쪽에 붙는지로
-# 방향을 가려 만든다. 612개를 찾았다.
+# 방향을 가려 만든다. 712개를 찾았다 (Installation 은 좌우 2개뿐이다).
 
 
 def _ramp_table() -> dict:
