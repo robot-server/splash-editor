@@ -1251,3 +1251,198 @@ def briefing_text(lines: list[str], objectives: str | None = None,
         body += f'\tWait({hold_ms});\n'
         out.append('Briefing("All players"){\n' + body + '}')
     return TRIGGER_SEP.join(out)
+
+
+# ===================================================================
+# 부품 — 유즈맵 트리거 조각
+#
+# 장르마다 생성기를 따로 쓰면 결과물이 늘 똑같고, 새 장르를 만들 때마다
+# 품질 바닥(하이퍼·종족·비콘 밀어내기·빈 슬롯)을 다시 챙겨야 한다.
+# 그래서 **바닥은 여기 부품에 넣고, 조립은 그때그때 한다.**
+#
+# 부품은 트리거 글 조각(list[str])을 돌려준다. 이어 붙여서
+# `TRIGGER_SEP.join(...)` 으로 만들고 `cli.apply_triggers()` 에 넘긴다.
+# ===================================================================
+
+def part_intro(humans: list[str], lines: list[str], ore: int = 0,
+               objectives: str | None = None, timer: int | None = None,
+               counters: dict[str, int] | None = None) -> list[str]:
+    """맨 처음 한 번 — 자원·카운터를 놓고 안내를 띄운다.
+
+    **안내는 사람이 실행하는 트리거에 둔다.** `Display Text Message` 는
+    그 트리거를 실행하는 플레이어에게만 보인다.
+    """
+    who = ",".join(f'"{h}"' for h in humans)
+    acts = []
+    if ore:
+        acts.append(f'\tSet Resources("Current Player", Set To, {ore}, ore);')
+    for unit, val in (counters or {}).items():
+        acts.append(f'\tSet Deaths("Current Player", "{unit}", Set To, {val});')
+    for l in lines:
+        acts.append(f'\tDisplay Text Message(Always Display, "{l}");')
+    if objectives:
+        acts.append(f'\tSet Mission Objectives("{objectives}");')
+    if timer:
+        acts.append(f'\tSet Countdown Timer(Set To, {timer});')
+    return [f'Trigger({who}){{\nConditions:\n\tAlways();\n\n'
+            f'Actions:\n' + "\n".join(acts) + '\n}']
+
+
+def part_leaderboard(label: str, kind: str = "Custom") -> list[str]:
+    """순위표. 실측에서 디펜스 92%, 땅따먹기 100% 가 쓴다.
+
+    kind: Custom · Kills · Kills and razings · Control · Resources
+    """
+    if kind == "Kills":
+        return [f'Trigger("All players"){{\nConditions:\n\tAlways();\n\n'
+                f'Actions:\n\tLeader Board Kills("{label}", "Any unit");\n'
+                f'\tPreserve Trigger();\n}}']
+    return [f'Trigger("All players"){{\nConditions:\n\tAlways();\n\n'
+            f'Actions:\n\tLeader Board Points("{label}", {kind});\n'
+            f'\tPreserve Trigger();\n}}']
+
+
+def part_beacon_shop(player: str, beacon_loc: str, cost: int, effect: list[str],
+                     label: str, push_to: str, resource: str = "ore") -> list[str]:
+    """비콘 상점 한 자리.
+
+    **산 뒤에 비콘 밖으로 밀어낸다.** 안 밀어내면 하이퍼 트리거와 맞물려
+    서 있는 동안 매 프레임 사들여 돈이 순식간에 증발한다.
+    """
+    acts = [f'\tSet Resources("{player}", Subtract, {cost}, {resource});']
+    acts += effect
+    acts.append(f'\tMove Unit("{player}", "Men", All, "{beacon_loc}", "{push_to}");')
+    acts.append(f'\tDisplay Text Message(Always Display, "{label} \\x02-{cost}");')
+    acts.append('\tPlay WAV("sound\\\\Misc\\\\Button.wav", 0);')
+    acts.append('\tPreserve Trigger();')
+    return [f'Trigger("{player}"){{\nConditions:\n'
+            f'\tBring("{player}", "Men", "{beacon_loc}", At least, 1);\n'
+            f'\tAccumulate("{player}", At least, {cost}, {resource});\n\n'
+            f'Actions:\n' + "\n".join(acts) + '\n}']
+
+
+def part_patrol_path(owner: str, stops: list[str], mode: str = "patrol") -> list[str]:
+    """스폰한 무리를 길을 따라 돌린다.
+
+    실측에서 `Order` 는 **patrol 이 가장 흔하다** (4341회, move 1159,
+    attack 918). `move` 로 보내면 도착해서 멈춰 선다.
+    """
+    acts = [f'\tOrder("{owner}", "Any unit", "{a}", "{b}", {mode});'
+            for a, b in zip(stops, stops[1:])]
+    acts.append('\tPreserve Trigger();')
+    return [f'Trigger("{owner}"){{\nConditions:\n\tAlways();\n\n'
+            f'Actions:\n' + "\n".join(acts) + '\n}']
+
+
+def part_lives(player: str, counter: str, start: int, lose_when: str,
+               where: str, msg: str = "\\x06새어 나갔습니다!") -> list[str]:
+    """목숨 — 조건이 참이면 하나 깎고, 0 이 되면 진다.
+
+    **한 기씩 지운다.** 통째로 지우면 다섯이 새어도 목숨이 하나만 준다.
+    """
+    return [
+        f'Trigger("{player}"){{\nConditions:\n\t{lose_when}\n\n'
+        f'Actions:\n'
+        f'\tRemove Unit At Location("{where}", "Any unit", 1, "{where}");\n'
+        f'\tSet Deaths("{player}", "{counter}", Subtract, 1);\n'
+        f'\tSet Score("{player}", Subtract, 1, Custom);\n'
+        f'\tDisplay Text Message(Always Display, "{msg}");\n'
+        f'\tPreserve Trigger();\n}}',
+        f'Trigger("{player}"){{\nConditions:\n'
+        f'\tDeaths("{player}", "{counter}", Exactly, 0);\n\n'
+        f'Actions:\n'
+        f'\tDisplay Text Message(Always Display, "\\x06목숨이 다했습니다.");\n'
+        f'\tDefeat();\n}}']
+
+
+def part_respawn(player: str, unit: str, where: str,
+                 guard: str | None = None) -> list[str]:
+    """병력이 다 죽으면 다시 준다 — 구경만 하다 지지 않게.
+
+    `Command(..., "Men", At most, 0)` 이 안전하다: 생산 중인 유닛까지
+    세므로 헛발동이 없다.
+    """
+    cond = [f'\tCommand("{player}", "Men", At most, 0);']
+    if guard:
+        cond.append(f'\t{guard}')
+    return [f'Trigger("{player}"){{\nConditions:\n' + "\n".join(cond) + '\n\n'
+            f'Actions:\n'
+            f'\tCreate Unit("{player}", "{unit}", 4, "{where}");\n'
+            f'\tDisplay Text Message(Always Display, "\\x03다시 받았습니다.");\n'
+            f'\tCenter View("{where}");\n'
+            f'\tPreserve Trigger();\n}}']
+
+
+def part_heal_zone(player: str, where: str, cost: int = 0,
+                   push_to: str | None = None) -> list[str]:
+    """회복 구역. 값을 0 으로 두면 공짜(마을), 주면 돈을 받는다.
+
+    **퍼센트가 먼저다.** `(플레이어, 유닛, 퍼센트, 개수, 로케이션)` 이고
+    개수 0 이 "전부" 다. 차례를 바꿔 쓰면 회복이 아니라 깎는 동작이 된다.
+    """
+    cond = [f'\tBring("{player}", "Men", "{where}", At least, 1);']
+    acts = []
+    if cost:
+        cond.append(f'\tAccumulate("{player}", At least, {cost}, ore);')
+        acts.append(f'\tSet Resources("{player}", Subtract, {cost}, ore);')
+    acts += [f'\tModify Unit Hit Points("{player}", "Men", 100, 0, "{where}");',
+             f'\tModify Unit Energy("{player}", "Men", 100, 0, "{where}");',
+             f'\tModify Unit Shield Points("{player}", "Men", 100, 0, "{where}");']
+    if push_to:
+        acts.append(f'\tMove Unit("{player}", "Men", All, "{where}", "{push_to}");')
+    acts.append('\tPreserve Trigger();')
+    return [f'Trigger("{player}"){{\nConditions:\n' + "\n".join(cond) + '\n\n'
+            f'Actions:\n' + "\n".join(acts) + '\n}']
+
+
+def part_wave_clock(owner: str, counter: str, waves: int,
+                    seconds: int = 35) -> list[str]:
+    """웨이브 번호를 올리는 시계. 컴퓨터가 돌린다."""
+    return [f'Trigger("{owner}"){{\nConditions:\n'
+            f'\tCountdown Timer(At most, 0);\n'
+            f'\tDeaths("{owner}", "{counter}", At most, {waves});\n\n'
+            f'Actions:\n'
+            f'\tSet Deaths("{owner}", "{counter}", Add, 1);\n'
+            f'\tSet Countdown Timer(Set To, {seconds});\n'
+            f'\tPreserve Trigger();\n}}']
+
+
+def part_announce_once(humans: list[str], when: str, seen_counter: str,
+                       step: int, lines: list[str],
+                       wav: str | None = None) -> list[str]:
+    """사람마다 **한 번만** 띄우는 안내.
+
+    조건이 한동안 계속 참인 트리거에 `Preserve` 를 붙이면 매 프레임
+    도배된다. 잠금은 스위치가 아니라 **플레이어별 죽음 수**로 건다 —
+    스위치는 맵 전체에 하나뿐이라 첫 사람만 걸린다.
+    """
+    who = ",".join(f'"{h}"' for h in humans)
+    acts = [f'\tSet Deaths("Current Player", "{seen_counter}", Set To, {step});']
+    acts += [f'\tDisplay Text Message(Always Display, "{l}");' for l in lines]
+    if wav:
+        acts.append(f'\tPlay WAV("{wav}", 0);')
+    acts.append('\tPreserve Trigger();')
+    return [f'Trigger({who}){{\nConditions:\n\t{when}\n'
+            f'\tDeaths("Current Player", "{seen_counter}", At most, {step - 1});\n\n'
+            f'Actions:\n' + "\n".join(acts) + '\n}']
+
+
+def part_win(players: list[str], conds: list[str],
+             msg: str = "\\x07이겼습니다!") -> list[str]:
+    """승리. **`Preserve Trigger` 를 붙이지 않는다** — 붙이면 매 틱 재발동한다."""
+    who = ",".join(f'"{p}"' for p in players)
+    return [f'Trigger({who}){{\nConditions:\n' +
+            "\n".join(f'\t{c}' for c in conds) + '\n\n'
+            f'Actions:\n'
+            f'\tDisplay Text Message(Always Display, "{msg}");\n'
+            f'\tVictory();\n}}']
+
+
+def usemap_floor(humans: int, system_owner: str,
+                 min_players: int = 1) -> list[str]:
+    """**품질 바닥.** 어떤 유즈맵이든 이것부터 깔고 시작한다.
+
+    하이퍼 트리거 세 벌 + 들어오지 않은 자리 정리.
+    """
+    return hyper_triggers(system_owner) + \
+        absent_player_cleanup(humans, system_owner, min_players)

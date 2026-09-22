@@ -119,8 +119,40 @@ python3 $S/preview.py out.scx look.png
 > 일꾼으로 시작한다. 하이퍼 트리거가 없으면 모든 판정이 1초씩 늦는다.
 > 미사일 터렛은 지상을 못 때린다. 전부 실제로 틀려 본 것이다.
 
+## 유즈맵을 만드는 방식 — 생성기가 아니라 부품
+
+장르마다 생성기를 따로 쓰면 결과물이 늘 똑같이 나오고, 새 장르를 만들
+때마다 품질 바닥(하이퍼 트리거·종족 고정·비콘 밀어내기·빈 슬롯 정리)을
+처음부터 다시 챙겨야 한다.
+
+**바닥은 부품에 넣고, 조립은 그때그때 한다.**
+
+```python
+import scmap
+T = []
+T += scmap.usemap_floor(humans=6, system_owner="Player 8")   # 바닥부터
+T += scmap.part_intro(HUMANS, ["안내 한 줄"], ore=250,
+                      objectives="목표", timer=30)
+T += scmap.part_leaderboard("\x07남은 목숨")
+T += scmap.part_wave_clock("Player 7", WAVE, waves=20)
+T += scmap.part_patrol_path("Player 7", ["Spawn","NE","SE","SW","Exit"])
+T += scmap.part_beacon_shop("Player 1", "Shop1", 120,
+                            ['\tCreate Unit("Player 1","Terran Marine",4,"Home");'],
+                            "머린 4기", push_to="Home")
+T += scmap.part_lives("Player 1", LIFE, 20, 'Bring(...);', where="Exit")
+T += scmap.part_win(HUMANS, ['Bring(...);'])
+cli.apply_triggers(scmap.TRIGGER_SEP.join(T))
+```
+
+부품 목록은 `scripts/scmap.py` 의 "부품" 절을 본다. 어느 장르에 무엇이
+들어가는지는 [references/genres.md](references/genres.md) 에 실측으로
+정리해 두었다.
+
+`scripts/make_*.py` 는 **본보기**다. 그대로 돌려도 되지만, 새 맵은
+부품을 조립해 만드는 편이 낫다 — 매번 다른 것이 나오고 바닥은 지켜진다.
+
 ```sh
-# 유즈맵 뼈대 (장르 고르면 그에 맞는 트리거 뼈대까지)
+# 본보기 생성기 (그대로 돌려도 된다)
 python3 $S/make_usemap.py out.scx --genre defense --players 6 --name "맵 이름"
 
 # 트리거를 텍스트로 빼서 고치고 되돌려 넣기
@@ -216,6 +248,8 @@ Space 밀리 **0개**에서 Badlands 밀리 **208개**까지 벌어진다. 전�
   하지 말 것(WFC·패치 점수), 할 것(기능 그래프부터)
 - [references/usemap-dopamine.md](references/usemap-dopamine.md) — 인기
   유즈맵 329장 전수 실측, 재미 구조 설계
+- [references/genres.md](references/genres.md) — 장르마다 무엇이
+  들어가는가. 유즈맵 563장을 갈라 실측
 - [references/game-rules.md](references/game-rules.md) —
   **맵을 만들기 전에 읽을 것.** 틀리면 맵이 망가지는 게임 규칙:
   종족 설정, 사거리표, 고도 명중률, 킬 점수, Bring/Command 인식 범위,
