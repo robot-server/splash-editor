@@ -187,6 +187,11 @@ public:
         /// 2 면 두 발이 나가 게임 표기 공격력이 두 배로 보인다 — 골리앗이
         /// 그렇다. 3 이상은 1 로 적용되고, 근접 무기는 이미지 스크립트가
         /// 공격을 담당해 적용되지 않는다.
+        /// 스플래시 반경 세 겹 (픽셀). 안쪽은 100%, 중간은 50%,
+        /// 바깥은 25% 가 들어간다. 0 이면 스플래시가 없다.
+        std::uint16_t splashInner = 0;
+        std::uint16_t splashMedium = 0;
+        std::uint16_t splashOuter = 0;
         std::uint8_t groundDamageFactor = 1;
         std::uint8_t airDamageFactor = 1;
         std::uint8_t groundDamageType = 0;

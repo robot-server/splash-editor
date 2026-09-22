@@ -592,6 +592,9 @@ GameGraphics::UnitStats GameGraphics::unitStats(std::uint16_t unitType) const
             out.groundDamageUpgrade = gw->damageUpgrade;
             out.groundDamageType = gw->weaponType;
             out.groundDamageFactor = gw->damageFactor;
+            out.splashInner = gw->innerSplashRadius;
+            out.splashMedium = gw->mediumSplashRadius;
+            out.splashOuter = gw->outerSplashRadius;
         }
         if (const auto * aw = weapon(d.airWeapon))
         {

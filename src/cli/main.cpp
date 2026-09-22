@@ -1413,6 +1413,9 @@ int cmdUnitStats(const std::string & installPath, bool json)
                       << ", \"supply_provided\": " << int(d.supplyProvided)
                       << ", \"build_score\": " << d.buildScore
                       << ", \"destroy_score\": " << d.destroyScore
+                      << ", \"splash_inner\": " << d.splashInner
+                      << ", \"splash_medium\": " << d.splashMedium
+                      << ", \"splash_outer\": " << d.splashOuter
                       << ", \"ground_dmg_factor\": " << int(d.groundDamageFactor)
                       << ", \"air_dmg_factor\": " << int(d.airDamageFactor)
                       << ", \"ground_dmg_type\": " << int(d.groundDamageType)
