@@ -91,7 +91,17 @@ Seeker Spores Overlay (Spore Colony)   Subterranean Spines (Lurker)
 사미르 듀란(고스트) · 알렉세이 스투코프(고스트) · 감염된 듀란.
 자세한 것은 [../unit/quirks.md](../unit/quirks.md).
 
-## 6. 그 밖에 내가 겪은 것
+## 6. 지형을 잘게 찍어 맵이 안 열린다
+
+> `The map could not be loaded because it had too many obstructions.`
+
+길찾기 덩어리(Pathfinder Region)가 너무 많아졌을 때 난다.
+**직사각형으로 지형을 찍을 때 걸린다** — ISOM 으로 만들면 덩어리가
+크게 뭉쳐 잘 안 걸린다
+([[기초5]](https://cafe.naver.com/edac/book5095361/76372)).
+자세한 것은 [../usemap/terrain.md](../usemap/terrain.md).
+
+## 7. 그 밖에 내가 겪은 것
 
 | 증상 | 원인 |
 | --- | --- |

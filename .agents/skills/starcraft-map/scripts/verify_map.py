@@ -662,9 +662,76 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
     return out
 
 
+def count_walk_islands(cli: Cli, m: dict, sample: int = 96) -> int:
+    """걷는 자리가 **몇 덩어리로 쪼개져 있나**를 어림한다.
+
+    게임은 지상 길찾기를 Pathfinder Region 단위로 한다. 그 덩어리가
+    너무 많아지면 맵이 아예 안 열린다 —
+
+        The map could not be loaded because it had too many obstructions.
+
+    **직사각형으로 지형을 찍을 때 걸린다.** ISOM 으로 만들면 덩어리가
+    크게 뭉쳐 잘 안 걸린다 ([기초5] 카페 강좌).
+
+    Region 을 그대로 셀 수는 없으므로, 미니타일 걷기 격자에서 **이어진
+    덩어리 수**를 세어 대신 쓴다. 정확한 값이 아니라 **잘게 쪼개졌는지**
+    를 보는 자다.
+    """
+    ts = m.get("tileset_id")
+    if ts is None:
+        return -1
+    w = min(sample, m["width"])
+    h = min(sample, m["height"])
+    x0 = (m["width"] - w) // 2
+    y0 = (m["height"] - h) // 2
+    try:
+        grid = scmap.walk_grid(cli, ts, x0, y0, w, h)
+    except Exception:
+        return -1
+    if not grid:
+        return -1
+    gh, gw = len(grid), len(grid[0])
+    seen = [[False] * gw for _ in range(gh)]
+    islands = 0
+    for sy in range(gh):
+        for sx in range(gw):
+            if seen[sy][sx] or not grid[sy][sx]:
+                continue
+            islands += 1
+            stack = [(sx, sy)]
+            seen[sy][sx] = True
+            while stack:
+                cx, cy = stack.pop()
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nx, ny = cx + dx, cy + dy
+                    if (0 <= nx < gw and 0 <= ny < gh
+                            and not seen[ny][nx] and grid[ny][nx]):
+                        seen[ny][nx] = True
+                        stack.append((nx, ny))
+    return islands
+
+
 def check_basics(cli: Cli, m: dict) -> list[tuple[str, str]]:
     """맵이 **열리기는 하는지**. 여기서 걸리면 밸런스는 따질 것도 없다."""
     out = []
+
+    # 0) 지형이 너무 잘게 쪼개졌는가 — 맵이 아예 안 열릴 수 있다
+    islands = count_walk_islands(cli, m)
+    # 문턱은 실측에서 잡았다. 유즈맵 57장의 중앙값이 31덩어리이고
+    # 90%가 197 이하다. 400 을 넘는 것은 상위 5% 다.
+    if islands > 400:
+        out.append(("!!", f"가운데 {min(96, m['width'])}칸 안에서 걷는 자리가 "
+                          f"**{islands}덩어리**로 쪼개져 있습니다 "
+                          f"(실측 유즈맵 중앙 31, 상위 5%가 400 넘음). "
+                          f"길찾기 덩어리가 너무 많으면 게임이 맵을 아예 "
+                          f"안 엽니다 — too many obstructions. 사각형으로 "
+                          f"잘게 찍었을 때 걸립니다. 방과 통로를 크게 잡고 "
+                          f"두뎃을 흩뿌리지 마세요."))
+    elif islands > 150:
+        out.append(("? ", f"걷는 자리가 {islands}덩어리로 쪼개져 있습니다 "
+                          f"(실측 중앙 31, 90%가 197 이하). 길찾기 덩어리가 "
+                          f"너무 늘면 맵이 안 열릴 수 있으니 지형을 크게 "
+                          f"잡는 편이 낫습니다."))
 
     # 1) 스타팅이 있는가
     if m["n_start_units"] == 0:
