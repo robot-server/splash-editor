@@ -4,6 +4,7 @@
 
 | 글 | 무엇이 있나 |
 | --- | --- |
+| **[api.md](api.md)** | **인자 순서 레퍼런스. 생성된 문서** — 짐작 말고 여기를 본다 |
 | [conditions.md](conditions.md) | 조건 전부. 인자의 함정 |
 | [actions.md](actions.md) | 액션 전부. 못 만드는 유닛, 64가지 제한 |
 | [execution.md](execution.md) | **먼저 읽는다.** 트리거가 도는 순서, 웨잇 꼬임, 하이퍼 |
@@ -33,5 +34,5 @@
 | 누적 조건 + `Preserve` = 무한 보상 | [recipes.md](recipes.md) |
 | 맵에 있는 유닛을 변수 칸으로 씀 | [death-counts.md](death-counts.md) |
 | `At least 1` 의 반대를 `At most 0` 으로 씀 | [bring-command.md](bring-command.md) |
-| `Modify Unit Hit Points` 인자 차례 (퍼센트가 먼저) | [recipes.md](recipes.md) |
+| **인자 순서를 에디터 창 기준으로 씀** (`Bring` 포함 36가지가 다르다) | **[api.md](api.md)** |
 | 스위치로 사람별 상태를 담으려 함 | [death-counts.md](death-counts.md) |
