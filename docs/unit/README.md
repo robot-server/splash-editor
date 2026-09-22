@@ -7,6 +7,8 @@
 | [settings.md](settings.md) | 맵이 정하는 유닛 능력치. 유즈맵 98%가 쓴다 |
 | [heroes.md](heroes.md) | 영웅은 "센 판"이 아니다. 맵이 못 고치는 값들 |
 | [damage.md](damage.md) | 공격 형태 × 덩치. 적힌 피해가 그대로 안 들어간다 |
+| [repair-heal.md](repair-heal.md) | 누가 누구를 살리나. 생체·기계와 편 가르기 |
+| [quirks.md](quirks.md) | 유닛별 예외. 트리거가 안 먹는 유닛, 튕기는 조합 |
 
 ## 한 줄 요약
 
