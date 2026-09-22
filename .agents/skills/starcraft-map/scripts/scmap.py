@@ -1935,14 +1935,37 @@ def part_win(players: list[str], conds: list[str],
             f'\tVictory();\n}}']
 
 
-def usemap_floor(humans: int, system_owner: str,
-                 min_players: int = 1) -> list[str]:
-    """**품질 바닥.** 어떤 유즈맵이든 이것부터 깔고 시작한다.
-
-    하이퍼 트리거 세 벌 + 들어오지 않은 자리 정리.
-    """
+def floor_triggers(humans: int, system_owner: str,
+                   min_players: int = 1) -> list[str]:
+    """바닥 중 **트리거로 되는 부분** — 하이퍼 세 벌 + 빈 자리 정리."""
     return hyper_triggers(system_owner) + \
         absent_player_cleanup(humans, system_owner, min_players)
+
+
+def usemap_floor(cli: Cli, humans: int, system_owner: str,
+                 computers: "list[int] | None" = None,
+                 min_players: int = 1, race: str = "terran") -> list[str]:
+    """**품질 바닥.** 어떤 유즈맵이든 이것부터 깔고 시작한다.
+
+    바닥은 트리거만이 아니다. 앞서 이 함수가 트리거만 돌려주는 바람에
+    "바닥을 깔았다" 고 하면서 종족이 '선택 가능' 으로 남고 시야도 안
+    열린 맵이 나왔다. 이름이 바닥이면 바닥을 다 해야 한다:
+
+      - 사람 슬롯 종족을 못 박고(선택 가능이면 배치 유닛이 무시된다),
+        트리거가 쓰는 적을 컴퓨터로, 시작 위치 섞기를 끈다
+      - 사람 **모두**에게 Map Revealer 를 깐다
+      - 하이퍼 트리거 세 벌 (컴퓨터 소유)
+      - 들어오지 않은 자리 정리와 인원 판정
+
+    `computers` 는 트리거가 적·시스템으로 쓰는 플레이어 번호다. 주지
+    않으면 `system_owner` 하나만 컴퓨터로 만든다.
+    """
+    if computers is None:
+        m = re.search(r"(\d+)", system_owner)
+        computers = [int(m.group(1))] if m else []
+    setup_usemap_players(cli, humans, computers, race=race)
+    reveal_for_all(cli, humans)
+    return floor_triggers(humans, system_owner, min_players)
 
 
 def part_infection(humans: list[str], zombie: str, mark: str,

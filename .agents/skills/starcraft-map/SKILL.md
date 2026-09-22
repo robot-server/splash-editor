@@ -149,7 +149,8 @@ scmap.pad(cli, pal, bx, by, 3, 3)             # 비콘 밟을 자리 (실측 94%
 ```python
 import scmap
 T = []
-T += scmap.usemap_floor(humans=6, system_owner="Player 8")   # 바닥부터
+T += scmap.usemap_floor(cli, humans=6, system_owner="Player 8",
+                        computers=[7, 8])   # 종족·시야·하이퍼·빈자리
 T += scmap.part_intro(HUMANS, ["안내 한 줄"], ore=250,
                       objectives="목표", timer=30)
 T += scmap.part_leaderboard("\x07남은 목숨")

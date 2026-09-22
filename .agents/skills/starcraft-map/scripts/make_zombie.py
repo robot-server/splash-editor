@@ -47,8 +47,9 @@ SHOPS = [("머린 4기", 100, "Terran Marine", 4),
 def build(a, enemy, boss_p, humans):
     """트리거를 **부품으로만** 조립한다."""
     T = []
-    # 품질 바닥 — 하이퍼 트리거와 빈 슬롯 정리
-    T += scmap.usemap_floor(a.players, enemy, min_players=1)
+    # 품질 바닥의 **트리거 부분**. 종족·시야는 맵을 만드는 쪽에서
+    # 이미 잡았다 (scmap.usemap_floor 를 쓰면 둘을 한꺼번에 한다).
+    T += scmap.floor_triggers(a.players, enemy, min_players=1)
 
     T += scmap.part_intro(
         humans,

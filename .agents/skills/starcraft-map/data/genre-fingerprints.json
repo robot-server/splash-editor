@@ -1,0 +1,454 @@
+{
+ "_about": "트리거 지문으로 본 장르. classify_genre.py 가 만든다. 이름 딱지를 정답으로 두고 잰 것이므로 이름 자체가 틀린 맵은 오차로 남는다.",
+ "accuracy_pct": 76,
+ "n_labeled": 323,
+ "n_unlabeled": 161,
+ "fingerprints": {
+  "blood": {
+   "n": 17,
+   "more": [
+    [
+     "R:Kill",
+     0.71
+    ],
+    [
+     "C:Opponents",
+     0.66
+    ],
+    [
+     "A:Leader Board Kills",
+     0.64
+    ],
+    [
+     "C:Kill",
+     0.5
+    ],
+    [
+     "A:Create Unit with Properties",
+     0.21
+    ],
+    [
+     "R:Order",
+     0.16
+    ]
+   ],
+   "less": [
+    [
+     "A:Set Alliance Status",
+     -0.5
+    ],
+    [
+     "C:Score",
+     -0.53
+    ],
+    [
+     "A:Kill Unit At Location",
+     -0.56
+    ],
+    [
+     "C:Elapsed Time",
+     -0.6
+    ]
+   ]
+  },
+  "control": {
+   "n": 37,
+   "more": [
+    [
+     "A:Modify Unit Hanger Count",
+     0.42
+    ],
+    [
+     "R:Accumulate",
+     0.37
+    ],
+    [
+     "R:Create Unit with Properties",
+     0.32
+    ],
+    [
+     "R:Kill Unit At Location",
+     0.23
+    ],
+    [
+     "A:Create Unit with Properties",
+     0.23
+    ],
+    [
+     "A:Minimap Ping",
+     0.2
+    ]
+   ],
+   "less": [
+    [
+     "A:Set Score",
+     -0.37
+    ],
+    [
+     "A:Set Deaths",
+     -0.38
+    ],
+    [
+     "C:Deaths",
+     -0.45
+    ],
+    [
+     "A:Modify Unit Hit Points",
+     -0.47
+    ]
+   ]
+  },
+  "defense": {
+   "n": 47,
+   "more": [
+    [
+     "A:Leader Board Kills",
+     0.65
+    ],
+    [
+     "R:Elapsed Time",
+     0.45
+    ],
+    [
+     "A:Set Countdown Timer",
+     0.42
+    ],
+    [
+     "A:Set Invincibility",
+     0.37
+    ],
+    [
+     "R:Kill Unit At Location",
+     0.28
+    ],
+    [
+     "A:Leaderboard Computer Players",
+     0.28
+    ]
+   ],
+   "less": [
+    [
+     "A:Center View",
+     -0.35
+    ],
+    [
+     "A:Leader Board Points",
+     -0.43
+    ],
+    [
+     "A:Run AI Script At Location",
+     -0.43
+    ],
+    [
+     "A:Modify Unit Shield Points",
+     -0.44
+    ]
+   ]
+  },
+  "escape": {
+   "n": 17,
+   "more": [
+    [
+     "R:Kill Unit At Location",
+     0.37
+    ]
+   ],
+   "less": [
+    [
+     "C:Elapsed Time",
+     -0.47
+    ],
+    [
+     "A:Modify Unit Hit Points",
+     -0.51
+    ],
+    [
+     "A:Create Unit with Properties",
+     -0.54
+    ],
+    [
+     "A:Remove Unit At Location",
+     -0.59
+    ]
+   ]
+  },
+  "land": {
+   "n": 5,
+   "more": [
+    [
+     "C:Commands the Most At",
+     1.0
+    ],
+    [
+     "A:Leader Board Control",
+     0.97
+    ],
+    [
+     "C:Opponents",
+     0.94
+    ],
+    [
+     "R:Order",
+     0.68
+    ],
+    [
+     "A:Leader Board Kills",
+     0.68
+    ],
+    [
+     "R:Accumulate",
+     0.67
+    ]
+   ],
+   "less": [
+    [
+     "A:Run AI Script",
+     -0.67
+    ],
+    [
+     "C:Switch",
+     -0.72
+    ],
+    [
+     "A:Set Switch",
+     -0.73
+    ],
+    [
+     "A:Center View",
+     -0.74
+    ]
+   ]
+  },
+  "quiz": {
+   "n": 8,
+   "more": [
+    [
+     "R:Switch",
+     0.36
+    ],
+    [
+     "A:Leader Board Points",
+     0.28
+    ],
+    [
+     "A:Play WAV",
+     0.28
+    ],
+    [
+     "A:Draw",
+     0.27
+    ],
+    [
+     "R:Kill Unit At Location",
+     0.26
+    ],
+    [
+     "R:Display Text Message",
+     0.22
+    ]
+   ],
+   "less": [
+    [
+     "A:Modify Unit Hit Points",
+     -0.62
+    ],
+    [
+     "C:Accumulate",
+     -0.73
+    ],
+    [
+     "R:Create Unit",
+     -0.74
+    ],
+    [
+     "A:Set Resources",
+     -0.91
+    ]
+   ]
+  },
+  "rpg": {
+   "n": 146,
+   "more": [
+    [
+     "A:Leader Board Points",
+     0.52
+    ],
+    [
+     "A:Modify Unit Shield Points",
+     0.51
+    ],
+    [
+     "A:Modify Unit Hit Points",
+     0.5
+    ],
+    [
+     "A:Run AI Script At Location",
+     0.49
+    ],
+    [
+     "A:Center View",
+     0.35
+    ],
+    [
+     "A:Modify Unit Energy",
+     0.34
+    ]
+   ],
+   "less": [
+    [
+     "C:Countdown Timer",
+     -0.22
+    ],
+    [
+     "A:Set Countdown Timer",
+     -0.26
+    ],
+    [
+     "R:Kill Unit At Location",
+     -0.28
+    ],
+    [
+     "A:Leader Board Kills",
+     -0.41
+    ]
+   ]
+  },
+  "sports": {
+   "n": 7,
+   "more": [
+    [
+     "C:Deaths",
+     0.39
+    ],
+    [
+     "A:Set Deaths",
+     0.39
+    ],
+    [
+     "A:Set Memory",
+     0.34
+    ],
+    [
+     "A:Draw",
+     0.32
+    ],
+    [
+     "R:Give Units to Player",
+     0.32
+    ],
+    [
+     "R:Set Deaths",
+     0.24
+    ]
+   ],
+   "less": [
+    [
+     "A:Leader Board Kills",
+     -0.34
+    ],
+    [
+     "A:Modify Unit Hanger Count",
+     -0.39
+    ],
+    [
+     "A:Modify Unit Shield Points",
+     -0.42
+    ],
+    [
+     "A:Wait",
+     -0.49
+    ]
+   ]
+  },
+  "tag": {
+   "n": 4,
+   "more": [
+    [
+     "R:Set Deaths",
+     0.44
+    ],
+    [
+     "A:Set Deaths",
+     0.42
+    ],
+    [
+     "A:Set Alliance Status",
+     0.41
+    ],
+    [
+     "A:Modify Unit Hit Points",
+     0.4
+    ],
+    [
+     "A:Play WAV",
+     0.4
+    ],
+    [
+     "A:Leader Board Resources",
+     0.39
+    ]
+   ],
+   "less": [
+    [
+     "A:Leader Board Kills",
+     -0.34
+    ],
+    [
+     "A:Modify Unit Hanger Count",
+     -0.39
+    ],
+    [
+     "A:Wait",
+     -0.41
+    ],
+    [
+     "A:Order",
+     -0.54
+    ]
+   ]
+  },
+  "zombie": {
+   "n": 35,
+   "more": [
+    [
+     "C:Countdown Timer",
+     0.63
+    ],
+    [
+     "A:Transmission",
+     0.54
+    ],
+    [
+     "A:Set Countdown Timer",
+     0.53
+    ],
+    [
+     "R:Set Deaths",
+     0.5
+    ],
+    [
+     "A:Set Deaths",
+     0.49
+    ],
+    [
+     "R:Deaths",
+     0.46
+    ]
+   ],
+   "less": [
+    [
+     "A:Modify Unit Hanger Count",
+     -0.17
+    ],
+    [
+     "A:Modify Unit Energy",
+     -0.17
+    ],
+    [
+     "R:Order",
+     -0.18
+    ]
+   ]
+  }
+ }
+}
