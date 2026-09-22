@@ -112,40 +112,37 @@ def ramp_direction(cli: Cli, d: dict, tiles: dict, tmp: str,
 
 
 def walk_check(cli: Cli, doodad_id: int, w: int, h: int, tileset_id: int,
-               high: int, low: int, tmp: str, base_path: str) -> bool:
+               tmp: str, base_path: str) -> bool:
     """**고지대에서 저지대로 걸어서 통하는가**를 실제로 본다.
 
     이것이 없으면 "램프" 가 아니라 "램프 깃발이 선 칸이 있는 두뎃" 일
     뿐이다. 앞서 이 단계를 빠뜨리고도 출력에는 "통하는 램프" 라고
     찍었다 — 적대적 검토에서 잡혔다.
 
-    맵 위쪽 절반을 고지대로 만들고 그 경계에 두뎃을 놓은 뒤, 미니타일
-    격자에서 고지대 한가운데 → 저지대 한가운데 를 따라가 본다.
+    **절벽은 ISOM 으로만 생긴다.** 처음에 `terrain fill` 로 고지대
+    타일을 깔았더니 걷는 칸이 65536/65536 — 절벽이 없어 두뎃 없이도
+    통했고, 그래서 모든 두뎃이 "안 통함" 으로 나왔다. ISOM 으로
+    칠하니 64212/65536 이 되고 막힌다.
     """
     import shutil
     p = os.path.join(tmp, "walkprobe.scx")
     shutil.copy(base_path, p)
     c = Cli(p)
     mid = MAPH // 2
-    # 위쪽 절반을 고지대로
-    c.edit("terrain", "fill", c.path, "0", "0", str(MAPW), str(mid), str(high))
-    before_ok = False
-    grid = scmap.walk_grid(c, tileset_id, 0, 0, MAPW, MAPH)
-    a_ = scmap.nearest_walkable(grid, MAPW * 2, (mid // 2) * 4)
-    b_ = scmap.nearest_walkable(grid, MAPW * 2, ((mid + MAPH) // 2) * 4)
-    if a_ and b_:
-        before_ok = scmap.walk_reachable(grid, a_, b_)
-    if before_ok:
-        return False        # 두뎃 없이도 통하면 시험이 안 된다
 
+    def probe():
+        g = scmap.walk_grid(c, tileset_id, 0, 0, MAPW, MAPH)
+        a_ = scmap.nearest_walkable(g, MAPW * 2, (mid // 2) * 4)
+        b_ = scmap.nearest_walkable(g, MAPW * 2, ((mid + MAPH) // 2) * 4)
+        return bool(a_ and b_ and scmap.walk_reachable(g, a_, b_))
+
+    if probe():
+        return False        # 두뎃 없이도 통하면 시험이 안 된다
     try:
         scmap.place_doodad(c, doodad_id, MAPW // 2, mid, w, h)
     except CliError:
         return False
-    grid = scmap.walk_grid(c, tileset_id, 0, 0, MAPW, MAPH)
-    a_ = scmap.nearest_walkable(grid, MAPW * 2, (mid // 2) * 4)
-    b_ = scmap.nearest_walkable(grid, MAPW * 2, ((mid + MAPH) // 2) * 4)
-    return bool(a_ and b_ and scmap.walk_reachable(grid, a_, b_))
+    return probe()
 
 
 def measure_one(tmp: str, ts: int, install: str, verbose=False) -> list[dict]:
@@ -161,13 +158,30 @@ def measure_one(tmp: str, ts: int, install: str, verbose=False) -> list[dict]:
         return []
     cli.edit("terrain", "fill", cli.path, "0", "0",
              str(MAPW), str(MAPH), str(low))
-    # 고지대 타일 하나 — 걸을 수 있고 고도가 저지대보다 높은 것
-    low_lvl = tiles[low][0]
-    high = next((t for t in sorted(tiles)
-                 if t >= 32 and tiles[t][1] and tiles[t][2]
-                 and tiles[t][0] > low_lvl), None)
+
+    # 걷기 시험용 바탕은 **ISOM 으로** 만든다 — 생타일로 깔면 절벽이
+    # 안 생겨 시험이 성립하지 않는다.
+    ids = scmap.isom_terrain_ids(cli, ts)
     base = os.path.join(tmp, f"base{ts}.scx")
     shutil.copy(cli.path, base)
+
+    # 걷기 시험용 바탕 — **고지대 지형마다 하나씩** 만든다.
+    #
+    # 처음에는 `ids["high"][0]` 하나로만 시험했다가 Ice·Twilight 이
+    # 0개로 나왔다. Ice 는 첫 고지대가 `Outpost` 인데 `Cliff` 램프는
+    # Ice↔High Ice 에 붙는 것이라 안 통한 것이다. **두뎃 갈래 이름이
+    # 곧 지형 종류 이름**이므로 (docs/tileset/doodads.md) 갈래에 맞는
+    # 지형부터 시험하고, 안 되면 나머지도 돌아본다.
+    inv = {v: k for k, v in ids["names"].items()}
+    walkbases = {}
+    if ids["low"] and ids["high"]:
+        for hi in ids["high"]:
+            path_h = os.path.join(tmp, f"walkbase{ts}_{hi}.scx")
+            shutil.copy(cli.path, path_h)
+            wc = Cli(path_h)
+            scmap.isom_fill(wc, ids["low"][0], 0, 0, MAPW, MAPH)
+            scmap.isom_fill(wc, hi, 0, 0, MAPW, MAPH // 2)
+            walkbases[inv.get(hi, str(hi))] = path_h
 
     out = []
     for d in cli.doodad_catalogue():
@@ -177,11 +191,22 @@ def measure_one(tmp: str, ts: int, install: str, verbose=False) -> list[dict]:
         if verbose:
             print(f"    두뎃 {d['id']:4d} {d['w']}x{d['h']} {d['kind']:22s} "
                   f"→ {direction:5s} (램프칸 {n})")
-        walks = (walk_check(cli, d["id"], d["w"], d["h"], ts, high, low,
-                            tmp, base) if high is not None else None)
+        walks, walks_with = None, None
+        if walkbases:
+            # 갈래 이름과 가장 가까운 지형부터
+            kind = d["kind"]
+            order = sorted(walkbases,
+                           key=lambda nm: (kind not in nm and nm not in kind,
+                                           len(nm)))
+            walks = False
+            for nm in order:
+                if walk_check(cli, d["id"], d["w"], d["h"], ts, tmp,
+                              walkbases[nm]):
+                    walks, walks_with = True, nm
+                    break
         out.append({"id": d["id"], "w": d["w"], "h": d["h"],
                     "kind": d["kind"], "dir": direction, "ramp_tiles": n,
-                    "walks": walks})
+                    "walks": walks, "walks_with": walks_with})
     return out
 
 

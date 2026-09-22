@@ -43,7 +43,7 @@
 | `isom-usage.json` | **장르별 ISOM/사각형** | scmscx 유즈 479장 | `measure_isom_usage.py` |
 | `genres.json` · `genre-fingerprints.json` | 장르를 **트리거 지문**으로 가르기 (정확도 76%) | scmscx 유즈 | `classify_genre.py` |
 | `heroes.json` | 영웅 ↔ 일반 37짝, 무기 공유, 영웅 없는 유닛 | 게임 데이터 | `measure_heroes.py` |
-| `ramps.json` | 램프 **두뎃** 712개와 방향 | 게임 데이터 (8 타일셋) | `measure_ramps.py` |
+| `ramps.json` | 램프 **두뎃** 712개 중 **걸어서 통하는 659개**와 방향 | 게임 데이터 (8 타일셋) | `measure_ramps.py` |
 | `terrain-types.json` | 지형 종류 → 타일 그룹·고도 | 게임 데이터 | `measure_terrain_types.py` |
 | `doodad-walk.json` | 두뎃이 **걷기를 막는가** | 게임 데이터 | `measure_doodads.py` |
 | `tile-colors.json` | 타일 그룹 평균 RGB | 렌더러 | `measure_tile_colors.py` |

@@ -454,7 +454,8 @@ def symmetric_points(x: float, y: float, symmetry: str, count: int,
 #
 # 표는 `data/ramps.json` — `measure_ramps.py` 가 여덟 타일셋에 실제로
 # 놓아 보고, 램프 깃발이 선 칸이 고지대 덩이의 어느 쪽에 붙는지로
-# 방향을 가려 만든다. 712개를 찾았다 (Installation 은 좌우 2개뿐이다).
+# 방향을 가려 만든다. 712개 중 **659개가 걸어서 통한다**
+# (Installation 은 좌우 2개뿐이다).
 
 
 def _ramp_table() -> dict:
@@ -492,7 +493,9 @@ def ramp_candidates(tileset_id: int, direction="down") -> list[dict]:
     name = TILESET_NAMES[tileset_id & 7]
     rows = [r for r in (_ramp_table().get(name) or [])
             if r.get("dir") == direction]
-    rows.sort(key=lambda r: -r.get("ramp_tiles", 0))
+    # **걸어서 통하는 것을 먼저** 준다. 표에 `walks` 가 없던 시절에
+    # 만든 데이터도 있으므로 없으면 뒤로 민다.
+    rows.sort(key=lambda r: (not r.get("walks"), -r.get("ramp_tiles", 0)))
     return rows
 
 
