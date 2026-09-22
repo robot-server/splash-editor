@@ -12,7 +12,7 @@
 | --- | --- | --- | --- |
 | 0 | Badlands | 있음 | 고지 문턱 2 |
 | 1 | Space Platform | 있음 | **평지가 고도 1** (Platform), 고지 문턱 2 |
-| 2 | Installation | 없음 | 실내. 고지대 자체가 없다 |
+| 2 | Installation | 있음 | **평지가 고도 1** (Floor·Plating) — Space 와 같은 함정. 고지대를 안 써서 문턱은 `None` |
 | 3 | Ashworld | 있음 | 고지 문턱 2 |
 | 4 | Jungle | 있음 | 고지 문턱 1 |
 | 5 | Desert | 있음 | 고지 문턱 1 |

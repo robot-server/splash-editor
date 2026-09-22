@@ -12,10 +12,50 @@ Fighting Spirit·Lost Temple·Tau Cross·Luna 가 전부 **"고지대 0.0%"** �
 
 | 타일셋 | 저지대 | 1단 고지 | 2단 고지 | **고지 문턱** |
 | --- | --- | --- | --- | --- |
-| Badlands · Ashworld | 고도 0 | **없음** | High \* = 2 | **2** |
+| Badlands · Ashworld | 고도 0 | **아예 없다** | High \* = 2 | **2** |
 | Space Platform | Space · Low Platform = 0 | **Platform · Plating = 1 (평지!)** | High Platform = 2 | **2** |
+| **Installation** | — | **Floor · Plating = 1 (실내 바닥, 평지!)** | = 2 | **없음으로 친다** |
 | Jungle · Desert · Ice · Twilight | 고도 0 | **High \* = 1** | 드문 3단(High Temple 등) = 2 | **1** |
-| Installation | 고도 0 | Floor · Plating = 1 (평지) | 없음 | 고지대 없음 |
+
+### 타일 수로 본 진짜 구조
+
+`splash-cli tileset-tiles` 를 여덟 타일셋에 전수로 돌려 고도를 셌다.
+
+| 타일셋 | 고도 0 | 고도 1 | 고도 2 |
+| --- | ---: | ---: | ---: |
+| badlands | 5039 | **0** | 2308 |
+| ashworld | 2921 | **0** | 1206 |
+| space | 4681 | 1461 | 1021 |
+| installation | 1514 | 1025 | 560 |
+| jungle | 5388 | 2134 | 370 |
+| desert | 6334 | 2069 | 370 |
+| ice | 5614 | 1628 | 346 |
+| twilight | 6282 | 1972 | 346 |
+
+**"타일셋마다 제각각" 이 아니다.** 두 갈래다.
+
+| | 타일셋 | 뜻 |
+| --- | --- | --- |
+| **2계층 (0 / 2)** | badlands · ashworld | **고도 1 타일이 하나도 없다.** 문턱 2 는 고른 것이 아니라 **강제** |
+| **3계층 (0 / 1 / 2)** | 나머지 여섯 | 문턱을 골라야 한다 |
+
+그리고 3계층 중 **기준선이 0 이 아닌 것이 둘**이다.
+
+| | 평지가 몇인가 |
+| --- | --- |
+| **Space Platform** | **Platform = 1** 이 평지 |
+| **Installation** | **Floor · Plating = 1** 이 실내 바닥 |
+
+> **"Space 만 특별하다" 로 읽으면 틀린다.** Installation 도 똑같이
+> 기준선이 1 로 밀려 있다. 다만 실내라 고지대를 쓸 일이 거의 없어
+> `HIGH_THRESHOLD` 에서 `None` 으로 둔다.
+
+### 이름을 믿으면 안 된다
+
+| 이름 | 실제 고도 |
+| --- | --- |
+| Twilight **`High Sunken Ground`** | **0** (High 인데 저지대) |
+| Desert **`Sandy Sunken Pit`** | **1** (구덩이인데 High Dirt 와 같은 단) |
 
 ```python
 HIGH_THRESHOLD = {0: 2, 1: 2, 2: None, 3: 2, 4: 1, 5: 1, 6: 1, 7: 1}

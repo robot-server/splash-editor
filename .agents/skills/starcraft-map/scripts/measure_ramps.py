@@ -61,49 +61,6 @@ MAPW = MAPH = 64
 RAMP_KINDS = ("Cliff", "Structure Wall", "Wall")
 
 
-def ramp_candidates(cli: Cli, tiles: dict[int, tuple], tmp: str,
-                    ts: int) -> list[dict]:
-    """**램프는 두뎃이다.** 그 사실부터 재서 확인한다.
-
-    처음에는 램프를 생타일 덩이로 보고 `(그룹, 서브)` 평면에서 잘라 내려
-    했는데 하나도 못 찾았다. 램프 표시가 붙은 타일이 전부 그룹 1024 이상
-    — **두뎃 영역**이었다. 손으로 적어 둔 표의 바탕값 0x4a70 도 그룹
-    1191 이니 애초에 두뎃 번호였다.
-
-    그래서 두뎃을 하나씩 평지에 놓아 보고, 램프 표시가 붙은 타일이
-    나오는 것만 후보로 고른다. Badlands 에서는 `Cliff` 와
-    `Structure Wall` 갈래에서만 나온다.
-    """
-    import shutil
-    base = os.path.join(tmp, f"cand{ts}.scx")
-    shutil.copy(cli.path, base)
-    b = Cli(base)
-    low = next((t for t in sorted(tiles)
-                if t >= 32 and tiles[t][1] and tiles[t][2]
-                and tiles[t][0] == 0), None)
-    if low is None:
-        return []
-    b.edit("terrain", "fill", b.path, "0", "0", str(MAPW), str(MAPH), str(low))
-    out = []
-    for d in b.doodad_catalogue():
-        if not any(k in d["kind"] for k in RAMP_KINDS):
-            continue
-        p = os.path.join(tmp, "probe.scx")
-        shutil.copy(b.path, p)
-        c = Cli(p)
-        try:
-            c.edit("doodad", "place", p, str(d["id"]), "20", "20",
-                   "--install", c.install)
-        except CliError:
-            continue
-        g = c.tiles(20, 20, d["w"], d["h"])
-        n = sum(1 for row in g for v in row
-                if tiles.get(v, (0, 0, 0, 0))[3])
-        if n:
-            out.append({**d, "ramp_tiles": n})
-    return out
-
-
 def ramp_direction(cli: Cli, d: dict, tiles: dict, tmp: str,
                    base_path: str, low: int) -> tuple[str, int]:
     """**램프칸이 고지대 덩이의 어느 쪽에 붙어 있나**로 방향을 읽는다.
@@ -154,6 +111,43 @@ def ramp_direction(cli: Cli, d: dict, tiles: dict, tmp: str,
     return ("down" if dy > 0 else "up"), len(rp)
 
 
+def walk_check(cli: Cli, doodad_id: int, w: int, h: int, tileset_id: int,
+               high: int, low: int, tmp: str, base_path: str) -> bool:
+    """**고지대에서 저지대로 걸어서 통하는가**를 실제로 본다.
+
+    이것이 없으면 "램프" 가 아니라 "램프 깃발이 선 칸이 있는 두뎃" 일
+    뿐이다. 앞서 이 단계를 빠뜨리고도 출력에는 "통하는 램프" 라고
+    찍었다 — 적대적 검토에서 잡혔다.
+
+    맵 위쪽 절반을 고지대로 만들고 그 경계에 두뎃을 놓은 뒤, 미니타일
+    격자에서 고지대 한가운데 → 저지대 한가운데 를 따라가 본다.
+    """
+    import shutil
+    p = os.path.join(tmp, "walkprobe.scx")
+    shutil.copy(base_path, p)
+    c = Cli(p)
+    mid = MAPH // 2
+    # 위쪽 절반을 고지대로
+    c.edit("terrain", "fill", c.path, "0", "0", str(MAPW), str(mid), str(high))
+    before_ok = False
+    grid = scmap.walk_grid(c, tileset_id, 0, 0, MAPW, MAPH)
+    a_ = scmap.nearest_walkable(grid, MAPW * 2, (mid // 2) * 4)
+    b_ = scmap.nearest_walkable(grid, MAPW * 2, ((mid + MAPH) // 2) * 4)
+    if a_ and b_:
+        before_ok = scmap.walk_reachable(grid, a_, b_)
+    if before_ok:
+        return False        # 두뎃 없이도 통하면 시험이 안 된다
+
+    try:
+        scmap.place_doodad(c, doodad_id, MAPW // 2, mid, w, h)
+    except CliError:
+        return False
+    grid = scmap.walk_grid(c, tileset_id, 0, 0, MAPW, MAPH)
+    a_ = scmap.nearest_walkable(grid, MAPW * 2, (mid // 2) * 4)
+    b_ = scmap.nearest_walkable(grid, MAPW * 2, ((mid + MAPH) // 2) * 4)
+    return bool(a_ and b_ and scmap.walk_reachable(grid, a_, b_))
+
+
 def measure_one(tmp: str, ts: int, install: str, verbose=False) -> list[dict]:
     """한 타일셋의 램프를 찾아 방향까지 매긴다."""
     import shutil
@@ -167,6 +161,11 @@ def measure_one(tmp: str, ts: int, install: str, verbose=False) -> list[dict]:
         return []
     cli.edit("terrain", "fill", cli.path, "0", "0",
              str(MAPW), str(MAPH), str(low))
+    # 고지대 타일 하나 — 걸을 수 있고 고도가 저지대보다 높은 것
+    low_lvl = tiles[low][0]
+    high = next((t for t in sorted(tiles)
+                 if t >= 32 and tiles[t][1] and tiles[t][2]
+                 and tiles[t][0] > low_lvl), None)
     base = os.path.join(tmp, f"base{ts}.scx")
     shutil.copy(cli.path, base)
 
@@ -178,8 +177,11 @@ def measure_one(tmp: str, ts: int, install: str, verbose=False) -> list[dict]:
         if verbose:
             print(f"    두뎃 {d['id']:4d} {d['w']}x{d['h']} {d['kind']:22s} "
                   f"→ {direction:5s} (램프칸 {n})")
+        walks = (walk_check(cli, d["id"], d["w"], d["h"], ts, high, low,
+                            tmp, base) if high is not None else None)
         out.append({"id": d["id"], "w": d["w"], "h": d["h"],
-                    "kind": d["kind"], "dir": direction, "ramp_tiles": n})
+                    "kind": d["kind"], "dir": direction, "ramp_tiles": n,
+                    "walks": walks})
     return out
 
 
@@ -207,7 +209,9 @@ def main(argv=None):
                 continue
             by_dir = collections.Counter(f["dir"] for f in found)
             data[NAMES[ts]] = found
-            print(f"    통하는 램프 {len(found)}개  " +
+            n_walk = sum(1 for f in found if f.get("walks"))
+            print(f"    램프 깃발이 선 두뎃 {len(found)}개 "
+                  f"(그중 **걸어서 통하는 것 {n_walk}개**)  " +
                   (", ".join(f"{d} {n}" for d, n in sorted(by_dir.items()))
                    or "없음"))
     path = os.path.normpath(OUT)
