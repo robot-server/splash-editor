@@ -1397,6 +1397,7 @@ int cmdUnitStats(const std::string & installPath, bool json)
                       << ", \"ground_bonus\": " << d.groundDamageBonus
                       << ", \"ground_cooldown\": " << int(d.groundCooldown)
                       << ", \"ground_hits\": " << int(d.maxGroundHits)
+                      << ", \"air_hits\": " << int(d.maxAirHits)
                       << ", \"air_range\": " << d.airRange
                       << ", \"air_damage\": " << d.airDamage
                       << ", \"ai_comp_idle\": " << int(d.aiCompIdle)
@@ -1426,6 +1427,8 @@ int cmdUnitStats(const std::string & installPath, bool json)
                       << ", \"mechanical\": " << (d.mechanical ? "true" : "false")
                       << ", \"organic\": " << (d.organic ? "true" : "false")
                       << ", \"can_attack\": " << (d.canAttack ? "true" : "false")
+                      << ", \"staredit_group\": " << int(d.starEditGroupFlags)
+                      << ", \"staredit_avail\": " << d.starEditAvailability
                       << ", \"subunit1\": " << d.subunit1
                       << ", \"subunit2\": " << d.subunit2
                       << "}";

@@ -535,6 +535,7 @@ GameGraphics::UnitStats GameGraphics::unitStats(std::uint16_t unitType) const
         out.groundWeapon = d.groundWeapon;
         out.airWeapon = d.airWeapon;
         out.maxGroundHits = d.maxGroundHits;
+        out.maxAirHits = d.maxAirHits;
         out.flags = d.flags;
         const auto has = [&](std::uint32_t bit) { return (d.flags & bit) != 0; };
         out.hero = has(Sc::Unit::Flags::Hero);
@@ -549,6 +550,8 @@ GameGraphics::UnitStats GameGraphics::unitStats(std::uint16_t unitType) const
         out.mechanical = has(Sc::Unit::Flags::Mechanical);
         out.organic = has(Sc::Unit::Flags::Organicunit);
         out.canAttack = has(Sc::Unit::Flags::CanAttack);
+        out.starEditGroupFlags = d.starEditGroupFlags;
+        out.starEditAvailability = d.starEditAvailabilityFlags;
         out.subunit1 = static_cast<std::uint16_t>(d.subunit1);
         out.subunit2 = static_cast<std::uint16_t>(d.subunit2);
         out.mineralCost = d.mineralCost;

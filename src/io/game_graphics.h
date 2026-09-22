@@ -166,7 +166,11 @@ public:
         std::uint8_t moveControl = 0;
         std::uint8_t groundWeapon = 130;        ///< 130 = 없음
         std::uint8_t airWeapon = 130;
+        /// 한 번 쏠 때 **몇 발 나가는가**. 게임에 보이는 공격력은
+        /// damage × hits 다 — 골리앗 미사일은 10 짜리가 2발이라 20 으로
+        /// 보인다. dat 값만 보면 절반으로 읽게 된다.
         std::uint8_t maxGroundHits = 0;
+        std::uint8_t maxAirHits = 0;
         std::uint32_t groundRange = 0;          ///< 픽셀
         std::uint16_t groundDamage = 0;
         std::uint16_t groundDamageBonus = 0;    ///< 업그레이드 한 단계당
@@ -209,6 +213,12 @@ public:
         bool flyer = false;
         bool mechanical = false;
         bool organic = false;
+        /// units.dat 의 StarEdit 갈래 깃발. 에디터 팔레트에 나오는가를
+        /// 정하고, 카페에 따르면 **`Create Unit` 트리거로 만들 수 있는가**
+        /// 와도 이어진다. 0x08 Men · 0x10 Building · 0x20 Factory.
+        std::uint8_t starEditGroupFlags = 0;
+        /// units.dat 의 StarEdit 사용 가능 깃발 (16비트).
+        std::uint16_t starEditAvailability = 0;
         bool canAttack = false;   ///< units.dat 의 CanAttack 깃발
         /// 이 유닛에 딸린 아랫유닛(포탑 등). 228 이면 없다.
         std::uint16_t subunit1 = 228;
