@@ -197,6 +197,10 @@ public:
         bool flyer = false;
         bool mechanical = false;
         bool organic = false;
+        bool canAttack = false;   ///< units.dat 의 CanAttack 깃발
+        /// 이 유닛에 딸린 아랫유닛(포탑 등). 228 이면 없다.
+        std::uint16_t subunit1 = 228;
+        std::uint16_t subunit2 = 228;
     };
 
     /// 한 유닛의 게임 데이터 값. 번호가 범위를 넘으면 기본값이 나온다.

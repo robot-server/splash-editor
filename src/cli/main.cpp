@@ -1421,6 +1421,9 @@ int cmdUnitStats(const std::string & installPath, bool json)
                       << ", \"flyer\": " << (d.flyer ? "true" : "false")
                       << ", \"mechanical\": " << (d.mechanical ? "true" : "false")
                       << ", \"organic\": " << (d.organic ? "true" : "false")
+                      << ", \"can_attack\": " << (d.canAttack ? "true" : "false")
+                      << ", \"subunit1\": " << d.subunit1
+                      << ", \"subunit2\": " << d.subunit2
                       << "}";
         }
         else

@@ -547,6 +547,9 @@ GameGraphics::UnitStats GameGraphics::unitStats(std::uint16_t unitType) const
         out.flyer = has(Sc::Unit::Flags::Flyer);
         out.mechanical = has(Sc::Unit::Flags::Mechanical);
         out.organic = has(Sc::Unit::Flags::Organicunit);
+        out.canAttack = has(Sc::Unit::Flags::CanAttack);
+        out.subunit1 = static_cast<std::uint16_t>(d.subunit1);
+        out.subunit2 = static_cast<std::uint16_t>(d.subunit2);
         out.mineralCost = d.mineralCost;
         out.vespeneCost = d.vespeneCost;
         out.buildTime = d.buildTime;
