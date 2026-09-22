@@ -1181,45 +1181,49 @@ PRESENCE_UNIT = "Disruption Web"
 
 
 def absent_player_cleanup(humans: int, system_owner: str,
-                          min_players: int = 1, grace: int = 3) -> list[str]:
-    """**들어오지 않은 자리를 치운다.**
+                          min_players: int = 1, grace: int = 3,
+                          count_slot: str = "Protoss Interceptor") -> list[str]:
+    """**들어오지 않은 자리를 치우고, 인원이 모자라면 끝낸다.**
 
     유즈맵은 슬롯이 다 차지 않는 게 보통이다. 6인 맵에 넷이 들어오면
-    빈 두 자리의 유닛이 필드에 그대로 남는다. 적이 그걸 때리러 가고,
-    전멸 판정이 영영 참이 되지 않아 게임이 멈춘다.
+    빈 두 자리의 유닛이 필드에 남는다. 적이 그걸 때리러 가고, 전멸
+    판정이 영영 참이 되지 않아 게임이 멈춘다.
 
     `Always()` 를 건 `"All players"` 트리거는 **실제로 들어온 사람에게만**
     돈다. 그걸로 표시를 찍고, 몇 초 뒤 표시가 없는 자리를 치운다.
-    실측 대표 맵 일곱 장 중 세 장이 이 검사를 한다.
 
-    `min_players` 를 1보다 크게 주면 인원 미달일 때 알리고 끝낸다.
+    **인원은 세어야 한다.** 앞서 `min_players=3` 일 때 "P3 이 있는가" 만
+    보았는데, P1·P2·P4 셋이 들어와도 지고 P3 혼자 들어오면 통과했다.
+    들어온 사람마다 시스템 칸을 하나씩 올려 그 합을 본다.
     """
-    out = ['Trigger("All players"){\n'
-           'Conditions:\n\tAlways();\n\n'
+    out = ['Trigger("All players"){\nConditions:\n\tAlways();\n'
+           '\tDeaths("Current Player", "%s", Exactly, 0);\n\n'
            'Actions:\n'
-           f'\tSet Deaths("Current Player", "{PRESENCE_UNIT}", Set To, 1);\n'
-           '\tPreserve Trigger();\n}']
+           '\tSet Deaths("Current Player", "%s", Set To, 1);\n'
+           '\tSet Deaths("%s", "%s", Add, 1);\n'
+           '\tPreserve Trigger();\n}'
+           % (PRESENCE_UNIT, PRESENCE_UNIT, system_owner, count_slot)]
     for p in range(1, humans + 1):
-        out.append(
-            f'Trigger("{system_owner}"){{\n'
-            'Conditions:\n'
-            f'\tElapsed Time(At least, {grace});\n'
-            f'\tDeaths("Player {p}", "{PRESENCE_UNIT}", Exactly, 0);\n\n'
-            'Actions:\n'
-            f'\tRemove Unit("Player {p}", "Any unit");\n'
-            '\tPreserve Trigger();\n}')
+        out.append('Trigger("%s"){\nConditions:\n'
+                   '\tElapsed Time(At least, %d);\n'
+                   '\tDeaths("Player %d", "%s", Exactly, 0);\n\n'
+                   'Actions:\n'
+                   '\tRemove Unit("Player %d", "Any unit");\n'
+                   '\tPreserve Trigger();\n}'
+                   % (system_owner, grace, p, PRESENCE_UNIT, p))
     if min_players > 1:
-        who = ",".join(f'"Player {p}"' for p in range(1, humans + 1))
-        msg = (f"\\x06사람이 모자랍니다.\\x02 {min_players}명 이상 필요합니다.")
-        out.append(
-            f'Trigger({who}){{\n'
-            'Conditions:\n'
-            f'\tElapsed Time(At least, {grace + 2});\n'
-            f'\tDeaths("Player {min_players}", "{PRESENCE_UNIT}", Exactly, 0);\n\n'
-            'Actions:\n'
-            f'\tDisplay Text Message(Always Display, "{msg}");\n'
-            '\tDefeat();\n}')
+        who = ",".join('"Player %d"' % p for p in range(1, humans + 1))
+        out.append('Trigger(%s){\nConditions:\n'
+                   '\tElapsed Time(At least, %d);\n'
+                   '\tDeaths("%s", "%s", At most, %d);\n\n'
+                   'Actions:\n'
+                   '\tDisplay Text Message(Always Display, '
+                   '"\\x06사람이 모자랍니다.\\x02 %d명 이상 필요합니다.");\n'
+                   '\tDefeat();\n}'
+                   % (who, grace + 2, system_owner, count_slot,
+                      min_players - 1, min_players))
     return out
+
 
 
 def briefing_text(lines: list[str], objectives: str | None = None,
@@ -1342,24 +1346,42 @@ def part_patrol_path(owner: str, stops: list[str], mode: str) -> list[str]:
 
 
 def part_lives(player: str, counter: str, start: int, lose_when: str,
-               where: str, msg: str = "\\x06새어 나갔습니다!") -> list[str]:
+               where: str, leaker: str,
+               msg: str = "\\x06새어 나갔습니다!") -> list[str]:
     """목숨 — 조건이 참이면 하나 깎고, 0 이 되면 진다.
 
+    `leaker` 는 **새어 나간 유닛의 주인**이다. 앞서 이 자리에 로케이션
+    이름을 넣어 `Remove Unit At Location("Exit", ...)` 같은 트리거가
+    나갔다. 컴파일은 통과하고 게임에서는 아무 일도 안 일어난다.
+
     **한 기씩 지운다.** 통째로 지우면 다섯이 새어도 목숨이 하나만 준다.
+
+    `start` 로 초기값도 여기서 찍는다 — 호출자가 따로 기억하지 않게.
     """
     return [
-        f'Trigger("{player}"){{\nConditions:\n\t{lose_when}\n\n'
-        f'Actions:\n'
-        f'\tRemove Unit At Location("{where}", "Any unit", 1, "{where}");\n'
-        f'\tSet Deaths("{player}", "{counter}", Subtract, 1);\n'
-        f'\tSet Score("{player}", Subtract, 1, Custom);\n'
-        f'\tDisplay Text Message(Always Display, "{msg}");\n'
-        f'\tPreserve Trigger();\n}}',
-        f'Trigger("{player}"){{\nConditions:\n'
-        f'\tDeaths("{player}", "{counter}", Exactly, 0);\n\n'
-        f'Actions:\n'
-        f'\tDisplay Text Message(Always Display, "\\x06목숨이 다했습니다.");\n'
-        f'\tDefeat();\n}}']
+        'Trigger("%s"){\nConditions:\n\tAlways();\n'
+        '\tDeaths("%s", "%s", Exactly, 0);\n\n'
+        'Actions:\n'
+        '\tSet Deaths("%s", "%s", Set To, %d);\n'
+        '\tSet Score("%s", Set To, %d, Custom);\n}'
+        % (player, player, counter, player, counter, start, player, start),
+
+        'Trigger("%s"){\nConditions:\n\t%s\n\n'
+        'Actions:\n'
+        '\tRemove Unit At Location("%s", "Any unit", 1, "%s");\n'
+        '\tSet Deaths("%s", "%s", Subtract, 1);\n'
+        '\tSet Score("%s", Subtract, 1, Custom);\n'
+        '\tDisplay Text Message(Always Display, "%s");\n'
+        '\tMinimap Ping("%s");\n'
+        '\tPreserve Trigger();\n}'
+        % (player, lose_when, leaker, where, player, counter, player, msg, where),
+
+        'Trigger("%s"){\nConditions:\n'
+        '\tDeaths("%s", "%s", Exactly, 0);\n\n'
+        'Actions:\n'
+        '\tDisplay Text Message(Always Display, "\\x06목숨이 다했습니다.");\n'
+        '\tDefeat();\n}'
+        % (player, player, counter)]
 
 
 def part_respawn(player: str, unit: str, where: str, count: int = 4,
@@ -1505,7 +1527,28 @@ def part_infection(humans: list[str], zombie: str, mark: str,
             f'Actions:\n'
             f'\tSet Alliance Status("{h}", Ally);\n'
             f'\tPreserve Trigger();\n}}')
-    # 3) 좀비가 된 사람에게 좀비 유닛을 준다
+    # 3) 감염자와 생존자를 **서로** 적으로 돌린다. 한쪽만 바꾸면 안 된다 —
+    #    setup_usemap_players 가 사람 전원을 동맹으로 묶어 두므로,
+    #    감염자가 좀비와도 생존자와도 동맹인 상태로 남는다.
+    for h in humans:
+        others = "".join('\tSet Alliance Status("%s", Enemy);\n' % o
+                         for o in humans if o != h)
+        out.append('Trigger("%s"){\nConditions:\n'
+                   '\tDeaths("%s", "%s", At least, 1);\n\n'
+                   'Actions:\n%s'
+                   '\tSet Alliance Status("%s", Ally);\n'
+                   '\tPreserve Trigger();\n}'
+                   % (h, h, mark, others, zombie))
+        out.append('Trigger(%s){\nConditions:\n'
+                   '\tDeaths("%s", "%s", At least, 1);\n'
+                   '\tDeaths("Current Player", "%s", Exactly, 0);\n\n'
+                   'Actions:\n'
+                   '\tSet Alliance Status("%s", Enemy);\n'
+                   '\tPreserve Trigger();\n}'
+                   % (",".join('"%s"' % o for o in humans if o != h),
+                      h, mark, mark, h))
+
+    # 4) 좀비가 된 사람에게 좀비 유닛을 준다
     out.append(
         f'Trigger({who}){{\nConditions:\n'
         f'\tDeaths("Current Player", "{mark}", At least, 1);\n'

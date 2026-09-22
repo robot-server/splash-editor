@@ -77,8 +77,10 @@ Actions:
 \tCreate Unit("{enemy}", "{ZOMBIE_UNIT}", {a.zombies // 2}, "Graveyard");
 \tPreserve Trigger();
 }}''')
-    T += scmap.part_patrol_path(enemy, ["Graveyard", "Field", "Shelter"])
-    T += scmap.part_patrol_path(boss_p, ["Graveyard", "Field", "Shelter"])
+    # 좀비는 생존자를 **쫓아야** 한다 — patrol 이면 두 자리만 오가고,
+    # move 면 도착해서 멈춘다. 놀이가 mode 를 정한다.
+    T += scmap.part_patrol_path(enemy, ["Graveyard", "Field", "Shelter"], "attack")
+    T += scmap.part_patrol_path(boss_p, ["Graveyard", "Field", "Shelter"], "attack")
 
     # 감염 — 이 장르의 알맹이
     T += scmap.part_infection(humans, enemy, MARK, ZOMBIE_UNIT, "Graveyard")
