@@ -30,6 +30,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import scmap
+import spatial
 
 MAP_REVEALER = 101
 TRIGGER_SEP_RE = "//-----------------------------------------------------------------//"
@@ -494,7 +495,7 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
     #     늘어나는 맵을 실제로 받았다.
     placed = collections.Counter()
     for u in cli.units():
-        placed[u.get("name") or str(u["type"])] += 1
+        placed[u.get("type_name") or str(u["type"])] += 1
     used_as_counter = set(re.findall(r'Set Deaths\(\s*"[^"]+"\s*,\s*"([^"]+)"', text))
     dirty = sorted(c for c in used_as_counter if placed.get(c))
     if dirty:
@@ -864,6 +865,18 @@ def report(m: dict) -> int:
             if mark == "!!":
                 problems += 1
             print(f"  [{mark:2}] {text}")
+        print("\n-- 배치와 트리거를 맞대어 --")
+        try:
+            sp = spatial.check(_CLI[0], m, _CLI[0].trigger_text())
+        except Exception as e:
+            sp = [("?", f"공간 검사를 못 했습니다: {e}")]
+        if not sp:
+            sp = [("i", "맞대어 볼 것이 없습니다 (경유지·제한 시간이 없습니다).")]
+        for mark, textline in sp:
+            if mark == "!!":
+                problems += 1
+            print(f"  [{mark:2}] {textline}")
+
         print("\n  ※ 밀리맵 잣대(대칭·종족 밸런스·스타팅 연결)는 건너뜁니다.")
         print("     유즈맵에서 그것들은 결함이 아닙니다.")
         print("     재미는 수로 못 잽니다. 그려 보고 돌려 보세요:")
