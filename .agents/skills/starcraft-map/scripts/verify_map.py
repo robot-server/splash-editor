@@ -715,6 +715,28 @@ def check_basics(cli: Cli, m: dict) -> list[tuple[str, str]]:
     """맵이 **열리기는 하는지**. 여기서 걸리면 밸런스는 따질 것도 없다."""
     out = []
 
+    # 0a) **못 걷는 지형이 66% 를 넘으면 튕긴다.**
+    #
+    #      카페 `에디터의 모/든/것` 의 "스타가 팅기는 증상들" 은 본문에
+    #      "건설이 불가능한 지형 66%" 라고 적었는데, 댓글이 **"이동이
+    #      불가능한 지형 66%"** 로 정정한다. 물·용암을 벽으로 쓰는
+    #      유즈맵이 바로 걸린다 — 내가 만든 맵 여섯 중 넷이 넘겼다.
+    ts0 = m.get("tileset_id")
+    if ts0 is not None:
+        try:
+            g0 = scmap.walk_grid(cli, ts0, 0, 0, m["width"], m["height"])
+            tot0 = len(g0) * len(g0[0])
+            blocked = 100.0 * (tot0 - sum(sum(r) for r in g0)) / tot0
+            if blocked > 66:
+                out.append(("!!", f"못 걷는 지형이 **{blocked:.0f}%** 입니다. "
+                                  f"**66% 를 넘으면 게임이 튕깁니다.** 검게 "
+                                  f"뚫거나 물·용암으로 막은 자리를 줄이세요."))
+            elif blocked > 58:
+                out.append(("? ", f"못 걷는 지형이 {blocked:.0f}% 입니다. "
+                                  f"66% 를 넘으면 튕기니 여유가 얼마 없습니다."))
+        except Exception:
+            pass
+
     # 0) 지형이 너무 잘게 쪼개졌는가 — 맵이 아예 안 열릴 수 있다
     islands = count_walk_islands(cli, m)
     # 문턱은 실측에서 잡았다. 유즈맵 57장의 중앙값이 31덩어리이고
