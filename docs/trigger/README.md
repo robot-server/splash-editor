@@ -4,6 +4,8 @@
 
 | 글 | 무엇이 있나 |
 | --- | --- |
+| [conditions.md](conditions.md) | 조건 전부. 인자의 함정 |
+| [actions.md](actions.md) | 액션 전부. 못 만드는 유닛, 64가지 제한 |
 | [execution.md](execution.md) | **먼저 읽는다.** 트리거가 도는 순서, 웨잇 꼬임, 하이퍼 |
 | [death-counts.md](death-counts.md) | 죽음 수 = 유즈맵의 변수. 어느 유닛을 쓸 수 있나 |
 | [bring-command.md](bring-command.md) | `Bring`·`Command` 가 무엇을 세나. 견줌마다 다르다 |
