@@ -1,7 +1,7 @@
 # 유즈맵 지형 — 바닥에도 문법이 있다
 
 밀리맵 지형은 능선과 절벽을 설계하는 일이라 아직 자동으로 못 만든다
-([why-procedural-fails.md](why-procedural-fails.md)). **유즈맵 지형은
+([why-procedural-fails.md](../melee/why-procedural-fails.md)). **유즈맵 지형은
 다르다.** 네모난 방과 통로일 뿐이라 계산으로 정확히 만들 수 있다.
 그런데도 오래 틀렸다. 왜 틀렸는지가 이 글이다.
 

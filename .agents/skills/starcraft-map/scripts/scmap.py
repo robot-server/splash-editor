@@ -1476,6 +1476,89 @@ TRIGGER_SEP = "\n\n//-----------------------------------------------------------
 
 
 
+def stamp_glyph(cli: Cli, pal: "Palette", glyph: str, x: int, y: int,
+                w: int, h: int, role: str = "pad", thick: int = 2):
+    """방 바닥에 **지형으로** 글자를 그린다 (O · X · 화살표 등).
+
+    앞서 O 와 X 를 파일런으로 늘어놓았다. 보이긴 했지만 **유닛이라
+    길을 막아** 발판 안에서 걸어다니지를 못했다 — 열두 초 안에 옮겨야
+    하는 놀이에서 치명적이다. 글자는 밟고 지나갈 수 있어야 한다.
+
+    지형으로 그리면 막지 않고, 발판 지형과 색이 멀어 글자로 읽힌다
+    (`Palette` 가 맞닿는 짝의 색 차를 18 이상으로 고른다).
+    """
+    cx, cy = x + w / 2.0, y + h / 2.0
+    rx, ry = (w - 4) / 2.0, (h - 4) / 2.0
+    cells: set[tuple[int, int]] = set()
+
+    def put(px: float, py: float):
+        for dy in range(thick):
+            for dx in range(thick):
+                tx, ty = int(round(px)) + dx, int(round(py)) + dy
+                if x + 1 <= tx < x + w - 1 and y + 1 <= ty < y + h - 1:
+                    cells.add((tx, ty))
+
+    if glyph.upper() == "O":
+        n = int(4 * (rx + ry))
+        for k in range(n):
+            a = 2 * math.pi * k / n
+            put(cx + rx * math.cos(a) - thick / 2,
+                cy + ry * math.sin(a) - thick / 2)
+    elif glyph.upper() == "X":
+        n = int(2 * max(rx, ry)) * 2
+        for k in range(n + 1):
+            t = -1.0 + 2.0 * k / n
+            put(cx + rx * t - thick / 2, cy + ry * t - thick / 2)
+            put(cx + rx * t - thick / 2, cy - ry * t - thick / 2)
+    else:
+        raise CliError(f"모르는 글자입니다: {glyph!r}")
+
+    # 한 칸씩 찍지 않고 줄 단위로 모아 찍는다 — 호출 수를 줄인다
+    by_row: dict[int, list[int]] = {}
+    for (tx, ty) in cells:
+        by_row.setdefault(ty, []).append(tx)
+    n_tiles = 0
+    for ty, xs in sorted(by_row.items()):
+        xs.sort()
+        run = [xs[0]]
+        for tx in xs[1:] + [None]:
+            if tx is not None and tx == run[-1] + 1:
+                run.append(tx)
+                continue
+            pal.fill(cli, role, run[0], ty, len(run), 1)
+            n_tiles += len(run)
+            if tx is None:
+                break
+            run = [tx]
+    return n_tiles
+
+
+
+_TERRAIN_TYPES: dict | None = None
+
+
+def terrain_types_table(tileset_id: int) -> dict:
+    """지형 종류 이름 → {번호, 타일 그룹, 고도}. `measure_terrain_types.py` 산."""
+    global _TERRAIN_TYPES
+    if _TERRAIN_TYPES is None:
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "..", "data", "terrain-types.json")
+        try:
+            with open(os.path.normpath(path), encoding="utf-8") as f:
+                _TERRAIN_TYPES = json.load(f)["types"]
+        except Exception:
+            _TERRAIN_TYPES = {}
+    return _TERRAIN_TYPES.get(_TS_NAMES.get(tileset_id & 7, ""), {})
+
+
+def group_terrain_name(tileset_id: int) -> dict[int, str]:
+    """타일 그룹 → 지형 종류 이름. 두뎃 갈래와 짝지을 때 쓴다."""
+    out = {}
+    for name, v in terrain_types_table(tileset_id).items():
+        for g in v.get("groups", []):
+            out.setdefault(int(g), name)
+    return out
+
 # ------------------------------------------------------------ 두뎃 꾸미기
 #
 # **왜 있는가.** 만든 유즈맵을 실제 인기 맵과 나란히 그려 보니, 실제
@@ -1597,6 +1680,21 @@ def decorate_rim(cli: Cli, tileset_id: int, rooms, rng,
                              and safe[d["id"]].get("tiles", 0) > 0))]
     if not cat or not rooms:
         return 0
+
+    # **두뎃 갈래는 지형 종류 이름과 같다.** High Dirt 바닥에는 갈래가
+    # "High Dirt" 인 두뎃을 놓아야 한다. Dirt 두뎃을 올리면 안 어울린다 —
+    # 실제로 그렇게 만들어 지적받았다. 갈래별로 나눠 두고, 놓을 자리
+    # 밑의 타일 그룹이 무슨 지형인지 보고 고른다.
+    by_kind: dict[str, list[dict]] = {}
+    for d in cat:
+        by_kind.setdefault(d["kind"], []).append(d)
+    gname = group_terrain_name(tileset_id)
+    tile_rows = cli.tiles(0, 0, cli.info()["width"], cli.info()["height"])
+
+    def kind_here(tx: int, ty: int) -> str | None:
+        if not (0 <= ty < len(tile_rows) and 0 <= tx < len(tile_rows[0])):
+            return None
+        return gname.get(tile_rows[ty][tx] >> 4)
     if safe:
         tries = 1          # 막는 것을 걸렀으니 되돌릴 일이 없다
 
@@ -1641,7 +1739,10 @@ def decorate_rim(cli: Cli, tileset_id: int, rooms, rng,
                 rng.shuffle(edge)
                 want = int(len(edge) * density)
                 for (tx, ty) in edge[:want]:
-                    d = rng.choice(cat)
+                    pool = by_kind.get(kind_here(tx, ty) or "") or []
+                    if not pool:
+                        continue          # 그 지형에 맞는 두뎃이 없으면 안 놓는다
+                    d = rng.choice(pool)
                     if tx + d["w"] > x1 or ty + d["h"] > y1:
                         continue
                     if blocked(tx, ty, d["w"], d["h"]):

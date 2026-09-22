@@ -67,7 +67,7 @@ export SC_INSTALL=/경로/StarCraft
   **대칭**이다. 공식 리그 맵 2인용은 잰 4개 모두 180도 회전 대칭이었다.
 - **종족 밸런스** — 맵이 테란·저그·프로토스 중 누구에게 기우는가.
   지형과 **자원량**이 함께 정한다. 자세한 것은
-  [references/melee-balance.md](references/melee-balance.md).
+  [melee-balance.md](../../../docs/melee/balance.md).
 
 ```sh
 S=.agents/skills/starcraft-map/scripts
@@ -87,8 +87,8 @@ python3 $S/preview.py out.scx look.png
 > 슬롭이 나왔다. 네 번째는 형상 지표 셋을 실측 대역에 맞추는 데
 > 성공했는데 그림은 **꽃잎 열여섯 장짜리 눈송이**였다. 왜 그런지,
 > 지표를 재는 데 세 번 틀린 기록, 그리고 확인된 ISOM 마름모 격자 사실은
-> [references/why-procedural-fails.md](references/why-procedural-fails.md)
-> 와 [references/melee-terrain.md](references/melee-terrain.md) 에 있다.
+> [why-procedural-fails.md](../../../docs/melee/why-procedural-fails.md)
+> 와 [melee-terrain.md](../../../docs/melee/terrain.md) 에 있다.
 > 억지로 내놓지 말고 사용자에게 사실대로 말한다.
 >
 > 쓸 수 있게 만들어 둔 것: `scripts/melee_shape.py` (고도 마스크 ·
@@ -96,7 +96,7 @@ python3 $S/preview.py out.scx look.png
 > `scripts/measure_terrain_types.py` (타일셋별 고지 문턱).
 
 만들어지는 것은 **뼈대**다. 가운데가 비어 있으니 지형을 얹어 완성한다.
-[references/melee-terrain.md](references/melee-terrain.md) 에 ISOM 브러시·
+[melee-terrain.md](../../../docs/melee/terrain.md) 에 ISOM 브러시·
 램프·대칭을 놓는 법이 있다. 특히:
 
 - **`terrain mirror` 로 절벽을 베끼지 않는다.** 타일 값만 옮겨서 절벽
@@ -109,7 +109,7 @@ python3 $S/preview.py out.scx look.png
 유즈맵에서 다투는 것은 **재미**다. 사람을 붙잡는 것은 그래픽이 아니라
 **되먹임 고리** — 하고, 바로 알려 주고, 보상하고, 다시 하고 싶게 만드는
 것이다. **유즈맵 329장을 전수로 뜯어** 센 결과가
-[references/usemap-dopamine.md](references/usemap-dopamine.md) 에 있다.
+[usemap-dopamine.md](../../../docs/usemap/dopamine.md) 에 있다.
 요지만 옮기면:
 
 - 유닛 중앙값 **677개**(밀리의 다섯 배), 트리거 **237개**, 이름 붙인
@@ -126,7 +126,7 @@ python3 $S/preview.py out.scx look.png
   있다. 유즈맵은 업그레이드를 파는 구조가 기본이다.
 - `Start Location` 은 **100%**. 유즈맵도 스타팅이 있어야 한다.
 
-> **먼저 [references/game-rules.md](references/game-rules.md) 를 읽는다.**
+> **먼저 [game-rules.md](../../../docs/game/rules.md) 를 읽는다.**
 > 종족을 "선택 가능" 으로 두면 배치한 유닛이 통째로 무시되고 본진 +
 > 일꾼으로 시작한다. 하이퍼 트리거가 없으면 모든 판정이 1초씩 늦는다.
 > 미사일 터렛은 지상을 못 때린다. 전부 실제로 틀려 본 것이다.
@@ -137,7 +137,7 @@ python3 $S/preview.py out.scx look.png
 0.0% 이고, 1% 넘게 쓰는 타일 그룹은 중앙 10개다. 한 가지로 깔고 벽만
 검게 뚫으면 게임에서 맵에 구멍이 난 것처럼 보이고, 어디가 길이고 어디를
 밟아야 하는지 안 읽힌다. 자세한 것은
-[references/usemap-terrain.md](references/usemap-terrain.md).
+[usemap-terrain.md](../../../docs/usemap/terrain.md).
 
 ```python
 pal = scmap.Palette(cli, ts, rng, "usemap")   # 바닥·통로·테두리·발판·벽
@@ -184,7 +184,7 @@ cli.apply_triggers(scmap.TRIGGER_SEP.join(T))
 ```
 
 부품 목록은 `scripts/scmap.py` 의 "부품" 절을 본다. 어느 장르에 무엇이
-들어가는지는 [references/genres.md](references/genres.md) 에 실측으로
+들어가는지는 [genres.md](../../../docs/usemap/genres.md) 에 실측으로
 정리해 두었다.
 
 `scripts/make_*.py` 는 **본보기**다. 그대로 돌려도 되지만, 새 맵은
@@ -201,7 +201,7 @@ python3 $S/make_usemap.py out.scx --genre defense --players 6 --name "맵 이름
 ```
 
 트리거 문법과 바로 쓸 수 있는 조각은
-[references/trigger-recipes.md](references/trigger-recipes.md).
+[trigger-recipes.md](../../../docs/trigger/recipes.md).
 
 ## 경계
 
@@ -276,27 +276,27 @@ Space 밀리 **0개**에서 Badlands 밀리 **208개**까지 벌어진다. 전�
 
 ## 더 볼 것
 
-- [references/cli-cookbook.md](references/cli-cookbook.md) — 하고 싶은
+- [cli-cookbook.md](../../../docs/tools/cli-cookbook.md) — 하고 싶은
   일에서 명령을 찾는 표
-- [references/melee-balance.md](references/melee-balance.md) — 자리·종족
+- [melee-balance.md](../../../docs/melee/balance.md) — 자리·종족
   밸런스, 밀리 182장 전수 실측값
-- [references/melee-terrain.md](references/melee-terrain.md) — ISOM·램프·
+- [melee-terrain.md](../../../docs/melee/terrain.md) — ISOM·램프·
   대칭을 실제로 놓는 법
-- [references/why-procedural-fails.md](references/why-procedural-fails.md) —
+- [why-procedural-fails.md](../../../docs/melee/why-procedural-fails.md) —
   **밀리맵 지형을 생성하려 든다면 먼저 읽을 것.** 세 번 실패한 기록과
   하지 말 것(WFC·패치 점수), 할 것(기능 그래프부터)
-- [references/usemap-dopamine.md](references/usemap-dopamine.md) — 인기
+- [usemap-dopamine.md](../../../docs/usemap/dopamine.md) — 인기
   유즈맵 329장 전수 실측, 재미 구조 설계
-- [references/usemap-terrain.md](references/usemap-terrain.md) — **유즈맵
+- [usemap-terrain.md](../../../docs/usemap/terrain.md) — **유즈맵
   바닥의 문법.** 검은 칸을 왜 쓰면 안 되는지, 방·통로·발판·벽을 어떻게
   나누는지. 그림으로 보고서야 찾은 것이다
-- [references/genres.md](references/genres.md) — 장르마다 무엇이
+- [genres.md](../../../docs/usemap/genres.md) — 장르마다 무엇이
   들어가는가. 유즈맵 563장을 갈라 실측
-- [references/game-rules.md](references/game-rules.md) —
+- [game-rules.md](../../../docs/game/rules.md) —
   **맵을 만들기 전에 읽을 것.** 틀리면 맵이 망가지는 게임 규칙:
   종족 설정, 사거리표, 고도 명중률, 킬 점수, Bring/Command 인식 범위,
   하이퍼 트리거, 튕김 원인
-- [references/trigger-recipes.md](references/trigger-recipes.md) — 트리거
+- [trigger-recipes.md](../../../docs/trigger/recipes.md) — 트리거
   텍스트 문법과 바로 쓰는 조각
-- [references/eud-and-limits.md](references/eud-and-limits.md) — EUD 안전
+- [eud-and-limits.md](../../../docs/eud/limits.md) — EUD 안전
   규칙과, 허락을 받아야 하는 것들

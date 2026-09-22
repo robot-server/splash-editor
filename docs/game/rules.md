@@ -125,7 +125,7 @@ T.extend(scmap.hyper_triggers("Player 8"))
    스톰·야마토·플레이그 클라우드 등 주문 스프라이트.
 
 **"Unused" 가 붙은 유닛은 손대지 않는다** (허락을 받아야 하는 것이기도
-하다 — [eud-and-limits.md](eud-and-limits.md)).
+하다 — [eud-and-limits.md](../eud/limits.md)).
 
 ---
 

@@ -454,7 +454,7 @@ Deaths("Player 8", "Terran Vulture Spider Mine", Exactly, 10);
 | `luck` | 뽑기 → 결과 → 다시 | `Deaths` 카운터 + `Switch` 조합 |
 
 자세한 트리거 조각은
-[trigger-recipes.md](trigger-recipes.md).
+[trigger-recipes.md](../trigger/recipes.md).
 
 ---
 

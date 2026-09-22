@@ -42,7 +42,7 @@ export SC_INSTALL=/경로/StarCraft
 | 어긋난 두뎃 고치기 | `$CLI doodad repair map.scx --install "$SC_INSTALL" --in-place` |
 
 `terrain mirror` 는 **절벽이 있는 지형에 쓰지 않는다** —
-[melee-terrain.md](melee-terrain.md) 참고.
+[melee-terrain.md](../melee/terrain.md) 참고.
 
 ## 유닛
 
@@ -83,7 +83,7 @@ export SC_INSTALL=/경로/StarCraft
 | 인자 하나만 | `$CLI trigger set-arg map.scx action 0 0 0 "Player 3" --install "$SC_INSTALL" --in-place` |
 
 `trigger apply` 는 **텍스트 전체로 갈아 끼운다.** 문법은
-[trigger-recipes.md](trigger-recipes.md).
+[trigger-recipes.md](../trigger/recipes.md).
 
 ## 플레이어·세력·문자열
 

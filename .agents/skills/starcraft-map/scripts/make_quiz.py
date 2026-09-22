@@ -292,27 +292,21 @@ def main(argv=None):
         cli.place(scmap.START_LOCATION, lobby[0] + lobby[2] // 2, sy, owner=p)
         cli.place("Terran Civilian", lobby[0] + lobby[2] // 2, sy, owner=p)
     cli.place(scmap.START_LOCATION, lobby[0] + 1, lobby[1] + lobby[3] - 2, owner=8)
-    # **발판에 O 와 X 를 실제로 그린다.** 표시가 없으면 어느 쪽이
-    # 어느 쪽인지 알 수가 없다. 건물을 글자 모양으로 늘어놓는다.
-    import math as _m
+    # **발판에 O 와 X 를 지형으로 그린다.**
+    #
+    # 앞서 파일런을 글자 모양으로 늘어놓았다. 보이기는 했지만 **유닛이라
+    # 길을 막아** 발판 안에서 걸어다니지를 못했다 — 열두 초 안에 옮겨야
+    # 하는 놀이에서 치명적이다. 글자는 밟고 지나갈 수 있어야 한다.
     for (r, mark) in ((pad_o, "O"), (pad_x, "X")):
-        cx, cy = r[0] + r[2] // 2, r[1] + r[3] // 2
-        rad = min(r[2], r[3]) // 3
-        pts = []
-        if mark == "O":
-            for k in range(30):          # 성기면 원으로 안 읽힌다
-                ang = 2 * _m.pi * k / 30
-                pts.append((cx + int(round(rad * _m.cos(ang))),
-                            cy + int(round(rad * 0.85 * _m.sin(ang)))))
-        else:
-            for t in range(-rad, rad + 1):
-                pts.append((cx + t, cy + int(t * 0.85)))
-                pts.append((cx + t, cy - int(t * 0.85)))
-        for (px, py) in sorted(set(pts)):
-            if r[0] + 1 <= px < r[0] + r[2] - 1 and r[1] + 1 <= py < r[1] + r[3] - 1:
-                cli.place("Protoss Pylon", px, py, owner=12)
-        scmap.pad(cli, pal, cx, r[1] + 2, 3, 3)
-        cli.place("Terran Beacon", cx, r[1] + 2, owner=12)
+        n = scmap.stamp_glyph(cli, pal, mark, r[0], r[1], r[2], r[3],
+                              role="pad", thick=2)
+        print(f"  '{mark}' 를 지형 {n}칸으로 그렸습니다")
+
+    # 비콘은 발판 **위쪽 끝**에 둔다. 글자 위에 겹치면 둘 다 안 읽힌다.
+    for (r, mark) in ((pad_o, "O"), (pad_x, "X")):
+        cx = r[0] + r[2] // 2
+        scmap.pad(cli, pal, cx, r[1] + 1, 3, 2)
+        cli.place("Terran Beacon", cx, r[1] + 1, owner=12)
 
     print("시야를 엽니다...")
     scmap.reveal_for_all(cli, a.players)
