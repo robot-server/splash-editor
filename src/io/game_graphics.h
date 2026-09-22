@@ -139,6 +139,72 @@ public:
     };
     UnitRanges unitRanges(std::uint16_t unitType) const;
 
+    /// units.dat·weapons.dat 에 박혀 있는 한 유닛의 값들.
+    ///
+    /// **맵이 고칠 수 있는 것과 없는 것을 가르는 자리다.** 맵의 유닛
+    /// 설정(UNIS·UNIx)이 건드리는 것은 체력·방패·방어력·생산시간·값
+    /// 뿐이고, 여기 있는 **사거리·이동속도·시야·AI 스크립트**는 못
+    /// 고친다. 영웅 유닛이 같은 모양의 일반 유닛과 다른 까닭이 대개
+    /// 이쪽이므로, 유즈맵에서 유닛을 고를 때 이 값을 봐야 한다.
+    struct UnitStats
+    {
+        std::uint32_t hitPoints = 0;   ///< 표시값 (내부값 >> 8)
+        std::uint16_t shields = 0;     ///< 방패를 안 쓰면 0
+        std::uint8_t armor = 0;
+        std::uint8_t sightRange = 0;            ///< 타일
+        std::uint8_t targetAcquisitionRange = 0; ///< 타일. 먼저 무는 거리
+        std::uint8_t unitSize = 0;              ///< 1=소형 2=중형 3=대형
+        std::uint32_t topSpeed = 0;             ///< flingy.dat. 클수록 빠르다
+        std::uint16_t flingy = 0;
+        /// flingy.dat 의 이동 제어. 0·1 이면 topSpeed 가 실제 속도고,
+        /// **2(iscript) 면 topSpeed 는 1 짜리 자리표시자**다 — 마린·질럿·
+        /// 드라군·저글링이 그렇다. 속도를 비교하려면 이 값을 먼저 봐야 한다.
+        std::uint8_t moveControl = 0;
+        std::uint8_t groundWeapon = 130;        ///< 130 = 없음
+        std::uint8_t airWeapon = 130;
+        std::uint8_t maxGroundHits = 0;
+        std::uint32_t groundRange = 0;          ///< 픽셀
+        std::uint16_t groundDamage = 0;
+        std::uint16_t groundDamageBonus = 0;    ///< 업그레이드 한 단계당
+        std::uint8_t groundCooldown = 0;        ///< 프레임
+        std::uint32_t airRange = 0;
+        std::uint16_t airDamage = 0;
+        /// 이 무기의 피해를 올려 주는 업그레이드 번호. 61 이면 없다.
+        /// **영웅 무기는 대개 일반 무기와 다른 번호를 쓴다** — 그래서
+        /// 일반 유닛만 업그레이드를 받고 영웅은 못 받는 일이 생긴다.
+        std::uint8_t groundDamageUpgrade = 61;
+        std::uint8_t airDamageUpgrade = 61;
+        /// AI 스크립트 번호. 컴퓨터가 이 유닛을 어떻게 굴리는가 —
+        /// 쫓아갔다 돌아오는지, 끝까지 쫓아가는지가 여기서 갈린다.
+        std::uint8_t aiCompIdle = 0;
+        std::uint8_t aiHumanIdle = 0;
+        std::uint8_t aiReturnToIdle = 0;
+        std::uint8_t aiAttackUnit = 0;
+        std::uint8_t aiAttackMove = 0;
+        std::uint32_t flags = 0;
+        std::uint16_t mineralCost = 0;
+        std::uint16_t vespeneCost = 0;
+        std::uint16_t buildTime = 0;
+        std::uint8_t supplyRequired = 0;
+        bool hero = false;        ///< units.dat 의 Hero 깃발
+        bool invincible = false;
+        bool autoAttackAndMove = false;  ///< 스스로 무는가
+        bool regeneratesHp = false;
+        bool spellcaster = false;
+        bool detector = false;
+        bool cloakable = false;
+        bool permanentCloak = false;
+        bool flyer = false;
+        bool mechanical = false;
+        bool organic = false;
+    };
+
+    /// 한 유닛의 게임 데이터 값. 번호가 범위를 넘으면 기본값이 나온다.
+    UnitStats unitStats(std::uint16_t unitType) const;
+
+    /// units.dat 가 아는 유닛 종류 수 (보통 228). 못 읽었으면 0.
+    std::size_t unitTypeCount() const;
+
     /// 유닛이 차지하는 자리. 유닛 좌표에서 각 방향으로 몇 픽셀인지다
     /// (units.dat 의 unitSize*). 겹침 검사와 격자 맞춤에 쓴다.
     struct UnitBounds

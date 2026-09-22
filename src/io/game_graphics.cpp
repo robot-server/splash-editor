@@ -497,6 +497,103 @@ std::vector<std::uint8_t> GameGraphics::unitSound(std::uint16_t unitType) const
     return out;
 }
 
+std::size_t GameGraphics::unitTypeCount() const
+{
+    if (impl_ == nullptr || impl_->scData == nullptr)
+        return 0;
+    return impl_->scData->units.numUnitTypes();
+}
+
+GameGraphics::UnitStats GameGraphics::unitStats(std::uint16_t unitType) const
+{
+    UnitStats out;
+    if (impl_ == nullptr || impl_->scData == nullptr)
+        return out;
+
+    const Sc::Unit & units = impl_->scData->units;
+    if (unitType >= units.numUnitTypes())
+        return out;
+
+    try
+    {
+        // 무기 자료는 따로 읽는다. 한 번만 읽고 들고 있는다.
+        if (!impl_->weaponsLoaded)
+        {
+            impl_->weaponsLoaded = true;
+            impl_->scData->weapons.load(*impl_->cluster);
+        }
+
+        const auto & d = units.getUnit(Sc::Unit::Type(unitType));
+        out.hitPoints = d.hitPoints >> 8;
+        out.shields = d.shieldEnable ? d.shieldAmount : std::uint16_t(0);
+        out.armor = d.armor;
+        out.sightRange = d.sightRange;
+        out.targetAcquisitionRange = d.targetAcquisitionRange;
+        out.unitSize = d.unitSize;
+        out.flingy = d.graphics;
+        out.groundWeapon = d.groundWeapon;
+        out.airWeapon = d.airWeapon;
+        out.maxGroundHits = d.maxGroundHits;
+        out.flags = d.flags;
+        const auto has = [&](std::uint32_t bit) { return (d.flags & bit) != 0; };
+        out.hero = has(Sc::Unit::Flags::Hero);
+        out.invincible = has(Sc::Unit::Flags::Invincible);
+        out.autoAttackAndMove = has(Sc::Unit::Flags::AutoAttackAndMove);
+        out.regeneratesHp = has(Sc::Unit::Flags::RegeneratesHP);
+        out.spellcaster = has(Sc::Unit::Flags::Spellcaster);
+        out.detector = has(Sc::Unit::Flags::Detector);
+        out.cloakable = has(Sc::Unit::Flags::Cloakable);
+        out.permanentCloak = has(Sc::Unit::Flags::PermanentCloak);
+        out.flyer = has(Sc::Unit::Flags::Flyer);
+        out.mechanical = has(Sc::Unit::Flags::Mechanical);
+        out.organic = has(Sc::Unit::Flags::Organicunit);
+        out.mineralCost = d.mineralCost;
+        out.vespeneCost = d.vespeneCost;
+        out.buildTime = d.buildTime;
+        out.supplyRequired = d.supplyRequired;
+        out.aiCompIdle = d.compAIIdle;
+        out.aiHumanIdle = d.humanAIIdle;
+        out.aiReturnToIdle = d.returntoIdle;
+        out.aiAttackUnit = d.attackUnit;
+        out.aiAttackMove = d.attackMove;
+
+        // 이동 속도는 유닛이 아니라 flingy.dat 에 있다.
+        try
+        {
+            const auto & fl = units.getFlingy(d.graphics);
+            out.topSpeed = fl.topSpeed;
+            out.moveControl = fl.moveControl;
+        }
+        catch (const std::exception &)
+        {
+        }
+
+        const auto weapon = [&](std::uint8_t id) -> const Sc::Weapon::DatEntry * {
+            if (id >= Sc::Weapon::Total)
+                return nullptr;
+            return &impl_->scData->weapons.get(Sc::Weapon::Type(id));
+        };
+        if (const auto * gw = weapon(d.groundWeapon))
+        {
+            out.groundRange = gw->maximumRange;
+            out.groundDamage = gw->damageAmount;
+            out.groundDamageBonus = gw->damageBonus;
+            out.groundCooldown = gw->weaponCooldown;
+            out.groundDamageUpgrade = gw->damageUpgrade;
+        }
+        if (const auto * aw = weapon(d.airWeapon))
+        {
+            out.airRange = aw->maximumRange;
+            out.airDamage = aw->damageAmount;
+            out.airDamageUpgrade = aw->damageUpgrade;
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+    return out;
+}
+
 GameGraphics::UnitRanges GameGraphics::unitRanges(std::uint16_t unitType) const
 {
     UnitRanges ranges;

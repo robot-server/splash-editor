@@ -1,0 +1,1484 @@
+{
+ "_about": "영웅 유닛과 같은 겉모습(flingy)을 쓰는 일반 유닛의 차이. measure_heroes.py 가 게임 데이터(units.dat·weapons.dat·flingy.dat)에서 만든다. same_uneditable 에 든 값은 **맵이 못 고치는데도 영웅과 일반이 같은** 것이다 — 그 값을 노리고 영웅을 고르면 헛수고다.",
+ "_summary": {
+  "pairs": 35,
+  "same_ground_range": 28,
+  "faster_cooldown": 4,
+  "same_speed": 35,
+  "same_sight": 26,
+  "same_damage_upgrade": 33
+ },
+ "pairs": [
+  {
+   "hero_id": 52,
+   "hero": "Unclean One (Defiler)",
+   "base_id": 46,
+   "base": "Zerg Defiler",
+   "flingy": 4,
+   "diff": {
+    "hp": [
+     80,
+     250
+    ],
+    "armor": [
+     1,
+     3
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    61,
+    61
+   ],
+   "move_control": [
+    2,
+    2
+   ]
+  },
+  {
+   "hero_id": 56,
+   "hero": "Kukulza (Guardian)",
+   "base_id": 44,
+   "base": "Zerg Guardian",
+   "flingy": 7,
+   "diff": {
+    "ground_damage": [
+     20,
+     40
+    ],
+    "hp": [
+     150,
+     400
+    ],
+    "armor": [
+     2,
+     4
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    12,
+    12
+   ],
+   "move_control": [
+    0,
+    0
+   ]
+  },
+  {
+   "hero_id": 53,
+   "hero": "Hunter Killer (Hydralisk)",
+   "base_id": 38,
+   "base": "Zerg Hydralisk",
+   "flingy": 8,
+   "diff": {
+    "ground_range": [
+     128,
+     160
+    ],
+    "air_range": [
+     128,
+     160
+    ],
+    "ground_damage": [
+     10,
+     20
+    ],
+    "air_damage": [
+     10,
+     20
+    ],
+    "sight": [
+     6,
+     8
+    ],
+    "hp": [
+     80,
+     160
+    ],
+    "armor": [
+     0,
+     2
+    ]
+   },
+   "same_uneditable": [
+    "공격 주기*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    11,
+    11
+   ],
+   "move_control": [
+    2,
+    2
+   ]
+  },
+  {
+   "hero_id": 55,
+   "hero": "Kukulza (Mutalisk)",
+   "base_id": 43,
+   "base": "Zerg Mutalisk",
+   "flingy": 11,
+   "diff": {
+    "ground_damage": [
+     9,
+     18
+    ],
+    "air_damage": [
+     9,
+     18
+    ],
+    "hp": [
+     120,
+     300
+    ],
+    "armor": [
+     0,
+     3
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    12,
+    12
+   ],
+   "move_control": [
+    0,
+    0
+   ]
+  },
+  {
+   "hero_id": 57,
+   "hero": "Yggdrasill (Overlord)",
+   "base_id": 42,
+   "base": "Zerg Overlord",
+   "flingy": 12,
+   "diff": {
+    "sight": [
+     9,
+     11
+    ],
+    "hp": [
+     200,
+     1000
+    ],
+    "armor": [
+     0,
+     4
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    61,
+    61
+   ],
+   "move_control": [
+    0,
+    0
+   ]
+  },
+  {
+   "hero_id": 49,
+   "hero": "Matriarch (Queen)",
+   "base_id": 45,
+   "base": "Zerg Queen",
+   "flingy": 13,
+   "diff": {
+    "hp": [
+     120,
+     300
+    ],
+    "armor": [
+     0,
+     3
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    61,
+    61
+   ],
+   "move_control": [
+    0,
+    0
+   ]
+  },
+  {
+   "hero_id": 48,
+   "hero": "Torrasque (Ultralisk)",
+   "base_id": 39,
+   "base": "Zerg Ultralisk",
+   "flingy": 14,
+   "diff": {
+    "ground_damage": [
+     20,
+     50
+    ],
+    "hp": [
+     400,
+     800
+    ],
+    "armor": [
+     1,
+     4
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    10,
+    10
+   ],
+   "move_control": [
+    2,
+    2
+   ]
+  },
+  {
+   "hero_id": 54,
+   "hero": "Devouring One (Zergling)",
+   "base_id": 37,
+   "base": "Zerg Zergling",
+   "flingy": 15,
+   "diff": {
+    "ground_damage": [
+     5,
+     10
+    ],
+    "hp": [
+     35,
+     120
+    ],
+    "armor": [
+     0,
+     3
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    10,
+    10
+   ],
+   "move_control": [
+    2,
+    2
+   ]
+  },
+  {
+   "hero_id": 86,
+   "hero": "Danimoth (Arbiter)",
+   "base_id": 71,
+   "base": "Protoss Arbiter",
+   "flingy": 37,
+   "diff": {
+    "ground_damage": [
+     10,
+     20
+    ],
+    "air_damage": [
+     10,
+     20
+    ],
+    "hp": [
+     200,
+     600
+    ],
+    "shields": [
+     150,
+     500
+    ],
+    "armor": [
+     1,
+     3
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    14,
+    14
+   ],
+   "move_control": [
+    0,
+    0
+   ]
+  },
+  {
+   "hero_id": 76,
+   "hero": "Tassadar/Zeratul (Archon)",
+   "base_id": 68,
+   "base": "Protoss Archon",
+   "flingy": 38,
+   "diff": {
+    "ground_damage": [
+     30,
+     60
+    ],
+    "air_damage": [
+     30,
+     60
+    ],
+    "hp": [
+     10,
+     100
+    ],
+    "shields": [
+     350,
+     800
+    ],
+    "armor": [
+     0,
+     3
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    13,
+    13
+   ],
+   "move_control": [
+    0,
+    0
+   ]
+  },
+  {
+   "hero_id": 82,
+   "hero": "Gantrithor (Carrier)",
+   "base_id": 72,
+   "base": "Protoss Carrier",
+   "flingy": 39,
+   "diff": {
+    "sight": [
+     11,
+     9
+    ],
+    "hp": [
+     300,
+     800
+    ],
+    "shields": [
+     150,
+     500
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    61,
+    61
+   ],
+   "move_control": [
+    0,
+    0
+   ]
+  },
+  {
+   "hero_id": 78,
+   "hero": "Fenix (Dragoon)",
+   "base_id": 66,
+   "base": "Protoss Dragoon",
+   "flingy": 40,
+   "diff": {
+    "ground_damage": [
+     20,
+     45
+    ],
+    "air_damage": [
+     20,
+     45
+    ],
+    "ground_cooldown": [
+     30,
+     22
+    ],
+    "hp": [
+     100,
+     240
+    ],
+    "shields": [
+     80,
+     240
+    ],
+    "armor": [
+     1,
+     3
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    13,
+    13
+   ],
+   "move_control": [
+    2,
+    2
+   ]
+  },
+  {
+   "hero_id": 80,
+   "hero": "Mojo (Scout)",
+   "base_id": 70,
+   "base": "Protoss Scout",
+   "flingy": 43,
+   "diff": {
+    "ground_damage": [
+     8,
+     20
+    ],
+    "air_damage": [
+     14,
+     28
+    ],
+    "sight": [
+     8,
+     10
+    ],
+    "hp": [
+     150,
+     400
+    ],
+    "shields": [
+     100,
+     400
+    ],
+    "armor": [
+     0,
+     3
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    14,
+    14
+   ],
+   "move_control": [
+    0,
+    0
+   ]
+  },
+  {
+   "hero_id": 88,
+   "hero": "Artanis (Scout)",
+   "base_id": 70,
+   "base": "Protoss Scout",
+   "flingy": 43,
+   "diff": {
+    "ground_damage": [
+     8,
+     20
+    ],
+    "air_damage": [
+     14,
+     28
+    ],
+    "sight": [
+     8,
+     10
+    ],
+    "hp": [
+     150,
+     250
+    ],
+    "shields": [
+     100,
+     250
+    ],
+    "armor": [
+     0,
+     3
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    14,
+    14
+   ],
+   "move_control": [
+    0,
+    0
+   ]
+  },
+  {
+   "hero_id": 79,
+   "hero": "Tassadar (Templar)",
+   "base_id": 67,
+   "base": "Protoss High Templar",
+   "flingy": 45,
+   "diff": {
+    "ground_range": [
+     0,
+     96
+    ],
+    "ground_damage": [
+     0,
+     20
+    ],
+    "ground_cooldown": [
+     0,
+     22
+    ],
+    "hp": [
+     40,
+     80
+    ],
+    "shields": [
+     40,
+     300
+    ],
+    "armor": [
+     0,
+     2
+    ]
+   },
+   "same_uneditable": [
+    "공중 사거리*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    61,
+    13
+   ],
+   "move_control": [
+    1,
+    1
+   ]
+  },
+  {
+   "hero_id": 87,
+   "hero": "Aldaris (Templar)",
+   "base_id": 67,
+   "base": "Protoss High Templar",
+   "flingy": 45,
+   "diff": {
+    "ground_range": [
+     0,
+     96
+    ],
+    "ground_damage": [
+     0,
+     20
+    ],
+    "ground_cooldown": [
+     0,
+     22
+    ],
+    "hp": [
+     40,
+     80
+    ],
+    "shields": [
+     40,
+     300
+    ],
+    "armor": [
+     0,
+     2
+    ]
+   },
+   "same_uneditable": [
+    "공중 사거리*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    61,
+    13
+   ],
+   "move_control": [
+    1,
+    1
+   ]
+  },
+  {
+   "hero_id": 75,
+   "hero": "Zeratul (Dark Templar)",
+   "base_id": 74,
+   "base": "Protoss Dark Templar (Hero)",
+   "flingy": 46,
+   "diff": {
+    "ground_damage": [
+     45,
+     100
+    ],
+    "ground_cooldown": [
+     30,
+     22
+    ],
+    "hp": [
+     40,
+     60
+    ],
+    "shields": [
+     80,
+     400
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    13,
+    13
+   ],
+   "move_control": [
+    2,
+    2
+   ]
+  },
+  {
+   "hero_id": 81,
+   "hero": "Warbringer (Reaver)",
+   "base_id": 83,
+   "base": "Protoss Reaver",
+   "flingy": 47,
+   "diff": {
+    "hp": [
+     100,
+     200
+    ],
+    "shields": [
+     80,
+     400
+    ],
+    "armor": [
+     0,
+     3
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    61,
+    61
+   ],
+   "move_control": [
+    2,
+    2
+   ]
+  },
+  {
+   "hero_id": 77,
+   "hero": "Fenix (Zealot)",
+   "base_id": 65,
+   "base": "Protoss Zealot",
+   "flingy": 49,
+   "diff": {
+    "ground_damage": [
+     8,
+     20
+    ],
+    "hp": [
+     100,
+     240
+    ],
+    "shields": [
+     60,
+     240
+    ],
+    "armor": [
+     1,
+     2
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    13,
+    13
+   ],
+   "move_control": [
+    2,
+    2
+   ]
+  },
+  {
+   "hero_id": 27,
+   "hero": "Arcturus Mengsk (Battlecruiser)",
+   "base_id": 12,
+   "base": "Terran Battlecruiser",
+   "flingy": 70,
+   "diff": {
+    "ground_damage": [
+     25,
+     50
+    ],
+    "air_damage": [
+     25,
+     50
+    ],
+    "sight": [
+     11,
+     8
+    ],
+    "hp": [
+     500,
+     1000
+    ],
+    "armor": [
+     3,
+     4
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    9,
+    9
+   ],
+   "move_control": [
+    0,
+    0
+   ]
+  },
+  {
+   "hero_id": 28,
+   "hero": "Hyperion (Battlecruiser)",
+   "base_id": 12,
+   "base": "Terran Battlecruiser",
+   "flingy": 70,
+   "diff": {
+    "ground_damage": [
+     25,
+     30
+    ],
+    "air_damage": [
+     25,
+     30
+    ],
+    "ground_cooldown": [
+     30,
+     22
+    ],
+    "hp": [
+     500,
+     850
+    ],
+    "armor": [
+     3,
+     4
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    9,
+    9
+   ],
+   "move_control": [
+    0,
+    0
+   ]
+  },
+  {
+   "hero_id": 29,
+   "hero": "Norad II (Battlecruiser)",
+   "base_id": 12,
+   "base": "Terran Battlecruiser",
+   "flingy": 70,
+   "diff": {
+    "ground_damage": [
+     25,
+     50
+    ],
+    "air_damage": [
+     25,
+     50
+    ],
+    "hp": [
+     500,
+     700
+    ],
+    "armor": [
+     3,
+     4
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    9,
+    9
+   ],
+   "move_control": [
+    0,
+    0
+   ]
+  },
+  {
+   "hero_id": 102,
+   "hero": "Gerard DuGalle (BattleCruiser)",
+   "base_id": 12,
+   "base": "Terran Battlecruiser",
+   "flingy": 70,
+   "diff": {
+    "ground_damage": [
+     25,
+     50
+    ],
+    "air_damage": [
+     25,
+     50
+    ],
+    "hp": [
+     500,
+     700
+    ],
+    "armor": [
+     3,
+     4
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    9,
+    9
+   ],
+   "move_control": [
+    0,
+    0
+   ]
+  },
+  {
+   "hero_id": 10,
+   "hero": "Gui Montag (Firebat)",
+   "base_id": 32,
+   "base": "Terran Firebat",
+   "flingy": 73,
+   "diff": {
+    "ground_damage": [
+     8,
+     16
+    ],
+    "hp": [
+     50,
+     160
+    ],
+    "armor": [
+     1,
+     3
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    7,
+    7
+   ],
+   "move_control": [
+    2,
+    2
+   ]
+  },
+  {
+   "hero_id": 99,
+   "hero": "Samir Duran (Ghost)",
+   "base_id": 1,
+   "base": "Terran Ghost",
+   "flingy": 74,
+   "diff": {
+    "ground_range": [
+     224,
+     192
+    ],
+    "air_range": [
+     224,
+     192
+    ],
+    "ground_damage": [
+     10,
+     25
+    ],
+    "air_damage": [
+     10,
+     25
+    ],
+    "sight": [
+     9,
+     10
+    ],
+    "hp": [
+     45,
+     200
+    ],
+    "armor": [
+     0,
+     2
+    ]
+   },
+   "same_uneditable": [
+    "공격 주기*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    7,
+    7
+   ],
+   "move_control": [
+    2,
+    2
+   ]
+  },
+  {
+   "hero_id": 100,
+   "hero": "Alexei Stukov (Ghost)",
+   "base_id": 1,
+   "base": "Terran Ghost",
+   "flingy": 74,
+   "diff": {
+    "ground_range": [
+     224,
+     192
+    ],
+    "air_range": [
+     224,
+     192
+    ],
+    "ground_damage": [
+     10,
+     30
+    ],
+    "air_damage": [
+     10,
+     30
+    ],
+    "sight": [
+     9,
+     11
+    ],
+    "hp": [
+     45,
+     250
+    ],
+    "armor": [
+     0,
+     3
+    ]
+   },
+   "same_uneditable": [
+    "공격 주기*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    7,
+    7
+   ],
+   "move_control": [
+    2,
+    2
+   ]
+  },
+  {
+   "hero_id": 104,
+   "hero": "Infested Duran",
+   "base_id": 1,
+   "base": "Terran Ghost",
+   "flingy": 74,
+   "diff": {
+    "ground_range": [
+     224,
+     192
+    ],
+    "air_range": [
+     224,
+     192
+    ],
+    "ground_damage": [
+     10,
+     25
+    ],
+    "air_damage": [
+     10,
+     25
+    ],
+    "sight": [
+     9,
+     11
+    ],
+    "hp": [
+     45,
+     300
+    ],
+    "armor": [
+     0,
+     3
+    ]
+   },
+   "same_uneditable": [
+    "공격 주기*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    7,
+    7
+   ],
+   "move_control": [
+    2,
+    2
+   ]
+  },
+  {
+   "hero_id": 17,
+   "hero": "Alan Schezar (Goliath)",
+   "base_id": 3,
+   "base": "Terran Goliath",
+   "flingy": 75,
+   "diff": {
+    "hp": [
+     125,
+     300
+    ],
+    "armor": [
+     1,
+     3
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    61,
+    61
+   ],
+   "move_control": [
+    2,
+    2
+   ]
+  },
+  {
+   "hero_id": 20,
+   "hero": "Jim Raynor (Marine)",
+   "base_id": 0,
+   "base": "Terran Marine",
+   "flingy": 78,
+   "diff": {
+    "ground_range": [
+     128,
+     160
+    ],
+    "air_range": [
+     128,
+     160
+    ],
+    "ground_damage": [
+     6,
+     18
+    ],
+    "air_damage": [
+     6,
+     18
+    ],
+    "hp": [
+     40,
+     200
+    ],
+    "armor": [
+     0,
+     3
+    ]
+   },
+   "same_uneditable": [
+    "공격 주기*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    7,
+    7
+   ],
+   "move_control": [
+    2,
+    2
+   ]
+  },
+  {
+   "hero_id": 21,
+   "hero": "Tom Kazansky (Wraith)",
+   "base_id": 8,
+   "base": "Terran Wraith",
+   "flingy": 80,
+   "diff": {
+    "ground_damage": [
+     8,
+     16
+    ],
+    "air_damage": [
+     20,
+     40
+    ],
+    "hp": [
+     120,
+     500
+    ],
+    "armor": [
+     0,
+     4
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    9,
+    9
+   ],
+   "move_control": [
+    0,
+    0
+   ]
+  },
+  {
+   "hero_id": 23,
+   "hero": "Edmund Duke (Tank Mode)",
+   "base_id": 5,
+   "base": "Terran Siege Tank (Tank Mode)",
+   "flingy": 82,
+   "diff": {
+    "hp": [
+     150,
+     400
+    ],
+    "armor": [
+     1,
+     3
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    61,
+    61
+   ],
+   "move_control": [
+    2,
+    2
+   ]
+  },
+  {
+   "hero_id": 25,
+   "hero": "Edmund Duke (Siege Mode)",
+   "base_id": 30,
+   "base": "Terran Siege Tank (Siege Mode)",
+   "flingy": 84,
+   "diff": {
+    "hp": [
+     150,
+     400
+    ],
+    "armor": [
+     1,
+     3
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    61,
+    61
+   ],
+   "move_control": [
+    2,
+    2
+   ]
+  },
+  {
+   "hero_id": 22,
+   "hero": "Magellan (Science Vessel)",
+   "base_id": 9,
+   "base": "Terran Science Vessel",
+   "flingy": 86,
+   "diff": {
+    "hp": [
+     200,
+     800
+    ],
+    "armor": [
+     1,
+     4
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    61,
+    61
+   ],
+   "move_control": [
+    0,
+    0
+   ]
+  },
+  {
+   "hero_id": 19,
+   "hero": "Jim Raynor (Vulture)",
+   "base_id": 2,
+   "base": "Terran Vulture",
+   "flingy": 88,
+   "diff": {
+    "ground_damage": [
+     20,
+     30
+    ],
+    "ground_cooldown": [
+     30,
+     22
+    ],
+    "hp": [
+     80,
+     300
+    ],
+    "armor": [
+     0,
+     3
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    8,
+    8
+   ],
+   "move_control": [
+    0,
+    0
+   ]
+  },
+  {
+   "hero_id": 98,
+   "hero": "Raszagal (Corsair)",
+   "base_id": 60,
+   "base": "Protoss Corsair",
+   "flingy": 191,
+   "diff": {
+    "shields": [
+     80,
+     60
+    ],
+    "armor": [
+     1,
+     0
+    ]
+   },
+   "same_uneditable": [
+    "지상 사거리*",
+    "공중 사거리*",
+    "공격 주기*",
+    "시야*",
+    "먼저 무는 거리*",
+    "이동 속도*",
+    "덩치*"
+   ],
+   "ground_dmg_upgrade": [
+    61,
+    61
+   ],
+   "move_control": [
+    0,
+    0
+   ]
+  }
+ ]
+}

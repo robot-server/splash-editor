@@ -10,6 +10,8 @@
 #include "io/game_graphics.h"
 #include "io/map_archive.h"
 
+#include <algorithm>
+
 #include <cstdlib>
 #include <ctime>
 #include <filesystem>
@@ -52,6 +54,8 @@ int usage(const char * argv0)
         "      설치본을 조사한다. 아카이브를 열고 타일셋 데이터가 읽히는지 확인한다.\n\n"
         "  " << argv0 << " render <맵파일> <설치폴더> <출력.ppm> [--units] [--locations] [--creep]\n"
         "      맵 지형을 이미지로 그린다 (scenario image 와 같다).\n\n"
+        "  " << argv0 << " unit-stats <설치폴더> [--json]\n"
+        "      units.dat·weapons.dat 를 그대로 낸다 (사거리·속도·AI 는 맵이 못 고친다).\n"
         "  " << argv0 << " unit-image <설치폴더> <유닛번호> <출력.ppm> [소유자] [타일셋]\n"
         "      유닛 하나를 격자 배경 위에 그린다. 스프라이트 검증용이다.\n\n"
         "  " << argv0 << " icon <설치폴더> <아이콘번호> <출력.ppm>\n"
@@ -1331,6 +1335,130 @@ int cmdTilesetInfo(const std::string & installPath, std::uint16_t tilesetId)
     return 0;
 }
 
+// units.dat · weapons.dat 를 그대로 찍는다.
+//
+// **왜 필요한가.** 영웅 유닛은 같은 모양의 일반 유닛과 능력치가 다르다.
+// 그런데 맵 편집기의 유닛 설정(UNIS/UNIx)으로 고칠 수 있는 것은 체력·
+// 방패·방어력·생산시간·값 뿐이다. **사거리·이동속도·시야·AI 는 맵이
+// 못 고친다** — 게임 데이터에 박혀 있다. 그래서 유즈맵에서 영웅을 쓸
+// 때는 "센 놈" 이 아니라 **특성이 맞는 놈**을 골라야 한다.
+//
+// 손으로 표를 쓰면 틀리므로 여기서 게임 데이터를 그대로 낸다.
+int cmdUnitStats(const std::string & installPath, bool json)
+{
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const std::size_t total = graphics.unitTypeCount();
+    if (total == 0)
+    {
+        std::cerr << "유닛 자료를 읽지 못했습니다 (units.dat).\n";
+        return 1;
+    }
+
+    if (json)
+        std::cout << "{\n";
+    else
+        std::cout << "번호 이름                          체력 방패 방어 시야 "
+                     "크기  속도  지상(사거리/피해+보너스/쿨) 공중(사거리/피해) "
+                     "AI(쉼/복귀/공격/어택땅)\n";
+
+    bool first = true;
+    for (std::size_t t = 0; t < total; ++t)
+    {
+        const auto d = graphics.unitStats(static_cast<std::uint16_t>(t));
+        const std::string name =
+            splash::io::unitTypeName(static_cast<std::uint16_t>(t));
+
+        if (json)
+        {
+            if (!first) std::cout << ",\n";
+            first = false;
+            std::cout << " \"" << t << "\": {\"name\": \"" << name << "\""
+                      << ", \"hp\": " << d.hitPoints
+                      << ", \"shields\": " << d.shields
+                      << ", \"armor\": " << int(d.armor)
+                      << ", \"sight\": " << int(d.sightRange)
+                      << ", \"target_range\": " << int(d.targetAcquisitionRange)
+                      << ", \"size\": " << int(d.unitSize)
+                      << ", \"speed\": " << d.topSpeed
+                      << ", \"flingy\": " << d.flingy
+                      << ", \"move_control\": " << int(d.moveControl)
+                      << ", \"ground_weapon\": " << int(d.groundWeapon)
+                      << ", \"air_weapon\": " << int(d.airWeapon)
+                      << ", \"ground_range\": " << d.groundRange
+                      << ", \"ground_damage\": " << d.groundDamage
+                      << ", \"ground_bonus\": " << d.groundDamageBonus
+                      << ", \"ground_cooldown\": " << int(d.groundCooldown)
+                      << ", \"ground_hits\": " << int(d.maxGroundHits)
+                      << ", \"air_range\": " << d.airRange
+                      << ", \"air_damage\": " << d.airDamage
+                      << ", \"ai_comp_idle\": " << int(d.aiCompIdle)
+                      << ", \"ai_human_idle\": " << int(d.aiHumanIdle)
+                      << ", \"ai_return_idle\": " << int(d.aiReturnToIdle)
+                      << ", \"ai_attack_unit\": " << int(d.aiAttackUnit)
+                      << ", \"ai_attack_move\": " << int(d.aiAttackMove)
+                      << ", \"flags\": " << d.flags
+                      << ", \"minerals\": " << d.mineralCost
+                      << ", \"gas\": " << d.vespeneCost
+                      << ", \"build_time\": " << d.buildTime
+                      << ", \"supply\": " << int(d.supplyRequired)
+                      << ", \"ground_dmg_upgrade\": " << int(d.groundDamageUpgrade)
+                      << ", \"air_dmg_upgrade\": " << int(d.airDamageUpgrade)
+                      << ", \"hero\": " << (d.hero ? "true" : "false")
+                      << ", \"invincible\": " << (d.invincible ? "true" : "false")
+                      << ", \"auto_attack_move\": " << (d.autoAttackAndMove ? "true" : "false")
+                      << ", \"regenerates_hp\": " << (d.regeneratesHp ? "true" : "false")
+                      << ", \"spellcaster\": " << (d.spellcaster ? "true" : "false")
+                      << ", \"detector\": " << (d.detector ? "true" : "false")
+                      << ", \"cloakable\": " << (d.cloakable ? "true" : "false")
+                      << ", \"permanent_cloak\": " << (d.permanentCloak ? "true" : "false")
+                      << ", \"flyer\": " << (d.flyer ? "true" : "false")
+                      << ", \"mechanical\": " << (d.mechanical ? "true" : "false")
+                      << ", \"organic\": " << (d.organic ? "true" : "false")
+                      << "}";
+        }
+        else
+        {
+            std::cout << std::setw(4) << t << " " << std::left << std::setw(29)
+                      << name.substr(0, 29) << std::right
+                      << std::setw(5) << d.hitPoints
+                      << std::setw(5) << d.shields
+                      << std::setw(5) << int(d.armor)
+                      << std::setw(5) << int(d.sightRange)
+                      << std::setw(5) << int(d.unitSize)
+                      << std::setw(6) << d.topSpeed << "  ";
+            if (int(d.groundWeapon) < 130)
+                std::cout << std::setw(5) << d.groundRange << "/"
+                          << d.groundDamage << "+" << d.groundDamageBonus << "/"
+                          << int(d.groundCooldown);
+            else
+                std::cout << "         -";
+            std::cout << "   ";
+            if (int(d.airWeapon) < 130)
+                std::cout << std::setw(5) << d.airRange << "/" << d.airDamage;
+            else
+                std::cout << "       -";
+            std::cout << "    " << int(d.aiCompIdle) << "/" << int(d.aiReturnToIdle)
+                      << "/" << int(d.aiAttackUnit) << "/" << int(d.aiAttackMove);
+            if (d.hero) std::cout << " 영웅";
+            if (d.autoAttackAndMove) std::cout << " 스스로문다";
+            if (d.invincible) std::cout << " 무적";
+            if (int(d.groundDamageUpgrade) != 61)
+                std::cout << " 지상업" << int(d.groundDamageUpgrade);
+            std::cout << "\n";
+        }
+    }
+    if (json)
+        std::cout << "\n}\n";
+    return 0;
+}
+
 int cmdUnitClasses(const std::string & installPath)
 {
     splash::io::GameGraphics graphics;
@@ -2297,6 +2425,10 @@ int main(int argc, char ** argv)
 
     if (command == "unit-classes" && args.size() == 2)
         return cmdUnitClasses(args[1]);
+
+    if (command == "unit-stats" && args.size() >= 2)
+        return cmdUnitStats(args[1],
+            std::find(args.begin(), args.end(), std::string("--json")) != args.end());
 
     if (command == "unit-image" && args.size() >= 4)
     {
