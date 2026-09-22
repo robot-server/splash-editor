@@ -267,33 +267,65 @@ def main(argv=None):
     band_y = cells[0][1]
     BAND_H = ROOM_H
 
-    # 바닥·통로·테두리·발판·벽을 **다섯 몫으로** 나눠 쓴다. 한 가지로
-    # 깔고 벽만 검게 뚫던 앞판은 실측과 어긋났다 (실측 유즈맵 486장의
-    # 검은 칸 중앙값 0.0%, 1% 넘게 쓰는 그룹 중앙값 10개 — 내 것은
-    # 검은 칸 55~89%, 그룹 1개였다. 그려 놓고 나란히 보고서야 알았다).
+    # **RPG 는 ISOM 으로 짓는다.** 실측 유즈맵 479장에서 RPG 의 ISOM
+    # 다양도 중앙값은 0.445, 타일 그룹은 248개다 — 디펜스(0.000, 15개)
+    # 와 정반대다. RPG 는 지형 자체가 콘텐츠라 네모난 방으로는 심심하다
+    # (docs/usemap/terrain.md).
+    #
+    # 순서가 사각형 방식과 뒤집힌다. 다 덮고 방을 뚫는 것이 아니라,
+    # **바닥을 먼저 깔고 그 위에 지형 덩이를 키운다.**
     pal = scmap.Palette(cli, ts, rng, "usemap")
-    print(f"  지형: {pal.describe()}")
+    mode = scmap.terrain_mode("rpg")
+    print(f"  지형: {pal.describe()}  ({mode})")
 
-    print("벽을 세웁니다...")
-    scmap.cover_map(cli, pal, W, H)
+    if mode == "isom":
+        print("지형을 ISOM 으로 짓습니다 (마을·구역·보스방 자리는 비웁니다)...")
+        land = scmap.isom_landscape(cli, ts, rng, W, H,
+                                    keep_clear=cells,
+                                    walls=max(8, n_cells * 2),
+                                    rises=max(14, n_cells * 4),
+                                    patches=max(18, n_cells * 5),
+                                    area=70)
+        print(f"  바닥 얼룩 {len(land['patches'])}덩이 · "
+              f"높은 땅 {len(land['rises'])}덩이 · "
+              f"물 {len(land['walls'])}덩이 "
+              f"(쓰는 지형 {len(land['low']) + len(land['high']) + len(land['blocked'])}종)")
+        # 구역 사이를 잇는 길만 바닥으로 되돌린다 — 덩이가 길을 막았을
+        # 수 있다. 여기서만 사각형을 쓴다(길은 길이어야 한다).
+        for i in range(n_cells - 1):
+            ax, ay, aw, ah = cells[i]
+            bx_, by_, bw_, bh_ = cells[i + 1]
+            if ay == by_:
+                scmap.isom_fill(cli, land["base"],
+                                min(ax + aw, bx_ + bw_), ay + ah // 2 - 3,
+                                GAP, 6)
+            else:
+                scmap.isom_fill(cli, land["base"],
+                                ax + aw // 2 - 3, ay + ah, 6, GAP)
+    else:
+        print("벽을 세웁니다...")
+        scmap.cover_map(cli, pal, W, H)
+        print(f"마을 1 + 구역 {a.zones} + 보스방 1 을 뚫습니다 "
+              f"({used_w}x{used_h} 만 씁니다)...")
+        for (x, y, w, h) in cells:
+            scmap.room(cli, pal, x, y, w, h, rim=1)
+        for i in range(n_cells - 1):
+            ax, ay, aw, ah = cells[i]
+            bx_, by_, bw_, bh_ = cells[i + 1]
+            if ay == by_:
+                pal.fill(cli, "path", min(ax + aw, bx_ + bw_),
+                         ay + ah // 2 - 3, GAP, 6)
+            else:
+                pal.fill(cli, "path", ax + aw // 2 - 3, ay + ah, 6, GAP)
 
-    print(f"마을 1 + 구역 {a.zones} + 보스방 1 을 뚫습니다 "
-          f"({used_w}x{used_h} 만 씁니다)...")
-    for (x, y, w, h) in cells:
-        scmap.room(cli, pal, x, y, w, h, rim=1)
-    for i in range(n_cells - 1):
-        ax, ay, aw, ah = cells[i]
-        bx_, by_, bw_, bh_ = cells[i + 1]
-        if ay == by_:                           # 같은 줄 — 가로 통로
-            pal.fill(cli, "path", min(ax + aw, bx_ + bw_), ay + ah // 2 - 3,
-                     GAP, 6)
-        else:                                   # 줄바꿈 — 세로 통로
-            pal.fill(cli, "path", ax + aw // 2 - 3, ay + ah, 6, GAP)
-
-    # 같은 지형 안의 **변종만** 흩는다. 그룹을 섞으면 얼룩덜룩한 덩이
-    # 무늬가 생겨 네모난 방과 안 어울린다 — 변종은 잔 알갱이만 남는다.
-    # 실제 사각 디펜스 맵도 타일 53~65종을 쓴다.
-    scmap.scatter_tile_variants(cli, ts, rng, chance=0.5)
+    # **한 맵에서 ISOM 과 사각형을 섞지 않는다.**
+    #
+    # `scatter_tile_variants` 는 타일 값을 직접 쓴다 — 사각형 편집이다.
+    # ISOM 으로 지은 맵에 이것을 얹으면 ISOM 격자와 실제 타일이 어긋나,
+    # 나중에 ISOM 붓을 한 번만 더 대도 지형이 뭉개진다. 사각형으로 지은
+    # 맵에서만 쓴다.
+    if mode != "isom":
+        scmap.scatter_tile_variants(cli, ts, rng, chance=0.5)
 
     print("플레이어 슬롯을 정합니다...")
     scmap.setup_usemap_players(cli, a.players, [enemy_no, boss_no])
