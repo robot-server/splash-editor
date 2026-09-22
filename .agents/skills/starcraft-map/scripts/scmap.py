@@ -1753,9 +1753,61 @@ def part_leaderboard(label: str, kind: str = "Custom") -> list[str]:
             f'\tPreserve Trigger();\n}}']
 
 
+def part_token_shop(player: str, loc: str, token: str, effect: list[str],
+                    label: str, consume: str = "remove",
+                    count: int = 1) -> list[str]:
+    """**물건을 갖다 주고 받는 상점** — 실측 유즈맵의 주된 상점 꼴이다.
+
+    인기 유즈맵 134장에서 `Bring` 조건이 달린 트리거 24,125개를 세어
+    보니, 값을 치르는 방식은 이랬다:
+
+        데려온 것을 치운다   25%      조건에서 돈을 본다(Accumulate) 13%
+        데려온 것을 밀어낸다 21%      자원을 깎는다(Set Resources)    7%
+        데려온 것을 죽인다   16%      점수를 깎는다                   2%
+                                      주인을 바꾼다                   5%
+
+    주는 것은 유닛 45% · 죽음 수 칸(상태) 14% · 돈 9% · 스위치 8% ·
+    능력치 3% 다.
+
+    즉 **돈으로 사는 상점은 소수파**고, 표준은 "유닛을 자리로 데려가면
+    그 유닛이 사라지고 다른 것이 나온다" 는 교환이다. `part_beacon_shop`
+    하나만 두었던 것은 실측의 7~13%만 덮는 것이었다.
+
+    치운다는 것이 곧 **잠금**이다. 물건이 사라지니 조건이 다시 참이 되지
+    않는다 — 돈 상점처럼 따로 밀어낼 필요가 없다. 실측에서도 `Preserve`
+    가 붙은 것(80%) 중 **56%가 밀어내기·치우기로 잠근다.** 스위치로
+    잠그는 것은 1%, 자원 소비로 잠그는 것은 0% 다. (21%는 눈에 보이는
+    잠금이 없다 — 인기 맵도 그렇다는 뜻이니, 잠금이 없다는 지적은
+    보상 트리거에만 세게 걸고 나머지는 참고로만 본다.)
+
+    `consume` 은 "remove"(치운다) · "kill"(죽인다) · "give"(주인을 바꾼다)
+    중 하나다. 죽이면 상대에게 킬 점수가 들어가므로, 점수를 쓰는 맵에서는
+    "remove" 를 쓴다.
+    """
+    if consume == "remove":
+        take = f'\tRemove Unit At Location("{player}", "{token}", {count}, "{loc}");'
+    elif consume == "kill":
+        take = f'\tKill Unit At Location("{player}", "{token}", {count}, "{loc}");'
+    elif consume == "give":
+        take = f'\tGive Units to Player("{player}", "Player 8", "{token}", {count}, "{loc}");'
+    else:
+        raise CliError(f"consume 은 remove·kill·give 중 하나입니다: {consume!r}")
+    acts = [take] + list(effect)
+    acts.append(f'\tDisplay Text Message(Always Display, "{label}");')
+    acts.append('\tPlay WAV("sound\\\\Misc\\\\Button.wav", 0);')
+    acts.append('\tPreserve Trigger();')
+    return [f'Trigger("{player}"){{\nConditions:\n'
+            f'\tBring("{player}", "{token}", "{loc}", At least, {count});\n\n'
+            f'Actions:\n' + "\n".join(acts) + '\n}']
+
+
 def part_beacon_shop(player: str, beacon_loc: str, cost: int, effect: list[str],
                      label: str, push_to: str, resource: str = "ore") -> list[str]:
-    """비콘 상점 한 자리.
+    """**돈으로 사는** 비콘 상점 한 자리.
+
+    실측에서는 소수파다 — `Bring` 조건이 달린 트리거 24,125개 중 돈을
+    보는 것이 13%, 자원을 깎는 것이 7% 였다. 표준은 물건 교환이다
+    (`part_token_shop`). 값을 미네랄로 매기고 싶을 때만 이걸 쓴다.
 
     **산 뒤에 비콘 밖으로 밀어낸다.** 안 밀어내면 하이퍼 트리거와 맞물려
     서 있는 동안 매 프레임 사들여 돈이 순식간에 증발한다.

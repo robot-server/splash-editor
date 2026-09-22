@@ -177,7 +177,9 @@ def check(cli: Cli, info: dict, text: str) -> list[tuple[str, str]]:
     if secs:
         limit = min(secs)
         choice = []
-        for blk in re.split(r'(?=Trigger\()', text):
+        # `(?=Trigger\()` 로 가르면 **`Preserve Trigger(` 에서도 갈린다.**
+        # 트리거 글에는 갈피가 붙어 나오니 그걸로 가른다.
+        for blk in text.split(scmap.TRIGGER_SEP):
             head = blk.split("Actions:")[0]
             if "Countdown Timer(" not in head:
                 continue
