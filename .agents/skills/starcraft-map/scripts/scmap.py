@@ -689,8 +689,11 @@ def setup_usemap_players(cli: Cli, humans: int, computers: list[int],
     # 적**이다. 협동으로 만들려면 트리거에서 `Set Alliance Status` 로
     # 직접 묶어야 한다 (`part_ally_humans`).
     #
-    # 앞서 여기서 깃발을 켜 놓고 "사람끼리는 한 편" 이라고 적어 두었다.
-    # 실제로는 아무 일도 안 일어났다.
+    # ⚠ 다만 **이것을 직접 확인하지는 못했다.** 카페 한 편이 출처이고
+    # 게임을 돌려 보지 못했다. 실측 맵은 오히려 그 깃발을 대부분 켜 둔다
+    # (docs/chk/anatomy.md). 그래서 깃발은 켜 두되 **믿지 않고 트리거로
+    # 한 번 더 묶는다** — 깃발이 먹으면 중복일 뿐이고 안 먹으면 트리거가
+    # 살린다.
     #
     # **시작 위치 섞기는 끈다.** 켜 두면 플레이어가 스타팅에 무작위로
     # 배정되어, P1 을 가리키는 트리거가 엉뚱한 자리를 본다. 자리마다
@@ -1670,6 +1673,90 @@ def _isom_ids_by_name(types: dict, out: dict) -> dict:
     return out
 
 
+# ---------------------------------------------------------------------------
+# 업그레이드와 기술 — **유즈맵은 이걸 고친다**
+#
+# scmscx 유즈맵 479장을 CHK 로 훑어 보니 업그레이드를 중앙 7가지,
+# 90% 지점은 61가지(전부) 고친다. 기술도 중앙 6, 90%가 44가지 전부다.
+# 밀리맵은 둘 다 중앙 0 이다 — **유즈맵만의 버릇**이고 내 생성기는
+# 하나도 안 고치고 있었다 (docs/chk/anatomy.md).
+# ---------------------------------------------------------------------------
+
+def setup_usemap_upgrades(cli: Cli, humans: int, *, free_levels: int = 0,
+                          max_level: int | None = None,
+                          mineral: int | None = None,
+                          gas: int | None = None,
+                          time: int | None = None,
+                          which=range(0, 12)) -> int:
+    """유즈맵답게 업그레이드 값을 정한다. 고친 가짓수를 돌려준다.
+
+    유즈맵에서 업그레이드는 **파는 것**이다. 그대로 두면 밀리맵 비용과
+    시간이 그대로라 유즈맵 흐름에 안 맞는다.
+
+    - `free_levels` — 시작할 때 이미 되어 있는 단계
+    - `max_level` — 올릴 수 있는 끝 (기본값은 그대로 둔다)
+    - `mineral`·`gas`·`time` — 비용. 시간은 **노말 기준 초**다
+
+    기본 `which` 는 공격력·방어력 열두 가지다 (종족별 지상·공중).
+    """
+    n = 0
+    for up in which:
+        args = ["upgrade", "set", cli.path, str(up), "--default-costs", "off"]
+        if mineral is not None:
+            args += ["--minerals", str(mineral), "--mineral-factor", "0"]
+        if gas is not None:
+            args += ["--gas", str(gas), "--gas-factor", "0"]
+        if time is not None:
+            args += ["--time", str(time), "--time-factor", "0"]
+        if free_levels:
+            args += ["--start-level", str(free_levels)]
+        if max_level is not None:
+            args += ["--max-level", str(max_level)]
+        try:
+            cli.edit(*args)
+            n += 1
+        except CliError:
+            break
+    return n
+
+
+def setup_usemap_tech(cli: Cli, *, available=(), researched=(),
+                      mineral: int | None = None, gas: int | None = None,
+                      time: int | None = None, energy: int | None = None,
+                      which=()) -> int:
+    """기술(스킬) 값을 정한다. 고친 가짓수를 돌려준다.
+
+    `available` · `researched` 는 플레이어 목록이거나 "all"/"none" 이다.
+    **일부 기술은 에너지 설정이 안 먹는다** — 시즈 모드, 커맨드 센터
+    감염 등 (카페 [기초6]).
+    """
+    n = 0
+    for t in which:
+        args = ["tech", "set", cli.path, str(t), "--default-costs", "off"]
+        if mineral is not None:
+            args += ["--minerals", str(mineral)]
+        if gas is not None:
+            args += ["--gas", str(gas)]
+        if time is not None:
+            args += ["--time", str(time)]
+        if energy is not None:
+            args += ["--energy", str(energy)]
+        if available:
+            args += ["--available",
+                     available if isinstance(available, str)
+                     else ",".join(str(p) for p in available)]
+        if researched:
+            args += ["--researched",
+                     researched if isinstance(researched, str)
+                     else ",".join(str(p) for p in researched)]
+        try:
+            cli.edit(*args)
+            n += 1
+        except CliError:
+            break
+    return n
+
+
 def hyper_trigger(owner: str, waits: int = 63) -> str:
     """하이퍼(터보) 트리거 한 벌 — **유즈맵에 거의 필수다.**
 
@@ -2333,9 +2420,10 @@ def briefing_text(lines: list[str], objectives: str | None = None,
 def part_ally_humans(humans: list[str]) -> list[str]:
     """**사람끼리 동맹을 트리거로 묶는다.**
 
-    세력(Forces) 의 Allied·Shared Vision·Enable Allied Victory 깃발은
-    켜도 적용되지 않는다 (카페 [기초4]). 기본은 **사람끼리도 적**이다.
-    협동 유즈맵이면 반드시 트리거로 묶어야 한다.
+    세력(Forces) 의 Allied·Shared Vision·Enable Allied Victory 깃발이
+    먹는지는 **확인하지 못했다** — 카페 [기초4] 는 안 먹는다고 적고,
+    실측 맵은 대부분 켜 둔다. 어느 쪽이든 **트리거로 묶으면 확실하다.**
+    협동 유즈맵이면 이것을 넣는다.
 
     맵 시작에 한 번만 돌면 된다 — `Preserve` 를 붙이지 않는다.
     """

@@ -184,6 +184,17 @@ def main(argv=None):
     print("플레이어 슬롯을 정합니다...")
     scmap.setup_usemap_players(cli, a.players, [enemy_no, boss_no])
 
+    # 유즈맵은 업그레이드를 고친다 — 실측 중앙 7가지, 90%가 전부
+    # (docs/chk/anatomy.md). 밀리맵 비용·시간을 그대로 두면
+    # 유즈맵 흐름에 안 맞는다.
+    n_up = scmap.setup_usemap_upgrades(
+        cli, a.players if hasattr(a, "players") else args.players,
+        free_levels=1, max_level=3,
+        mineral=50, gas=0, time=12)
+    n_tech = scmap.setup_usemap_tech(cli, which=(0, 3),
+        mineral=75, gas=0, time=15, available="all")
+    print(f"  업그레이드 {n_up}가지 · 기술 {n_tech}가지를 유즈맵 값으로 정했습니다")
+
     print("로케이션을 놓습니다...")
     loc = lambda n, r: cli.edit("location", "add", cli.path, str(r[0]), str(r[1]),
                                 str(r[0] + r[2]), str(r[1] + r[3]),

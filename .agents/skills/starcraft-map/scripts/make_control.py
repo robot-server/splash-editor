@@ -243,6 +243,18 @@ def main(argv=None):
     print("플레이어 슬롯을 정합니다...")
     scmap.setup_usemap_players(cli, a.players, [8])   # P8 = 하이퍼용 시스템 컴퓨터
 
+    # 컨트롤 맵은 업그레이드를 **미리 다 해 둔다.** 파는 맵이 아니라
+    # 순수하게 조작을 겨루는 맵이라, 업그레이드 차이가 나면 안 된다
+    # (docs/chk/anatomy.md — 유즈맵은 업그레이드를 고친다).
+    n_up = scmap.setup_usemap_upgrades(
+        cli, a.players, free_levels=3, max_level=3,
+        mineral=0, gas=0, time=1)
+    n_tech = scmap.setup_usemap_tech(
+        cli, which=(0, 1, 2, 3, 5, 6, 7),
+        mineral=0, gas=0, time=1, available="all", researched="all")
+    print(f"  업그레이드 {n_up}가지를 3단계로 미리 올리고 "
+          f"기술 {n_tech}가지를 열었습니다")
+
     print("로케이션을 놓습니다...")
     loc = lambda n, x0, y0, x1, y1: cli.edit(
         "location", "add", cli.path, str(x0), str(y0), str(x1), str(y1),

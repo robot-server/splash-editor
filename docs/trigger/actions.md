@@ -113,7 +113,7 @@
 | **`Pause Game` · `Unpause Game`** | 멀티에서 안 먹고, **EUD 맵에서는 게임이 먹통이 된다** |
 | `Set Next Scenario` | **EUD 맵에서 안 먹는다** |
 | 타이머 값 | `Set Countdown Timer` 의 1 은 실제 **0.672초** → [../game/time.md](../game/time.md) |
-| **세력 깃발 대신** | 사람끼리 한 편으로 만들려면 **`Set Alliance Status` 로 `Allied Victory`** 를 걸어야 한다. 세력 설정의 깃발은 안 먹는다 → [../game/rules.md](../game/rules.md) |
+| **세력 깃발을 믿지 않는다** | 사람끼리 한 편으로 만들려면 **`Set Alliance Status` 로 `Allied Victory`** 를 트리거로 건다. 세력 설정의 깃발이 먹는지는 **확인하지 못했다** → [../usemap/essentials.md](../usemap/essentials.md) |
 
 ## 관련
 
