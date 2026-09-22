@@ -66,6 +66,20 @@ function beforeTriggerExec() {
 }
 ```
 
+### ⚠ 변수를 반드시 초기화한다
+
+> **epScript 는 변수를 자동으로 0 으로 만들어 주지 않는다.**
+> `var Number;` 로 선언한 함수를 다시 부르면 **앞서 쓰던 값이 그대로
+> 남아 있다.**
+
+```js
+var n;        // ✗ 앞 값이 남는다
+var n = 0;    // ✓ 반드시 이렇게
+```
+
+카페가 "원래 이렇습니다" 라고 못박는다. 함수를 되풀이해 부르는
+유즈맵에서 **찾기 어려운 버그**가 된다.
+
 ## 화면에 찍어 보기
 
 ```js
@@ -126,6 +140,25 @@ CreateUnit(1, "Terran Marine", "Anywhere", P1);
 | **쓰지 않는 자리** | 클래식 트리거로 충분한 맵. EUD 는 **판본을 타고** 사용자 허락이 필요하다 |
 
 → [limits.md](limits.md) · [how-it-works.md](how-it-works.md)
+
+## 쓸 만한 함수 몇 가지
+
+| | |
+| --- | --- |
+| `f_wread_epd(epd, subp)` · `f_bread_epd` | 워드 · 바이트 단위로 **읽기** |
+| `f_wwrite_epd(epd, subp, value)` · `f_bwrite_epd` | 워드 · 바이트 단위로 **쓰기** |
+| `EUDTernary(cond)(참일 때)(거짓일 때)` | 삼항. short-circuit 을 지원한다 |
+| `EUDSCAnd()(c1)(c2)()` · `EUDSCOr()` | short-circuit 논리 |
+| `SetNextTrigger` · `TrigTrig` | 트리거 흐름을 직접 다룬다 |
+| `EPDOffsetMap` | 오프셋 다발을 다룬다 |
+
+**바이트·워드 단위 읽기/쓰기가 핵심이다** — [how-it-works.md](how-it-works.md)
+에서 본 "한 주소에 두 정보" 문제를 이것으로 푼다. 마스크를 손으로
+만들 필요가 없다.
+
+전체 목록은 [eudplib 의 api.rst](https://github.com/phu54321/eudplib/blob/develop/api.rst).
+
+> `DisplayExtText` 는 **삭제됐다.** 오래된 예제에 나오면 갈아야 한다.
 
 ## 관련
 
