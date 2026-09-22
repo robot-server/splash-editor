@@ -35,6 +35,11 @@ export SC_INSTALL=/경로/StarCraft
 4. **손으로 다듬는다** — CLI 로 지형·유닛·트리거를 얹는다.
 5. **재고 본다** — `verify_map.py` 로 숫자를, `preview.py` 로 그림을.
    **숫자만 보고 끝내지 않는다. 반드시 한 번은 그려 본다.**
+
+   `verify_map.py` 가 잡는 것 가운데 **맵을 못 쓰게 만드는 것 셋**:
+   - 못 걷는 지형 **66% 초과** → 튕긴다
+   - 걷는 자리가 **400덩어리 초과** → 안 열릴 수 있다
+   - 사람 슬롯 수 ≠ 스타팅 수 → 대기실이 깨진다
    그리고 **그린 것을 실제로 본다.** 여섯 장을 그려 놓고도 안 보다가,
    나란히 놓고 본 뒤에야 바닥이 통째로 틀린 것을 찾았다. 견줄 것이
    있으면 실측 맵도 한 장 같이 그려 옆에 놓는다.
@@ -54,6 +59,7 @@ export SC_INSTALL=/경로/StarCraft
 | `.scx` 인데 버전이 Hybrid | 럴커·메딕·커세어 같은 브루드워 유닛을 못 쓴다 |
 | 자원 유효 비트 꺼짐 | 남은 양을 1500 으로 적어도 게임·에디터가 **0 으로 본다** |
 | 스타팅끼리 걸어서 안 닿음 | 지상 유닛이 갇힌다 |
+| **못 걷는 지형이 66% 를 넘음** | **튕긴다.** 검게 뚫든 물로 막든 센다 — 내가 만든 유즈맵 넷이 넘겼다 |
 | **지형을 사각형으로 잘게 찍음** | **길찾기 덩어리가 넘쳐 맵이 아예 안 열린다** (too many obstructions) |
 | 건물 최대 체력 0 · 고스트류 단일 개체 후 죽음 | 튕긴다 |
 
@@ -103,8 +109,9 @@ python3 $S/preview.py out.scx look.png
 
 - **`terrain mirror` 로 절벽을 베끼지 않는다.** 타일 값만 옮겨서 절벽
   방향이 뒤집힌다. 대칭은 ISOM 붓질을 회전 좌표에 다시 놓아 만든다.
-- **램프는 ISOM 으로 못 만든다.** 타일을 직접 찍어야 한다
-  (`scmap.place_ramp`).
+- **램프는 ISOM 이 아니라 두뎃이다.** `scmap.ramp_candidates(타일셋,
+  방향)` 이 **걸어서 통하는 것부터** 준다 (712개 중 659개 확인).
+  `place_ramp_checked` 가 놓고 **미니타일 길찾기로 확인**한다.
 
 ## 유즈맵
 
@@ -342,29 +349,44 @@ corpus.doodad_count(c, "jungle", "melee", rng)    # 그 타일셋에 맞는 두�
 Space 밀리 **0개**에서 Badlands 밀리 **208개**까지 벌어진다. 전체
 중앙값(91)은 어느 타일셋에도 맞지 않는 수다. 반드시 타일셋별 값을 본다.
 
-## 더 볼 것
+## 더 볼 것 — `docs/` 에 **57편**
 
-- [cli-cookbook.md](../../../docs/tools/cli-cookbook.md) — 하고 싶은
-  일에서 명령을 찾는 표
-- [melee-balance.md](../../../docs/melee/balance.md) — 자리·종족
-  밸런스, 밀리 182장 전수 실측값
-- [melee-terrain.md](../../../docs/melee/terrain.md) — ISOM·램프·
-  대칭을 실제로 놓는 법
-- [why-procedural-fails.md](../../../docs/melee/why-procedural-fails.md) —
-  **밀리맵 지형을 생성하려 든다면 먼저 읽을 것.** 세 번 실패한 기록과
-  하지 말 것(WFC·패치 점수), 할 것(기능 그래프부터)
-- [usemap-dopamine.md](../../../docs/usemap/dopamine.md) — 인기
-  유즈맵 329장 전수 실측, 재미 구조 설계
-- [usemap-terrain.md](../../../docs/usemap/terrain.md) — **유즈맵
-  바닥의 문법.** 검은 칸을 왜 쓰면 안 되는지, 방·통로·발판·벽을 어떻게
-  나누는지. 그림으로 보고서야 찾은 것이다
-- [genres.md](../../../docs/usemap/genres.md) — 장르마다 무엇이
-  들어가는가. 유즈맵 563장을 갈라 실측
-- [game-rules.md](../../../docs/game/rules.md) —
-  **맵을 만들기 전에 읽을 것.** 틀리면 맵이 망가지는 게임 규칙:
-  종족 설정, 사거리표, 고도 명중률, 킬 점수, Bring/Command 인식 범위,
-  하이퍼 트리거, 튕김 원인
-- [trigger-recipes.md](../../../docs/trigger/recipes.md) — 트리거
-  텍스트 문법과 바로 쓰는 조각
-- [eud-and-limits.md](../../../docs/eud/limits.md) — EUD 안전
-  규칙과, 허락을 받아야 하는 것들
+먼저 [docs/README.md](../../../docs/README.md) 를 본다. 갈래와 "어디
+서부터 읽나" 표가 있다.
+
+| 하려는 일 | 먼저 볼 것 |
+| --- | --- |
+| **트리거를 짠다** | **[trigger/api.md](../../../docs/trigger/api.md) — 인자 순서가 두 벌이다.** 조건 4 · 액션 32가지가 다르다 |
+| 트리거가 안 돈다 | [trigger/execution.md](../../../docs/trigger/execution.md) — 도는 차례, 웨잇 꼬임 |
+| 유닛을 고른다 | [unit/README.md](../../../docs/unit/README.md) — 영웅·공격 형태·예외 |
+| 지형을 짓는다 | [usemap/terrain.md](../../../docs/usemap/terrain.md) · [tileset/isom.md](../../../docs/tileset/isom.md) |
+| 맵이 안 열린다·튕긴다 | [game/crashes.md](../../../docs/game/crashes.md) |
+| 밀리맵 밸런스 | [melee/balance.md](../../../docs/melee/balance.md) |
+| 밀리맵 지형을 생성하려 든다 | **[melee/why-procedural-fails.md](../../../docs/melee/why-procedural-fails.md) 를 먼저 읽는다** |
+| 유즈맵 재미 구조 | [usemap/dopamine.md](../../../docs/usemap/dopamine.md) |
+| EUD 를 쓴다 | **[eud/limits.md](../../../docs/eud/limits.md) 부터** → [eud/epscript.md](../../../docs/eud/epscript.md) |
+| 이미 잰 것이 무엇인가 | [method/corpus.md](../../../docs/method/corpus.md) |
+| 값이 엇갈린다 | [method/measuring.md](../../../docs/method/measuring.md) — 출처 등급 |
+
+## 짐작하지 않는다
+
+이 스킬을 쓰면서 되풀이한 실수는 하나다 — **게임이 이미 아는 것을
+손으로 표를 만들어 짐작했다.**
+
+| 짐작한 것 | 실제 |
+| --- | --- |
+| 램프 타일 표를 손으로 적음 | **램프는 두뎃**이다. 712개 중 659개가 통한다 |
+| 두뎃 좌표가 왼위 | **가운데**다. 짝수 변이면 반 칸 밀린다 |
+| 유즈맵은 사각형 | **장르가 정한다** |
+| 영웅은 센 유닛 | 사거리가 **짧은** 영웅이 넷 있다 |
+| 세력 깃발로 한 편 | **확인 못 했다.** 트리거로 묶는다 |
+| 스트링 1024가 한계 | **에디터 한계**다. 실측 11%가 넘긴다 |
+
+**표를 만들기 전에 `splash-cli` 로 읽을 수 있는지 먼저 본다.**
+
+```sh
+splash-cli unit-stats "$SC_INSTALL" --json    # 유닛 228종 전부
+splash-cli terrain types <맵> --install ...   # 지형 종류
+splash-cli doodad list <맵> --catalogue ...   # 두뎃 목록
+splash-cli tileset-tiles "$SC_INSTALL" <타일셋>
+```
