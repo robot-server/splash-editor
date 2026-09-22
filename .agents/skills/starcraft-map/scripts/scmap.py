@@ -1321,12 +1321,19 @@ def part_beacon_shop(player: str, beacon_loc: str, cost: int, effect: list[str],
             f'Actions:\n' + "\n".join(acts) + '\n}']
 
 
-def part_patrol_path(owner: str, stops: list[str], mode: str = "patrol") -> list[str]:
-    """스폰한 무리를 길을 따라 돌린다.
+def part_patrol_path(owner: str, stops: list[str], mode: str) -> list[str]:
+    """스폰한 무리를 길을 따라 보낸다. **mode 를 반드시 골라 준다.**
 
-    실측에서 `Order` 는 **patrol 이 가장 흔하다** (4341회, move 1159,
-    attack 918). `move` 로 보내면 도착해서 멈춰 선다.
+    실측 최빈값은 patrol(4341회, move 1159, attack 918) 이지만 그것을
+    기본값으로 두지 않는다. 최빈값을 기본으로 삼는 것은 "수치에 맞추기"
+    이고, 그렇게 만든 맵이 여러 번 망했다. 놀이가 정한다:
+
+        attack  — 길을 따라가며 마주치는 것을 친다 (디펜스 웨이브)
+        patrol  — 두 자리를 오간다 (순찰하는 몬스터)
+        move    — 도착하면 **멈춰 선다** (자리를 잡아야 하는 경우)
     """
+    if mode not in ("attack", "patrol", "move"):
+        raise CliError(f"mode 는 attack·patrol·move 중 하나입니다: {mode}")
     acts = [f'\tOrder("{owner}", "Any unit", "{a}", "{b}", {mode});'
             for a, b in zip(stops, stops[1:])]
     acts.append('\tPreserve Trigger();')
@@ -1355,31 +1362,52 @@ def part_lives(player: str, counter: str, start: int, lose_when: str,
         f'\tDefeat();\n}}']
 
 
-def part_respawn(player: str, unit: str, where: str,
+def part_respawn(player: str, unit: str, where: str, count: int = 4,
+                 cooldown_counter: str = "Protoss Interceptor",
                  guard: str | None = None) -> list[str]:
     """병력이 다 죽으면 다시 준다 — 구경만 하다 지지 않게.
 
-    `Command(..., "Men", At most, 0)` 이 안전하다: 생산 중인 유닛까지
-    세므로 헛발동이 없다.
+    **잠금이 반드시 있어야 한다.** 조건(`Men At most 0`)은 새 유닛이
+    실제로 잡히기 전까지 계속 참이라, 하이퍼 트리거와 맞물리면 한 번에
+    수십 기가 쏟아진다. 죽음 수를 잠금으로 써서 한 번만 주고, 병력이
+    생기면 잠금을 푼다.
+
+    `Command(..., "Men", At most, 0)` 을 쓴다: 생산 중인 유닛까지 세므로
+    헛발동이 없다.
     """
-    cond = [f'\tCommand("{player}", "Men", At most, 0);']
+    cond = [f'\tCommand("{player}", "Men", At most, 0);',
+            f'\tDeaths("{player}", "{cooldown_counter}", Exactly, 0);']
     if guard:
         cond.append(f'\t{guard}')
-    return [f'Trigger("{player}"){{\nConditions:\n' + "\n".join(cond) + '\n\n'
-            f'Actions:\n'
-            f'\tCreate Unit("{player}", "{unit}", 4, "{where}");\n'
-            f'\tDisplay Text Message(Always Display, "\\x03다시 받았습니다.");\n'
-            f'\tCenter View("{where}");\n'
-            f'\tPreserve Trigger();\n}}']
+    return [
+        f'Trigger("{player}"){{\nConditions:\n' + "\n".join(cond) + '\n\n'
+        f'Actions:\n'
+        f'\tSet Deaths("{player}", "{cooldown_counter}", Set To, 1);\n'
+        f'\tCreate Unit("{player}", "{unit}", {count}, "{where}");\n'
+        f'\tDisplay Text Message(Always Display, "\\x03병력을 다시 받았습니다.");\n'
+        f'\tCenter View("{where}");\n'
+        f'\tPreserve Trigger();\n}}',
+        # 병력이 생기면 잠금을 푼다
+        f'Trigger("{player}"){{\nConditions:\n'
+        f'\tCommand("{player}", "Men", At least, 1);\n'
+        f'\tDeaths("{player}", "{cooldown_counter}", At least, 1);\n\n'
+        f'Actions:\n'
+        f'\tSet Deaths("{player}", "{cooldown_counter}", Set To, 0);\n'
+        f'\tPreserve Trigger();\n}}']
 
 
 def part_heal_zone(player: str, where: str, cost: int = 0,
                    push_to: str | None = None) -> list[str]:
+    # 값을 받으면 밀어내기가 **필수**다. 안 밀어내면 비콘 위에 서 있는
+    # 동안 매 프레임 결제된다 — part_beacon_shop 이 막는 바로 그 버그다.
     """회복 구역. 값을 0 으로 두면 공짜(마을), 주면 돈을 받는다.
 
     **퍼센트가 먼저다.** `(플레이어, 유닛, 퍼센트, 개수, 로케이션)` 이고
     개수 0 이 "전부" 다. 차례를 바꿔 쓰면 회복이 아니라 깎는 동작이 된다.
     """
+    if cost and not push_to:
+        raise CliError("값을 받는 회복 구역에는 push_to 가 있어야 합니다. "
+                       "안 밀어내면 서 있는 동안 매 프레임 결제됩니다.")
     cond = [f'\tBring("{player}", "Men", "{where}", At least, 1);']
     acts = []
     if cost:

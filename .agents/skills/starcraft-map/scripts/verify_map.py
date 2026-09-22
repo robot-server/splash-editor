@@ -29,6 +29,9 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import scmap
+
+MAP_REVEALER = 101
+TRIGGER_SEP_RE = "//-----------------------------------------------------------------//"
 from scmap import Cli, CliError
 
 # 공식 리그 맵 56개에서 잰 기준값.
@@ -327,57 +330,136 @@ def classify(m: dict) -> str:
 
 
 def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
-    """유즈맵 잣대 — 실측 329장과 견준다."""
-    import corpus
-    c = corpus.load()
-    o = c["usemap"]["overall"]
+    """유즈맵이 **실제로 굴러가는가**를 본다.
+
+    **수를 사분위와 견주지 않는다.** 앞서 유닛·트리거·로케이션 수를 전체
+    사분위와 대 보고 모자라면 표를 띄웠는데, 그건 "수치에 맞추기" 였다.
+    퀴즈 맵의 유닛 중앙값은 156인데 전체 중앙값은 677이다 — 퀴즈를
+    제대로 만들면 "유닛이 모자라다" 고 나오고, 디펜스에 쓸모없는 유닛을
+    677개 채우면 통과한다. 그 검사가 다음 맵에 시키는 일이 바로
+    references/why-procedural-fails.md 가 경고하는 것이다.
+
+    대신 **틀리면 게임이 망가지는 것**만 본다. 전부 실제로 겪은 것이다.
+    """
     out = []
-    def band(key, got, label, unit=""):
-        q = o[key]
-        if got < q["q1"]:
-            out.append(("?", f"{label} {got}{unit} — 실측 329장의 아래 사분위"
-                             f"({q['q1']}) 보다 적습니다. 중앙값은 {q['median']}{unit} 입니다."))
-        elif got > q["q3"]:
-            out.append(("i", f"{label} {got}{unit} — 실측 위 사분위({q['q3']}) 보다 "
-                             f"많습니다. 많은 것 자체는 흠이 아닙니다."))
-        else:
-            out.append(("ok", f"{label} {got}{unit} — 실측 사분위"
-                              f"({q['q1']}~{q['q3']}) 안입니다."))
-    band("units", m["n_units"], "유닛")
-    band("triggers", m["n_triggers"], "트리거")
-    band("locations_named", m.get("n_locations_named", 0), "이름 붙인 로케이션")
-
-    if m["n_triggers"] == 0:
-        out.append(("!!", "트리거가 없습니다. 유즈맵은 트리거가 내용 전부입니다."))
-    if m["n_start_units"] == 0:
-        out.append(("!!", "스타팅이 없습니다. 실측 329장 모두 스타팅이 있습니다."))
-
-    # 되풀이 — 유즈맵은 규칙적인 게 정상이되, 한 타일로 도배하면 안 된다
+    text = ""
     try:
-        t = scmap.Terrain(cli, 0, 0, m["width"], m["height"], m["tileset_id"])
-        flat = [t.tiles[y][x] for y in range(m["height"])
-                for x in range(m["width"])]
-        distinct = len(set(flat))
-        # **네모난 방으로 된 유즈맵의 기준은 따로다.** 전체 중앙값 654 는
-        # 실제 지형이 있는 맵까지 섞인 수다. 실제 사각 디펜스 맵을 재 보니
-        # 타일 53~65종, 그룹 15~25종이었다.
-        #
-        # 그렇다고 한 값으로 도배하면 안 된다. 같은 지형 안의 **변종**을
-        # 흩으면 (scatter_tile_variants) 얼룩 없이 잔 알갱이만 생긴다.
-        # 그룹을 섞는 것(paint_floor_mixed)은 덩이 무늬가 되어 네모난
-        # 방과 안 어울린다.
-        if distinct < 10:
-            out.append(("!!", f"서로 다른 타일이 {distinct}개뿐입니다. 한 값으로 "
-                              f"도배한 바닥입니다 — scatter_tile_variants 로 "
-                              f"같은 지형의 변종을 흩으세요."))
-        elif distinct < 40:
-            out.append(("?", f"서로 다른 타일 {distinct}개 — 네모난 방으로 된 "
-                             f"실제 유즈맵은 53~65개다. 변종을 더 흩어도 된다."))
-        else:
-            out.append(("ok", f"서로 다른 타일 {distinct}개 "
-                              f"(방으로 된 실제 유즈맵 53~65)."))
+        text = cli.trigger_text()
     except Exception as e:
-        out.append(("?", f"지형을 못 쟀습니다: {e}"))
+        return [("?", f"트리거를 못 읽었습니다: {e}")]
+    blocks = [b for b in text.split(TRIGGER_SEP_RE) if b.strip()]
+
+    def owners(blk):
+        mm = re.match(r'\s*Trigger\(([^)]*)\)', blk)
+        return mm.group(1) if mm else ""
+
+    humans = [p["player"] for p in read_players(cli)
+              if p["slot"] in ("열림", "사람(게임)")]
+
+    # 1) 사람 슬롯의 종족 — userselect 면 배치 유닛이 통째로 무시된다
+    bad_race = [l for l in read_players(cli)
+                if l["slot"] in ("열림", "사람(게임)") and "선택" in l.get("race", "")]
+    if bad_race:
+        out.append(("!!", f"사람 슬롯 {len(bad_race)}개의 종족이 '선택 가능' 입니다. "
+                          f"그 슬롯은 배치한 유닛이 **통째로 무시되고** 본진 + "
+                          f"일꾼으로 시작합니다."))
+
+    # 2) 사람마다 시야가 열려 있는가
+    revealer_owners = {u["owner"] for u in cli.units()
+                       if u["type"] == MAP_REVEALER}
+    missing = [p for p in humans if p not in revealer_owners]
+    if missing:
+        out.append(("!!", f"{missing} 번 플레이어에게 Map Revealer 가 없습니다. "
+                          f"그 사람 화면은 깜깜합니다. 시야 공유만으로는 맵이 "
+                          f"밝아지지 않습니다."))
+
+    # 3) 하이퍼 트리거의 주인이 **사람**이면 그 사람의 다른 Wait 가 먹통.
+    #    사람 목록은 슬롯에서 읽는다 — 번호로 짐작하면 안 된다
+    #    (4인 맵의 Player 5 는 컴퓨터다).
+    for blk in blocks:
+        if blk.count("Wait(0)") >= 20:
+            ow = owners(blk)
+            nums = [int(x) for x in re.findall(r'"Player (\d+)"', ow)]
+            if "All players" in ow or any(p in humans for p in nums):
+                out.append(("!!", f"하이퍼 트리거의 주인이 {ow} 입니다. 사람에게 "
+                                  f"걸면 그 사람의 다른 웨이트 트리거가 전부 "
+                                  f"먹통이 됩니다 — 컴퓨터에게 거세요."))
+                break
+
+    # 4) 승패에 Preserve 를 붙이면 매 틱 재발동한다
+    n = sum(1 for b in blocks
+            if ("Victory();" in b or "Defeat();" in b) and "Preserve Trigger" in b)
+    if n:
+        out.append(("!!", f"승리·패배 트리거 {n}개에 Preserve Trigger 가 붙어 "
+                          f"있습니다. 매 틱 재발동해 메시지가 도배됩니다."))
+
+    # 5) Modify Unit ... 의 인자 차례 — **퍼센트가 먼저**다.
+    #    실측에서 개수 자리는 거의 언제나 0(=전부)이다:
+    #      (s,s,100,0,s) 634회 · (s,s,0,0,s) 223회 · (s,s,10,0,s) 88회
+    #    개수가 큰 수면 퍼센트와 자리를 바꿔 쓴 것이다. 그렇게 쓰면
+    #    회복이 아니라 체력을 그 퍼센트로 **깎는** 동작이 된다.
+    suspect = []
+    for kind, pct, cnt in re.findall(
+            r'Modify Unit (Hit Points|Energy|Shield Points)'
+            r'\([^)]*?,\s*(\d+)\s*,\s*(\d+)\s*,', text):
+        if int(cnt) > 12 or int(pct) > 100:
+            suspect.append(f"{kind}({pct}, {cnt})")
+    if suspect:
+        out.append(("!!", f"Modify Unit 의 인자 차례가 거꾸로인 것 같습니다: "
+                          f"{', '.join(sorted(set(suspect))[:3])}. "
+                          f"**퍼센트가 먼저**이고 개수 0 이 전부입니다 — "
+                          f"실측에서 개수 자리는 거의 언제나 0 입니다. "
+                          f"거꾸로 쓰면 회복이 아니라 체력을 깎습니다."))
+
+    # 6) 비콘 상점에 밀어내기가 없으면 서 있는 동안 매 프레임 결제된다
+    n = 0
+    for b in blocks:
+        if ("Bring(" in b and "Accumulate(" in b and "Preserve Trigger" in b
+                and "Subtract" in b
+                and "Move Unit" not in b and "Remove Unit" not in b
+                and "Set Switch" not in b):
+            n += 1
+    if n:
+        out.append(("!!", f"비콘 상점 {n}개에 밀어내기도 잠금도 없습니다. "
+                          f"비콘 위에 서 있는 동안 매 프레임 결제됩니다."))
+
+    # 7) 누적 조건으로 보상을 주면 첫 성공 뒤 계속 들어온다
+    n = 0
+    for b in blocks:
+        head = b.split("Actions:")[0]
+        body = b.split("Actions:")[-1]
+        # 잠금으로 인정하는 것: 카운터를 깎거나(Subtract), 스위치를 잠그거나,
+        # 죽음 수 잠금을 찍거나(Set To). 셋 다 없으면 계속 들어온다.
+        locked = ("Subtract" in body or "Set Switch" in body
+                  or re.search(r'Set Deaths\([^)]*Set To', body))
+        if (re.search(r'\b(Kill|Deaths)\([^)]*At least', head)
+                and "Preserve Trigger" in b
+                and re.search(r'Set (Resources|Score)\([^)]*Add', body)
+                and not locked):
+            n += 1
+    if n:
+        out.append(("!!", f"누적 조건({{Kill·Deaths At least}})으로 보상을 주는 "
+                          f"트리거 {n}개에 카운터를 깎는 동작이 없습니다. "
+                          f"첫 성공 뒤로 매 주기 보상이 들어옵니다."))
+
+    # 8) 컴퓨터만 실행하는 안내는 아무도 못 본다
+    n = 0
+    for b in blocks:
+        if "Display Text Message" not in b:
+            continue
+        ow = owners(b)
+        if not ow or "All players" in ow:
+            continue
+        nums = [int(x) for x in re.findall(r'"Player (\d+)"', ow)]
+        if nums and all(p not in humans for p in nums):
+            n += 1
+    if n:
+        out.append(("!!", f"안내 트리거 {n}개를 컴퓨터만 실행합니다. "
+                          f"Display Text Message 는 그 트리거를 실행하는 "
+                          f"플레이어에게만 보입니다 — 아무도 못 봅니다."))
+
+    if not out:
+        out.append(("ok", "유즈맵 바닥 검사를 모두 통과했습니다."))
     return out
 
 
