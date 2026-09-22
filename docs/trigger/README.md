@@ -11,6 +11,8 @@
 | [death-counts.md](death-counts.md) | 죽음 수 = 유즈맵의 변수. 어느 유닛을 쓸 수 있나 |
 | [locations.md](locations.md) | 로케이션. 높이 조건·뒤집기·이름 규칙 |
 | [bring-command.md](bring-command.md) | `Bring`·`Command` 가 무엇을 세나. 견줌마다 다르다 |
+| [skills.md](skills.md) | 스킬은 웨잇이 아니라 데스값 타이머로 |
+| [random.md](random.md) | 난수가 없다. 스위치를 이진수 한 자리로 |
 | [ai-scripts.md](ai-scripts.md) | 컴퓨터를 실제로 움직이는 법. Order 로는 잘 안 된다 |
 | [recipes.md](recipes.md) | 문법과 바로 쓰는 조각 |
 
@@ -33,7 +35,9 @@
 | --- | --- |
 | 하이퍼를 사람 플레이어에 검 | [execution.md](execution.md) |
 | 한 플레이어에 웨잇 트리거 둘 | [execution.md](execution.md) |
-| 누적 조건 + `Preserve` = 무한 보상 | [ai-scripts.md](ai-scripts.md) | 컴퓨터를 실제로 움직이는 법. Order 로는 잘 안 된다 |
+| 누적 조건 + `Preserve` = 무한 보상 | [skills.md](skills.md) | 스킬은 웨잇이 아니라 데스값 타이머로 |
+| [random.md](random.md) | 난수가 없다. 스위치를 이진수 한 자리로 |
+| [ai-scripts.md](ai-scripts.md) | 컴퓨터를 실제로 움직이는 법. Order 로는 잘 안 된다 |
 | [recipes.md](recipes.md) |
 | 맵에 있는 유닛을 변수 칸으로 씀 | [death-counts.md](death-counts.md) |
 | `At least 1` 의 반대를 `At most 0` 으로 씀 | [locations.md](locations.md) | 로케이션. 높이 조건·뒤집기·이름 규칙 |
