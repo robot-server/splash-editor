@@ -28,6 +28,7 @@
 | [ramps.md](ramps.md) | 램프. **램프는 두뎃이다** |
 | [doodads.md](doodads.md) | 두뎃. 갈래는 지형 종류 이름과 같다. 걷기를 막는 것 |
 | [sprites.md](sprites.md) | 스프라이트. 밀리맵 중립 건물, 튕기는 목록 |
+| [disabled-units.md](disabled-units.md) | 유닛을 꾸밈으로. 건설 중인 건물 만들기, 맵 날리는 조합 |
 | [colors.md](colors.md) | 타일 그룹의 실제 색. 눈으로 구분되는 지형을 고를 때 |
 
 ## 데이터 파일
