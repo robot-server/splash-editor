@@ -591,6 +591,7 @@ GameGraphics::UnitStats GameGraphics::unitStats(std::uint16_t unitType) const
             out.groundCooldown = gw->weaponCooldown;
             out.groundDamageUpgrade = gw->damageUpgrade;
             out.groundDamageType = gw->weaponType;
+            out.groundDamageFactor = gw->damageFactor;
         }
         if (const auto * aw = weapon(d.airWeapon))
         {
@@ -598,6 +599,7 @@ GameGraphics::UnitStats GameGraphics::unitStats(std::uint16_t unitType) const
             out.airDamage = aw->damageAmount;
             out.airDamageUpgrade = aw->damageUpgrade;
             out.airDamageType = aw->weaponType;
+            out.airDamageFactor = aw->damageFactor;
         }
     }
     catch (const std::exception &)

@@ -183,6 +183,12 @@ public:
         /// 공격 형태 (weapons.dat 의 weaponType). **유닛 덩치와 곱해져
         /// 실제 피해가 정해진다** — 적힌 숫자가 그대로 들어가지 않는다.
         /// 0 독립 · 1 폭발형 · 2 진동형 · 3 일반형 · 4 방어무시
+        /// **1회 공격에 나가는 투사체 수** (weapons.dat 의 damageFactor).
+        /// 2 면 두 발이 나가 게임 표기 공격력이 두 배로 보인다 — 골리앗이
+        /// 그렇다. 3 이상은 1 로 적용되고, 근접 무기는 이미지 스크립트가
+        /// 공격을 담당해 적용되지 않는다.
+        std::uint8_t groundDamageFactor = 1;
+        std::uint8_t airDamageFactor = 1;
         std::uint8_t groundDamageType = 0;
         std::uint8_t airDamageType = 0;
         std::uint8_t groundDamageUpgrade = 61;

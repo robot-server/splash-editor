@@ -94,11 +94,10 @@ splash-cli unitdef set 맵 "Terran Marine" \
 **dat 의 피해 값이 게임 표기와 다를 수 있다.** 골리앗은 미사일이
 2발이라 10 짜리가 20 으로 보인다.
 
-`units.dat` 에 "타격 수" 칸이 있고 질럿 2 · 파이어뱃 3 · 발키리 4 로
-적혀 있지만, **그 칸은 실제로 적용되지 않는다** — 공격 횟수는
-**투사체 개수나 이미지 스크립트**가 정한다
-([DatEdit 1부](https://cafe.naver.com/edac/book5095361/76627)).
-`ground_hits` 값을 곱해서 실제 피해를 계산하면 안 된다.
+두 배로 보이는 것은 `weapons.dat` 의 **투사체 수**다 (`damageFactor`).
+골리앗 포탑은 공중 10 × 2 = 20 이다. `units.dat` 의 "타격 수" 칸은
+**적용되지 않으니** 그 값을 곱하면 안 된다 →
+[damage.md](damage.md).
 
 ## 업그레이드와 기술도 맵이 정한다
 

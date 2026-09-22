@@ -72,9 +72,32 @@
 | Jim Raynor (Vulture) | 진동형 | 30 | 30 | **7.5** |
 | Edmund Duke Turret | 폭발형 | 70 | **35** | 70 |
 
-`units.dat` 의 "타격 수" 칸(질럿 2 · 파이어뱃 3 · 발키리 4)은
-**실제로 적용되지 않는다.** 여러 번 때리는 것은 투사체 개수나 이미지
-스크립트가 정한다 ([DatEdit 1부](https://cafe.naver.com/edac/book5095361/76627)).
+### 한 번에 여러 발 나가는 무기
+
+**게임에 보이는 공격력이 dat 값의 두 배인 유닛이 있다.** `weapons.dat`
+의 **투사체 수**(`damageFactor`) 때문이다.
+
+| 유닛 | 무기 | 실제 |
+| --- | --- | ---: |
+| Goliath Turret | 공중 10 **× 2** | **20** |
+| Alan Schezar Turret | 공중 20 **× 2** | **40** |
+| Protoss Scout | 공중 14 **× 2** | **28** |
+| Mojo (Scout) · Artanis (Scout) | 공중 28 **× 2** | **56** |
+| Terran Valkyrie | 공중 6 **× 2** | **12** |
+| Missile Trap 세 가지 | 지상 10 **× 2** | **20** |
+
+- **3 이상을 넣어도 1 로 적용된다.**
+- **근접 무기는 적용되지 않는다** — 이미지 스크립트가 공격을 담당한다.
+- 투사체가 아닌 즉발 원거리(마린 · 탱크)에는 잘 걸린다.
+
+`units.dat` 에도 "타격 수" 칸이 있고 질럿 2 · 파이어뱃 3 으로 적혀
+있지만 **그 칸은 적용되지 않는다** — 질럿이 두 번 때리는 것은 이미지
+스크립트다
+([DatEdit 1부](https://cafe.naver.com/edac/book5095361/76627) ·
+[3부](https://cafe.naver.com/edac/book5095361/76663)).
+
+`splash-cli unit-stats --json` 의 `ground_dmg_factor` ·
+`air_dmg_factor` 로 본다.
 
 **짐 레이너(벌쳐)를 대형 유닛 상대로 쓰면 30이 아니라 7.5다.** 영웅
 이라고 골랐는데 저글링한테나 세고 울트라한테는 안 먹는다.

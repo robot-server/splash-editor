@@ -1413,6 +1413,8 @@ int cmdUnitStats(const std::string & installPath, bool json)
                       << ", \"supply_provided\": " << int(d.supplyProvided)
                       << ", \"build_score\": " << d.buildScore
                       << ", \"destroy_score\": " << d.destroyScore
+                      << ", \"ground_dmg_factor\": " << int(d.groundDamageFactor)
+                      << ", \"air_dmg_factor\": " << int(d.airDamageFactor)
                       << ", \"ground_dmg_type\": " << int(d.groundDamageType)
                       << ", \"air_dmg_type\": " << int(d.airDamageType)
                       << ", \"ground_dmg_upgrade\": " << int(d.groundDamageUpgrade)

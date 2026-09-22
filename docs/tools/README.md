@@ -4,6 +4,7 @@
 | --- | --- |
 | [cli-cookbook.md](cli-cookbook.md) | `splash-cli` — 하고 싶은 일에서 명령 찾기 |
 | [editors.md](editors.md) | 사람이 쓰는 도구. SCMD2 버전 함정, TEP, EUD 도구 |
+| [datedit.md](datedit.md) | DatEdit·FireGraft. 맵이 못 고치는 것을 고치는 곳 |
 
 ## 한 줄
 
