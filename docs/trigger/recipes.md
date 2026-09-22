@@ -568,3 +568,32 @@ splash-cli briefing show <맵> b.txt --install "$SC_INSTALL"
 # 유닛 프리셋 (Create Unit with Properties 가 쓴다)
 splash-cli preset list <맵>
 ```
+
+## 작은 관용구 몇 개
+
+출처: 스타 에디터 아카데미 `에디터의 모/든/것`.
+
+### 이미 건물이 있는 자리에 덧지어 보이게
+
+건물을 **두 개 이상 겹쳐 놓고**, 트리거로 `Remove Unit At Location`
+으로 **하나만 없앤다.** 남은 건물 자리에 새 건물이 들어가므로 "이미
+있는 건물 위에 지어진" 모습이 된다.
+
+겹치기는 SCMDraft2 의 `Stack Selected` 로 한다
+([../usemap/essentials.md](../usemap/essentials.md)).
+
+### 정야독은 사람에게 안 통한다
+
+`Run AI Script At Location` 의 `Set Unit Order To: Junk Yard Dog` 는
+**컴퓨터 유닛만** 움직인다. 사람 플레이어의 유닛에는 아무 일도 안
+일어난다 ([ai-scripts.md](ai-scripts.md)).
+
+### `Move Location` 은 로케이션이 유닛을 따라간다
+
+로케이션이 유닛 쪽으로 옮겨지는 것이지 유닛이 움직이는 것이 아니다.
+스킬대전 · 바운드 맵에서 없어서는 안 되는 액션이다.
+
+**유닛이 없으면** 로케이션이 **(d)로케이션 한가운데**로 간다 —
+없어질 수 있는 유닛에 붙였다면 계산에 넣는다
+([locations.md](locations.md)).
+
