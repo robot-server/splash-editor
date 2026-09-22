@@ -527,6 +527,7 @@ GameGraphics::UnitStats GameGraphics::unitStats(std::uint16_t unitType) const
         out.hitPoints = d.hitPoints >> 8;
         out.shields = d.shieldEnable ? d.shieldAmount : std::uint16_t(0);
         out.armor = d.armor;
+        out.armorUpgrade = d.armorUpgrade;
         out.sightRange = d.sightRange;
         out.targetAcquisitionRange = d.targetAcquisitionRange;
         out.unitSize = d.unitSize;
@@ -584,12 +585,14 @@ GameGraphics::UnitStats GameGraphics::unitStats(std::uint16_t unitType) const
             out.groundDamageBonus = gw->damageBonus;
             out.groundCooldown = gw->weaponCooldown;
             out.groundDamageUpgrade = gw->damageUpgrade;
+            out.groundDamageType = gw->weaponType;
         }
         if (const auto * aw = weapon(d.airWeapon))
         {
             out.airRange = aw->maximumRange;
             out.airDamage = aw->damageAmount;
             out.airDamageUpgrade = aw->damageUpgrade;
+            out.airDamageType = aw->weaponType;
         }
     }
     catch (const std::exception &)

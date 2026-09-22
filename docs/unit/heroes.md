@@ -34,7 +34,7 @@ python3 $S/measure_heroes.py                   # 영웅 ↔ 일반 짝 비교
 `unitdef set --hp` 로 주면 된다. 영웅을 고르는 까닭은 오른쪽 칸에
 있어야 한다.
 
-## 35짝에서 실제로 나온 것
+## 37짝에서 실제로 나온 것
 
 | | 영웅이 일반과 |
 | --- | --- |
@@ -157,6 +157,36 @@ python3 $S/measure_heroes.py                   # 영웅 ↔ 일반 짝 비교
 
 ## 능력치 말고도 다른 것
 
+### 감염된 듀란은 업그레이드가 두 종족에 걸쳐 있다
+
+| 유닛 | 공격력 업그레이드 | 방어력 업그레이드 |
+| --- | --- | --- |
+| Terran Ghost · 케리건 · 듀란 · 스투코프 | Terran Infantry Weapons | Terran Infantry Armor |
+| **Infested Duran** | **Terran Infantry Weapons** | **Zerg Carapace** |
+| Infested Kerrigan | Zerg Melee Attacks | Zerg Carapace |
+
+**감염된 듀란만 갈라져 있다.** 공격력은 테란 업그레이드를 따르고
+방어력은 저그 업그레이드를 따른다. 유즈맵에서 업그레이드를 파는
+구조라면, 이 유닛은 **두 종족 건물을 다 지어야** 온전히 강해진다.
+
+`splash-cli unit-stats --json` 의 `ground_dmg_upgrade` · `armor_upgrade`
+로 본다. `splash-cli upgrade list` 가 번호를 이름으로 풀어 준다.
+
+### 데이터로는 못 재는 규칙
+
+게임에 박힌 것이라 dat 에 없다. 아는 것:
+
+| | |
+| --- | --- |
+| **핵 발사** | **일반 고스트만 된다.** 영웅 고스트(케리건·듀란·스투코프)는 못 쏜다 |
+| **벙커 탑승** | 감염된 듀란은 **못 들어간다** |
+| **변환(모프)** | 영웅은 안 된다 (아래) |
+
+핵을 쓰는 유즈맵이라면 고스트 영웅을 놓으면 안 된다. 세 보인다고
+바꿔 놓으면 핵이 발사되지 않는다.
+
+
+
 ### 이그드라실은 인구수를 30 채운다
 
 | 유닛 | 채우는 인구수 |
@@ -258,6 +288,7 @@ python3 $S/measure_heroes.py                   # 영웅 ↔ 일반 짝 비교
 
 ## 고를 때 묻는 것
 
+0. 공격 형태(일반·폭발·진동)가 맞는가? → [damage.md](damage.md)
 1. 이 자리에서 **못 고치는 값** 중 무엇이 중요한가? (사거리·주기·시야·속도)
 2. 그 값이 영웅과 일반 중 **어느 쪽이 나은가**? → `heroes.json` 을 본다
 3. 체력·방어력만 필요한가? → **일반 유닛에 `unitdef set` 을 쓴다**
@@ -265,6 +296,7 @@ python3 $S/measure_heroes.py                   # 영웅 ↔ 일반 짝 비교
 
 ## 관련
 
+- [damage.md](damage.md) — 공격 형태 × 덩치. 적힌 피해가 그대로 안 들어간다
 - [../chk/sections.md](../chk/sections.md) — UNIS·UNIx 가 담는 것
 - [../usemap/essentials.md](../usemap/essentials.md) — 유즈맵 필수품
 - [../tools/cli-cookbook.md](../tools/cli-cookbook.md) — `unit-stats` 쓰기

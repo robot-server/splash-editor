@@ -6,6 +6,7 @@
 | --- | --- |
 | [settings.md](settings.md) | 맵이 정하는 유닛 능력치. 유즈맵 98%가 쓴다 |
 | [heroes.md](heroes.md) | 영웅은 "센 판"이 아니다. 맵이 못 고치는 값들 |
+| [damage.md](damage.md) | 공격 형태 × 덩치. 적힌 피해가 그대로 안 들어간다 |
 
 ## 한 줄 요약
 

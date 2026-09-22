@@ -151,6 +151,10 @@ public:
         std::uint32_t hitPoints = 0;   ///< 표시값 (내부값 >> 8)
         std::uint16_t shields = 0;     ///< 방패를 안 쓰면 0
         std::uint8_t armor = 0;
+        /// 이 유닛의 방어력을 올려 주는 업그레이드 번호 (units.dat).
+        /// 공격력 업그레이드와 **다른 종족 것일 수 있다** — 감염된
+        /// 듀란은 방어력이 저그, 공격력이 테란이다.
+        std::uint8_t armorUpgrade = 61;
         std::uint8_t sightRange = 0;            ///< 타일
         std::uint8_t targetAcquisitionRange = 0; ///< 타일. 먼저 무는 거리
         std::uint8_t unitSize = 0;              ///< 1=소형 2=중형 3=대형
@@ -172,6 +176,11 @@ public:
         /// 이 무기의 피해를 올려 주는 업그레이드 번호. 61 이면 없다.
         /// **영웅 무기는 대개 일반 무기와 다른 번호를 쓴다** — 그래서
         /// 일반 유닛만 업그레이드를 받고 영웅은 못 받는 일이 생긴다.
+        /// 공격 형태 (weapons.dat 의 weaponType). **유닛 덩치와 곱해져
+        /// 실제 피해가 정해진다** — 적힌 숫자가 그대로 들어가지 않는다.
+        /// 0 독립 · 1 폭발형 · 2 진동형 · 3 일반형 · 4 방어무시
+        std::uint8_t groundDamageType = 0;
+        std::uint8_t airDamageType = 0;
         std::uint8_t groundDamageUpgrade = 61;
         std::uint8_t airDamageUpgrade = 61;
         /// AI 스크립트 번호. 컴퓨터가 이 유닛을 어떻게 굴리는가 —

@@ -1383,6 +1383,7 @@ int cmdUnitStats(const std::string & installPath, bool json)
                       << ", \"hp\": " << d.hitPoints
                       << ", \"shields\": " << d.shields
                       << ", \"armor\": " << int(d.armor)
+                      << ", \"armor_upgrade\": " << int(d.armorUpgrade)
                       << ", \"sight\": " << int(d.sightRange)
                       << ", \"target_range\": " << int(d.targetAcquisitionRange)
                       << ", \"size\": " << int(d.unitSize)
@@ -1409,6 +1410,8 @@ int cmdUnitStats(const std::string & installPath, bool json)
                       << ", \"build_time\": " << d.buildTime
                       << ", \"supply\": " << int(d.supplyRequired)
                       << ", \"supply_provided\": " << int(d.supplyProvided)
+                      << ", \"ground_dmg_type\": " << int(d.groundDamageType)
+                      << ", \"air_dmg_type\": " << int(d.airDamageType)
                       << ", \"ground_dmg_upgrade\": " << int(d.groundDamageUpgrade)
                       << ", \"air_dmg_upgrade\": " << int(d.airDamageUpgrade)
                       << ", \"hero\": " << (d.hero ? "true" : "false")
