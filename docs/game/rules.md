@@ -2,7 +2,8 @@
 
 맵을 만들 때 **틀리면 맵이 망가지는 게임 규칙**을 모았다. 여기 있는 것은
 거의 다 실제로 틀려 보고 배운 것이다. 수치는 스타 에디터 아카데미
-(cafe.naver.com/edac) 의 "강낭땅콩의 에디터 강좌" 와 Liquipedia 에서
+([cafe.naver.com/edac](https://cafe.naver.com/edac)) 의
+"강낭땅콩의 에디터 강좌" 와 [Liquipedia](https://liquipedia.net/starcraft) 에서
 확인했고, 일부는 실측 맵 329장으로 교차 검증했다.
 
 ---

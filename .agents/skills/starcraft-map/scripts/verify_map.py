@@ -359,12 +359,37 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
               if p["slot"] in ("열림", "사람(게임)")]
 
     # 1) 사람 슬롯의 종족 — userselect 면 배치 유닛이 통째로 무시된다
-    bad_race = [l for l in read_players(cli)
+    #
+    #    **다만 늘 잘못은 아니다.** 컴까기처럼 밀리맵 컨셉을 늘린 유즈맵은
+    #    사람이 본진을 짓고 종족을 골라야 하므로 일부러 쓴다. 그런 맵에서
+    #    "본진 + 일꾼 4마리로 시작" 은 버그가 아니라 원하는 것이다.
+    #
+    #    가르는 기준은 장르 이름이 아니라 **그 슬롯에 유닛을 깔아 두었는가**
+    #    다. 깔아 두었는데 선택 가능이면 그 유닛이 전부 사라진다.
+    players = read_players(cli)
+    bad_race = [l for l in players
                 if l["slot"] in ("열림", "사람(게임)") and "선택" in l.get("race", "")]
     if bad_race:
-        out.append(("!!", f"사람 슬롯 {len(bad_race)}개의 종족이 '선택 가능' 입니다. "
-                          f"그 슬롯은 배치한 유닛이 **통째로 무시되고** 본진 + "
-                          f"일꾼으로 시작합니다."))
+        nums = set()
+        for l in bad_race:
+            try:
+                nums.add(int(l.get("player") or l.get("no") or -1))
+            except Exception:
+                pass
+        placed = collections.Counter()
+        for u in cli.units():
+            if u["owner"] in nums and u["type"] != scmap.START_LOCATION:
+                placed[u["owner"]] += 1
+        if placed:
+            out.append(("!!", f"사람 슬롯 {sorted(placed)} 의 종족이 '선택 가능' "
+                              f"인데 그 슬롯에 유닛을 {sum(placed.values())}기 "
+                              f"깔아 두었습니다. 그 유닛은 **통째로 무시되고** "
+                              f"본진 + 일꾼으로 시작합니다."))
+        else:
+            out.append(("?", f"사람 슬롯 {len(bad_race)}개의 종족이 '선택 가능' "
+                             f"입니다. 깔아 둔 유닛이 없으니 밀리맵 컨셉을 늘린 "
+                             f"맵(컴까기 등)이라면 맞습니다. 유닛을 받아서 노는 "
+                             f"맵이라면 종족을 못 박으세요."))
 
     # 2) 사람마다 시야가 열려 있는가
     revealer_owners = {u["owner"] for u in cli.units()

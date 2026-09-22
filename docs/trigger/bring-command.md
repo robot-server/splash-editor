@@ -1,7 +1,7 @@
 # `Bring` 과 `Command` — 무엇을 세고 무엇을 안 세나
 
-출처: 스타 에디터 아카데미 [팁] Bring과 Command의 인식 범위
-(`cafe.naver.com/edac/book5095361/96809`).
+출처: 스타 에디터 아카데미
+[[팁] Bring과 Command의 인식 범위](https://cafe.naver.com/edac/book5095361/96809).
 
 `Bring` 은 실측 유즈맵 판정의 97%를 차지한다. 그런데 **견줌(AtMost /
 Exactly / AtLeast)에 따라 세는 것이 달라진다.** 서로 보수가 아니다.
