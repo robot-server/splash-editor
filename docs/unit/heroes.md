@@ -157,11 +157,34 @@ python3 $S/measure_heroes.py                   # 영웅 ↔ 일반 짝 비교
 
 ## 능력치 말고도 다른 것
 
+### 이름을 줄여 쓰면 다른 유닛이 된다
+
+"듀란" 이라고 쓰면 어느 쪽인지 알 수 없다. 겹치는 이름이 **아홉
+갈래**다. 글에도 코드에도 **전체 이름을 쓴다.**
+
+| 줄인 이름 | 실제로는 |
+| --- | --- |
+| 듀란 | Samir Duran (Ghost) · **Infested Duran** |
+| 케리건 | Sarah Kerrigan (Ghost) · **Infested Kerrigan (Infested Terran)** |
+| 제라툴 | Zeratul (Dark Templar) · **Tassadar/Zeratul (Archon)** |
+| 타사다르 | Tassadar (Templar) · **Tassadar/Zeratul (Archon)** |
+| 페닉스 | Fenix (Zealot) · **Fenix (Dragoon)** |
+| 짐 레이너 | Jim Raynor (Marine) · **Jim Raynor (Vulture)** |
+| 쿠쿨자 | Kukulza (Mutalisk) · **Kukulza (Guardian)** |
+| 노라드2 | Norad II (Battlecruiser) · **Norad II (Crashed)** — 뒤엣것은 무기가 없다 |
+| 다크 템플러 | Protoss Dark Templar · Protoss Dark Templar (Hero) · Zeratul (Dark Templar) |
+| 앨런 셰자르 | Alan Schezar (Goliath) · **Alan Schezar Turret** — 무기는 포탑에 |
+| 에드먼드 듀크 | 탱크/시즈 × 몸통/포탑 = **넷** |
+
+같은 이름인데 성질이 정반대인 것이 많다. 사미르 듀란과 감염된 듀란은
+업그레이드 종족부터 다르고, 페닉스는 질럿 판과 드라군 판이 사거리부터
+다르다.
+
 ### 감염된 듀란은 업그레이드가 두 종족에 걸쳐 있다
 
 | 유닛 | 공격력 업그레이드 | 방어력 업그레이드 |
 | --- | --- | --- |
-| Terran Ghost · 케리건 · 듀란 · 스투코프 | Terran Infantry Weapons | Terran Infantry Armor |
+| Terran Ghost · 사라 케리건 · **사미르 듀란** · 스투코프 | Terran Infantry Weapons | Terran Infantry Armor |
 | **Infested Duran** | **Terran Infantry Weapons** | **Zerg Carapace** |
 | Infested Kerrigan | Zerg Melee Attacks | Zerg Carapace |
 
@@ -178,7 +201,7 @@ python3 $S/measure_heroes.py                   # 영웅 ↔ 일반 짝 비교
 
 | | |
 | --- | --- |
-| **핵 발사** | **일반 고스트만 된다.** 영웅 고스트(케리건·듀란·스투코프)는 못 쏜다 |
+| **핵 발사** | **일반 고스트만 된다.** 영웅 고스트(사라 케리건 · 사미르 듀란 · 스투코프)는 못 쏜다 |
 | **벙커 탑승** | 감염된 듀란은 **못 들어간다** |
 | **변환(모프)** | 영웅은 안 된다 (아래) |
 
