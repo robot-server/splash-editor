@@ -14,6 +14,7 @@
 | [skills.md](skills.md) | 스킬은 웨잇이 아니라 데스값 타이머로 |
 | [random.md](random.md) | 난수가 없다. 스위치를 이진수 한 자리로 |
 | [ai-scripts.md](ai-scripts.md) | 컴퓨터를 실제로 움직이는 법. Order 로는 잘 안 된다 |
+| [composition.md](composition.md) | 트리거 수를 줄이는 법. n×m 을 n+m 으로 |
 | [recipes.md](recipes.md) | 문법과 바로 쓰는 조각 |
 
 ## 실측 — 사람들이 실제로 쓰는 것
@@ -38,6 +39,7 @@
 | 누적 조건 + `Preserve` = 무한 보상 | [skills.md](skills.md) | 스킬은 웨잇이 아니라 데스값 타이머로 |
 | [random.md](random.md) | 난수가 없다. 스위치를 이진수 한 자리로 |
 | [ai-scripts.md](ai-scripts.md) | 컴퓨터를 실제로 움직이는 법. Order 로는 잘 안 된다 |
+| [composition.md](composition.md) | 트리거 수를 줄이는 법. n×m 을 n+m 으로 |
 | [recipes.md](recipes.md) |
 | 맵에 있는 유닛을 변수 칸으로 씀 | [death-counts.md](death-counts.md) |
 | `At least 1` 의 반대를 `At most 0` 으로 씀 | [locations.md](locations.md) | 로케이션. 높이 조건·뒤집기·이름 규칙 |
