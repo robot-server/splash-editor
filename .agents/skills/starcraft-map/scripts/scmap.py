@@ -213,7 +213,11 @@ class Cli:
         self.edit(*args)
 
     def isom_batch(self, strokes):
-        """ISOM 붓질을 한꺼번에 놓는다. strokes 는 (타일x, 타일y, 지형) 목록.
+        """ISOM 붓질을 한꺼번에 놓는다.
+
+        `strokes` 는 `(타일x, 타일y, 지형)` 또는 `(타일x, 타일y, 지형,
+        브러시)` 목록이다. 면을 채울 때는 **브러시 1** 을 명시하는 편이
+        낫다 — 큰 브러시는 경계를 예측하기 어렵게 넓힌다.
 
         붓질마다 명령을 부르면 맵을 열고 저장하는 값이 붓질 값보다 훨씬
         크다 — 천 번 칠하는 데 몇 분이 걸린다. 한 번에 보낸다.
@@ -223,8 +227,13 @@ class Cli:
             return 0
         with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False,
                                          encoding="utf-8") as f:
-            for (tx, ty, terrain) in strokes:
-                f.write(f"{tx * TILE} {ty * TILE} {terrain}\n")
+            for st in strokes:
+                tx, ty, terrain = st[0], st[1], st[2]
+                brush = st[3] if len(st) > 3 else None
+                line = f"{tx * TILE} {ty * TILE} {terrain}"
+                if brush is not None:
+                    line += f" {brush}"
+                f.write(line + "\n")
             tmp = f.name
         try:
             self.edit("terrain", "isom-batch", self.path, tmp,
@@ -1465,6 +1474,230 @@ def kill_bounty(player: str, amount: int, per_score: int = 50,
 TRIGGER_SEP = "\n\n//-----------------------------------------------------------------//\n\n"
 
 
+
+
+# ------------------------------------------------------------ 두뎃 꾸미기
+#
+# **왜 있는가.** 만든 유즈맵을 실제 인기 맵과 나란히 그려 보니, 실제
+# 맵의 방은 테두리에 바위·잔해가 둘려 있어 "방" 으로 읽혔다. 내 방은
+# 맨바닥이었다. 앞서 실측 표에 "유즈맵 두뎃 0개" 라고 적어 두었는데
+# **그건 DD2 섹션만 센 것**이었다. 에디터에서 놓은 두뎃은 저장할 때
+# 지형(MTXM)으로 눌러 담기므로 DD2 가 비어 있어도 타일에는 남는다.
+#
+# 다시 세어 보니 (내려받기 상위 유즈맵 76장, 두뎃 타일 = 그룹 1024 이상):
+#
+#     두뎃 타일을 쓴 맵            70/76 = **92%**
+#     두뎃 칸 수                   중앙 **868칸** (사분위 398~3640)
+#     걷기 경계 두 칸 안에 놓인 것  중앙 **89%** (아무 칸이나면 54%)
+#
+# 두뎃은 **경계에 몰려 있다.** 방 테두리를 꾸미는 것이 맞다.
+#
+# **두뎃은 길을 막을 수 있다.** 바위를 방 가운데 놓으면 동선이 끊긴다.
+# 그래서 놓은 뒤 미니타일 길찾기로 **연결이 그대로인지 확인하고**, 깨지면
+# 되돌려 성기게 다시 놓는다. 눈으로 좋아 보이려고 맵을 망가뜨리지 않는다.
+
+DECOR_SKIP_KINDS = ("Bridges", "Cliff", "Water", "Coastal")
+
+_DOODAD_WALK: dict | None = None
+
+
+def doodad_walk_table(tileset_id: int) -> dict[int, dict]:
+    """두뎃 번호 → 크기·갈래·**걷기를 막는가**.
+
+    `measure_doodads.py` 가 만든 `data/doodad-walk.json` 을 읽는다.
+    타일셋마다 두뎃 240~320종 중 걷기를 안 막는 것이 160~235종이다
+    (Badlands 246종 중 188종). 막는 것을 걸러 쓰면 놓고 나서 길찾기로
+    되돌릴 일이 없다 — 그렇게 하던 판은 밀도를 못 올려 실측의 15분의 1
+    (48칸 대 중앙 868칸) 에서 멈췄고 맵 하나에 1분이 넘게 걸렸다.
+    """
+    global _DOODAD_WALK
+    if _DOODAD_WALK is None:
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "..", "data", "doodad-walk.json")
+        try:
+            with open(os.path.normpath(path), encoding="utf-8") as f:
+                raw = json.load(f)["doodads"]
+        except Exception:
+            raw = {}
+        _DOODAD_WALK = {n: {int(k): v for k, v in d.items()}
+                        for n, d in raw.items()}
+    return _DOODAD_WALK.get(_TS_NAMES.get(tileset_id & 7, ""), {})
+
+
+def _components(grid, points: list[tuple[int, int]]) -> list[int]:
+    """점마다 '어느 덩이에 속하나' 를 매긴다. 못 걷는 자리는 -1."""
+    from collections import deque
+    H, W = len(grid), len(grid[0])
+    lab = [[0] * W for _ in range(H)]
+    cur = 0
+    starts = []
+    for (px, py) in points:
+        s = nearest_walkable(grid, px, py, radius=24)
+        starts.append(s)
+    out = []
+    seen_lab: dict[tuple[int, int], int] = {}
+    for s in starts:
+        if s is None:
+            out.append(-1)
+            continue
+        if lab[s[1]][s[0]]:
+            out.append(lab[s[1]][s[0]])
+            continue
+        cur += 1
+        q = deque([s])
+        lab[s[1]][s[0]] = cur
+        while q:
+            x, y = q.popleft()
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx, ny = x + dx, y + dy
+                if (0 <= ny < H and 0 <= nx < W and grid[ny][nx]
+                        and not lab[ny][nx]):
+                    lab[ny][nx] = cur
+                    q.append((nx, ny))
+        out.append(cur)
+    # 같은 덩이인지만 중요하다 — 번호를 정규화한다
+    norm, m = [], {}
+    for v in out:
+        if v < 0:
+            norm.append(-1)
+            continue
+        norm.append(m.setdefault(v, len(m)))
+    return norm
+
+
+def decorate_rim(cli: Cli, tileset_id: int, rooms, rng,
+                 keep_clear=(), band: int = 3, density: float = 0.55,
+                 max_area: int = 12, tries: int = 4,
+                 want_tiles: int | None = 400, inset: int = 2) -> int:
+    """방 테두리 안쪽 띠에 작은 두뎃을 흩는다.
+
+    `rooms` 는 방 네모 `(x, y, w, h)` 목록, `keep_clear` 는 건드리면 안 되는
+    네모 목록(유닛 무리·비콘 발판·상점 자리)이다.
+
+    놓은 뒤 **연결이 그대로인지 확인한다.** 방마다 가운데와 네 변 가운데를
+    "이어져 있어야 하는 점" 으로 잡고, 놓기 전과 같은 덩이에 있는지 본다.
+    깨지면 되돌리고 밀도를 반으로 줄여 다시 한다.
+
+    `want_tiles` 는 채우고 싶은 두뎃 **칸** 수다 (실측 중앙 868칸,
+    사분위 398~3640). 처음에 density 0.18·band 2 로 했더니 60칸이 나와
+    실측의 15분의 1 이었다 — 눈으로도 티가 안 났다. 자리가 모자라면
+    밀도를 올려 가며 채운다.
+
+    돌려주는 것은 실제로 놓인 두뎃 개수다.
+    """
+    import shutil
+
+    # **걷기를 막는 두뎃은 아예 쓰지 않는다.** 표가 없으면 옛 방식으로
+    # 물러서지만, 그때는 밀도를 못 올린다.
+    safe = doodad_walk_table(tileset_id)
+    cat = [d for d in cli.doodad_catalogue()
+           if d["w"] * d["h"] <= max_area
+           and not any(k in d["kind"] for k in DECOR_SKIP_KINDS)
+           and (not safe or (safe.get(d["id"], {}).get("walk")
+                             and safe[d["id"]].get("tiles", 0) > 0))]
+    if not cat or not rooms:
+        return 0
+    if safe:
+        tries = 1          # 막는 것을 걸렀으니 되돌릴 일이 없다
+
+    W, H = cli.info()["width"], cli.info()["height"]
+    probes: list[tuple[int, int]] = []
+    for (x, y, w, h) in rooms:
+        probes += [((x + w // 2) * 4 + 2, (y + h // 2) * 4 + 2),
+                   ((x + 2) * 4 + 2, (y + h // 2) * 4 + 2),
+                   ((x + w - 3) * 4 + 2, (y + h // 2) * 4 + 2),
+                   ((x + w // 2) * 4 + 2, (y + 2) * 4 + 2),
+                   ((x + w // 2) * 4 + 2, (y + h - 3) * 4 + 2)]
+    before = _components(walk_grid(cli, tileset_id, 0, 0, W, H), probes)
+
+    def blocked(px, py, dw, dh):
+        for (cx, cy, cw, ch) in keep_clear:
+            if not (px + dw <= cx or cx + cw <= px
+                    or py + dh <= cy or cy + ch <= py):
+                return True
+        return False
+
+    backup = cli.path + ".predecor"
+    shutil.copy(cli.path, backup)
+    placed = 0
+    try:
+        for attempt in range(tries):
+            spots = []
+            for (x, y, w, h) in rooms:
+                # **테두리 바로 위에 놓으면 벽을 뚫는다.** 두뎃은 밑에
+                # 무엇이 있든 제 타일을 써 버리므로, 방 테두리에 걸치면
+                # 못 걷던 벽 칸이 걷는 두뎃 바닥으로 바뀌어 **방에 구멍이
+                # 난다.** 실제로 그렇게 해서 연결 검사가 떨어졌고 두뎃이
+                # 하나도 안 놓였다. `inset` 만큼 안으로 물린다.
+                x0, y0 = x + inset, y + inset
+                x1, y1 = x + w - inset, y + h - inset
+                edge = []
+                for ty in range(y0, y1):
+                    for tx in range(x0, x1):
+                        near = (tx - x0 < band or x1 - 1 - tx < band
+                                or ty - y0 < band or y1 - 1 - ty < band)
+                        if near:
+                            edge.append((tx, ty))
+                rng.shuffle(edge)
+                want = int(len(edge) * density)
+                for (tx, ty) in edge[:want]:
+                    d = rng.choice(cat)
+                    if tx + d["w"] > x1 or ty + d["h"] > y1:
+                        continue
+                    if blocked(tx, ty, d["w"], d["h"]):
+                        continue
+                    spots.append((d["id"], tx, ty, d["w"], d["h"]))
+            rng.shuffle(spots)
+            # **두뎃끼리 겹치면 안 된다.** 겹쳐 놓으면 앞의 두뎃 타일이
+            # 반만 덮여 조각이 남고, 그 조각이 못 걷는 타일이라 길이
+            # 막힌다. 낱개로는 다 안전한 두뎃인데 117개를 섞어 놓으니
+            # 연결 검사가 떨어졌다 — 자리 순서대로 놓았을 때는 우연히
+            # 안 겹쳐 통과했고, 섞고 나서야 드러났다.
+            taken: list[tuple[int, int, int, int]] = []
+
+            def overlaps(px, py, dw, dh):
+                for (ax, ay, aw, ah) in taken:
+                    if not (px + dw <= ax or ax + aw <= px
+                            or py + dh <= ay or ay + ah <= py):
+                        return True
+                return False
+
+            area = 0
+            for (did, tx, ty, dw, dh) in spots:
+                if want_tiles and area >= want_tiles:
+                    break
+                if overlaps(tx, ty, dw, dh):
+                    continue
+                try:
+                    cli.edit("doodad", "place", cli.path, str(did),
+                             str(tx), str(ty), "--install", cli.install)
+                    placed += 1
+                    area += dw * dh
+                    taken.append((tx, ty, dw, dh))
+                except CliError:
+                    pass
+            # **DD2 항목을 지우고 지형만 남긴다.** 실제 맵의 두뎃은
+            # 저장할 때 지형으로 눌러 담겨 DD2 가 비어 있다 (실측 DD2
+            # 중앙 0~18개, 타일은 868칸). 항목을 남겨 두면 나중에
+            # `doodad check` 가 자리 어긋남을 잡거나 에디터가 두뎃을
+            # 통째로 옮겨 지형을 되돌릴 수 있다.
+            if placed:
+                try:
+                    cli.edit("doodad", "to-terrain", cli.path,
+                             "--install", cli.install)
+                except CliError:
+                    pass
+            after = _components(walk_grid(cli, tileset_id, 0, 0, W, H), probes)
+            if after == before:
+                return placed
+            # 길이 끊겼다 — 되돌리고 성기게
+            shutil.copy(backup, cli.path)
+            placed = 0
+            density /= 2.0
+        return 0
+    finally:
+        if os.path.exists(backup):
+            os.remove(backup)
 
 # ------------------------------------------------- 맵에서 나눠 쓰는 것들
 #

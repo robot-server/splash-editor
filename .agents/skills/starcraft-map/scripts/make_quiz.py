@@ -317,6 +317,16 @@ def main(argv=None):
     print("시야를 엽니다...")
     scmap.reveal_for_all(cli, a.players)
 
+
+    # 방 테두리를 두뎃으로 꾸민다. 실측 유즈맵 76장 중 70장(92%)이
+    # 두뎃 타일을 쓰고, 중앙 868칸이며 그 89%가 걷기 경계 두 칸 안에
+    # 몰려 있다. 내 맵은 0칸이었다 — 그림으로 보고서야 알았다.
+    # 걷기를 막는 두뎃은 `data/doodad-walk.json` 을 보고 걸러 낸다.
+    print("방 테두리를 두뎃으로 꾸밉니다...")
+    _clear = [(u["x"] // 32 - 2, u["y"] // 32 - 2, 5, 5) for u in cli.units()]
+    _nd = scmap.decorate_rim(cli, ts, [pad_o, pad_x], rng, keep_clear=_clear)
+    print(f"  두뎃 {_nd}개")
+
     print("브리핑을 짭니다...")
     cli.apply_briefing(scmap.briefing_text(
         [f"OX 문제가 {len(questions)}개 나옵니다.",

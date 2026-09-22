@@ -83,10 +83,17 @@ python3 $S/verify_map.py out.scx
 python3 $S/preview.py out.scx look.png
 ```
 
-> **밀리맵 지형 자동 생성은 아직 안 된다.** 세 번 시도해 세 번 다
-> 슬롭이 나왔다. 왜 그런지와 다음에 할 것은
+> **밀리맵 지형 자동 생성은 아직 안 된다.** **네 번** 시도해 네 번 다
+> 슬롭이 나왔다. 네 번째는 형상 지표 셋을 실측 대역에 맞추는 데
+> 성공했는데 그림은 **꽃잎 열여섯 장짜리 눈송이**였다. 왜 그런지,
+> 지표를 재는 데 세 번 틀린 기록, 그리고 확인된 ISOM 마름모 격자 사실은
 > [references/why-procedural-fails.md](references/why-procedural-fails.md)
-> 에 있다. 억지로 내놓지 말고 사용자에게 사실대로 말한다.
+> 와 [references/melee-terrain.md](references/melee-terrain.md) 에 있다.
+> 억지로 내놓지 말고 사용자에게 사실대로 말한다.
+>
+> 쓸 수 있게 만들어 둔 것: `scripts/melee_shape.py` (고도 마스크 ·
+> 원판 형태 연산으로 곡률 불변식 · 램프 자리 예약 · 형상 지표),
+> `scripts/measure_terrain_types.py` (타일셋별 고지 문턱).
 
 만들어지는 것은 **뼈대**다. 가운데가 비어 있으니 지형을 얹어 완성한다.
 [references/melee-terrain.md](references/melee-terrain.md) 에 ISOM 브러시·
@@ -106,7 +113,9 @@ python3 $S/preview.py out.scx look.png
 요지만 옮기면:
 
 - 유닛 중앙값 **677개**(밀리의 다섯 배), 트리거 **237개**, 이름 붙인
-  로케이션 **114개**, 두뎃 **0개**.
+  로케이션 **114개**. 두뎃은 **타일로 눌러 담겨** 있어 DD2 항목은 0개지만
+  타일로는 중앙 **868칸**이고 92%의 맵이 쓴다 — 방 테두리에 몰려 있다
+  (`scmap.decorate_rim`).
 - `Create Unit` 과 `Preserve Trigger` 가 나란히 **98%**. "계속 도는
   트리거가 유닛을 준다" 가 유즈맵의 기본 골격이다.
 - `Bring` 조건이 **97%** — 판정의 거의 전부가 "로케이션에 무엇이 몇 기
@@ -136,7 +145,17 @@ scmap.cover_map(cli, pal, W, H)               # 맵 전체를 못 걷는 지형�
 scmap.room(cli, pal, x, y, w, h, rim=1)       # 방 + 다른 지형 테두리
 pal.fill(cli, "path", x, y, w, h)             # 통로
 scmap.pad(cli, pal, bx, by, 3, 3)             # 비콘 밟을 자리 (실측 94%)
+scmap.decorate_rim(cli, ts, rooms, rng,       # 테두리 두뎃 (실측 92%가 쓴다)
+                   keep_clear=unit_rects)
 ```
+
+**두뎃도 꼭 넣는다.** 실측 유즈맵 76장 중 70장(92%)이 두뎃 타일을 쓰고
+중앙 868칸이며, 그 89%가 걷기 경계 두 칸 안에 몰려 있다. 앞서 실측 표에
+"유즈맵 두뎃 0개" 라고 적어 두었는데 **DD2 섹션만 센 것**이었다 — 에디터
+두뎃은 저장할 때 지형(MTXM)으로 눌러 담긴다. `decorate_rim` 은
+`data/doodad-walk.json` 을 보고 **걷기를 막는 두뎃을 걸러** 쓰고, 겹치지
+않게 놓고, 테두리에서 두 칸 물려 벽을 뚫지 않는다 (셋 다 실제로 틀려 본
+것이다).
 
 ## 유즈맵을 만드는 방식 — 생성기가 아니라 부품
 
