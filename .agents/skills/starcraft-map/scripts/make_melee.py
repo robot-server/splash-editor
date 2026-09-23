@@ -37,7 +37,7 @@ TILESETS = {
     "space":    (1, "Platform", "High Platform"),
     "install":  (2, "Substructure", "Substructure"),
     "ashworld": (3, "Magma", "High Dirt"),
-    "jungle":   (4, "Dirt", "High Dirt"),
+    "jungle":   (4, "Jungle", "High Dirt"),
     "desert":   (5, "Tar", "High Dirt"),
     "ice":      (6, "Ice", "High Snow"),
     "twilight": (7, "Dirt", "High Dirt"),
@@ -972,6 +972,62 @@ def main(argv=None):
                          "--install", cli.install)
             if drop:
                 print(f"  칸과 어긋난 두뎃 {len(drop)}개를 뺐습니다")
+
+    # 램프·길이 자원 칸의 짓기 비트를 지우면 기본 에디터에서 못 놓는 칸이 된다.
+    # 그 칸만 같은 높이의 짓기 가능 타일로 되돌린다. 맵 전체를 평지로 만들지 않는다.
+    tiletbl = scmap.tileset_tiles(cli, tileset_id)
+    fresh = cli.tiles(0, 0, width, height)
+
+    def sample_tile(group: int, elev: int) -> int | None:
+        for tid, prop in tiletbl.items():
+            if tid >> 4 == group and prop[0] == elev and prop[1] and prop[2]:
+                return tid
+        for tid, prop in tiletbl.items():
+            if tid >> 4 == group and prop[1] and prop[2]:
+                return tid
+        return None
+
+    low_tile = sample_tile(low_terrain, 0)
+    high_tile = sample_tile(high_terrain, 1) or sample_tile(high_terrain, 0)
+    repaired = 0
+    for u in cli.units():
+        if u["type"] not in scmap.MINERALS and u["type"] != scmap.VESPENE_GEYSER:
+            continue
+        fw, fh = (4, 2) if u["type"] == scmap.VESPENE_GEYSER else (2, 1)
+        for (xx, yy) in scmap._foot_cells(u["x"], u["y"], fw, fh):
+            prop = scmap._cell_prop(fresh, tiletbl, xx, yy)
+            if prop is not None and prop[1] and prop[2]:
+                continue
+            elev = prop[0] if prop is not None else 0
+            tid = high_tile if elev >= 1 else low_tile
+            if tid is None:
+                continue
+            cli.edit("terrain", "set", cli.path, str(xx), str(yy), str(tid))
+            repaired += 1
+    if repaired:
+        print(f"  짓기 불가가 된 자원 칸 {repaired}개를 같은 높이로 되돌렸습니다")
+
+    # 램프 양옆 절벽에는 코퍼스의 걷는 절벽 두뎃을 칸마다 붙인다.
+    # 램프 두뎃과 절벽 선이 떨어져 보이지 않게 하는 자리다.
+    walk_tab = scmap.doodad_walk_table(tileset_id)
+    cliff_ids = [i for i, meta in walk_tab.items()
+                 if meta.get("kind") == "Cliff" and meta.get("walk")
+                 and meta.get("w", 9) <= 4 and meta.get("h", 9) <= 4]
+    if cliff_ids and ramp_at:
+        cid = cliff_ids[0]
+        cw, ch = walk_tab[cid]["w"], walk_tab[cid]["h"]
+        for (rx, ry, direction) in ramp_at.values():
+            if direction in ("left", "right"):
+                flanks = [(rx, ry - 3), (rx, ry + 3)]
+            else:
+                flanks = [(rx - 3, ry), (rx + 3, ry)]
+            for (px, py) in flanks:
+                if not (2 <= px < width - 6 and 2 <= py < height - 6):
+                    continue
+                try:
+                    scmap.place_doodad(cli, cid, px, py, cw, ch)
+                except CliError:
+                    pass
 
     # 자원량은 다 놓은 뒤 한 번에 맞춘다.
     scmap.set_all_resources(cli)
