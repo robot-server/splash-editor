@@ -1015,6 +1015,26 @@ def main(argv=None):
                     fixed -= fixed % 2          # 마름모 격자에 맞춘다
                     fixed = max(0, min(width - 6, fixed))
                 cands = scmap.ramp_candidates(tileset_id, direction)
+                # 둥근 고지 가장자리는 램프 앞에서 절벽이 끊긴다.
+                # 입구 너비만 비우고, 그 양옆은 직선 고지로 이어 붙인다.
+                mouth = 3
+                if horizontal:
+                    hx = max(2, min(width - 4, edge - step))
+                    hx -= hx % 2
+                    for dy in range(-10, 11):
+                        if abs(dy) <= mouth:
+                            continue
+                        yy = sy + dy
+                        if 2 <= yy < height - 2:
+                            cli.isom(hx, yy, high_terrain)
+                else:
+                    hy = max(2, min(height - 4, edge - step))
+                    for dx in range(-10, 11):
+                        if abs(dx) <= mouth:
+                            continue
+                        xx = sx + dx
+                        if 2 <= xx < width - 2:
+                            cli.isom(xx - (xx % 2), hy, high_terrain)
                 got = scmap.place_ramp_checked(
                     cli, tileset_id, edge, fixed,
                     high_point=(sx, sy), low_point=low, direction=direction,
