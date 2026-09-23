@@ -421,18 +421,55 @@ def main(argv=None):
     if args.natural_minerals > 0:
         print("앞마당을 놓습니다...")
         cx, cy = (width - 1) / 2.0, (height - 1) / 2.0
-        for i, (sx, sy) in enumerate(starts):
-            vx, vy = cx - sx, cy - sy
-            length = math.hypot(vx, vy) or 1.0
-            nx = int(round(sx + vx / length * args.natural_distance))
-            ny = int(round(sy + vy / length * args.natural_distance))
-            nx = max(8, min(width - 9, nx))
-            ny = max(8, min(height - 9, ny))
-            ox = -1 if nx <= cx else 1
-            oy = -1 if ny <= cy else 1
-            nx, ny = resource_anchor(cli, tileset_id, nx, ny,
-                                     args.natural_minerals, args.natural_gas,
-                                     ox, oy, width, height)
+        # 정면(맵 중심)으로만 두면 3인 앞마당이 가운데에서 한 덩이가 된다.
+        # 모든 스타팅에 같은 부호 각도를 더하면 회전 대칭은 유지된다.
+        # 자원이 다 들어가는 자리를 고르고, 절벽이라 빠진 개수로 나머지
+        # 앞마당을 깎지 않는다. 한 자리의 짧은 거리로 맞추지도 않는다.
+        def natural_sites(ang: float, extra: int):
+            sites = []
+            for (sx, sy) in starts:
+                base = math.atan2(cy - sy, cx - sx) + ang
+                dist = args.natural_distance + extra
+                tx = int(round(sx + dist * math.cos(base)))
+                ty = int(round(sy + dist * math.sin(base)))
+                if not (8 <= tx < width - 9 and 8 <= ty < height - 9):
+                    return None
+                ox = 1 if tx >= sx else -1
+                oy = 1 if ty >= sy else -1
+                ax, ay = resource_anchor(cli, tileset_id, tx, ty,
+                                         args.natural_minerals, args.natural_gas,
+                                         ox, oy, width, height)
+                if math.hypot(ax - tx, ay - ty) > 8:
+                    return None
+                d_anchor = math.dist((sx, sy), (ax, ay))
+                if not (args.natural_distance - 8 <= d_anchor <= args.natural_distance + 10):
+                    return None
+                sites.append((ax, ay, ox, oy))
+            return sites
+
+        sites = None
+        angs = ((0.65, -0.65, 0.95, -0.95, 0.4, -0.4, 1.2, -1.2)
+                if args.players == 3 else
+                (0.35, -0.35, 0.55, -0.55, 0.8, -0.8))
+        for ang in angs:
+            for extra in (6, 10, 0, 14, -6, 18):
+                sites = natural_sites(ang, extra)
+                if sites:
+                    break
+            if sites:
+                break
+        if sites is None:
+            sites = []
+            for (sx, sy) in starts:
+                base = math.atan2(cy - sy, cx - sx) + 0.65
+                dist = float(args.natural_distance)
+                tx = int(round(sx + dist * math.cos(base)))
+                ty = int(round(sy + dist * math.sin(base)))
+                tx = max(10, min(width - 11, tx))
+                ty = max(10, min(height - 11, ty))
+                sites.append((tx, ty, 1 if tx >= sx else -1, 1 if ty >= sy else -1))
+
+        for i, (nx, ny, ox, oy) in enumerate(sites):
             _placed, _skip = scmap.place_base(cli, nx, ny, owner=12,
                              minerals=args.natural_minerals,
                              gas=args.natural_gas,
@@ -474,45 +511,38 @@ def main(argv=None):
                     for idx in sorted(drop, reverse=True)[:have - lo]:
                         cli.edit("unit", "remove", cli.path, str(idx))
 
-            # **본진→앞마당 거리도 맞춘다.**
-            #
-            # 앵커를 본진에서 가운데 쪽으로 같은 거리에 두어도, 자원을
-            # 어느 쪽으로 눕히느냐에 따라 덩이의 **무게중심**이 달라져
-            # 실제 거리가 어긋난다 — 3인용에서 23~28타일로 벌어졌다.
-            # 재는 것이 무게중심이니, 놓은 뒤에 재서 반지름 방향으로
-            # 밀어 맞춘다.
-            ncx, ncy = (width - 1) / 2.0, (height - 1) / 2.0
-            groups = []
-            for (sx, sy), (nx, ny, _c, _s) in zip(starts, nat_placed):
-                us = [u for u in cli.units()
-                      if ("Mineral Field" in u["type_name"]
-                          or "Vespene Geyser" in u["type_name"])
-                      and near(u, nx, ny)]
-                if not us:
-                    groups.append(None)
+            # 무게중심을 목표 거리로 민다. 짧은 자리의 거리로 나머지를
+            # 당기지 않고, 유닛은 가장 가까운 앞마당 앵커에만 속한다.
+            pools = [[] for _ in nat_placed]
+            for u in cli.units():
+                if "Mineral Field" not in u["type_name"] and "Vespene Geyser" not in u["type_name"]:
                     continue
-                gx = sum(u["x"] / 32 for u in us) / len(us)
-                gy = sum(u["y"] / 32 for u in us) / len(us)
-                groups.append((us, math.dist((sx, sy), (gx, gy))))
-            have_d = [g[1] for g in groups if g]
-            if len(have_d) > 1 and max(have_d) - min(have_d) > 2:
-                target = sum(have_d) / len(have_d)
-                print(f"  본진→앞마당 거리가 {min(have_d):.0f}~{max(have_d):.0f}"
-                      f"타일로 어긋나 {target:.0f}타일로 맞춥니다")
-                for (sx, sy), g in zip(starts, groups):
-                    if not g:
-                        continue
-                    us, d = g
-                    shift = target - d
-                    vx, vy = ncx - sx, ncy - sy
-                    L = math.hypot(vx, vy) or 1.0
-                    dx, dy = round(vx / L * shift), round(vy / L * shift)
-                    if dx == 0 and dy == 0:
-                        continue
-                    for u in us:
-                        cli.edit("unit", "move", cli.path, str(u["index"]),
-                                 str(u["x"] // 32 + dx),
-                                 str(u["y"] // 32 + dy), "--tiles")
+                ux, uy = u["x"] / 32, u["y"] / 32
+                best_i, best_d = None, 12.0
+                for i, (nx, ny, _c, _s) in enumerate(nat_placed):
+                    d = math.hypot(ux - nx, uy - ny)
+                    if d < best_d:
+                        best_i, best_d = i, d
+                if best_i is not None:
+                    pools[best_i].append(u)
+            for (sx, sy), pool in zip(starts, pools):
+                if not pool:
+                    continue
+                gx = sum(u["x"] / 32 for u in pool) / len(pool)
+                gy = sum(u["y"] / 32 for u in pool) / len(pool)
+                d = math.dist((sx, sy), (gx, gy))
+                shift = args.natural_distance - d
+                if abs(shift) < 1.5:
+                    continue
+                vx, vy = gx - sx, gy - sy
+                L = math.hypot(vx, vy) or 1.0
+                dx, dy = round(vx / L * shift), round(vy / L * shift)
+                if dx == 0 and dy == 0:
+                    continue
+                for u in pool:
+                    cli.edit("unit", "move", cli.path, str(u["index"]),
+                             str(u["x"] // 32 + dx), str(u["y"] // 32 + dy),
+                             "--tiles")
 
     # 5) 바깥 멀티 — 스타팅마다 같은 상대 위치에 놓아 대칭을 지킨다.
     #    공식 맵은 스타팅당 자원 덩이가 중앙값 4곳이다 (본진·앞마당 포함).
@@ -528,17 +558,32 @@ def main(argv=None):
             for k in range(args.expansions):
                 deg, scale = spread[k % len(spread)]
                 a = base_angle + math.radians(deg)
-                dist = args.natural_distance * scale
-                ex = int(round(sx + dist * math.cos(a)))
-                ey = int(round(sy + dist * math.sin(a)))
-                ex = max(8, min(width - 9, ex))
-                ey = max(8, min(height - 9, ey))
-                eox = -1 if ex <= cx else 1
-                eoy = -1 if ey <= cy else 1
-                ex, ey = resource_anchor(cli, tileset_id, ex, ey,
-                                         args.expansion_minerals,
-                                         args.expansion_gas,
-                                         eox, eoy, width, height)
+                dist = max(args.natural_distance * scale,
+                           args.natural_distance + 14)
+                placed_exp = False
+                for bump in (0, 6, 12, -6, 18):
+                    ex = int(round(sx + (dist + bump) * math.cos(a)))
+                    ey = int(round(sy + (dist + bump) * math.sin(a)))
+                    if not (8 <= ex < width - 9 and 8 <= ey < height - 9):
+                        continue
+                    eox = 1 if ex >= sx else -1
+                    eoy = 1 if ey >= sy else -1
+                    ax, ay = resource_anchor(cli, tileset_id, ex, ey,
+                                             args.expansion_minerals,
+                                             args.expansion_gas,
+                                             eox, eoy, width, height)
+                    # 다른 본진에서 앞마당보다 가까우면, 검증이 그 확장을
+                    # 그 본진의 앞마당으로 센다. 모든 스타팅에서 목표
+                    # 거리보다 먼 자리만 받는다.
+                    if (math.hypot(ax - ex, ay - ey) <= 4
+                            and all(math.dist((ax, ay), st)
+                                    >= args.natural_distance + 6
+                                    for st in starts)):
+                        ex, ey = ax, ay
+                        placed_exp = True
+                        break
+                if not placed_exp:
+                    continue
                 _, _skip = scmap.place_base(cli, ex, ey, owner=12,
                                  minerals=args.expansion_minerals,
                                  gas=args.expansion_gas,
@@ -681,20 +726,19 @@ def main(argv=None):
                 if any(not (2 <= px < width - 6 and 2 <= py < height - 6)
                        for px, py in spots):
                     continue
-                # 대칭 자리 전부가 같은 지형이어야 같은 두뎃을 놓을 수 있다
-                kinds = {gname.get(tile_rows[py][px] >> 4) for px, py in spots}
-                if len(kinds) != 1 or None in kinds:
-                    skipped_kind += 1
-                    continue
-                pool = by_kind.get(kinds.pop())
-                if not pool:
-                    skipped_kind += 1
-                    continue
-                d = rng.choice(pool)
-                if any(blocked(px, py, d["w"], d["h"]) for px, py in spots):
-                    skipped_res += 1
-                    continue
+                # 대칭 좌표는 그대로 두되, 칸마다 그 타일 그룹 이름의
+                # 두뎃을 고른다. 자리들의 지형 이름이 다르다고 세트 전체를
+                # 버리지 않는다.
                 for (px, py) in spots:
+                    kind = gname.get(tile_rows[py][px] >> 4)
+                    pool = by_kind.get(kind) if kind else None
+                    if not pool:
+                        skipped_kind += 1
+                        continue
+                    d = rng.choice(pool)
+                    if blocked(px, py, d["w"], d["h"]):
+                        skipped_res += 1
+                        continue
                     try:
                         # 두뎃은 **가운데 기준**으로 놓인다 — 왼위로 주면
                         # 제 크기의 절반만큼 밀린다
