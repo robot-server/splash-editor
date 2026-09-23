@@ -20,6 +20,8 @@ import argparse
 import math
 import os
 import random
+import re
+import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -716,6 +718,7 @@ def main(argv=None):
             rng = random.Random(args.seed)
             placed = skipped_res = skipped_kind = 0
             tries = 0
+            occupied: set[tuple[int, int]] = set()
             while placed < args.doodads and tries < args.doodads * 12:
                 tries += 1
                 bx = rng.randrange(4, width - 8)
@@ -730,13 +733,27 @@ def main(argv=None):
                 # 두뎃을 고른다. 자리들의 지형 이름이 다르다고 세트 전체를
                 # 버리지 않는다.
                 for (px, py) in spots:
+                    # 갈래 이름이 비어 있으면 그 칸과 짝을 못 짓는다.
+                    # 절벽·물 갈래는 램프가 따로 놓으므로 여기서 쓰지 않는다.
                     kind = gname.get(tile_rows[py][px] >> 4)
-                    pool = by_kind.get(kind) if kind else None
+                    if not kind or any(k in kind for k in
+                                       ("Cliff", "Bridges", "Wall", "Water")):
+                        skipped_kind += 1
+                        continue
+                    pool = by_kind.get(kind)
                     if not pool:
                         skipped_kind += 1
                         continue
                     d = rng.choice(pool)
+                    if d["kind"] != kind:
+                        skipped_kind += 1
+                        continue
                     if blocked(px, py, d["w"], d["h"]):
+                        skipped_res += 1
+                        continue
+                    foot = [(px + dx, py + dy)
+                            for dy in range(d["h"]) for dx in range(d["w"])]
+                    if any(cell in occupied for cell in foot):
                         skipped_res += 1
                         continue
                     try:
@@ -744,6 +761,7 @@ def main(argv=None):
                         # 제 크기의 절반만큼 밀린다
                         scmap.place_doodad(cli, d["id"], px, py,
                                            d["w"], d["h"])
+                        occupied.update(foot)
                         placed += 1
                     except CliError:
                         break
@@ -884,6 +902,24 @@ def main(argv=None):
                         continue
                     carve.append((px - (px % 2), ty, low_terrain))
         cli.isom_batch(carve)
+
+    # 길을 내며 덮인 장식은 그림이 칸과 어긋난다. 램프는 남긴다.
+    if args.doodads > 0:
+        proc = subprocess.run(
+            [cli.cli, "doodad", "check", cli.path, "--install", cli.install],
+            capture_output=True, text=True)
+        broken = [int(m.group(1)) for line in proc.stdout.splitlines()
+                  if (m := re.match(r"^\s*(\d+)\s+타일", line))]
+        if broken:
+            ramp_ids = {e["id"] for direction in ("left", "right", "up", "down")
+                        for e in scmap.ramp_candidates(tileset_id, direction)}
+            by_index = {d["index"]: d["id"] for d in cli.doodads()}
+            drop = [i for i in broken if by_index.get(i) not in ramp_ids]
+            for idx in sorted(drop, reverse=True):
+                cli.edit("doodad", "remove", cli.path, str(idx),
+                         "--install", cli.install)
+            if drop:
+                print(f"  칸과 어긋난 두뎃 {len(drop)}개를 뺐습니다")
 
     # 자원량은 다 놓은 뒤 한 번에 맞춘다.
     scmap.set_all_resources(cli)
