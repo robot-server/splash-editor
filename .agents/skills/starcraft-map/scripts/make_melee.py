@@ -219,23 +219,13 @@ def resource_anchor(cli: Cli, tileset_id: int, tile_x: int, tile_y: int,
     tiles = scmap.tileset_tiles(cli, tileset_id)
     grid = cli.tiles(0, 0, width, height)
 
-    def turn(dx, dy):
-        return dx * (1 if out_x < 0 else -1), dy * (1 if out_y < 0 else -1)
-
     def ok(ax, ay):
         if not (8 <= ax < width - 8 and 8 <= ay < height - 8):
             return False
-        for i in range(minerals):
-            dx, dy = scmap.MAIN_MINERAL_OFFSETS[i % len(scmap.MAIN_MINERAL_OFFSETS)]
-            dx, dy = turn(dx, dy)
-            if not _foot_ok(grid, tiles, ax * TILE + dx, ay * TILE + dy, 2, 1):
-                return False
-        for i in range(gas):
-            dx, dy = turn(*scmap.MAIN_GAS_OFFSET)
-            if not _foot_ok(grid, tiles, ax * TILE + dx,
-                            ay * TILE + dy + i * 96, 4, 2):
-                return False
-        return True
+        mins, gases = scmap.layout_resources(ax, ay, minerals, gas, out_x, out_y)
+        flat = [c for group in mins + gases for c in group]
+        # 자원끼리 높이가 같고, 그 높이에 4×3 본진 건물이 채집 거리에 서야 한다.
+        return scmap.townhall_pad(grid, tiles, ax, ay, flat, width, height) is not None
 
     if ok(tile_x, tile_y):
         return tile_x, tile_y
@@ -575,7 +565,8 @@ def main(argv=None):
             if any(math.hypot(ax - nx, ay - ny) < 16
                    for (nx, ny, _c, _s) in nat_placed):
                 return None
-            if any(math.hypot(ax - px, ay - py) < 11 for (px, py) in exp_pts):
+            # 미네랄 줄이 8타일 안이면 덩이가 합쳐져 확장이 사라진다.
+            if any(math.hypot(ax - px, ay - py) < 22 for (px, py) in exp_pts):
                 return None
             return ax, ay, eox, eoy
 
@@ -612,7 +603,7 @@ def main(argv=None):
                         continue
                     pts = [(ax, ay) for (_s, (ax, ay, _ox, _oy)) in spots]
                     if any(math.hypot(pts[a][0] - pts[b][0],
-                                      pts[a][1] - pts[b][1]) < 16
+                                      pts[a][1] - pts[b][1]) < 22
                            for a in range(len(pts)) for b in range(a)):
                         continue
                     chosen = spots
@@ -917,6 +908,18 @@ def main(argv=None):
         print(f"  {[i + 1 for i in bad]} 번이 갇혀 길을 냅니다 ({attempt + 1}번째)")
         # 갇힌 본진에서 가운데로 낮은 땅 띠를 낸다. 대칭을 지키려고
         # 모든 스타팅에 같은 붓질을 되풀이한다.
+        # 자원과 그 앞 4×3 기지는 건드리지 않는다. 길을 내다 높이가
+        # 갈라지면 미네랄은 Dirt, 가스는 High Dirt 가 된다.
+        keep = set()
+        for u in cli.units():
+            if ("Mineral" not in u["type_name"]
+                    and "Vespene" not in u["type_name"]
+                    and u["type"] != scmap.START_LOCATION):
+                continue
+            ux, uy = u["x"] // 32, u["y"] // 32
+            for dy in range(-3, 4):
+                for dx in range(-3, 4):
+                    keep.add((ux + dx, uy + dy))
         carve = []
         cx_m, cy_m = (width - 1) / 2.0, (height - 1) / 2.0
         for (sx, sy) in starts:
@@ -941,6 +944,8 @@ def main(argv=None):
                 for d in (-4, -2, 0, 2, 4):
                     px = tx + d
                     if not (3 <= px < width - 3 and 3 <= ty < height - 3):
+                        continue
+                    if (px, ty) in keep:
                         continue
                     # **램프 위는 절대 칠하지 않는다.** 칠하면 램프가 지워져
                     # 본진이 다시 갇힌다 — 길을 낼수록 더 막히는 꼴이 된다.

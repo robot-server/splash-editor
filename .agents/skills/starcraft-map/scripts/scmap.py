@@ -556,6 +556,80 @@ MAIN_RAMP_DISTANCE = 18
 # 좁은 길목으로 나가는 본진이 램프 있는 본진보다 흔하다.
 
 
+def _cell_prop(grid, tiles, tx: int, ty: int):
+    """칸의 (높이, 걷기, 짓기). 맵 밖이거나 표에 없으면 None."""
+    if grid is None or not (0 <= ty < len(grid) and 0 <= tx < len(grid[0])):
+        return None
+    return tiles.get(grid[ty][tx])
+
+
+def _foot_cells(px: int, py: int, w: int, h: int):
+    tx, ty = px // TILE, py // TILE
+    cells = []
+    for yy in range(ty - h // 2, ty + (h + 1) // 2):
+        for xx in range(tx - w // 2, tx + (w + 1) // 2):
+            cells.append((xx, yy))
+    return cells
+
+
+def layout_resources(tile_x: int, tile_y: int, minerals: int, gas: int,
+                     out_x: int, out_y: int):
+    """자원 발자국 칸. 미네랄은 2×1, 가스는 4×2."""
+    def turn(dx, dy):
+        return dx * (1 if out_x < 0 else -1), dy * (1 if out_y < 0 else -1)
+
+    mins, gases = [], []
+    for i in range(minerals):
+        dx, dy = turn(*MAIN_MINERAL_OFFSETS[i % len(MAIN_MINERAL_OFFSETS)])
+        mins.append(_foot_cells(tile_x * TILE + dx, tile_y * TILE + dy, 2, 1))
+    for i in range(gas):
+        dx, dy = turn(*MAIN_GAS_OFFSET)
+        gases.append(_foot_cells(tile_x * TILE + dx,
+                                 tile_y * TILE + dy + i * 96, 4, 2))
+    return mins, gases
+
+
+def townhall_pad(grid, tiles, anchor_x: int, anchor_y: int,
+                 resource_cells, width: int, height: int):
+    """커맨드·넥서스·해처리가 같이 들어가는 4×3.
+
+    셋 다 4×3 이고, 일꾼이 붙으려면 자원과 **같은 높이**여야 한다.
+    Dirt 위에 미네랄을 두고 High Dirt 에 가스를 두면 기지가 한쪽에만
+    걸쳐 채집을 못 한다. 건물 칸에서 자원 칸까지 8타일 안이어야 한다.
+    """
+    if grid is None:
+        return anchor_x, anchor_y
+    elev = None
+    for (tx, ty) in resource_cells:
+        p = _cell_prop(grid, tiles, tx, ty)
+        # 자원 칸 자체는 짓기 불가여도 된다. 일꾼이 옆에 서면 된다.
+        # 높이가 없거나 못 걸으면 채집을 못 한다.
+        if p is None or not p[1]:
+            return None
+        if elev is None:
+            elev = p[0]
+        elif p[0] != elev:
+            return None
+    blocked = set(resource_cells)
+    for oy in range(-8, 9):
+        for ox in range(-8, 9):
+            rect = [(anchor_x + ox + dx, anchor_y + oy + dy)
+                    for dy in range(3) for dx in range(4)]
+            if any(c in blocked or not (0 <= c[0] < width and 0 <= c[1] < height)
+                   for c in rect):
+                continue
+            if any((_cell_prop(grid, tiles, tx, ty) or (None, 0, 0))[0] != elev
+                   or not (_cell_prop(grid, tiles, tx, ty) or (0, 0, 0))[1]
+                   or not (_cell_prop(grid, tiles, tx, ty) or (0, 0, 0))[2]
+                   for tx, ty in rect):
+                continue
+            cx = anchor_x + ox + 1.5
+            cy = anchor_y + oy + 1.0
+            if all(math.hypot(tx - cx, ty - cy) <= 8 for tx, ty in resource_cells):
+                return anchor_x + ox, anchor_y + oy
+    return None
+
+
 def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
                minerals: int = 9, gas: int = 1,
                out_x: int = -1, out_y: int = -1,
@@ -582,6 +656,15 @@ def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
     if tiles is not None:
         grid = cli.tiles(0, 0, width, height)
 
+    def walkable(px_x: int, px_y: int, w: int, h: int) -> bool:
+        if grid is None:
+            return True
+        for (xx, yy) in _foot_cells(px_x, px_y, w, h):
+            p = _cell_prop(grid, tiles, xx, yy)
+            if p is None or not p[1]:
+                return False
+        return True
+
     def buildable(px_x: int, px_y: int, w: int, h: int) -> bool:
         """자원이 놓일 칸이 다 **짓기 가능**한가.
 
@@ -602,6 +685,16 @@ def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
     if start_location:
         cli.place(START_LOCATION, tile_x, tile_y, owner)
 
+    res_mins, res_gas = layout_resources(tile_x, tile_y, minerals, gas,
+                                         out_x, out_y)
+    flat = [c for group in res_mins + res_gas for c in group]
+    if tiles is not None and townhall_pad(
+            grid, tiles, tile_x, tile_y, flat, width, height) is None:
+        # 높이가 섞였거나 4×3 기지를 같은 높이에 못 짓는다.
+        # 자원만 두면 채집을 못 하므로 하나도 놓지 않는다.
+        skipped = [("layout", tile_x, tile_y)]
+        return [], skipped
+
     def turn(dx, dy):
         """자원을 본진 **바깥쪽**으로 보낸다.
 
@@ -616,7 +709,9 @@ def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
         dx, dy = MAIN_MINERAL_OFFSETS[i % len(MAIN_MINERAL_OFFSETS)]
         dx, dy = turn(dx, dy)
         px, py = tile_x * TILE + dx, tile_y * TILE + dy
-        if not buildable(px, py, 2, 1):
+        # 미네랄 칸은 걷기만 되면 된다. 짓기 비트까지 요구하면
+        # 절벽 가장자리의 멀쩡한 미네랄을 빼게 된다.
+        if not walkable(px, py, 2, 1):
             skipped.append(("mineral", px // TILE, py // TILE))
             continue
         cli.edit("unit", "place", cli.path, str(kinds[i % 3]),
@@ -625,7 +720,7 @@ def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
     for i in range(gas):
         dx, dy = turn(*MAIN_GAS_OFFSET)
         px, py = tile_x * TILE + dx, tile_y * TILE + dy + i * 96
-        if not buildable(px, py, 4, 2):
+        if not walkable(px, py, 4, 2):
             skipped.append(("gas", px // TILE, py // TILE))
             continue
         cli.edit("unit", "place", cli.path, str(VESPENE_GEYSER),
