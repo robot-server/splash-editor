@@ -215,7 +215,9 @@ def check(cli: Cli, info: dict, text: str) -> list[tuple[str, str]]:
     fights = bool(re.search(r'Create Unit\w*\([^)]*\)', text)) and \
         bool(re.search(r'\b(Kill|Bring)\(', text))
     heals = bool(re.search(r'Modify Unit (Hit Points|Shield Points)', text))
-    revives = bool(re.search(r'Command\([^)]*"Men"[^)]*At most,\s*0', text))
+    # 문턱을 0 으로 못 박으면 안 된다 — "둘 밑으로 떨어지면 채워 준다"
+    # 처럼 여유를 둔 맵을 부활 없는 맵으로 잘못 읽는다 (실제로 겪었다).
+    revives = bool(re.search(r'Command\([^)]*"Men"[^)]*At most,\s*\d+', text))
     if fights and not heals and not revives:
         out.append(("?", "싸움은 있는데 **회복도 부활도 없습니다.** 한 번 깎인 "
                          "체력이 끝까지 그대로라 구경만 하다 지게 됩니다. "

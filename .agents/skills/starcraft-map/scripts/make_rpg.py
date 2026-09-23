@@ -43,6 +43,10 @@ ZONES = [
 BOSS = ("Torrasque (Ultralisk)", "토라스크")
 
 HEAL_COST = 60                        # 구역 회복 발판 값
+# 되살리기 잠금 — 이 맵에 캐리어·간트리서·스타게이트가 없어 저절로
+# 생기지 않는다 (scmap.COUNTER_SLOTS).
+REVIVE_LOCK = "Protoss Interceptor"
+
 HERO = "Jim Raynor (Marine)"          # 실측 유즈맵 49% 가 영웅을 쓴다
 SHOPS = [("Terran Engineering Bay", "공격력", 200),
          ("Terran Armory", "방어력", 250),
@@ -172,15 +176,30 @@ Actions:
     # **Wait 로 시간을 끌지 않는다.** 한 플레이어는 동시에 웨이트
     # 트리거를 하나만 쓸 수 있어서, 여기서 4초를 끌면 그 플레이어의
     # 다른 트리거가 전부 뒤로 밀린다. 게다가 하이퍼 트리거와 부딪친다.
+    # **잠금이 반드시 있어야 한다.** 조건(`Men At most 0`)은 새 영웅이
+    # 실제로 잡히기 전까지 계속 참이라, 하이퍼 트리거와 맞물리면 한 번에
+    # 수십 기가 쏟아진다. 죽음 수를 잠금으로 써서 한 번만 주고, 영웅이
+    # 생기면 잠금을 푼다 (scmap.part_respawn 이 하는 것과 같다).
     for p in range(1, players + 1):
         add(f'''Trigger("Player {p}"){{
 Conditions:
 \tCommand("Player {p}", "Men", At most, 0);
+\tDeaths("Player {p}", "{REVIVE_LOCK}", Exactly, 0);
 
 Actions:
+\tSet Deaths("Player {p}", "{REVIVE_LOCK}", Set To, 1);
 \tCreate Unit with Properties("Player {p}", "{HERO}", 1, "P{p} Home", 1);
 \tDisplay Text Message(Always Display, "\\x06죽었습니다.\\x02 마을에서 다시 시작합니다.");
 \tCenter View("P{p} Home");
+\tPreserve Trigger();
+}}''')
+        add(f'''Trigger("Player {p}"){{
+Conditions:
+\tCommand("Player {p}", "Men", At least, 1);
+\tDeaths("Player {p}", "{REVIVE_LOCK}", At least, 1);
+
+Actions:
+\tSet Deaths("Player {p}", "{REVIVE_LOCK}", Set To, 0);
 \tPreserve Trigger();
 }}''')
         # 마을 상점 — 비콘마다 다른 강화.
@@ -421,6 +440,22 @@ def main(argv=None):
 
     print("트리거를 짭니다...")
     cli.apply_triggers(build_triggers(a.players, a.zones, enemy, boss_p, th))
+
+    # **유닛 능력치를 유즈맵 값으로 정한다.**
+    #
+    # 실측 유즈맵 479장 중 473장(98%)이 유닛 설정을 고치고 중앙 90종을
+    # 건드린다. 마린 체력 중앙값이 250 이다 — 원래 40 이니 여섯 배다.
+    # 그대로 두면 유즈맵이 아니라 "스타 유닛으로 노는 맵" 이다
+    # (docs/unit/settings.md).
+    #
+    # 트리거를 넣은 **뒤에** 부른다 — 맵에 실제로 나오는 유닛만 고치려면
+    # 트리거가 무엇을 만드는지 알아야 한다.
+    try:
+        _used = scmap.units_in_play(cli, cli.trigger_text())
+    except Exception:
+        _used = None
+    scmap.setup_usemap_units(cli, sorted(_used) if _used else None)
+
     if a.name:
         cli.set_map_name(a.name,
             f"마을에서 나가 구역 {a.zones}개를 깨고 보스를 잡으면 이깁니다. "

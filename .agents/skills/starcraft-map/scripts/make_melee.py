@@ -23,8 +23,10 @@ import random
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import corpus
+import melee_shape
 import scmap
-from scmap import Cli, CliError
+from scmap import TILE, Cli, CliError
 
 # 타일셋 이름 → 번호, 그리고 그 타일셋에서 쓸 저지대·고지대 ISOM 지형 이름.
 # 이름은 `splash-cli terrain types <맵> --install ...` 이 내는 것과 같다.
@@ -153,6 +155,98 @@ def paint_plateau(cli: Cli, cx: int, cy: int, half_w: int, half_h: int,
     cli.isom_batch(plateau_strokes(cx, cy, half_w, half_h, terrain, width, height))
 
 
+def _foot_ok(grid, tiles, px: int, py: int, w: int, h: int) -> bool:
+    """자원 발자국이 전부 걷고 지을 수 있는 칸인지."""
+    tx, ty = px // TILE, py // TILE
+    for yy in range(ty - h // 2, ty + (h + 1) // 2):
+        for xx in range(tx - w // 2, tx + (w + 1) // 2):
+            if not (0 <= yy < len(grid) and 0 <= xx < len(grid[0])):
+                return False
+            p = tiles.get(grid[yy][xx])
+            if p is None or not p[1] or not p[2]:
+                return False
+    return True
+
+
+def recolor_floor(strokes, width, height, low_terrain, alts, rng,
+                  starts, symmetry, players):
+    """저지대 마름모를 큰 얼룩으로 다른 바닥 지형에 나눠 준다.
+
+    흙 한 가지로만 칠하면 4x4 창이 그룹 두 개짜리 체커라 맵 대부분이
+    균일 창으로 집계된다. 얼룩은 대칭 복사하고, 스타팅 반경 18타일은
+    흙으로 둔다. 경계를 본진 안에 두면 그 칸이 짓기 불가가 되어
+    미네랄이 빠지고, 자리마다 다른 칸으로 밀려 대칭이 깨진다.
+    """
+    if not alts:
+        return strokes
+    blobs = []
+    for _ in range(18):
+        bx, by = rng.randrange(width), rng.randrange(height)
+        alt = rng.choice(alts)
+        rad = rng.uniform(9.0, 16.0)
+        for px, py in scmap.symmetric_points(bx, by, symmetry, players,
+                                             width, height):
+            blobs.append((px, py, alt, rad))
+    guard = [(sx, sy, 18.0) for (sx, sy) in starts]
+    out = []
+    for st in strokes:
+        x, y, terrain = st[0], st[1], st[2]
+        brush = st[3] if len(st) > 3 else 1
+        if terrain == low_terrain and not any(
+                (x - gx) * (x - gx) + (y - gy) * (y - gy) <= gr * gr
+                for gx, gy, gr in guard):
+            best = None
+            for bx, by, alt, rad in blobs:
+                d2 = (x - bx) * (x - bx) + (y - by) * (y - by)
+                if d2 <= rad * rad and (best is None or d2 < best[0]):
+                    best = (d2, alt)
+            if best is not None:
+                terrain = best[1]
+        out.append((x, y, terrain, brush))
+    return out
+
+
+def resource_anchor(cli: Cli, tileset_id: int, tile_x: int, tile_y: int,
+                    minerals: int, gas: int, out_x: int, out_y: int,
+                    width: int, height: int) -> tuple[int, int]:
+    """자원 아홉 덩이와 가스가 다 들어가는 가장 가까운 칸.
+
+    계산한 자리가 절벽 띠면 나선형으로 한 칸씩 옮겨 본다. 못 찾으면
+    원래 자리를 돌려주고, 놓는 쪽에서 빠진 개수를 알린다.
+    """
+    tiles = scmap.tileset_tiles(cli, tileset_id)
+    grid = cli.tiles(0, 0, width, height)
+
+    def turn(dx, dy):
+        return dx * (1 if out_x < 0 else -1), dy * (1 if out_y < 0 else -1)
+
+    def ok(ax, ay):
+        if not (8 <= ax < width - 8 and 8 <= ay < height - 8):
+            return False
+        for i in range(minerals):
+            dx, dy = scmap.MAIN_MINERAL_OFFSETS[i % len(scmap.MAIN_MINERAL_OFFSETS)]
+            dx, dy = turn(dx, dy)
+            if not _foot_ok(grid, tiles, ax * TILE + dx, ay * TILE + dy, 2, 1):
+                return False
+        for i in range(gas):
+            dx, dy = turn(*scmap.MAIN_GAS_OFFSET)
+            if not _foot_ok(grid, tiles, ax * TILE + dx,
+                            ay * TILE + dy + i * 96, 4, 2):
+                return False
+        return True
+
+    if ok(tile_x, tile_y):
+        return tile_x, tile_y
+    for r in range(1, 12):
+        for dy in range(-r, r + 1):
+            for dx in range(-r, r + 1):
+                if max(abs(dx), abs(dy)) != r:
+                    continue
+                if ok(tile_x + dx, tile_y + dy):
+                    return tile_x + dx, tile_y + dy
+    return tile_x, tile_y
+
+
 def find_cliff_row(cli: Cli, cx: int, y_from: int, y_to: int) -> int | None:
     """세로로 훑어 고지대가 끝나는 줄을 찾는다 — 램프를 걸 자리다."""
     step = 1 if y_to > y_from else -1
@@ -205,9 +299,11 @@ def main(argv=None):
                     help="가운데 지형을 얹지 않는다")
     ap.add_argument("--features", type=int, default=4,
                     help="대칭으로 얹을 지형 덩이 수 (고지대·다른 바닥 지형)")
-    ap.add_argument("--doodads", type=int, default=34,
-                    help="놓을 두뎃 수. 공식 밀리맵 183곳 전수 중앙값이 34다 "
-                         "(4분위 0~208). 앞서 135로 알았던 것은 유즈맵이 섞인 값")
+    ap.add_argument("--doodads", type=int, default=None,
+                    help="놓을 두뎃 수. 안 주면 **타일셋별 실측**에서 뽑는다 "
+                         "(Badlands 중앙 208 · Jungle 145 · Space 0). "
+                         "전체 중앙값 34를 박아 두었던 것이 잘못이었다 — "
+                         "어느 타일셋에도 맞지 않는 수다")
     ap.add_argument("--seed", type=int, default=1, help="두뎃 자리 난수 씨앗")
     ap.add_argument("--plateau", action="store_true",
                     help="본진을 고지대에 올리고 램프를 낸다. 걸어서 통하는 "
@@ -256,6 +352,10 @@ def main(argv=None):
     symmetry = args.symmetry or DEFAULT_SYMMETRY[args.players]
     if symmetry == "rot90" and width != height:
         symmetry = "radial"
+    # 본진 미네랄은 스타팅에서 7타일 바깥이다. inset 10 이면 그 줄이
+    # 맵 테두리와 절벽에 걸친다.
+    if args.plateau and not args.no_plateau and args.inset < 28:
+        args.inset = 28
 
     tileset_id, low_name, high_name = TILESETS[args.tileset]
 
@@ -280,17 +380,22 @@ def main(argv=None):
     starts = start_positions(args.players, symmetry, width, height, args.inset)
     print("스타팅 자리:", starts)
 
-    # 1) 본진 고지대 — 대칭 자리마다 같은 붓질을 되풀이한다.
-    #    기본은 평지다. 고지대는 램프가 실제로 통해야 뜻이 있는데, 아직
-    #    모든 지형에서 통하는 램프를 찾지 못한다 (references/melee-terrain.md).
+    # 1) 고도. --plateau 일 때만. 고른 각도의 고리(design)는 지표는
+    #    맞는데 그림이 눈송이라 쓰지 않는다. 본진·센터 능선·변 확장만
+    #    있는 design_lanes 를 칠한다.
     args.no_plateau = not args.plateau
+    shape = None
     if not args.no_plateau:
-        print("본진 고지대를 칠합니다...")
-        strokes = []
-        for (sx, sy) in starts:
-            strokes += plateau_strokes(sx, sy, scmap.MAIN_PLATEAU_HALF_W,
-                                       scmap.MAIN_PLATEAU_HALF_H,
-                                       high_terrain, width, height)
+        print("본진·능선·확장 고도를 칠합니다...")
+        shape = melee_shape.design_lanes(
+            width, height, args.players, symmetry, starts,
+            random.Random(args.seed))
+        print(melee_shape.report(shape))
+        alts = [types[n] for n in ("Mud", "Grass", "Rocky Ground") if n in types]
+        strokes = recolor_floor(
+            shape.strokes(low_terrain, high_terrain),
+            width, height, low_terrain, alts, random.Random(args.seed + 3),
+            starts, symmetry, args.players)
         cli.isom_batch(strokes)
 
     # 3) 스타팅 표시와 본진 자원
@@ -300,6 +405,9 @@ def main(argv=None):
         # 자원은 맵 바깥쪽으로 — 안쪽(램프 쪽)을 비워 둔다.
         out_x = -1 if sx <= cx_mid else 1
         out_y = -1 if sy <= cy_mid else 1
+        sx, sy = resource_anchor(cli, tileset_id, sx, sy,
+                                 args.main_minerals, args.main_gas,
+                                 out_x, out_y, width, height)
         _, _skip = scmap.place_base(cli, sx, sy, owner=i + 1,
                          minerals=args.main_minerals, gas=args.main_gas,
                          out_x=out_x, out_y=out_y, width=width, height=height,
@@ -320,11 +428,15 @@ def main(argv=None):
             ny = int(round(sy + vy / length * args.natural_distance))
             nx = max(8, min(width - 9, nx))
             ny = max(8, min(height - 9, ny))
+            ox = -1 if nx <= cx else 1
+            oy = -1 if ny <= cy else 1
+            nx, ny = resource_anchor(cli, tileset_id, nx, ny,
+                                     args.natural_minerals, args.natural_gas,
+                                     ox, oy, width, height)
             _placed, _skip = scmap.place_base(cli, nx, ny, owner=12,
                              minerals=args.natural_minerals,
                              gas=args.natural_gas,
-                             out_x=-1 if nx <= cx else 1,
-                             out_y=-1 if ny <= cy else 1,
+                             out_x=ox, out_y=oy,
                              width=width, height=height,
                              start_location=False, tileset_id=tileset_id)
             nat_placed.append((nx, ny, len(_placed), _skip))
@@ -362,6 +474,46 @@ def main(argv=None):
                     for idx in sorted(drop, reverse=True)[:have - lo]:
                         cli.edit("unit", "remove", cli.path, str(idx))
 
+            # **본진→앞마당 거리도 맞춘다.**
+            #
+            # 앵커를 본진에서 가운데 쪽으로 같은 거리에 두어도, 자원을
+            # 어느 쪽으로 눕히느냐에 따라 덩이의 **무게중심**이 달라져
+            # 실제 거리가 어긋난다 — 3인용에서 23~28타일로 벌어졌다.
+            # 재는 것이 무게중심이니, 놓은 뒤에 재서 반지름 방향으로
+            # 밀어 맞춘다.
+            ncx, ncy = (width - 1) / 2.0, (height - 1) / 2.0
+            groups = []
+            for (sx, sy), (nx, ny, _c, _s) in zip(starts, nat_placed):
+                us = [u for u in cli.units()
+                      if ("Mineral Field" in u["type_name"]
+                          or "Vespene Geyser" in u["type_name"])
+                      and near(u, nx, ny)]
+                if not us:
+                    groups.append(None)
+                    continue
+                gx = sum(u["x"] / 32 for u in us) / len(us)
+                gy = sum(u["y"] / 32 for u in us) / len(us)
+                groups.append((us, math.dist((sx, sy), (gx, gy))))
+            have_d = [g[1] for g in groups if g]
+            if len(have_d) > 1 and max(have_d) - min(have_d) > 2:
+                target = sum(have_d) / len(have_d)
+                print(f"  본진→앞마당 거리가 {min(have_d):.0f}~{max(have_d):.0f}"
+                      f"타일로 어긋나 {target:.0f}타일로 맞춥니다")
+                for (sx, sy), g in zip(starts, groups):
+                    if not g:
+                        continue
+                    us, d = g
+                    shift = target - d
+                    vx, vy = ncx - sx, ncy - sy
+                    L = math.hypot(vx, vy) or 1.0
+                    dx, dy = round(vx / L * shift), round(vy / L * shift)
+                    if dx == 0 and dy == 0:
+                        continue
+                    for u in us:
+                        cli.edit("unit", "move", cli.path, str(u["index"]),
+                                 str(u["x"] // 32 + dx),
+                                 str(u["y"] // 32 + dy), "--tiles")
+
     # 5) 바깥 멀티 — 스타팅마다 같은 상대 위치에 놓아 대칭을 지킨다.
     #    공식 맵은 스타팅당 자원 덩이가 중앙값 4곳이다 (본진·앞마당 포함).
     if args.expansions > 0:
@@ -381,9 +533,16 @@ def main(argv=None):
                 ey = int(round(sy + dist * math.sin(a)))
                 ex = max(8, min(width - 9, ex))
                 ey = max(8, min(height - 9, ey))
+                eox = -1 if ex <= cx else 1
+                eoy = -1 if ey <= cy else 1
+                ex, ey = resource_anchor(cli, tileset_id, ex, ey,
+                                         args.expansion_minerals,
+                                         args.expansion_gas,
+                                         eox, eoy, width, height)
                 _, _skip = scmap.place_base(cli, ex, ey, owner=12,
                                  minerals=args.expansion_minerals,
                                  gas=args.expansion_gas,
+                                 out_x=eox, out_y=eoy,
                                  facing=facing, width=width, height=height,
                                  start_location=False, tileset_id=tileset_id)
                 if _skip:
@@ -391,7 +550,7 @@ def main(argv=None):
                           f"못 놓았습니다")
 
     # 6) 가운데 지형 — 본진 언덕만 있으면 맵이 아니라 벌판이다.
-    if not args.no_center and not args.no_plateau:
+    if shape is None and not args.no_center and not args.no_plateau:
         print("가운데 지형을 얹습니다...")
         cx, cy = (width - 1) / 2.0, (height - 1) / 2.0
         # 한가운데 섬 하나 + 스타팅마다 같은 상대 위치의 능선 하나.
@@ -416,7 +575,7 @@ def main(argv=None):
     # 6b) 지형 무늬 — 고지대 덩이와 다른 바닥 지형을 섞는다.
     #     공식 맵은 타일 그룹을 484개(중앙값) 쓴다. 한 가지 지형으로만
     #     칠하면 서른 개도 안 나온다.
-    if args.features > 0:
+    if shape is None and args.features > 0:
         print(f"지형 덩이를 얹습니다 ({args.features}곳씩)...")
         rng2 = random.Random(args.seed + 7)
         feature_strokes = []
@@ -467,6 +626,15 @@ def main(argv=None):
     #      고지대에 올리면 안 어울린다.
     # (다) **걷기를 막는 것은 미리 걸러 낸다.** `data/doodad-walk.json`
     #      에 타일셋마다 재 두었다.
+    if args.doodads is None:
+        # **전체 중앙값을 쓰지 않는다.** 두뎃 수는 타일셋에 따라 Space 0
+        # 에서 Badlands 208 까지 벌어진다 (밀리 183곳 전수). 전체
+        # 중앙값 하나로 박아 두었더니 Badlands 맵이 34개만 받아,
+        # "4x4 창의 83%가 지형 한두 가지뿐" 인 벌판이 됐다.
+        args.doodads = corpus.doodad_count(corpus.load(), args.tileset,
+                                           "melee", random.Random(args.seed))
+        print(f"  두뎃 수를 {args.tileset} 밀리 실측에서 뽑았습니다: "
+              f"{args.doodads}개")
     if args.doodads > 0:
         print(f"두뎃을 놓습니다 (목표 {args.doodads}개)...")
         safe = scmap.doodad_walk_table(tileset_id)

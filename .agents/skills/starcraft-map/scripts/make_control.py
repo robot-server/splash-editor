@@ -126,6 +126,11 @@ Actions:
         # 잡은 만큼만 준다 — **킬 스코어를 깎는 관용구.** 죽은 수를
         # 소비하는 방법과 달리 누가 잡았는지 가려진다.
         add(scmap.kill_bounty(p, 30, per_score=100))
+        # **제 주머니로 물러나면 공짜로 낫는다.** 안 그러면 한 번 깎인
+        # 체력이 끝까지 그대로라 초반에 진 사람은 구경만 하게 된다
+        # (실측 유즈맵 89%가 체력·에너지를 고쳐 준다). 값이 0이라
+        # 밀어내기가 필요 없다 — 서 있어도 잃을 것이 없다.
+        T.extend(scmap.part_heal_zone(p, f"{a} Spawn", cost=0))
         # 이김
         add(f'''Trigger("{p}"){{
 Conditions:
@@ -318,6 +323,22 @@ def main(argv=None):
 
     print("트리거를 짭니다...")
     cli.apply_triggers(build_triggers(a.players, a.goal, a.respawn, names))
+
+    # **유닛 능력치를 유즈맵 값으로 정한다.**
+    #
+    # 실측 유즈맵 479장 중 473장(98%)이 유닛 설정을 고치고 중앙 90종을
+    # 건드린다. 마린 체력 중앙값이 250 이다 — 원래 40 이니 여섯 배다.
+    # 그대로 두면 유즈맵이 아니라 "스타 유닛으로 노는 맵" 이다
+    # (docs/unit/settings.md).
+    #
+    # 트리거를 넣은 **뒤에** 부른다 — 맵에 실제로 나오는 유닛만 고치려면
+    # 트리거가 무엇을 만드는지 알아야 한다.
+    try:
+        _used = scmap.units_in_play(cli, cli.trigger_text())
+    except Exception:
+        _used = None
+    scmap.setup_usemap_units(cli, sorted(_used) if _used else None)
+
     if a.name:
         cli.set_map_name(a.name,
             f"가운데 싸움터에서 {a.players}명이 겨룹니다. 먼저 {a.goal}킬 하면 이깁니다. "

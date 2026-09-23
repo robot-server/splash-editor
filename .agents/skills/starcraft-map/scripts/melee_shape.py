@@ -564,11 +564,17 @@ def design_lanes(width: int, height: int, players: int, symmetry: str,
     f = Field(width, height)
     cx, cy = width / 2.0, height / 2.0
 
-    # 1) 본진 언덕. 램프가 나갈 쪽만 살짝 끌어당겨 물방울 모양으로.
+    # 1) 본진 언덕. 램프가 나갈 쪽(센터)과 자원이 나가는 쪽(맵 가장자리)을
+    #    둘 다 덮는다. 미네랄은 스타팅에서 7타일 바깥에 서므로, 그 줄이
+    #    절벽 띠에 걸리면 일꾼이 못 붙는다. 반지름 13 만으로는 그 줄이
+    #    언덕 끝에 걸린다.
     for (sx, sy) in starts:
         ang = math.atan2(cy - sy, cx - sx)
-        f.disk(sx, sy, 13.0)
-        f.disk(sx + 7 * math.cos(ang), sy + 7 * math.sin(ang), 9.5)
+        ox = -1.0 if sx < cx else 1.0
+        oy = -1.0 if sy < cy else 1.0
+        f.disk(sx, sy, 16.0)
+        f.disk(sx + ox * 9, sy + oy * 6, 12.0)
+        f.disk(sx + 8 * math.cos(ang), sy + 8 * math.sin(ang), 10.0)
 
     # 2) 센터 능선 — 스타팅을 잇는 선의 **수직** 방향으로 가로지른다.
     #    이게 있어야 지상군이 돌아가야 하고 고지 점령 싸움이 생긴다.

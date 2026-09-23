@@ -46,6 +46,8 @@ LIFE_COUNTER = "Dark Swarm"
 # 안내를 사람마다 한 번만 띄우기 위한 잠금. 스위치는 맵 전체에 하나뿐
 # 이라 첫 사람만 걸리고 나머지는 지나가므로 플레이어별 죽음 수를 쓴다.
 SEEN_COUNTER = "Protoss Scarab"
+# 병력 재지급 잠금 — 이 맵에 캐리어·간트리서·스타게이트가 없다
+REVIVE_LOCK = "Protoss Interceptor"
 
 # 웨이브마다 나오는 것. 뒤로 갈수록 세진다.
 WAVE_TABLE = [
@@ -309,15 +311,29 @@ Actions:
 \tPlay WAV("sound\\\\Misc\\\\Button.wav", 300);
 \tPreserve Trigger();
 }}''')
-        # 병력이 0이 되면 최소 병력을 다시 준다 (구경만 하다 지지 않게)
+        # 병력이 0이 되면 최소 병력을 다시 준다 (구경만 하다 지지 않게).
+        # **잠금이 반드시 있어야 한다.** 조건은 새 유닛이 실제로 잡히기
+        # 전까지 계속 참이라, 하이퍼 트리거와 맞물리면 한 번에 수십 기가
+        # 쏟아진다. 죽음 수로 한 번만 주고 병력이 생기면 푼다.
         add(f'''Trigger("{p}"){{
 Conditions:
 \tCommand("{p}", "Men", At most, 0);
 \tDeaths("{p}", "{LIFE_COUNTER}", At least, 1);
+\tDeaths("{p}", "{REVIVE_LOCK}", Exactly, 0);
 
 Actions:
+\tSet Deaths("{p}", "{REVIVE_LOCK}", Set To, 1);
 \tCreate Unit("{p}", "Terran Marine", 4, "{a} Center");
 \tDisplay Text Message(Always Display, "\\x03병력이 다 죽어 새로 받았습니다.");
+\tPreserve Trigger();
+}}''')
+        add(f'''Trigger("{p}"){{
+Conditions:
+\tCommand("{p}", "Men", At least, 1);
+\tDeaths("{p}", "{REVIVE_LOCK}", At least, 1);
+
+Actions:
+\tSet Deaths("{p}", "{REVIVE_LOCK}", Set To, 0);
 \tPreserve Trigger();
 }}''')
         # 패배
@@ -520,6 +536,22 @@ def main(argv=None):
     print("트리거를 짭니다...")
     text = build_triggers(a.players, a.waves, enemy, boss_p, arena_names)
     cli.apply_triggers(text)
+
+    # **유닛 능력치를 유즈맵 값으로 정한다.**
+    #
+    # 실측 유즈맵 479장 중 473장(98%)이 유닛 설정을 고치고 중앙 90종을
+    # 건드린다. 마린 체력 중앙값이 250 이다 — 원래 40 이니 여섯 배다.
+    # 그대로 두면 유즈맵이 아니라 "스타 유닛으로 노는 맵" 이다
+    # (docs/unit/settings.md).
+    #
+    # 트리거를 넣은 **뒤에** 부른다 — 맵에 실제로 나오는 유닛만 고치려면
+    # 트리거가 무엇을 만드는지 알아야 한다.
+    try:
+        _used = scmap.units_in_play(cli, cli.trigger_text())
+    except Exception:
+        _used = None
+    scmap.setup_usemap_units(cli, sorted(_used) if _used else None)
+
 
     if a.name:
         # **설명을 반드시 넣는다.** 안 넣으면 에디터 기본값

@@ -1226,7 +1226,26 @@ class Palette:
         # **물·용암 그룹은 타일이 여섯 개뿐이다.** 앞서 "변종 여덟 개
         # 이상" 을 걸었더니 벽으로 쓸 그룹이 하나도 안 잡혀 검은 칸으로
         # 물러섰다. 걷는 바닥은 결이 필요하니 넷 이상, 벽은 하나면 된다.
+        # **"걷는다" 를 느슨하게 보면 안 된다.**
+        #
+        # `tileset_tiles` 의 걷기 칸은 "미니타일 하나라도 걸으면 참" 이다.
+        # Jungle 의 그룹 37 은 그 칸이 1 인데 걷기 비트가 `0x8000` —
+        # **열여섯 칸 중 한 칸만** 걷는다. 그것을 통로로 깔았더니 길이
+        # 통째로 막혀 못 걷는 칸이 89% 가 됐다. 그림으로는 멀쩡해 보였다.
+        #
+        # 그래서 걷는 몫은 **`모두걷기`(마스크 0xFFFF)** 인 그룹만 쓴다.
+        grp_tbl = terrain_groups(cli, tileset_id)
+
+        def fully_walkable(g) -> bool:
+            row = grp_tbl.get(g)
+            if not row:
+                return False
+            # (높이, 걷기, 모두걷기, 짓기, 램프, 걷기비트)
+            return bool(row[2]) or (len(row) > 5 and row[5] == 0xFFFF)
+
         def variants(g, want_walk, least):
+            if want_walk and not fully_walkable(g):
+                return []
             out = [t for t in range(g * 16, g * 16 + 16)
                    if t in tiles and bool(tiles[t][1]) == want_walk]
             return out if len(out) >= least else []
@@ -1359,8 +1378,15 @@ class Palette:
         self.floor, self.pad, self.path, self.rim = ([g] for g in chosen[:4])
         self.color_gap = best_score
         self.void_wall = not self.wall      # 물러설 곳이 없으면 검은 칸
+        # **걷는 변종을 못 걷는 변종으로 덮지 않는다.**
+        #
+        # 한 그룹이 걷는 변종과 못 걷는 변종을 함께 가질 수 있다. 앞서
+        # `update(blocked)` 로 통째로 덮어써서, 걷는 몫으로 뽑힌 그룹이
+        # 못 걷는 타일로 칠해졌다 — 웨이브 디펜스의 길 전체가 막혀
+        # 못 걷는 칸이 89% 가 됐다 (그림으로는 멀쩡해 보였다).
         self._pool = {g: v for g, v in walkable}
-        self._pool.update({g: v for g, v in blocked})
+        for g, v in blocked:
+            self._pool.setdefault(g, v)
 
     # -- 쓰는 쪽 ---------------------------------------------------------
     def groups(self, role: str) -> list[int]:
@@ -1703,6 +1729,82 @@ def _isom_ids_by_name(types: dict, out: dict) -> dict:
 # 밀리맵은 둘 다 중앙 0 이다 — **유즈맵만의 버릇**이고 내 생성기는
 # 하나도 안 고치고 있었다 (docs/chk/anatomy.md).
 # ---------------------------------------------------------------------------
+
+def _unitdef_table() -> dict:
+    """`data/unitdefs.json` — 실측 유즈맵이 어느 유닛을 어떻게 고치나."""
+    global _UNITDEF_TABLE
+    try:
+        return _UNITDEF_TABLE
+    except NameError:
+        pass
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "..", "data", "unitdefs.json")
+    try:
+        with open(os.path.normpath(path), encoding="utf-8") as f:
+            _UNITDEF_TABLE = json.load(f)
+    except OSError:
+        _UNITDEF_TABLE = {}
+    return _UNITDEF_TABLE
+
+
+def setup_usemap_units(cli: Cli, used: list[str] | None = None, *,
+                       scale: float = 1.0, top: int = 24,
+                       verbose: bool = True) -> int:
+    """**유즈맵답게 유닛 능력치를 정한다.** 고친 가짓수를 돌려준다.
+
+    실측 유즈맵 479장 가운데 **473장(98%)이 유닛 설정을 고치고 중앙
+    90종**을 건드린다. 마린 체력 중앙값이 **250** 이다 — 원래 40 이니
+    여섯 배다. 그대로 두면 "스타크래프트 유닛으로 노는 맵" 이지
+    유즈맵이 아니다 (docs/unit/settings.md).
+
+    `used` 에 그 맵이 실제로 쓰는 유닛 이름을 주면 **그것만** 고친다.
+    안 주면 실측에서 가장 자주 고치는 `top` 종을 고친다.
+
+    `scale` 로 전체를 세게/약하게 민다 (1.0 이 실측 중앙값).
+
+    **맵이 고칠 수 있는 것은 다섯 가지뿐**이다 — 체력·방패·방어력·
+    생산시간·값. 사거리·공격 주기·시야·이동 속도·공격 형태는 못 고친다
+    (docs/unit/heroes.md).
+    """
+    tab = _unitdef_table().get("units") or {}
+    if not tab:
+        return 0
+    rows = sorted(tab.values(), key=lambda r: -r.get("maps", 0))
+    if used:
+        want = {u.lower() for u in used}
+        rows = [r for r in rows if r["name"].lower() in want]
+    else:
+        rows = rows[:top]
+
+    n = 0
+    for r in rows:
+        hp = int(r.get("hp_median") or 0)
+        if hp <= 0:
+            continue
+        hp = max(1, min(8388607, int(hp * scale)))
+        # **생산 시간을 반드시 함께 준다.** `--default off` 만 켜면 남은
+        # 칸이 0 으로 남는데, **생산 시간 0 인 유닛을 생산하면 튕긴다**
+        # (docs/game/crashes.md). 실측 표에 생산 시간이 없으므로
+        # 체력에 맞춰 잡는다 — 1 = 실제 0.042초, 24 ≒ 1초.
+        build = max(24, min(65535, hp // 4))
+        args = ["unitdef", "set", cli.path, r["name"], "--default", "off",
+                "--hp", str(hp), "--build-time", str(build)]
+        mi = int(r.get("minerals_median") or 0)
+        ga = int(r.get("gas_median") or 0)
+        if mi:
+            args += ["--minerals", str(min(65535, mi))]
+        if ga:
+            args += ["--gas", str(min(65535, ga))]
+        try:
+            cli.edit(*args)
+            n += 1
+        except CliError:
+            continue
+    if verbose and n:
+        print(f"  유닛 {n}종의 능력치를 유즈맵 값으로 정했습니다 "
+              f"(실측 중앙 {_unitdef_table().get('_types_median', '?')}종)")
+    return n
+
 
 def setup_usemap_upgrades(cli: Cli, humans: int, *, free_levels: int = 0,
                           max_level: int | None = None,
