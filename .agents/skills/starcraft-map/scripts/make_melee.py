@@ -553,48 +553,68 @@ def main(argv=None):
         cx, cy = (width - 1) / 2.0, (height - 1) / 2.0
         # 스타팅에서 가운데를 보는 방향을 기준으로, 좌우로 벌려 놓는다.
         spread = [(-50, 1.55), (50, 1.55), (0, 2.1), (-70, 2.4), (70, 2.4)]
+        exp_pts = []
         for i, (sx, sy) in enumerate(starts):
             vx, vy = cx - sx, cy - sy
             base_angle = math.atan2(vy, vx)
             facing = quadrant_facing(sx, sy, width, height)
             for k in range(args.expansions):
                 deg, scale = spread[k % len(spread)]
-                a = base_angle + math.radians(deg)
-                dist = max(args.natural_distance * scale,
-                           args.natural_distance + 14)
                 placed_exp = False
-                for bump in (0, 6, 12, -6, 18):
-                    ex = int(round(sx + (dist + bump) * math.cos(a)))
-                    ey = int(round(sy + (dist + bump) * math.sin(a)))
-                    if not (8 <= ex < width - 9 and 8 <= ey < height - 9):
-                        continue
-                    eox = 1 if ex >= sx else -1
-                    eoy = 1 if ey >= sy else -1
-                    ax, ay = resource_anchor(cli, tileset_id, ex, ey,
-                                             args.expansion_minerals,
-                                             args.expansion_gas,
-                                             eox, eoy, width, height)
-                    # 다른 본진에서 앞마당보다 가까우면, 검증이 그 확장을
-                    # 그 본진의 앞마당으로 센다. 모든 스타팅에서 목표
-                    # 거리보다 먼 자리만 받는다.
-                    if (math.hypot(ax - ex, ay - ey) <= 4
-                            and all(math.dist((ax, ay), st)
-                                    >= args.natural_distance + 6
-                                    for st in starts)):
-                        ex, ey = ax, ay
+                # 자기 본진에서는 앞마당(약 28)보다 멀어야 하고, 다른
+                # 본진의 앞마당보다 가까우면 그 앞마당으로 집계된다.
+                # 모든 스타팅에서 같은 하한을 쓰면 3인은 자리가 없어
+                # 변 확장이 전부 빠진다.
+                far = args.natural_distance + 4
+                for extra_deg in (0, 25, -25, 50, -50, 80, -80):
+                    if placed_exp:
+                        break
+                    a = base_angle + math.radians(deg + extra_deg)
+                    dist0 = max(args.natural_distance * scale,
+                                args.natural_distance + 14)
+                    for bump in (0, 8, -8, 16, 24):
+                        ex = int(round(sx + (dist0 + bump) * math.cos(a)))
+                        ey = int(round(sy + (dist0 + bump) * math.sin(a)))
+                        if not (8 <= ex < width - 9 and 8 <= ey < height - 9):
+                            continue
+                        eox = 1 if ex >= sx else -1
+                        eoy = 1 if ey >= sy else -1
+                        ax, ay = resource_anchor(cli, tileset_id, ex, ey,
+                                                 args.expansion_minerals,
+                                                 args.expansion_gas,
+                                                 eox, eoy, width, height)
+                        own = math.dist((ax, ay), (sx, sy))
+                        others = [math.dist((ax, ay), st) for st in starts
+                                  if st != (sx, sy)]
+                        clear_of = (
+                            all(math.hypot(ax - nx, ay - ny) >= 18
+                                for (nx, ny, _c, _s) in nat_placed)
+                            and all(math.hypot(ax - px, ay - py) >= 16
+                                    for (px, py) in exp_pts))
+                        if not (math.hypot(ax - ex, ay - ey) <= 8
+                                and own >= far
+                                and all(d >= far for d in others)
+                                and clear_of):
+                            continue
+                        n_before = len(cli.units())
+                        _placed, _skip = scmap.place_base(
+                            cli, ax, ay, owner=12,
+                            minerals=args.expansion_minerals,
+                            gas=args.expansion_gas,
+                            out_x=eox, out_y=eoy,
+                            facing=facing, width=width, height=height,
+                            start_location=False, tileset_id=tileset_id)
+                        if len(_skip) > 2:
+                            for idx in sorted(
+                                    (u["index"] for u in cli.units()[n_before:]),
+                                    reverse=True):
+                                cli.edit("unit", "remove", cli.path, str(idx))
+                            continue
+                        exp_pts.append((ax, ay))
                         placed_exp = True
                         break
                 if not placed_exp:
-                    continue
-                _, _skip = scmap.place_base(cli, ex, ey, owner=12,
-                                 minerals=args.expansion_minerals,
-                                 gas=args.expansion_gas,
-                                 out_x=eox, out_y=eoy,
-                                 facing=facing, width=width, height=height,
-                                 start_location=False, tileset_id=tileset_id)
-                if _skip:
-                    print(f"  !! 멀티 {i+1}-{k+1}: 자원 {len(_skip)}개를 "
-                          f"못 놓았습니다")
+                    print(f"  !! 멀티 {i+1}-{k+1}: 앞마당보다 먼 자리가 없습니다")
 
     # 6) 가운데 지형 — 본진 언덕만 있으면 맵이 아니라 벌판이다.
     if shape is None and not args.no_center and not args.no_plateau:
