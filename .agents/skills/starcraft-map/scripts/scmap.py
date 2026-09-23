@@ -573,10 +573,14 @@ def _foot_cells(px: int, py: int, w: int, h: int):
 
 
 def layout_resources(tile_x: int, tile_y: int, minerals: int, gas: int,
-                     out_x: int, out_y: int):
-    """자원 발자국 칸. 미네랄은 2×1, 가스는 4×2."""
+                     out_x: int, out_y: int, pack: float = 1.0):
+    """자원 발자국 칸. 미네랄은 2×1, 가스는 4×2.
+
+    pack 이 1보다 작으면 같은 모양을 앵커 가까이로 줄인다. 변 확장은
+    맵 끝이라 본진용 7타일 줄을 그대로 쓰면 칸이 맵 밖으로 나간다.
+    """
     def turn(dx, dy):
-        return dx * (1 if out_x < 0 else -1), dy * (1 if out_y < 0 else -1)
+        return int(dx * pack) * (1 if out_x < 0 else -1), int(dy * pack) * (1 if out_y < 0 else -1)
 
     mins, gases = [], []
     for i in range(minerals):
@@ -638,7 +642,8 @@ def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
                mineral_amount: int = MINERAL_AMOUNT,
                gas_amount: int = GAS_AMOUNT,
                start_location: bool = True,
-               tileset_id: int | None = None, check_terrain: bool = True):
+               tileset_id: int | None = None, check_terrain: bool = True,
+               pack: float = 1.0):
     """스타팅 한 곳을 통째로 놓는다 — 스타팅 표시 + 미네랄 + 가스.
 
     facing 은 90도 단위 회전 수다. 대칭으로 놓은 스타팅마다 같은 모양을
@@ -678,7 +683,7 @@ def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
         cli.place(START_LOCATION, tile_x, tile_y, owner)
 
     res_mins, res_gas = layout_resources(tile_x, tile_y, minerals, gas,
-                                         out_x, out_y)
+                                         out_x, out_y, pack)
     flat = [c for group in res_mins + res_gas for c in group]
     if tiles is not None and townhall_pad(
             grid, tiles, tile_x, tile_y, flat, width, height) is None:
@@ -699,7 +704,7 @@ def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
     kinds = (MINERAL_1, MINERAL_2, MINERAL_3)
     for i in range(minerals):
         dx, dy = MAIN_MINERAL_OFFSETS[i % len(MAIN_MINERAL_OFFSETS)]
-        dx, dy = turn(dx, dy)
+        dx, dy = turn(int(dx * pack), int(dy * pack))
         px, py = tile_x * TILE + dx, tile_y * TILE + dy
         if not buildable(px, py, 2, 1):
             skipped.append(("mineral", px // TILE, py // TILE))
@@ -708,7 +713,8 @@ def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
                  str(px), str(py), "--owner", "12")
         placed.append(("mineral", dx, dy))
     for i in range(gas):
-        dx, dy = turn(*MAIN_GAS_OFFSET)
+        gx, gy = MAIN_GAS_OFFSET
+        dx, dy = turn(int(gx * pack), int(gy * pack))
         px, py = tile_x * TILE + dx, tile_y * TILE + dy + i * 96
         if not buildable(px, py, 4, 2):
             skipped.append(("gas", px // TILE, py // TILE))

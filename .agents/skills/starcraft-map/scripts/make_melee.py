@@ -210,19 +210,33 @@ def recolor_floor(strokes, width, height, low_terrain, alts, rng,
 
 def resource_anchor(cli: Cli, tileset_id: int, tile_x: int, tile_y: int,
                     minerals: int, gas: int, out_x: int, out_y: int,
-                    width: int, height: int) -> tuple[int, int]:
+                    width: int, height: int,
+                    owner_xy: tuple[int, int] | None = None,
+                    all_starts: list | None = None,
+                    pack: float = 1.0) -> tuple[int, int]:
     """자원 아홉 덩이와 가스가 다 들어가는 가장 가까운 칸.
 
     계산한 자리가 절벽 띠면 나선형으로 한 칸씩 옮겨 본다. 못 찾으면
     원래 자리를 돌려주고, 놓는 쪽에서 빠진 개수를 알린다.
+    owner_xy 가 있으면 그 스타팅에 더 가까운 칸만 받는다. 안 그러면
+    나선이 경계 너머로 넘어가 옆 본진 확장으로 집계된다.
     """
     tiles = scmap.tileset_tiles(cli, tileset_id)
     grid = cli.tiles(0, 0, width, height)
 
+    def mine(ax, ay):
+        if owner_xy is None or not all_starts:
+            return True
+        d = math.dist((ax, ay), owner_xy)
+        return all(math.dist((ax, ay), st) > d + 0.5
+                   for st in all_starts if st != owner_xy)
+
     def ok(ax, ay):
         if not (8 <= ax < width - 8 and 8 <= ay < height - 8):
             return False
-        mins, gases = scmap.layout_resources(ax, ay, minerals, gas, out_x, out_y)
+        if not mine(ax, ay):
+            return False
+        mins, gases = scmap.layout_resources(ax, ay, minerals, gas, out_x, out_y, pack)
         flat = [c for group in mins + gases for c in group]
         # 자원끼리 높이가 같고, 그 높이에 4×3 본진 건물이 채집 거리에 서야 한다.
         return scmap.townhall_pad(grid, tiles, ax, ay, flat, width, height) is not None
@@ -389,27 +403,6 @@ def main(argv=None):
             width, height, low_terrain, alts, random.Random(args.seed + 3),
             starts, symmetry, args.players)
         cli.isom_batch(strokes)
-        # 공식 정글 밀리는 저지대에 물길을 둔다. 본진 반경 안에는 넣지 않는다.
-        if "Water" in types:
-            water = types["Water"]
-            ponds = scmap.symmetric_points(
-                (width - 1) / 2.0, 14,
-                symmetry, max(args.players, 2), width, height)
-            wst = []
-            for (px, py) in ponds:
-                for dy in range(-2, 3):
-                    for dx in range(-6, 7):
-                        x = int(round(px)) + dx
-                        y = int(round(py)) + dy
-                        if not (4 <= x < width - 4 and 4 <= y < height - 4):
-                            continue
-                        if any((x - sx) * (x - sx) + (y - sy) * (y - sy) < 26 * 26
-                               for (sx, sy) in starts):
-                            continue
-                        wst.append((x - (x % 2), y, water, 1))
-            if wst:
-                print(f"물을 {len(ponds)}곳에 놓습니다.")
-                cli.isom_batch(wst)
 
     # 3) 스타팅 표시와 본진 자원
     print("본진 자원을 놓습니다...")
@@ -579,14 +572,18 @@ def main(argv=None):
             if any(math.dist((ex, ey), st) <= own
                    for st in starts if st != (sx, sy)):
                 return None
+            # 자원 줄은 짧게(pack) 본진 반대편에 둔다. 본진 쪽이면 앞마당
+            # 거리 안으로 들어오고, 긴 줄이면 옆 본진 칸으로 넘어간다.
             eox = 1 if ex >= sx else -1
             eoy = 1 if ey >= sy else -1
             ax, ay = resource_anchor(cli, tileset_id, ex, ey,
                                      args.expansion_minerals,
                                      args.expansion_gas,
-                                     eox, eoy, width, height)
+                                     eox, eoy, width, height,
+                                     owner_xy=(sx, sy), all_starts=starts,
+                                     pack=0.5)
             # 맞추는 거리가 길면 옆 본진 쪽으로 넘어가 개수가 갈린다.
-            if math.hypot(ax - ex, ay - ey) > 8:
+            if math.hypot(ax - ex, ay - ey) > 12:
                 return None
             own_s = math.dist((ax, ay), (sx, sy))
             if any(math.dist((ax, ay), st) <= own_s
@@ -607,10 +604,10 @@ def main(argv=None):
             sx0, sy0 = starts[0]
             # 첫 스타팅에서 자리를 고르고, 같은 회전으로 나머지에 옮긴다.
             # 각도만 각자 다시 계산하면 반올림이 어긋나 4인 한쪽만 떨어진다.
-            for extra in (-25, -15, -35, *range(-170, 180, 5)):
+            for extra in (45, 50, -25, -50, -125, 55, -15, -40, 15):
                 if chosen:
                     break
-                for dist in (72, 64, int(base_dist), 48, 56, 40, 36):
+                for dist in (36, 44, 48, 40, 56, 64, 72):
                     if dist < far:
                         continue
                     ang = (math.atan2(cy - sy0, cx - sx0)
@@ -649,10 +646,28 @@ def main(argv=None):
                     out_x=eox, out_y=eoy,
                     facing=quadrant_facing(sx, sy, width, height),
                     width=width, height=height,
-                    start_location=False, tileset_id=tileset_id)
-                if len(_skip) > 2:
+                    start_location=False, tileset_id=tileset_id,
+                    pack=0.5)
+                if len(_placed) < args.expansion_minerals + args.expansion_gas - 2:
                     placed_ok = False
                     break
+            if placed_ok:
+                fresh = cli.units()[n_before:]
+                for (sx, sy), (ax, ay, _eox, _eoy) in chosen:
+                    pool = [u for u in fresh
+                            if ("Mineral Field" in u["type_name"]
+                                or "Vespene Geyser" in u["type_name"])
+                            and math.hypot(u["x"] / 32 - ax, u["y"] / 32 - ay) < 12]
+                    if not pool:
+                        placed_ok = False
+                        break
+                    gx = sum(u["x"] / 32 for u in pool) / len(pool)
+                    gy = sum(u["y"] / 32 for u in pool) / len(pool)
+                    d0 = math.dist((gx, gy), (sx, sy))
+                    if d0 < far or any(math.dist((gx, gy), st) <= d0
+                                       for st in starts if st != (sx, sy)):
+                        placed_ok = False
+                        break
             if not placed_ok:
                 for idx in sorted(
                         (u["index"] for u in cli.units()[n_before:]),
@@ -661,6 +676,34 @@ def main(argv=None):
                 print(f"  !! 멀티 {k+1}: 자원이 절벽에 걸려 대칭으로 놓지 못했습니다")
                 continue
             exp_pts.extend((ax, ay) for (_s, (ax, ay, _ox, _oy)) in chosen)
+            print(f"  멀티 {k+1} 앵커", [(ax, ay) for (ax, ay) in exp_pts[-len(starts):]])
+
+    # 물길은 자원을 놓은 뒤에 빈 땅에만 칠한다. 가장자리에 먼저 두면
+    # 그 칸을 못 짓게 만들어 변 확장 자리가 통째로 거절된다.
+    if "Water" in types:
+        water = types["Water"]
+        ponds = scmap.symmetric_points(
+            (width - 1) / 2.0, 14,
+            symmetry, max(args.players, 2), width, height)
+        taken = [(u["x"] / 32, u["y"] / 32) for u in cli.units()
+                 if "Mineral Field" in u["type_name"]
+                 or "Vespene Geyser" in u["type_name"]
+                 or u["type"] == scmap.START_LOCATION]
+        wst = []
+        for (px, py) in ponds:
+            for dy in range(-2, 3):
+                for dx in range(-6, 7):
+                    x = int(round(px)) + dx
+                    y = int(round(py)) + dy
+                    if not (4 <= x < width - 4 and 4 <= y < height - 4):
+                        continue
+                    if any((x - tx) * (x - tx) + (y - ty) * (y - ty) < 12 * 12
+                           for (tx, ty) in taken):
+                        continue
+                    wst.append((x - (x % 2), y, water, 1))
+        if wst:
+            print(f"물을 {len(ponds)}곳에 놓습니다.")
+            cli.isom_batch(wst)
 
     # 6) 가운데 지형 — 본진 언덕만 있으면 맵이 아니라 벌판이다.
     if shape is None and not args.no_center and not args.no_plateau:
