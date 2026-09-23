@@ -573,15 +573,24 @@ def main(argv=None):
         def snap_expansion(ex, ey, sx, sy):
             if not (8 <= ex < width - 9 and 8 <= ey < height - 9):
                 return None
+            own = math.dist((ex, ey), (sx, sy))
+            if own < far:
+                return None
+            if any(math.dist((ex, ey), st) <= own
+                   for st in starts if st != (sx, sy)):
+                return None
             eox = 1 if ex >= sx else -1
             eoy = 1 if ey >= sy else -1
             ax, ay = resource_anchor(cli, tileset_id, ex, ey,
                                      args.expansion_minerals,
                                      args.expansion_gas,
                                      eox, eoy, width, height)
-            if math.hypot(ax - ex, ay - ey) > 12:
+            # 맞추는 거리가 길면 옆 본진 쪽으로 넘어가 개수가 갈린다.
+            if math.hypot(ax - ex, ay - ey) > 8:
                 return None
-            if any(math.dist((ax, ay), st) < far for st in starts):
+            own_s = math.dist((ax, ay), (sx, sy))
+            if any(math.dist((ax, ay), st) <= own_s
+                   for st in starts if st != (sx, sy)):
                 return None
             if any(math.hypot(ax - nx, ay - ny) < 12
                    for (nx, ny, _c, _s) in nat_placed):
@@ -598,7 +607,7 @@ def main(argv=None):
             sx0, sy0 = starts[0]
             # 첫 스타팅에서 자리를 고르고, 같은 회전으로 나머지에 옮긴다.
             # 각도만 각자 다시 계산하면 반올림이 어긋나 4인 한쪽만 떨어진다.
-            for extra in (0, -60, -40, -20, 20, 40, *range(-170, 180, 10)):
+            for extra in (-25, -15, -35, *range(-170, 180, 5)):
                 if chosen:
                     break
                 for dist in (72, 64, int(base_dist), 48, 56, 40, 36):
