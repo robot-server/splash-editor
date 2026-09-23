@@ -389,6 +389,27 @@ def main(argv=None):
             width, height, low_terrain, alts, random.Random(args.seed + 3),
             starts, symmetry, args.players)
         cli.isom_batch(strokes)
+        # 공식 정글 밀리는 저지대에 물길을 둔다. 본진 반경 안에는 넣지 않는다.
+        if "Water" in types:
+            water = types["Water"]
+            ponds = scmap.symmetric_points(
+                (width - 1) / 2.0, 14,
+                symmetry, max(args.players, 2), width, height)
+            wst = []
+            for (px, py) in ponds:
+                for dy in range(-2, 3):
+                    for dx in range(-6, 7):
+                        x = int(round(px)) + dx
+                        y = int(round(py)) + dy
+                        if not (4 <= x < width - 4 and 4 <= y < height - 4):
+                            continue
+                        if any((x - sx) * (x - sx) + (y - sy) * (y - sy) < 26 * 26
+                               for (sx, sy) in starts):
+                            continue
+                        wst.append((x - (x % 2), y, water, 1))
+            if wst:
+                print(f"물을 {len(ponds)}곳에 놓습니다.")
+                cli.isom_batch(wst)
 
     # 3) 스타팅 표시와 본진 자원
     print("본진 자원을 놓습니다...")
@@ -562,11 +583,10 @@ def main(argv=None):
                 return None
             if any(math.dist((ax, ay), st) < far for st in starts):
                 return None
-            if any(math.hypot(ax - nx, ay - ny) < 16
+            if any(math.hypot(ax - nx, ay - ny) < 12
                    for (nx, ny, _c, _s) in nat_placed):
                 return None
-            # 미네랄 줄이 8타일 안이면 덩이가 합쳐져 확장이 사라진다.
-            if any(math.hypot(ax - px, ay - py) < 22 for (px, py) in exp_pts):
+            if any(math.hypot(ax - px, ay - py) < 16 for (px, py) in exp_pts):
                 return None
             return ax, ay, eox, eoy
 
@@ -581,8 +601,7 @@ def main(argv=None):
             for extra in (0, -60, -40, -20, 20, 40, *range(-170, 180, 10)):
                 if chosen:
                     break
-                for dist in (int(base_dist), 34, 36, 40,
-                             int(base_dist) + 12, 48, 56, 64):
+                for dist in (72, 64, int(base_dist), 48, 56, 40, 36):
                     if dist < far:
                         continue
                     ang = (math.atan2(cy - sy0, cx - sx0)
@@ -603,7 +622,7 @@ def main(argv=None):
                         continue
                     pts = [(ax, ay) for (_s, (ax, ay, _ox, _oy)) in spots]
                     if any(math.hypot(pts[a][0] - pts[b][0],
-                                      pts[a][1] - pts[b][1]) < 22
+                                      pts[a][1] - pts[b][1]) < 18
                            for a in range(len(pts)) for b in range(a)):
                         continue
                     chosen = spots
@@ -866,27 +885,9 @@ def main(argv=None):
             if placed is None:
                 print(f"  ({sx},{sy}) 네 방향 모두 통하는 램프를 못 찾았습니다")
 
-        # 하나라도 램프를 못 내면 **모든** 본진의 고지대를 걷어낸다.
-        # 한 곳만 언덕이면 그 자리가 유리해져 밸런스가 깨진다 — 밀리맵에서
-        # 자리 차이는 지형 차이보다 나쁘다.
-        if ramp_at and len(ramp_at) < len(starts):
-            print(f"  {len(starts) - len(ramp_at)}곳이 램프를 못 내 "
-                  f"모든 본진을 평지로 되돌립니다 (대칭이 먼저다)")
-            strip = []
-            for (sx, sy) in starts:
-                strip += plateau_strokes(sx, sy, scmap.MAIN_PLATEAU_HALF_W + 1,
-                                     scmap.MAIN_PLATEAU_HALF_H + 1,
-                                     low_terrain, width, height)
-            cli.isom_batch(strip)
-            ramp_at = {}
-        elif not ramp_at:
-            print("  램프를 하나도 내지 못해 평지로 갑니다")
-            strip = []
-            for (sx, sy) in starts:
-                strip += plateau_strokes(sx, sy, scmap.MAIN_PLATEAU_HALF_W + 1,
-                                     scmap.MAIN_PLATEAU_HALF_H + 1,
-                                     low_terrain, width, height)
-            cli.isom_batch(strip)
+        if len(ramp_at) < len(starts):
+            print(f"  램프 {len(ramp_at)}/{len(starts)}곳. "
+                  f"못 낸 본진 언덕은 그대로 둔다.")
 
     # 8) 연결성 복구 — 갇힌 본진이 있으면 길을 낸다.
     #
