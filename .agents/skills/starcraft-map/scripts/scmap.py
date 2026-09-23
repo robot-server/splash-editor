@@ -602,9 +602,10 @@ def townhall_pad(grid, tiles, anchor_x: int, anchor_y: int,
     elev = None
     for (tx, ty) in resource_cells:
         p = _cell_prop(grid, tiles, tx, ty)
-        # 자원 칸 자체는 짓기 불가여도 된다. 일꾼이 옆에 서면 된다.
-        # 높이가 없거나 못 걸으면 채집을 못 한다.
-        if p is None or not p[1]:
+        # 기본 에디터는 짓기 비트가 없는 칸에 자원·건물을 안 놓는다.
+        # 걷기만 되면 캠페인 에디터 기준으로는 못 놓는 자리인데
+        # 여기선 놓이게 된다.
+        if p is None or not p[1] or not p[2]:
             return None
         if elev is None:
             elev = p[0]
@@ -656,15 +657,6 @@ def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
     if tiles is not None:
         grid = cli.tiles(0, 0, width, height)
 
-    def walkable(px_x: int, px_y: int, w: int, h: int) -> bool:
-        if grid is None:
-            return True
-        for (xx, yy) in _foot_cells(px_x, px_y, w, h):
-            p = _cell_prop(grid, tiles, xx, yy)
-            if p is None or not p[1]:
-                return False
-        return True
-
     def buildable(px_x: int, px_y: int, w: int, h: int) -> bool:
         """자원이 놓일 칸이 다 **짓기 가능**한가.
 
@@ -709,9 +701,7 @@ def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
         dx, dy = MAIN_MINERAL_OFFSETS[i % len(MAIN_MINERAL_OFFSETS)]
         dx, dy = turn(dx, dy)
         px, py = tile_x * TILE + dx, tile_y * TILE + dy
-        # 미네랄 칸은 걷기만 되면 된다. 짓기 비트까지 요구하면
-        # 절벽 가장자리의 멀쩡한 미네랄을 빼게 된다.
-        if not walkable(px, py, 2, 1):
+        if not buildable(px, py, 2, 1):
             skipped.append(("mineral", px // TILE, py // TILE))
             continue
         cli.edit("unit", "place", cli.path, str(kinds[i % 3]),
@@ -720,7 +710,7 @@ def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
     for i in range(gas):
         dx, dy = turn(*MAIN_GAS_OFFSET)
         px, py = tile_x * TILE + dx, tile_y * TILE + dy + i * 96
-        if not walkable(px, py, 4, 2):
+        if not buildable(px, py, 4, 2):
             skipped.append(("gas", px // TILE, py // TILE))
             continue
         cli.edit("unit", "place", cli.path, str(VESPENE_GEYSER),
