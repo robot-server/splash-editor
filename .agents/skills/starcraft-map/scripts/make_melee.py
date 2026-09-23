@@ -564,14 +564,20 @@ def main(argv=None):
         exp_pts: list[tuple[int, int]] = []
         far = args.natural_distance + 4
 
+        snap_why = {"edge": 0, "near": 0, "own": 0, "drift": 0,
+                    "snapown": 0, "nat": 0, "exp": 0, "ok": 0}
+
         def snap_expansion(ex, ey, sx, sy):
             if not (8 <= ex < width - 9 and 8 <= ey < height - 9):
+                snap_why["edge"] += 1
                 return None
             own = math.dist((ex, ey), (sx, sy))
             if own < far:
+                snap_why["near"] += 1
                 return None
             if any(math.dist((ex, ey), st) <= own
                    for st in starts if st != (sx, sy)):
+                snap_why["own"] += 1
                 return None
             # 자원 줄은 짧게(pack) 본진 반대편에 둔다. 본진 쪽이면 앞마당
             # 거리 안으로 들어오고, 긴 줄이면 옆 본진 칸으로 넘어간다.
@@ -585,16 +591,21 @@ def main(argv=None):
                                      pack=0.875)
             # 맞추는 거리가 길면 옆 본진 쪽으로 넘어가 개수가 갈린다.
             if math.hypot(ax - ex, ay - ey) > 12:
+                snap_why["drift"] += 1
                 return None
             own_s = math.dist((ax, ay), (sx, sy))
             if any(math.dist((ax, ay), st) <= own_s
                    for st in starts if st != (sx, sy)):
+                snap_why["snapown"] += 1
                 return None
             if any(math.hypot(ax - nx, ay - ny) < 12
                    for (nx, ny, _c, _s) in nat_placed):
+                snap_why["nat"] += 1
                 return None
             if any(math.hypot(ax - px, ay - py) < 16 for (px, py) in exp_pts):
+                snap_why["exp"] += 1
                 return None
+            snap_why["ok"] += 1
             return ax, ay, eox, eoy
 
         for k in range(args.expansions):
@@ -603,6 +614,8 @@ def main(argv=None):
                             args.natural_distance + 14)
             chosen = None
             sx0, sy0 = starts[0]
+            for key in snap_why:
+                snap_why[key] = 0
 
             fail_why = {"place": 0, "own": 0, "close": 0}
 
@@ -743,13 +756,14 @@ def main(argv=None):
                     if any(math.hypot(pts[a][0] - pts[b][0],
                                       pts[a][1] - pts[b][1]) < 18
                            for a in range(len(pts)) for b in range(a)):
+                        snap_why["apart"] = snap_why.get("apart", 0) + 1
                         continue
                     if not commit_ring(spots):
                         continue
                     chosen = spots
                     break
             if not chosen:
-                print(f"  !! 멀티 {k+1}: 겹치지 않는 자리가 없습니다 {fail_why}")
+                print(f"  !! 멀티 {k+1}: 겹치지 않는 자리가 없습니다 {fail_why} snap {snap_why}")
                 continue
             exp_pts.extend((ax, ay) for (_s, (ax, ay, _ox, _oy)) in chosen)
             print(f"  멀티 {k+1} 앵커", [(ax, ay) for (ax, ay) in exp_pts[-len(starts):]])
@@ -1000,12 +1014,15 @@ def main(argv=None):
                     fixed = sx - 3
                     fixed -= fixed % 2          # 마름모 격자에 맞춘다
                     fixed = max(0, min(width - 6, fixed))
+                cands = scmap.ramp_candidates(tileset_id, direction)
                 got = scmap.place_ramp_checked(
                     cli, tileset_id, edge, fixed,
-                    high_point=(sx, sy), low_point=low, direction=direction)
+                    high_point=(sx, sy), low_point=low, direction=direction,
+                    candidates=cands)
                 if got:
                     did, rx, ry = got
-                    ramp_at[(sx, sy)] = (rx, ry, direction)
+                    wh = next(((e["w"], e["h"]) for e in cands if e["id"] == did), (6, 4))
+                    ramp_at[(sx, sy)] = (rx, ry, direction, wh[0], wh[1])
                     print(f"  ({sx},{sy}) → {direction} 램프 ({rx},{ry}) "
                           f"두뎃 {did} [길찾기 통과]")
                     placed = got
@@ -1056,7 +1073,7 @@ def main(argv=None):
             # 병목(언덕 바로 아래)을 건너뛰어 길이 이어지지 않는다.
             spot = ramp_at.get((sx, sy))
             if spot:
-                rx, ry, direction = spot
+                rx, ry, direction = spot[0], spot[1], spot[2]
                 ox, oy = rx + 3, ry + 3
                 if direction == "down":    oy = ry + 7
                 elif direction == "up":    oy = ry - 2
@@ -1079,7 +1096,7 @@ def main(argv=None):
                     # **램프 위는 절대 칠하지 않는다.** 칠하면 램프가 지워져
                     # 본진이 다시 갇힌다 — 길을 낼수록 더 막히는 꼴이 된다.
                     if any(rx0 - 1 <= px <= rx0 + 6 and ry0 - 1 <= ty <= ry0 + 6
-                           for (rx0, ry0, _dir) in ramp_at.values()):
+                           for (rx0, ry0, *_rest) in ramp_at.values()):
                         continue
                     carve.append((px - (px % 2), ty, low_terrain))
         cli.isom_batch(carve)
@@ -1145,18 +1162,17 @@ def main(argv=None):
     if cliff_ids and ramp_at:
         cid = cliff_ids[0]
         cw, ch = walk_tab[cid]["w"], walk_tab[cid]["h"]
-        for (rx, ry, direction) in ramp_at.values():
-            # 램프 두뎃 양옆을 절벽 두뎃으로 이어 입구에 앉힌다.
-            # 한 칸만 띄우면 절벽 선과 램프가 떨어져 보인다.
+        for (rx, ry, direction, rw, rh) in ramp_at.values():
+            # 램프 칸 바로 옆에서 절벽 선을 이어 입구에 붙인다.
             flanks = []
             if direction in ("left", "right"):
-                for s in (1, 3, 5):
-                    flanks.append((rx, ry - s))
-                    flanks.append((rx, ry + 5 + s))
+                for s in range(0, 8, 2):
+                    flanks.append((rx, ry - 2 - s))
+                    flanks.append((rx, ry + rh + s))
             else:
-                for s in (1, 3, 5):
-                    flanks.append((rx - s, ry))
-                    flanks.append((rx + 5 + s, ry))
+                for s in range(0, 8, 2):
+                    flanks.append((rx - 2 - s, ry))
+                    flanks.append((rx + rw + s, ry))
             for (px, py) in flanks:
                 if not (2 <= px < width - 6 and 2 <= py < height - 6):
                     continue
