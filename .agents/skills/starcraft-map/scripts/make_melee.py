@@ -553,68 +553,95 @@ def main(argv=None):
         cx, cy = (width - 1) / 2.0, (height - 1) / 2.0
         # 스타팅에서 가운데를 보는 방향을 기준으로, 좌우로 벌려 놓는다.
         spread = [(-50, 1.55), (50, 1.55), (0, 2.1), (-70, 2.4), (70, 2.4)]
-        exp_pts = []
-        for i, (sx, sy) in enumerate(starts):
-            vx, vy = cx - sx, cy - sy
-            base_angle = math.atan2(vy, vx)
-            facing = quadrant_facing(sx, sy, width, height)
-            for k in range(args.expansions):
-                deg, scale = spread[k % len(spread)]
-                placed_exp = False
-                # 자기 본진에서는 앞마당(약 28)보다 멀어야 하고, 다른
-                # 본진의 앞마당보다 가까우면 그 앞마당으로 집계된다.
-                # 모든 스타팅에서 같은 하한을 쓰면 3인은 자리가 없어
-                # 변 확장이 전부 빠진다.
-                far = args.natural_distance + 4
-                for extra_deg in (0, 25, -25, 50, -50, 80, -80):
-                    if placed_exp:
-                        break
-                    a = base_angle + math.radians(deg + extra_deg)
-                    dist0 = max(args.natural_distance * scale,
-                                args.natural_distance + 14)
-                    for bump in (0, 8, -8, 16, 24):
-                        ex = int(round(sx + (dist0 + bump) * math.cos(a)))
-                        ey = int(round(sy + (dist0 + bump) * math.sin(a)))
-                        if not (8 <= ex < width - 9 and 8 <= ey < height - 9):
-                            continue
-                        eox = 1 if ex >= sx else -1
-                        eoy = 1 if ey >= sy else -1
-                        ax, ay = resource_anchor(cli, tileset_id, ex, ey,
-                                                 args.expansion_minerals,
-                                                 args.expansion_gas,
-                                                 eox, eoy, width, height)
-                        own = math.dist((ax, ay), (sx, sy))
-                        others = [math.dist((ax, ay), st) for st in starts
-                                  if st != (sx, sy)]
-                        clear_of = (
-                            all(math.hypot(ax - nx, ay - ny) >= 18
-                                for (nx, ny, _c, _s) in nat_placed)
-                            and all(math.hypot(ax - px, ay - py) >= 16
-                                    for (px, py) in exp_pts))
-                        if not (math.hypot(ax - ex, ay - ey) <= 8
-                                and own >= far
-                                and all(d >= far for d in others)
-                                and clear_of):
-                            continue
-                        n_before = len(cli.units())
-                        _placed, _skip = scmap.place_base(
-                            cli, ax, ay, owner=12,
-                            minerals=args.expansion_minerals,
-                            gas=args.expansion_gas,
-                            out_x=eox, out_y=eoy,
-                            facing=facing, width=width, height=height,
-                            start_location=False, tileset_id=tileset_id)
-                        if len(_skip) > 2:
-                            for idx in sorted(
-                                    (u["index"] for u in cli.units()[n_before:]),
-                                    reverse=True):
-                                cli.edit("unit", "remove", cli.path, str(idx))
-                            continue
-                        exp_pts.append((ax, ay))
-                        placed_exp = True
-                        break
-                if not placed_exp:
-                    print(f"  !! 멀티 {i+1}-{k+1}: 앞마당보다 먼 자리가 없습니다")
+        # 한 슬롯의 각·거리는 스타팅 전부에 같이 적용한다. 일부만 놓으면
+        # 4인 두 번째 멀티처럼 대칭이 깨지고, 못 놓는 자리는 빠진다.
+        # 각 본진에서는 앞마당보다 멀어야 그 앞마당으로 집계되지 않는다.
+        exp_pts: list[tuple[int, int]] = []
+        far = args.natural_distance + 4
+
+        def snap_expansion(ex, ey, sx, sy):
+            if not (8 <= ex < width - 9 and 8 <= ey < height - 9):
+                return None
+            eox = 1 if ex >= sx else -1
+            eoy = 1 if ey >= sy else -1
+            ax, ay = resource_anchor(cli, tileset_id, ex, ey,
+                                     args.expansion_minerals,
+                                     args.expansion_gas,
+                                     eox, eoy, width, height)
+            if math.hypot(ax - ex, ay - ey) > 12:
+                return None
+            if any(math.dist((ax, ay), st) < far for st in starts):
+                return None
+            if any(math.hypot(ax - nx, ay - ny) < 16
+                   for (nx, ny, _c, _s) in nat_placed):
+                return None
+            if any(math.hypot(ax - px, ay - py) < 11 for (px, py) in exp_pts):
+                return None
+            return ax, ay, eox, eoy
+
+        for k in range(args.expansions):
+            deg0, scale = spread[k % len(spread)]
+            base_dist = max(args.natural_distance * scale,
+                            args.natural_distance + 14)
+            chosen = None
+            sx0, sy0 = starts[0]
+            # 첫 스타팅에서 자리를 고르고, 같은 회전으로 나머지에 옮긴다.
+            # 각도만 각자 다시 계산하면 반올림이 어긋나 4인 한쪽만 떨어진다.
+            for extra in (0, -60, -40, -20, 20, 40, *range(-170, 180, 10)):
+                if chosen:
+                    break
+                for dist in (int(base_dist), 34, 36, 40,
+                             int(base_dist) + 12, 48, 56, 64):
+                    if dist < far:
+                        continue
+                    ang = (math.atan2(cy - sy0, cx - sx0)
+                           + math.radians(deg0 + extra))
+                    seed_x = sx0 + dist * math.cos(ang)
+                    seed_y = sy0 + dist * math.sin(ang)
+                    images = scmap.symmetric_points(
+                        seed_x, seed_y, symmetry, len(starts), width, height)
+                    spots = []
+                    for (sx, sy), (ix, iy) in zip(starts, images):
+                        hit = snap_expansion(int(round(ix)), int(round(iy)),
+                                             sx, sy)
+                        if hit is None:
+                            spots = []
+                            break
+                        spots.append(((sx, sy), hit))
+                    if len(spots) != len(starts):
+                        continue
+                    pts = [(ax, ay) for (_s, (ax, ay, _ox, _oy)) in spots]
+                    if any(math.hypot(pts[a][0] - pts[b][0],
+                                      pts[a][1] - pts[b][1]) < 16
+                           for a in range(len(pts)) for b in range(a)):
+                        continue
+                    chosen = spots
+                    break
+            if not chosen:
+                print(f"  !! 멀티 {k+1}: 모든 스타팅이 앞마당보다 먼 자리가 없습니다")
+                continue
+            n_before = len(cli.units())
+            placed_ok = True
+            for (sx, sy), (ax, ay, eox, eoy) in chosen:
+                _placed, _skip = scmap.place_base(
+                    cli, ax, ay, owner=12,
+                    minerals=args.expansion_minerals,
+                    gas=args.expansion_gas,
+                    out_x=eox, out_y=eoy,
+                    facing=quadrant_facing(sx, sy, width, height),
+                    width=width, height=height,
+                    start_location=False, tileset_id=tileset_id)
+                if len(_skip) > 2:
+                    placed_ok = False
+                    break
+            if not placed_ok:
+                for idx in sorted(
+                        (u["index"] for u in cli.units()[n_before:]),
+                        reverse=True):
+                    cli.edit("unit", "remove", cli.path, str(idx))
+                print(f"  !! 멀티 {k+1}: 자원이 절벽에 걸려 대칭으로 놓지 못했습니다")
+                continue
+            exp_pts.extend((ax, ay) for (_s, (ax, ay, _ox, _oy)) in chosen)
 
     # 6) 가운데 지형 — 본진 언덕만 있으면 맵이 아니라 벌판이다.
     if shape is None and not args.no_center and not args.no_plateau:
