@@ -638,6 +638,7 @@ def main(argv=None):
                 continue
             n_before = len(cli.units())
             placed_ok = True
+            why = "절벽"
             for (sx, sy), (ax, ay, eox, eoy) in chosen:
                 _placed, _skip = scmap.place_base(
                     cli, ax, ay, owner=12,
@@ -650,6 +651,7 @@ def main(argv=None):
                     pack=0.5)
                 if len(_placed) < args.expansion_minerals + args.expansion_gas - 2:
                     placed_ok = False
+                    why = "절벽"
                     break
             if placed_ok:
                 fresh = cli.units()[n_before:]
@@ -660,20 +662,50 @@ def main(argv=None):
                             and math.hypot(u["x"] / 32 - ax, u["y"] / 32 - ay) < 12]
                     if not pool:
                         placed_ok = False
+                        why = "자원 없음"
                         break
                     gx = sum(u["x"] / 32 for u in pool) / len(pool)
                     gy = sum(u["y"] / 32 for u in pool) / len(pool)
-                    d0 = math.dist((gx, gy), (sx, sy))
-                    if d0 < far or any(math.dist((gx, gy), st) <= d0
-                                       for st in starts if st != (sx, sy)):
-                        placed_ok = False
-                        break
+
+                    def owned_at(px, py, sx=sx, sy=sy):
+                        d0 = math.dist((px, py), (sx, sy))
+                        return d0 >= far and all(
+                            math.dist((px, py), st) > d0
+                            for st in starts if st != (sx, sy))
+
+                    if not owned_at(gx, gy):
+                        # 미네랄 줄이 경계 너머로 기울면 몇 칸만 제 본진 쪽으로
+                        # 되돌린다. 못 돌아오면 이 고리 전체를 뺀다.
+                        vx, vy = sx - gx, sy - gy
+                        L = math.hypot(vx, vy) or 1.0
+                        moved = False
+                        for step in range(1, 7):
+                            ngx = gx + vx / L * step
+                            ngy = gy + vy / L * step
+                            if not owned_at(ngx, ngy):
+                                continue
+                            dx, dy = round(ngx - gx), round(ngy - gy)
+                            if dx == 0 and dy == 0:
+                                continue
+                            for u in pool:
+                                cli.edit("unit", "move", cli.path, str(u["index"]),
+                                         str(max(2, min(width - 3, u["x"] // 32 + dx))),
+                                         str(max(2, min(height - 3, u["y"] // 32 + dy))),
+                                         "--tiles")
+                                u["x"] += dx * 32
+                                u["y"] += dy * 32
+                            moved = True
+                            break
+                        if not moved:
+                            placed_ok = False
+                            why = "옆 본진"
+                            break
             if not placed_ok:
                 for idx in sorted(
                         (u["index"] for u in cli.units()[n_before:]),
                         reverse=True):
                     cli.edit("unit", "remove", cli.path, str(idx))
-                print(f"  !! 멀티 {k+1}: 자원이 절벽에 걸려 대칭으로 놓지 못했습니다")
+                print(f"  !! 멀티 {k+1}: {why} 이라 대칭으로 놓지 못했습니다")
                 continue
             exp_pts.extend((ax, ay) for (_s, (ax, ay, _ox, _oy)) in chosen)
             print(f"  멀티 {k+1} 앵커", [(ax, ay) for (ax, ay) in exp_pts[-len(starts):]])
