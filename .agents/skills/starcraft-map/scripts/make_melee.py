@@ -213,7 +213,7 @@ def resource_anchor(cli: Cli, tileset_id: int, tile_x: int, tile_y: int,
                     width: int, height: int,
                     owner_xy: tuple[int, int] | None = None,
                     all_starts: list | None = None,
-                    pack: float = 1.0) -> tuple[int, int]:
+                    pack: float = 1.0, compact: bool = False) -> tuple[int, int]:
     """자원 아홉 덩이와 가스가 다 들어가는 가장 가까운 칸.
 
     계산한 자리가 절벽 띠면 나선형으로 한 칸씩 옮겨 본다. 못 찾으면
@@ -236,7 +236,8 @@ def resource_anchor(cli: Cli, tileset_id: int, tile_x: int, tile_y: int,
             return False
         if not mine(ax, ay):
             return False
-        mins, gases = scmap.layout_resources(ax, ay, minerals, gas, out_x, out_y, pack)
+        mins, gases = scmap.layout_resources(
+            ax, ay, minerals, gas, out_x, out_y, pack, compact)
         flat = [c for group in mins + gases for c in group]
         # 자원끼리 높이가 같고, 그 높이에 4×3 본진 건물이 채집 거리에 서야 한다.
         return scmap.townhall_pad(grid, tiles, ax, ay, flat, width, height) is not None
@@ -581,7 +582,7 @@ def main(argv=None):
                                      args.expansion_gas,
                                      eox, eoy, width, height,
                                      owner_xy=(sx, sy), all_starts=starts,
-                                     pack=0.5)
+                                     pack=0.875)
             # 맞추는 거리가 길면 옆 본진 쪽으로 넘어가 개수가 갈린다.
             if math.hypot(ax - ex, ay - ey) > 12:
                 return None
@@ -602,8 +603,120 @@ def main(argv=None):
                             args.natural_distance + 14)
             chosen = None
             sx0, sy0 = starts[0]
+
+            fail_why = {"place": 0, "own": 0, "close": 0}
+
+            def commit_ring(spots):
+                """자원을 놓고, 칸이 겹치거나 옆 본진으로 가면 되돌려 False."""
+                n_before = len(cli.units())
+
+                def rollback():
+                    for idx in sorted(
+                            (u["index"] for u in cli.units()[n_before:]),
+                            reverse=True):
+                        cli.edit("unit", "remove", cli.path, str(idx))
+
+                for (sx, sy), (ax, ay, eox, eoy) in spots:
+                    _placed, _skip = scmap.place_base(
+                        cli, ax, ay, owner=12,
+                        minerals=args.expansion_minerals,
+                        gas=args.expansion_gas,
+                        out_x=eox, out_y=eoy,
+                        facing=quadrant_facing(sx, sy, width, height),
+                        width=width, height=height,
+                        start_location=False, tileset_id=tileset_id,
+                        pack=0.875)
+                    if len(_placed) < args.expansion_minerals + args.expansion_gas - 2:
+                        fail_why["place"] += 1
+                        rollback()
+                        return False
+                fresh = cli.units()[n_before:]
+                centers = []
+                for (sx, sy), (ax, ay, _eox, _eoy) in spots:
+                    pool = [u for u in fresh
+                            if ("Mineral Field" in u["type_name"]
+                                or "Vespene Geyser" in u["type_name"])
+                            and math.hypot(u["x"] / 32 - ax, u["y"] / 32 - ay) < 12]
+                    if len(pool) < args.expansion_minerals + args.expansion_gas - 2:
+                        rollback()
+                        return False
+                    here = [(u["x"] // 32, u["y"] // 32) for u in pool]
+                    if len(here) != len(set(here)):
+                        rollback()
+                        return False
+                    gx = sum(p[0] for p in here) / len(here)
+                    gy = sum(p[1] for p in here) / len(here)
+
+                    def owned_at(px, py, sx=sx, sy=sy):
+                        d0 = math.dist((px, py), (sx, sy))
+                        return d0 >= far and all(
+                            math.dist((px, py), st) > d0
+                            for st in starts if st != (sx, sy))
+
+                    if not owned_at(gx, gy):
+                        vx, vy = sx - gx, sy - gy
+                        L = math.hypot(vx, vy) or 1.0
+                        moved = False
+                        for step in range(1, 7):
+                            ngx = gx + vx / L * step
+                            ngy = gy + vy / L * step
+                            dx, dy = round(ngx - gx), round(ngy - gy)
+                            if dx == 0 and dy == 0 or not owned_at(gx + dx, gy + dy):
+                                continue
+                            pool_ids = {u["index"] for u in pool}
+                            taken = set()
+                            for o in cli.units():
+                                if o["index"] in pool_ids:
+                                    continue
+                                name = o.get("type_name") or ""
+                                if ("Mineral Field" not in name
+                                        and "Vespene Geyser" not in name):
+                                    continue
+                                taken.add((o["x"] // 32, o["y"] // 32))
+                            dest = [(u["x"] // 32 + dx, u["y"] // 32 + dy) for u in pool]
+                            if len(dest) != len(set(dest)) or any(p in taken for p in dest):
+                                continue
+                            for u in pool:
+                                cli.edit("unit", "move", cli.path, str(u["index"]),
+                                         str(max(2, min(width - 3, u["x"] // 32 + dx))),
+                                         str(max(2, min(height - 3, u["y"] // 32 + dy))),
+                                         "--tiles")
+                                u["x"] += dx * 32
+                                u["y"] += dy * 32
+                            here = dest
+                            moved = True
+                            break
+                        if not moved:
+                            fail_why["own"] += 1
+                            rollback()
+                            return False
+                    centers.append((sum(p[0] for p in here) / len(here),
+                                    sum(p[1] for p in here) / len(here)))
+                if any(math.hypot(centers[a][0] - centers[b][0],
+                                  centers[a][1] - centers[b][1]) < 10
+                       for a in range(len(centers)) for b in range(a)):
+                    fail_why["close"] += 1
+                    rollback()
+                    return False
+                # 이미 있는 미네랄과 8타일 안이면 덩이가 하나로 합쳐진다.
+                older = [(u["x"] // 32, u["y"] // 32)
+                         for u in cli.units()[:n_before]
+                         if "Mineral Field" in (u.get("type_name") or "")
+                         or "Vespene Geyser" in (u.get("type_name") or "")]
+                newer = [(u["x"] // 32, u["y"] // 32) for u in fresh
+                         if "Mineral Field" in (u.get("type_name") or "")
+                         or "Vespene Geyser" in (u.get("type_name") or "")]
+                # 검증 덩이는 가로·세로 8칸 이내면 한 덩이로 합친다.
+                if any(abs(a[0] - b[0]) <= 8 and abs(a[1] - b[1]) <= 8
+                       for a in newer for b in older):
+                    fail_why["close"] += 1
+                    rollback()
+                    return False
+                return True
+
             # 첫 스타팅에서 자리를 고르고, 같은 회전으로 나머지에 옮긴다.
             # 각도만 각자 다시 계산하면 반올림이 어긋나 4인 한쪽만 떨어진다.
+            # 계산상 맞아도 자원이 겹치거나 절벽에 걸리면 다음 각도를 본다.
             for extra in (45, 50, -25, -50, -125, 55, -15, -40, 15):
                 if chosen:
                     break
@@ -631,81 +744,12 @@ def main(argv=None):
                                       pts[a][1] - pts[b][1]) < 18
                            for a in range(len(pts)) for b in range(a)):
                         continue
+                    if not commit_ring(spots):
+                        continue
                     chosen = spots
                     break
             if not chosen:
-                print(f"  !! 멀티 {k+1}: 모든 스타팅이 앞마당보다 먼 자리가 없습니다")
-                continue
-            n_before = len(cli.units())
-            placed_ok = True
-            why = "절벽"
-            for (sx, sy), (ax, ay, eox, eoy) in chosen:
-                _placed, _skip = scmap.place_base(
-                    cli, ax, ay, owner=12,
-                    minerals=args.expansion_minerals,
-                    gas=args.expansion_gas,
-                    out_x=eox, out_y=eoy,
-                    facing=quadrant_facing(sx, sy, width, height),
-                    width=width, height=height,
-                    start_location=False, tileset_id=tileset_id,
-                    pack=0.5)
-                if len(_placed) < args.expansion_minerals + args.expansion_gas - 2:
-                    placed_ok = False
-                    why = "절벽"
-                    break
-            if placed_ok:
-                fresh = cli.units()[n_before:]
-                for (sx, sy), (ax, ay, _eox, _eoy) in chosen:
-                    pool = [u for u in fresh
-                            if ("Mineral Field" in u["type_name"]
-                                or "Vespene Geyser" in u["type_name"])
-                            and math.hypot(u["x"] / 32 - ax, u["y"] / 32 - ay) < 12]
-                    if not pool:
-                        placed_ok = False
-                        why = "자원 없음"
-                        break
-                    gx = sum(u["x"] / 32 for u in pool) / len(pool)
-                    gy = sum(u["y"] / 32 for u in pool) / len(pool)
-
-                    def owned_at(px, py, sx=sx, sy=sy):
-                        d0 = math.dist((px, py), (sx, sy))
-                        return d0 >= far and all(
-                            math.dist((px, py), st) > d0
-                            for st in starts if st != (sx, sy))
-
-                    if not owned_at(gx, gy):
-                        # 미네랄 줄이 경계 너머로 기울면 몇 칸만 제 본진 쪽으로
-                        # 되돌린다. 못 돌아오면 이 고리 전체를 뺀다.
-                        vx, vy = sx - gx, sy - gy
-                        L = math.hypot(vx, vy) or 1.0
-                        moved = False
-                        for step in range(1, 7):
-                            ngx = gx + vx / L * step
-                            ngy = gy + vy / L * step
-                            if not owned_at(ngx, ngy):
-                                continue
-                            dx, dy = round(ngx - gx), round(ngy - gy)
-                            if dx == 0 and dy == 0:
-                                continue
-                            for u in pool:
-                                cli.edit("unit", "move", cli.path, str(u["index"]),
-                                         str(max(2, min(width - 3, u["x"] // 32 + dx))),
-                                         str(max(2, min(height - 3, u["y"] // 32 + dy))),
-                                         "--tiles")
-                                u["x"] += dx * 32
-                                u["y"] += dy * 32
-                            moved = True
-                            break
-                        if not moved:
-                            placed_ok = False
-                            why = "옆 본진"
-                            break
-            if not placed_ok:
-                for idx in sorted(
-                        (u["index"] for u in cli.units()[n_before:]),
-                        reverse=True):
-                    cli.edit("unit", "remove", cli.path, str(idx))
-                print(f"  !! 멀티 {k+1}: {why} 이라 대칭으로 놓지 못했습니다")
+                print(f"  !! 멀티 {k+1}: 겹치지 않는 자리가 없습니다 {fail_why}")
                 continue
             exp_pts.extend((ax, ay) for (_s, (ax, ay, _ox, _oy)) in chosen)
             print(f"  멀티 {k+1} 앵커", [(ax, ay) for (ax, ay) in exp_pts[-len(starts):]])
@@ -1102,10 +1146,17 @@ def main(argv=None):
         cid = cliff_ids[0]
         cw, ch = walk_tab[cid]["w"], walk_tab[cid]["h"]
         for (rx, ry, direction) in ramp_at.values():
+            # 램프 두뎃 양옆을 절벽 두뎃으로 이어 입구에 앉힌다.
+            # 한 칸만 띄우면 절벽 선과 램프가 떨어져 보인다.
+            flanks = []
             if direction in ("left", "right"):
-                flanks = [(rx, ry - 3), (rx, ry + 3)]
+                for s in (1, 3, 5):
+                    flanks.append((rx, ry - s))
+                    flanks.append((rx, ry + 5 + s))
             else:
-                flanks = [(rx - 3, ry), (rx + 3, ry)]
+                for s in (1, 3, 5):
+                    flanks.append((rx - s, ry))
+                    flanks.append((rx + 5 + s, ry))
             for (px, py) in flanks:
                 if not (2 <= px < width - 6 and 2 <= py < height - 6):
                     continue

@@ -540,6 +540,15 @@ MAIN_MINERAL_OFFSETS = [
     (-160, 176),
 ]
 MAIN_GAS_OFFSET = (0, -160)
+# 변 확장 언덕은 본진 줄(세로 8타일)을 못 담는다. 칸이 겹치지 않게
+# 간격을 유지한 채 앵커 가운데로 모은다.
+COMPACT_MINERAL_OFFSETS = [
+    (-48, -96), (48, -96),
+    (-48, -32), (48, -32),
+    (-48, 32), (48, 32),
+    (0, 96),
+]
+COMPACT_GAS_OFFSET = (0, 160)
 
 # 본진 언덕 크기 — 전수 중앙값은 34x34 타일, 넓이 720칸이다.
 # 앞서 쓰던 23x15 는 절반도 안 되어 건물 지을 자리가 나오지 않았다.
@@ -573,21 +582,23 @@ def _foot_cells(px: int, py: int, w: int, h: int):
 
 
 def layout_resources(tile_x: int, tile_y: int, minerals: int, gas: int,
-                     out_x: int, out_y: int, pack: float = 1.0):
+                     out_x: int, out_y: int, pack: float = 1.0,
+                     compact: bool = False):
     """자원 발자국 칸. 미네랄은 2×1, 가스는 4×2.
 
-    pack 이 1보다 작으면 같은 모양을 앵커 가까이로 줄인다. 변 확장은
-    맵 끝이라 본진용 7타일 줄을 그대로 쓰면 칸이 맵 밖으로 나간다.
+    compact 면 변 확장용으로 앵커 근처에 모은다. 칸은 겹치지 않는다.
     """
     def turn(dx, dy):
         return int(dx * pack) * (1 if out_x < 0 else -1), int(dy * pack) * (1 if out_y < 0 else -1)
 
+    mineral_offsets = COMPACT_MINERAL_OFFSETS if compact else MAIN_MINERAL_OFFSETS
+    gas_offset = COMPACT_GAS_OFFSET if compact else MAIN_GAS_OFFSET
     mins, gases = [], []
     for i in range(minerals):
-        dx, dy = turn(*MAIN_MINERAL_OFFSETS[i % len(MAIN_MINERAL_OFFSETS)])
+        dx, dy = turn(*mineral_offsets[i % len(mineral_offsets)])
         mins.append(_foot_cells(tile_x * TILE + dx, tile_y * TILE + dy, 2, 1))
     for i in range(gas):
-        dx, dy = turn(*MAIN_GAS_OFFSET)
+        dx, dy = turn(*gas_offset)
         gases.append(_foot_cells(tile_x * TILE + dx,
                                  tile_y * TILE + dy + i * 96, 4, 2))
     return mins, gases
@@ -643,7 +654,7 @@ def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
                gas_amount: int = GAS_AMOUNT,
                start_location: bool = True,
                tileset_id: int | None = None, check_terrain: bool = True,
-               pack: float = 1.0):
+               pack: float = 1.0, compact: bool = False):
     """스타팅 한 곳을 통째로 놓는다 — 스타팅 표시 + 미네랄 + 가스.
 
     facing 은 90도 단위 회전 수다. 대칭으로 놓은 스타팅마다 같은 모양을
@@ -683,7 +694,7 @@ def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
         cli.place(START_LOCATION, tile_x, tile_y, owner)
 
     res_mins, res_gas = layout_resources(tile_x, tile_y, minerals, gas,
-                                         out_x, out_y, pack)
+                                         out_x, out_y, pack, compact)
     flat = [c for group in res_mins + res_gas for c in group]
     if tiles is not None and townhall_pad(
             grid, tiles, tile_x, tile_y, flat, width, height) is None:
@@ -703,7 +714,8 @@ def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
     placed, skipped = [], []
     kinds = (MINERAL_1, MINERAL_2, MINERAL_3)
     for i in range(minerals):
-        dx, dy = MAIN_MINERAL_OFFSETS[i % len(MAIN_MINERAL_OFFSETS)]
+        src = COMPACT_MINERAL_OFFSETS if compact else MAIN_MINERAL_OFFSETS
+        dx, dy = src[i % len(src)]
         dx, dy = turn(int(dx * pack), int(dy * pack))
         px, py = tile_x * TILE + dx, tile_y * TILE + dy
         if not buildable(px, py, 2, 1):
@@ -713,7 +725,7 @@ def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
                  str(px), str(py), "--owner", "12")
         placed.append(("mineral", dx, dy))
     for i in range(gas):
-        gx, gy = MAIN_GAS_OFFSET
+        gx, gy = COMPACT_GAS_OFFSET if compact else MAIN_GAS_OFFSET
         dx, dy = turn(int(gx * pack), int(gy * pack))
         px, py = tile_x * TILE + dx, tile_y * TILE + dy + i * 96
         if not buildable(px, py, 4, 2):
