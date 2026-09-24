@@ -2114,6 +2114,31 @@ Result MapArchive::createNew(MapFormat format,
         return Result::failure("새 맵을 만드는 중 알 수 없는 예외가 발생했습니다.");
     }
 
+    // MappingCore derives the editor TILE layer from ISOM during new-map
+    // construction, while its game MTXM layer remains zeroed. Mirror the
+    // generated terrain into MTXM so the game and renderer see that ground.
+    if (graphics != nullptr)
+    {
+        const auto editorTiles = fresh->mapFile->read.editorTiles;
+        const std::size_t tileWidth = fresh->mapFile->getTileWidth();
+        const std::size_t tileHeight = fresh->mapFile->getTileHeight();
+        try
+        {
+            for (std::size_t y = 0; y < tileHeight; ++y)
+            {
+                for (std::size_t x = 0; x < tileWidth; ++x)
+                {
+                    const std::uint16_t editorTile = editorTiles[y * tileWidth + x];
+                    fresh->mapFile->setTile(x, y, editorTile, Chk::Scope::Game);
+                }
+            }
+        }
+        catch (const std::exception & e)
+        {
+            return Result::failure(std::string("새 맵의 게임 지형을 초기화하지 못했습니다: ") + e.what());
+        }
+    }
+
     impl_ = std::move(fresh);
     return Result::success();
 }
