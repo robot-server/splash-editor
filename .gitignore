@@ -13,9 +13,8 @@ tests/maps/*.chk
 # 파이썬 캐시
 __pycache__/
 
-# 학습에 쓴 **원본 맵은 저장소 어디에도 넣지 않는다.** 남의 저작물이다.
-# 거기서 뽑은 파생 통계만 담는다
-# (.agents/skills/starcraft-map/data/corpus.json — 숫자뿐, 맵 이름·지형 없음).
+# 학습에 쓴 원본 맵은 저장소 어디에도 넣지 않는다. 제작에 재사용할
+# 규칙은 출처 맥락과 기능 패턴을 docs/에 기록한다.
 *.scm
 *.scx
 *.chk
@@ -23,3 +22,7 @@ __pycache__/
 *.trig.tmp
 *.tiles
 *.objects
+
+# 로컬 원본 학습 자료: 저작권 원본 맵과 강좌 덤프는 커밋하지 않는다.
+_local-corpus/**
+!_local-corpus/.gitkeep
