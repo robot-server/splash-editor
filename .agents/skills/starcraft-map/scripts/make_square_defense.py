@@ -15,9 +15,8 @@
     │ ╚════════════════╝ │   서쪽 출구에 닿으면 목숨이 하나 준다.
     └────────────────────┘
 
-바닥 타일과 두뎃은 짐작하지 않는다 — `data/corpus.json` 의 타일셋별
-실측 분포에서 뽑는다. 타일 값 하나로 도배하면 주기성 100% 가 되므로
-바닥은 단색으로 반듯하게 둔다 — 유즈맵은 네모난 방이지 경관이 아니다.
+바닥 타일은 타일셋 속성에서 걷기·건설 가능 여부를 확인해 고른다. 타일 값 하나로 도배하면 주기성 100% 가 되므로
+바닥은 단색으로 반듯하게 둔다 — 이 경기장은 네모난 방 구조로 설계한다.
 
 보기:
     python3 make_square_defense.py out.scx --players 6 --waves 15
@@ -30,7 +29,6 @@ import random
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import corpus
 import scmap
 from scmap import Cli, CliError
 
@@ -107,13 +105,19 @@ def floor_tile(cli, tileset, rng):
     "걷기·짓기 되는 첫 번째 타일"처럼 규칙으로 고르면 Ice 를 시켰는데
     흙바닥이 나온다. 실측 분포에서 뽑아야 그 타일셋처럼 보인다.
     """
-    c = corpus.load()
     tiles = scmap.tileset_tiles(cli, tileset)
-    for g in corpus.pick_floor_groups(c, tileset, "usemap", 12):
-        good = [t for t in range(g * 16, g * 16 + 16)
-                if t in tiles and tiles[t][1] and tiles[t][2]]
-        if good:
-            return rng.choice(good), g
+    groups = sorted({t >> 4 for t in tiles if t >= 32})
+    terrain = scmap.terrain_groups(cli, tileset)
+    levels = sorted({row[0] for row in terrain.values() if row[2]})
+    for level in levels:
+        for g in groups:
+            row = terrain.get(g)
+            if not row or row[0] != level or not (row[2] or (len(row) > 5 and row[5] == 0xFFFF)):
+                continue
+            good = [t for t in range(g * 16, g * 16 + 16)
+                    if t in tiles and tiles[t][1] and tiles[t][2]]
+            if good:
+                return rng.choice(good), g
     for t, p in sorted(tiles.items()):          # 물러설 곳
         if t >= 16 and p[1] and p[2]:
             return t, t >> 4
@@ -387,7 +391,6 @@ def main(argv=None):
     enemy, boss_p = f"Player {enemy_no}", f"Player {boss_no}"
 
     print(f"사각 디펜스 {W}x{H} {a.tileset}, 사람 {a.players}명, {a.waves}웨이브")
-    print("  " + corpus.describe("usemap", a.tileset))
 
     cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False,
                         install=a.install)
@@ -521,7 +524,7 @@ def main(argv=None):
         portrait="Terran Marine"))
 
 
-    # 방 테두리를 두뎃으로 꾸민다. 실측 유즈맵 76장 중 70장(92%)이
+    # 방 테두리 두뎃은 실제 보행·시야·배치 검증 뒤 선택한다.
     # 두뎃 타일을 쓰고, 중앙 868칸이며 그 89%가 걷기 경계 두 칸 안에
     # 몰려 있다. 내 맵은 0칸이었다 — 그림으로 보고서야 알았다.
     # 걷기를 막는 두뎃은 `data/doodad-walk.json` 을 보고 걸러 낸다.

@@ -25,7 +25,6 @@ import random
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import corpus
 import scmap
 from scmap import Cli, CliError
 
@@ -147,7 +146,6 @@ def main(argv=None):
     humans = [f"Player {p}" for p in range(1, a.players + 1)]
 
     print(f"좀비 {W}x{H} {a.tileset}, {a.players}명, {a.survive}초 버티기")
-    print("  " + corpus.describe("usemap", a.tileset))
     cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False,
                         install=a.install)
 
@@ -167,10 +165,7 @@ def main(argv=None):
     field = (ox + SH_W + GAP, oy, FIELD_W, ROOM_H)
     grave = (ox + SH_W + GAP + FIELD_W + GAP, oy, GY_W, ROOM_H)
 
-    # 바닥·통로·테두리·발판·벽을 **다섯 몫으로** 나눠 쓴다. 한 가지로
-    # 깔고 벽만 검게 뚫던 앞판은 실측과 어긋났다 (실측 유즈맵 486장의
-    # 검은 칸 중앙값 0.0%, 1% 넘게 쓰는 그룹 중앙값 10개 — 내 것은
-    # 검은 칸 55~89%, 그룹 1개였다. 그려 놓고 나란히 보고서야 알았다).
+    # 바닥·통로·테두리·발판·벽은 이동과 시각 안내 역할에 맞춰 구분한다.
     pal = scmap.Palette(cli, ts, rng, "usemap")
     print(f"  지형: {pal.describe()}")
 

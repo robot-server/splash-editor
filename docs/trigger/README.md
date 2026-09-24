@@ -1,48 +1,12 @@
-# 트리거
+# 트리거 지식
 
-유즈맵의 알맹이다. 문법은 글이고, 글이라 짜고 검증할 수 있다.
+트리거는 조건, 액션 순서, 상태 전이와 위치를 연결해서 설계한다. 이 레퍼런스는 개별 액션/API를 찾는 용도이고, 완성 패턴으로 일반화하려면 원본 맵 또는 강좌의 전체 흐름을 확인한다.
 
-| 글 | 무엇이 있나 |
-| --- | --- |
-| **[api.md](api.md)** | **인자 순서 레퍼런스. 생성된 문서** — 짐작 말고 여기를 본다 |
-| [conditions.md](conditions.md) | 조건 전부. 인자의 함정 |
-| [actions.md](actions.md) | 액션 전부. 못 만드는 유닛, 64가지 제한 |
-| [execution.md](execution.md) | **먼저 읽는다.** 트리거가 도는 순서, 웨잇 꼬임, 하이퍼 |
-| [death-counts.md](death-counts.md) | 죽음 수 = 유즈맵의 변수. 어느 유닛을 쓸 수 있나 |
-| [locations.md](locations.md) | 로케이션. 높이 조건·뒤집기·이름 규칙 |
-| [bring-command.md](bring-command.md) | `Bring`·`Command` 가 무엇을 세나. 견줌마다 다르다 |
-| [skills.md](skills.md) | 스킬은 웨잇이 아니라 데스값 타이머로 |
-| [random.md](random.md) | 난수가 없다. 스위치를 이진수 한 자리로 |
-| [ai-scripts.md](ai-scripts.md) | 컴퓨터를 실제로 움직이는 법. Order 로는 잘 안 된다 |
-| [composition.md](composition.md) | 트리거 수를 줄이는 법. n×m 을 n+m 으로 |
-| [recipes.md](recipes.md) | 문법과 바로 쓰는 조각 |
+- [api.md](api.md): 텍스트 트리거 명령과 인자 순서
+- [conditions.md](conditions.md), [actions.md](actions.md): 조건과 액션별 의미
+- [execution.md](execution.md): 실행 순서와 Wait 상호작용
+- [locations.md](locations.md): 이동 로케이션 및 Bring 판정
+- [recipes.md](recipes.md): 구문 예시. 실제 맵의 상태·예외 조건을 추가 확인할 것
+- [briefing-strings.md](briefing-strings.md): 스트링과 브리핑
 
-## 실측 — 사람들이 실제로 쓰는 것
-
-유즈맵 329장 기준 (`data/trigger-usage.json`, 772장에서 인자까지 뜸).
-
-| 쓰는 것 | 맵 비율 |
-| --- | --- |
-| `Create Unit` + `Preserve Trigger` | 98% |
-| `Bring` 조건 | **97%** |
-| 강화(체력·에너지 고치기) | 89% |
-| 순위표 `Leader Board *` | 82% |
-| 화면 이동 `Center View` | 74% |
-| 미션 브리핑 | 85% (중앙 2트리거) |
-
-## 틀리기 쉬운 것 — 전부 실제로 틀려 봤다
-
-| 함정 | 어디에 적었나 |
-| --- | --- |
-| 하이퍼를 사람 플레이어에 검 | [execution.md](execution.md) |
-| 한 플레이어에 웨잇 트리거 둘 | [execution.md](execution.md) |
-| 누적 조건 + `Preserve` = 무한 보상 | [skills.md](skills.md) | 스킬은 웨잇이 아니라 데스값 타이머로 |
-| [random.md](random.md) | 난수가 없다. 스위치를 이진수 한 자리로 |
-| [ai-scripts.md](ai-scripts.md) | 컴퓨터를 실제로 움직이는 법. Order 로는 잘 안 된다 |
-| [composition.md](composition.md) | 트리거 수를 줄이는 법. n×m 을 n+m 으로 |
-| [recipes.md](recipes.md) |
-| 맵에 있는 유닛을 변수 칸으로 씀 | [death-counts.md](death-counts.md) |
-| `At least 1` 의 반대를 `At most 0` 으로 씀 | [locations.md](locations.md) | 로케이션. 높이 조건·뒤집기·이름 규칙 |
-| [bring-command.md](bring-command.md) |
-| **인자 순서를 에디터 창 기준으로 씀** (`Bring` 포함 36가지가 다르다) | **[api.md](api.md)** |
-| 스위치로 사람별 상태를 담으려 함 | [death-counts.md](death-counts.md) |
+특정 액션이 자주 보인다는 이유만으로 기본 설계나 필수 요소라고 결론 내리지 않는다.

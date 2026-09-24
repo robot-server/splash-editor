@@ -25,7 +25,6 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import corpus
 import melee_shape
 import scmap
 from scmap import TILE, Cli, CliError
@@ -294,10 +293,9 @@ def main(argv=None):
     ap.add_argument("--natural-minerals", type=int, default=None)
     ap.add_argument("--natural-gas", type=int, default=None)
     ap.add_argument("--natural-distance", type=int, default=28,
-                    help="본진에서 앞마당까지 타일 거리 (공식 맵 중앙값 28)")
+                    help="본진에서 앞마당까지 타일 거리")
     ap.add_argument("--expansions", type=int, default=2,
-                    help="스타팅마다 놓을 바깥 멀티 수 "
-                         "(본진·앞마당까지 합쳐 공식 맵 중앙값은 4곳)")
+                    help="스타팅마다 놓을 바깥 멀티 수")
     ap.add_argument("--expansion-minerals", type=int, default=7)
     ap.add_argument("--expansion-gas", type=int, default=1)
     ap.add_argument("--favor", default="even",
@@ -309,10 +307,7 @@ def main(argv=None):
     ap.add_argument("--features", type=int, default=4,
                     help="대칭으로 얹을 지형 덩이 수 (고지대·다른 바닥 지형)")
     ap.add_argument("--doodads", type=int, default=None,
-                    help="놓을 두뎃 수. 안 주면 **타일셋별 실측**에서 뽑는다 "
-                         "(Badlands 중앙 208 · Jungle 145 · Space 0). "
-                         "전체 중앙값 34를 박아 두었던 것이 잘못이었다 — "
-                         "어느 타일셋에도 맞지 않는 수다")
+                    help="배치할 두뎃 수. 지형·진입로·자원 접근을 확인하고 명시한다")
     ap.add_argument("--seed", type=int, default=1, help="두뎃 자리 난수 씨앗")
     ap.add_argument("--plateau", action="store_true",
                     help="본진을 고지대에 올리고 램프를 낸다. 걸어서 통하는 "
@@ -554,7 +549,6 @@ def main(argv=None):
                              "--tiles")
 
     # 5) 바깥 멀티 — 스타팅마다 같은 상대 위치에 놓아 대칭을 지킨다.
-    #    공식 맵은 스타팅당 자원 덩이가 중앙값 4곳이다 (본진·앞마당 포함).
     if args.expansions > 0:
         print(f"바깥 멀티 {args.expansions}곳씩 놓습니다...")
         cx, cy = (width - 1) / 2.0, (height - 1) / 2.0
@@ -820,9 +814,7 @@ def main(argv=None):
                     if 2 <= tx + d < width - 2 and 2 <= ty < height - 2:
                         cli.isom(tx + d - ((tx + d) % 2), ty, high_terrain)
 
-    # 6b) 지형 무늬 — 고지대 덩이와 다른 바닥 지형을 섞는다.
-    #     공식 맵은 타일 그룹을 484개(중앙값) 쓴다. 한 가지 지형으로만
-    #     칠하면 서른 개도 안 나온다.
+    # 6b) 지형 무늬 — 구역별 역할에 맞춰 고지대와 바닥 지형을 나눈다.
     if shape is None and args.features > 0:
         print(f"지형 덩이를 얹습니다 ({args.features}곳씩)...")
         rng2 = random.Random(args.seed + 7)
@@ -862,7 +854,7 @@ def main(argv=None):
                     feature_strokes.append((tx - (tx % 2), ty, terrain))
         cli.isom_batch(feature_strokes)
 
-    # 7) 지형지물 — 두뎃. 공식 맵 57개 중앙값이 135개다. 없으면 벌판이다.
+    # 7) 지형지물 — 두뎃은 의도적으로 지정된 경우에만 검토한다.
     #
     # **세 가지를 지킨다. 셋 다 지적받고 고친 것이다.**
     #
@@ -875,14 +867,9 @@ def main(argv=None):
     # (다) **걷기를 막는 것은 미리 걸러 낸다.** `data/doodad-walk.json`
     #      에 타일셋마다 재 두었다.
     if args.doodads is None:
-        # **전체 중앙값을 쓰지 않는다.** 두뎃 수는 타일셋에 따라 Space 0
-        # 에서 Badlands 208 까지 벌어진다 (밀리 183곳 전수). 전체
-        # 중앙값 하나로 박아 두었더니 Badlands 맵이 34개만 받아,
-        # "4x4 창의 83%가 지형 한두 가지뿐" 인 벌판이 됐다.
-        args.doodads = corpus.doodad_count(corpus.load(), args.tileset,
-                                           "melee", random.Random(args.seed))
-        print(f"  두뎃 수를 {args.tileset} 밀리 실측에서 뽑았습니다: "
-              f"{args.doodads}개")
+        # 두뎃은 경로·시야·자원 접근을 바꾸므로 자동 밀도 추정으로 배치하지 않는다.
+        # 사용자가 목적에 맞는 수를 지정할 때만 배치한다.
+        args.doodads = 0
     if args.doodads > 0:
         print(f"두뎃을 놓습니다 (목표 {args.doodads}개)...")
         safe = scmap.doodad_walk_table(tileset_id)

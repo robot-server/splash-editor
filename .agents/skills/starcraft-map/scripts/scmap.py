@@ -75,7 +75,7 @@ def find_install() -> str:
         return env
     raise CliError(
         "StarCraft 설치 폴더가 필요합니다. SC_INSTALL 에 지정하세요.\n"
-        "  예: export SC_INSTALL=/Volumes/X31/StarCraft\n"
+        "  예: export SC_INSTALL=/path/to/StarCraft\n"
         "제대로 잡혔는지는 `splash-cli assets <경로>` 로 봅니다.")
 
 
@@ -199,6 +199,12 @@ class Cli:
                               "x": int(m.group(4)), "y": int(m.group(5)),
                               "id": int(m.group(6))})
         return items
+
+    def doodad_fits(self, doodad_id: int, center_x: int, center_y: int) -> bool:
+        """현재 MTXM 에 doodad 를 놓을 자리가 타일셋 허용 표와 맞는지 본다."""
+        out = self.run("doodad", "fits", self.path, str(doodad_id),
+                       str(center_x), str(center_y), "--install", self.install)
+        return "배치 가능: 예" in out
 
     def terrain_types(self) -> dict[str, int]:
         """이 맵 타일셋의 ISOM 지형 이름 → 브러시 번호."""
@@ -437,6 +443,7 @@ def symmetric_points(x: float, y: float, symmetry: str, count: int,
             out.append((cx + dx * math.cos(a) - dy * math.sin(a),
                         cy + dx * math.sin(a) + dy * math.cos(a)))
         return out
+
     raise ValueError(f"모르는 대칭: {symmetry}")
 
 
@@ -451,13 +458,11 @@ def symmetric_points(x: float, y: float, symmetry: str, count: int,
 #   3. "Space·Desert·Ice·Twilight 는 램프가 없다" 고 적었다. 실은
 #      그 넷이 가장 많다 (Desert 166개, Space 136개).
 #
-# StarEdit 은 램프 세트가 절벽에 붙는지를 이미 알고 있다. 그러니 타일을
-# 손으로 펼치지 말고 **두뎃을 그대로 놓는다.**
-#
-# 표는 `data/ramps.json` — `measure_ramps.py` 가 여덟 타일셋에 실제로
-# 놓아 보고, 램프 깃발이 선 칸이 고지대 덩이의 어느 쪽에 붙는지로
-# 방향을 가려 만든다. 712개 중 **659개가 걸어서 통한다**
-# (Installation 은 좌우 2개뿐이다).
+# 표는 `data/ramps.json` — `measure_ramps.py` 가 타일셋의 램프 깃발 위치와
+# 시험 지형의 미니타일 연결을 관찰해 후보를 만든다. 이 측정은
+# `DoodadPlacibility` 배치 허용 여부나 게임 엔진 동작까지 검증하지 않는다.
+# CLI `doodad place` 도 배치 가능 표를 검사하지 않으므로, 표의 `walks` 는
+# 후보 지형에서 국소 경로가 이어졌다는 의미로만 쓴다.
 
 
 def _ramp_table() -> dict:
@@ -522,20 +527,8 @@ def default_ramp(tileset_id: int):
 
 # --- 자원 ---
 #
-# 본진 미네랄 배치. 공식 리그 맵 56개에서 스타팅 229곳을 재어 보니 본진
-# 미네랄은 9개(144곳)가 가장 흔했고 가스는 1개(219곳)였다. 아래 값은
-# 투혼의 본진을 잰 것으로, 스타팅 중심에서의 픽셀 차이다. 미네랄은
-# 32픽셀(한 타일) 간격으로 두 줄에 걸쳐 늘어선다.
-# 본진 자원 배치. **공식 밀리맵 46장의 본진 183곳을 전수로 재어** 얻었다.
-# 미네랄 9개 + 가스 1개인 표준형 136곳 가운데 가장 흔한 배치(26곳)를 그대로
-# 쓴다. 두 번째로 흔한 배치(22곳)는 이것의 상하 거울이라 out_y 로 뒤집으면
-# 나온다.
-#
-# 스타팅 중심에서의 픽셀 차이다. 미네랄은 왼쪽 6~7타일에 세로줄로 서고,
-# 가스는 스타팅 바로 위아래 **정확히 5.0타일**(±160)에 놓인다 — 가스
-# 거리는 4분위가 5.0~5.0 으로 편차가 없었다.
-#
-# (앞서 투혼 한 장만 보고 가스를 -176 으로 잡았는데 0.5타일 어긋난 값이었다.)
+# 자원 포켓 좌표 오프셋. 각 배치에서 기지 건물 footprint, 애드온 면,
+# 미네랄 접근 및 본진 출구를 검사해야 한다. 이 배열만으로 유효성을 보장하지 않는다.
 MAIN_MINERAL_OFFSETS = [
     (-224, -48), (-224, 16), (-224, 80),
     (-192, -80), (-192, -16), (-192, 48), (-192, 112), (-192, 144),
@@ -552,19 +545,14 @@ COMPACT_MINERAL_OFFSETS = [
 ]
 COMPACT_GAS_OFFSET = (0, 160)
 
-# 본진 언덕 크기 — 전수 중앙값은 34x34 타일, 넓이 720칸이다.
-# 앞서 쓰던 23x15 는 절반도 안 되어 건물 지을 자리가 나오지 않았다.
+# 본진 고원은 건물 footprint와 주변 자원 동선을 포함하도록 계획한다.
 MAIN_PLATEAU_HALF_W = 17
 MAIN_PLATEAU_HALF_H = 17
 
-# 스타팅에서 램프까지 중앙값 18.6타일. 그리고 **램프는 좌우로 난다** —
-# 램프가 붙은 본진 57곳 중 왼쪽 26, 오른쪽 23, 위 5, 아래 3 이었다.
-# 위아래만 시도하면 대개 찾지 못한다.
+# 램프 방향은 고정하지 않고 후보별 배치와 보행 연결을 검증한다.
 MAIN_RAMP_DISTANCE = 18
 
-# 본진이 반드시 언덕인 것도 아니다: 183곳의 높이는
-# 중지대 94 / 저지대 52 / 고지대 37 이고, 램프가 아예 없는 본진이 126곳이다.
-# 좁은 길목으로 나가는 본진이 램프 있는 본진보다 흔하다.
+# 본진은 언덕형과 좁은 길목형을 목적에 맞춰 선택한다.
 
 
 def _cell_prop(grid, tiles, tx: int, ty: int):
@@ -806,7 +794,6 @@ def setup_usemap_players(cli: Cli, humans: int, computers: list[int],
     # **시작 위치 섞기는 끈다.** 켜 두면 플레이어가 스타팅에 무작위로
     # 배정되어, P1 을 가리키는 트리거가 엉뚱한 자리를 본다. 자리마다
     # 트리거가 다른 유즈맵(디펜스 경기장 등)은 그대로 망가진다.
-    # 실측: 1번 세력에 이 깃발을 켠 맵은 329장 중 10% 뿐이다.
     for f, name in ((1, "Players"), (2, "Enemy")):
         cli.edit("force", "set", cli.path, str(f), "--name", name,
                  "--allied-victory", "on", "--shared-vision", "on",
@@ -816,9 +803,7 @@ def setup_usemap_players(cli: Cli, humans: int, computers: list[int],
 def reveal_for_all(cli: Cli, humans: int, spacing: int = 16):
     """사람 플레이어 **모두**에게 시야를 연다.
 
-    한 사람 것만 깔면 나머지는 깜깜하다. 실측 유즈맵 329장 중 74% 가
-    Map Revealer 를 쓰고, 쓰는 맵의 **주인 수 중앙값이 5명**이다
-    (개수 중앙값 50개). 한 명만 깔아 두는 맵은 표본에 거의 없다.
+    각 사람 슬롯에 배치해야 모두 같은 시야를 받는다.
     """
     for p in range(1, humans + 1):
         cli.edit("scenario", "revealers", cli.path,
@@ -983,7 +968,9 @@ def place_ramp_checked(cli: Cli, tileset_id: int, edge: int, fixed: int,
             try:
                 # 두뎃은 가운데 기준이다. 왼위를 가운데로 옮겨 넘긴다.
                 cx, cy = doodad_anchor(x, y, w, h)
-                place_doodad(cli, did, cx, cy, w, h)
+                if not cli.doodad_fits(did, cx, cy):
+                    continue
+                place_doodad(cli, did, x, y, w, h)
             except CliError:
                 continue
 
@@ -1303,30 +1290,16 @@ class Palette:
       있고 **고도가 같다.** (낮은 데서 높은 데를 치면 46.9% 빗나간다.)
     - `wall` 은 걸을 수 없는 그룹이다. **검은 칸(그룹 0)이 아니다.**
 
-    고르는 차례: 실측 유즈맵이 그 타일셋에서 많이 쓴 그룹 순으로 보고,
-    타일 표에서 실제로 걷을 수 있는지·고도가 같은지 확인해 담는다.
+    타일셋의 이동·건설·고도 속성을 먼저 걸러내고, 살아남은 그룹의
+    렌더 색 대비로 역할을 나눈다. 맵 표본에서의 사용 빈도는 선택 기준이 아니다.
     """
 
     def __init__(self, cli: "Cli", tileset_id: int, rng,
                  kind: str = "usemap", elevation: int | None = None):
-        import corpus as _corpus
         self.rng = rng
         self.tileset_id = tileset_id & 7
         tiles = tileset_tiles(cli, self.tileset_id)
-        try:
-            order = _corpus.pick_floor_groups(
-                _corpus.load(), self.tileset_id, kind, 64)
-        except Exception:
-            order = []
-        try:
-            wgt0 = _corpus.group_weights(_corpus.load(), kind, self.tileset_id)
-        except Exception:
-            wgt0 = {}
-        # **실측이 넓게 깐 그룹만 쓴다.** 그러지 않으면 전이 타일이나
-        # 두뎃 밑그림 그룹이 바닥으로 뽑혀 통짜로 깔았을 때 깨져 보인다.
-        order = [g for g in order if wgt0.get(g, 0.0) >= 0.005] or order
-        seen = set(order)
-        order += [g for g in sorted({t >> 4 for t in tiles}) if g not in seen]
+        order = sorted({t >> 4 for t in tiles})
 
         # **물·용암 그룹은 타일이 여섯 개뿐이다.** 앞서 "변종 여덟 개
         # 이상" 을 걸었더니 벽으로 쓸 그룹이 하나도 안 잡혀 검은 칸으로
@@ -1374,16 +1347,8 @@ class Palette:
         if not by_lvl:
             raise CliError(f"타일셋 {self.tileset_id} 에서 걸을 수 있는 "
                            f"그룹을 찾지 못했습니다.")
-        # **고도는 실측이 많이 쓴 쪽으로 고른다.** 그룹 개수로 고르면
-        # Badlands 가 고지대(고도 2)로 잡힌다 — 실제 유즈맵 바닥은
-        # 낮은 흙이다.
-        try:
-            wgt = _corpus.group_weights(_corpus.load(), kind, self.tileset_id)
-        except Exception:
-            wgt = {}
         if elevation is None or elevation not in by_lvl:
-            elevation = max(by_lvl, key=lambda l: (
-                sum(wgt.get(g, 0.0) for g, _ in by_lvl[l]), len(by_lvl[l])))
+            elevation = min(by_lvl)
         self.elevation = elevation
         walkable = by_lvl[elevation]
 
@@ -1397,7 +1362,7 @@ class Palette:
         # (`data/tile-colors.json`) 을 보고 **서로 먼 색**을 고른다.
         order4 = [g for g, _ in walkable]
         col = _tile_colors(self.tileset_id)
-        head = order4[:14]                   # 실측이 넓게 쓴 것 안에서만 고른다
+        head = sorted(order4, key=lambda g: (col.get(g, (90, 90, 90)), g))
         # **바닥은 벽보다 밝아야 한다.** 가장 많이 쓴 그룹을 그냥 바닥으로
         # 삼으니 Badlands 에서 (28,27,28) 짜리 거의 검은 지형이 뽑혔다.
         # 지형은 제대로 깔렸는데 그림은 여전히 구멍처럼 보였다. 실제
@@ -1418,10 +1383,7 @@ class Palette:
         bright = [g for g in head if lum(g) > wall_lum + 6]
         if len(bright) < 4:
             bright = sorted(head, key=lum, reverse=True)[:max(4, len(bright))]
-        # **색이 같은 그룹은 하나만 남긴다.** Jungle 의 그룹 14 와 15 는
-        # 잰 색이 똑같다 — 둘을 다른 몫에 넣으면 나눈 셈만 되고 화면은
-        # 그대로다. 색을 굵게 묶어 대표만 남기고, 실측을 많이 쓴 쪽을
-        # 대표로 둔다.
+        # 색이 같은 그룹은 하나만 남겨 역할 간 시각적 구별을 보장한다.
         seen_col, uniq = set(), []
         for g in bright:
             c = col.get(g)
@@ -1510,7 +1472,7 @@ class Palette:
         **한 구획은 한 그룹이다.** 칸마다 그룹을 다시 뽑으면 눈밭·풀밭·
         흙바닥이 뒤섞인 소금후추 무늬가 된다 — 실제로 그렇게 그려 보고
         걷어냈다. 그룹은 고정하고 **같은 그룹 안의 변종만** 흩어서 결을
-        낸다 (실측 유즈맵의 서로 다른 타일 수 중앙값이 141개다).
+        낸다.
         """
         if w <= 0 or h <= 0:
             return
@@ -1533,8 +1495,8 @@ def cover_map(cli: "Cli", pal: Palette, width: int, height: int,
               margin: int = 0):
     """맵 바탕을 깐다. **기본은 걸을 수 있는 바닥이다.**
 
-    처음에는 `terrain fill … 0` 으로 검게 덮고 방만 뚫었다. 실측 유즈맵
-    485장의 검은 칸 중앙값은 0.0% 다 — 아무도 그렇게 하지 않는다.
+    검은 칸으로 맵 전체를 덮고 방만 뚫으면 화면이 비고 이동 가능 면도
+    의도와 다르게 잘릴 수 있다.
 
     그래서 검은 칸 대신 **못 걷는 지형(물·용암)** 으로 덮었는데, 이번에는
     다른 데서 걸렸다 — **못 걷는 지형이 맵의 66% 를 넘으면 게임이
@@ -1576,7 +1538,6 @@ def pad(cli: "Cli", pal: Palette, tile_x: int, tile_y: int,
         w: int = 3, h: int = 3):
     """비콘·시작 자리 밑에 **발판**을 깐다.
 
-    실측 비콘 624개 중 590개(94%)가 둘레와 다른 지형 위에 놓여 있었다.
     발판이 없으면 "여기 서라" 가 화면에서 안 보인다.
     """
     pal.fill(cli, "pad", tile_x - w // 2, tile_y - h // 2, w, h)
@@ -1595,43 +1556,14 @@ def pad(cli: "Cli", pal: Palette, tile_x: int, tile_y: int,
 #     - RPG 처럼 돌아다니는 것이 재미인 것 → ISOM. 사각형이면 심심하다.
 #       진짜 같은 지형이 있어야 걸어다닐 맛이 난다.
 #
-# 장르별 실측은 data/isom-usage.json, 설명은 docs/usemap/terrain.md.
+# 지형 방식은 설계 의도와 연결성에 맞춰 호출부에서 명시한다.
 # ---------------------------------------------------------------------------
 
 def terrain_mode(genre: str, default: str = "rect") -> str:
-    """이 장르는 ISOM 으로 짓는가 사각형으로 짓는가. 실측에서 읽는다.
-
-    기준은 **ISOM 다양도 중앙값**이다. "한 번이라도 붓질했나" 로 재면
-    퀴즈까지 ISOM 으로 잡힌다 — 실제로는 거의 균일한데 귀퉁이 몇 번
-    건드린 맵이 섞여서 그렇다. 중앙값이 0.2 를 넘어야 "이 장르는 지형을
-    ISOM 으로 짓는다" 고 할 수 있다.
-
-    유즈맵 479장 실측 (트리거 지문으로 장르를 붙임):
-
-        rpg     0.445   blood  0.616   ← ISOM
-        zombie  0.000   defense 0.000  control 0.000  escape 0.000
-        quiz    0.073   tag    0.046   land 0.000     ← 사각형
-    """
-    d = _isom_usage().get(genre)
-    if not d:
-        return default
-    return "isom" if d.get("isom_variety_median", 0) >= 0.2 else "rect"
-
-
-def _isom_usage() -> dict:
-    global _ISOM_USAGE
-    try:
-        return _ISOM_USAGE
-    except NameError:
-        pass
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                        "..", "data", "isom-usage.json")
-    try:
-        with open(os.path.normpath(path), encoding="utf-8") as f:
-            _ISOM_USAGE = json.load(f).get("by_genre", {})
-    except OSError:
-        _ISOM_USAGE = {}
-    return _ISOM_USAGE
+    """Return the caller's terrain choice; genre labels do not select terrain."""
+    if default not in {"isom", "rect"}:
+        raise ValueError("terrain mode must be 'isom' or 'rect'")
+    return default
 
 
 def isom_fill(cli: Cli, terrain: int, x: int, y: int, w: int, h: int,
@@ -1685,8 +1617,7 @@ def isom_landscape(cli: Cli, tileset_id: int, rng, width: int, height: int,
     순서다. 여기서는 **바닥이 먼저**고, 그 위에 지형 덩이를 키운다.
     그래야 길이 네모나지 않고 실제 지형처럼 보인다.
 
-    실측 RPG 유즈맵의 타일 그룹 중앙값이 **248개**다 (디펜스는 15개).
-    지형 자체가 콘텐츠인 장르라 이렇게 짓는다 — docs/usemap/terrain.md.
+    탐험 지형이 콘텐츠가 되도록 연결된 ISOM 덩이를 놓는다 — docs/usemap/terrain.md.
 
     덩이를 **세 갈래로** 놓는다. 한 갈래만 쓰면 노는 자리가 텅 비고,
     지형을 세 종류만 쓰면 바닥이 한 가지 색으로 남는다 — 둘 다 겪었다.
@@ -1756,9 +1687,7 @@ def isom_landscape(cli: Cli, tileset_id: int, rng, width: int, height: int,
 def isom_terrain_ids(cli: Cli, tileset_id: int | None = None) -> dict:
     """이 타일셋의 지형 종류를 **걷는가 · 고도** 로 갈라 놓는다.
 
-    앞서는 이름에 "high"·"water" 가 들어갔는지로 골랐다. 그러면 정글
-    13종 중 3종밖에 안 쓰게 된다 — 실측 RPG 유즈맵의 타일 그룹 중앙값이
-    **248개**인데 3종으로는 어림없다.
+    이름 문자열이 아니라 지형 그룹의 실제 고도·이동 속성으로 고른다.
 
     여기서는 두 가지 실측을 겹쳐 본다.
 

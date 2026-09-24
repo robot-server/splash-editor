@@ -1,13 +1,5 @@
 {
  "_about": "영웅 유닛과 같은 겉모습(flingy)을 쓰는 일반 유닛의 차이. measure_heroes.py 가 게임 데이터(units.dat·weapons.dat·flingy.dat)에서 만든다. same_uneditable 에 든 값은 **맵이 못 고치는데도 영웅과 일반이 같은** 것이다 — 그 값을 노리고 영웅을 고르면 헛수고다.",
- "_summary": {
-  "pairs": 37,
-  "same_ground_range": 27,
-  "faster_cooldown": 4,
-  "same_speed": 37,
-  "same_sight": 26,
-  "same_damage_upgrade": 34
- },
  "heroless": [
   "Terran SCV",
   "Terran Dropship",

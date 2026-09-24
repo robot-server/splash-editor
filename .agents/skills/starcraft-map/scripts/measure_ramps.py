@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-"""**램프를 타일셋에서 직접 찾아 검증한다** — `data/ramps.json` 을 만든다.
+"""타일셋 램프 doodad의 방향·국소 연결 후보를 측정해 `data/ramps.json` 으로 쓴다.
+
+이 표는 `DoodadPlacibility` 배치 허용 여부나 게임 엔진 동작을 검증하지 않는다.
 
 ## 왜 다시 하나
 
@@ -27,13 +29,14 @@
 1. 두뎃을 평지에 하나씩 놓아 보고 **램프 표시 타일이 나오는 것**을
    후보로 고른다. Badlands 에서는 `Cliff` 와 `Structure Wall` 갈래다.
 2. 후보마다 네 방향을 다 시험한다. 한쪽을 고지대로 올리고 경계에 놓는다.
-   `doodad place` 는 `DoodadPlacibility` 를 보므로 **안 맞는 자리에서는
-   스스로 거절한다** — 그 거절이 곧 "이 방향에는 안 쓴다" 는 답이다.
-3. 놓인 것만 **미니타일 길찾기로** 고지대↔저지대가 통하는지 본다.
+   현재 CLI `doodad place` 는 `DoodadPlacibility` 를 검사하지 않는다.
+   명령 성공을 배치 가능성의 증거로 사용하지 않는다.
+3. 놓은 결과에서 **미니타일 길찾기로** 고지대↔저지대가 통하는지 본다.
+   이 검사는 시험 지형의 보행 연결만 확인한다. 에디터 배치 허용 여부와
+   게임에서의 유닛 통과는 별도 검증 대상이다.
 
-2번이 사용자가 짚은 것이다: "경사로 타일이 세트로 구성되고 벽에 접합이
-되는지도 StarEdit 에 이미 있다." 그 표가 `dddata.bin` 의
-`DoodadPlacibility` 다.
+`DoodadPlacibility` 는 에디터가 doodad 배치를 허용하는 지형 조합 표다.
+현재 측정기는 이 표의 결과를 후보 데이터에 반영하지 않는다.
 
     python3 measure_ramps.py            # 여덟 타일셋 모두
     python3 measure_ramps.py --tileset 5 --verbose
@@ -215,7 +218,7 @@ def measure(tmp, ts, install, verbose=False):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="타일셋에서 램프를 찾아 검증한다")
+    ap = argparse.ArgumentParser(description="타일셋 램프 doodad의 방향·국소 보행 후보를 측정한다")
     ap.add_argument("--tileset", type=int)
     ap.add_argument("--verbose", action="store_true")
     ap.add_argument("--install")
@@ -236,17 +239,18 @@ def main(argv=None):
             data[NAMES[ts]] = found
             n_walk = sum(1 for f in found if f.get("walks"))
             print(f"    램프 깃발이 선 두뎃 {len(found)}개 "
-                  f"(그중 **걸어서 통하는 것 {n_walk}개**)  " +
+                  f"(시험 지형에서 국소 경로가 이어진 후보 {n_walk}개)  " +
                   (", ".join(f"{d} {n}" for d, n in sorted(by_dir.items()))
                    or "없음"))
     path = os.path.normpath(OUT)
     with open(path, "w", encoding="utf-8") as f:
-        json.dump({"_about": "타일셋의 **램프 두뎃** 목록. measure_ramps.py 가 "
-                             "실측해 만든다. id 는 두뎃 번호(doodad place 에 "
-                             "넣는 값), w·h 는 타일 수, kind 는 두뎃 갈래, "
-                             "dir 는 **내려가는 쪽**(램프칸이 고지대 덩이의 "
-                             "어느 쪽에 붙어 있나), ramp_tiles 는 Ramp 깃발이 "
-                             "선 미니타일을 가진 칸 수.",
+        json.dump({"_about": "타일셋의 램프 doodad 방향·국소 보행 후보. "
+                             "measure_ramps.py 가 만든다. id 는 doodad 번호, "
+                             "w·h 는 타일 수, kind 는 갈래, dir 는 Ramp 깃발이 "
+                             "놓인 방향, ramp_tiles 는 해당 타일 수, walks 는 "
+                             "시험 지형의 미니타일 경로 연결 여부다. "
+                             "DoodadPlacibility 배치 허용 여부나 게임 엔진 "
+                             "통과를 보증하지 않는다.",
                    "ramps": data}, f, ensure_ascii=False, indent=1)
     print(f"\n썼습니다: {path}")
     return 0

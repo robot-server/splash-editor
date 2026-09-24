@@ -1,89 +1,22 @@
-# 스프라이트 — 유닛이 아닌 것을 놓기
+# 밀리 장식·중립 오브젝트용 스프라이트
 
-출처: 스타 에디터 아카데미
-[[초급1] 스프라이트와 로케이션](https://cafe.naver.com/edac/book5095361/76408) ·
-[[팁] 유닛 스프라이트의 Active 효과](https://cafe.naver.com/edac/book5095361/76540).
+## [지형/배치 메커니즘]
 
-두 갈래가 있다. **성질이 아주 다르다.**
+- 메커니즘 이름: Unit Sprite로 밀리 맵에 중립 건물 배치
+- 적용 이유/목적: 밀리 실행에서 일반 배치 유닛이 제외되는 경우에도 중립 장식 건물이나 유닛을 보이게 한다.
+- 구체적 규칙 (타일 단위, 좌표 단위, 배치 각도, 언덕 연결 규칙 등): Star Editor Academy [스프라이트와 로케이션 강좌](https://cafe.naver.com/edac/book5095361/76408)는 원하는 Unit Sprite를 Player 12(중립) 소유로 배치하면 밀리 맵에서 중립 건물/유닛으로 남는다고 설명한다. `splash-cli sprite place <map> <id> <x> <y> --owner 12 --tiles`로 놓고, 밀리 모드로 저장·실행해 실제 표시를 확인한다. Unit Sprite는 유닛처럼 존재하고 소유자를 가진다.
+- 잘된 예시 및 실패하는 나쁜 예시: 중립 소유 Unit Sprite가 밀리 실행에서 표시되고 충돌·시야·경로가 의도한 역할과 일치하면 성공이다. 일반 유닛 레코드가 밀리 시작 때 제거된다는 점을 놓치거나 소유자를 Player 12로 지정하지 않으면 중립 오브젝트가 남지 않는다.
 
-| | **유닛 스프라이트** | **퓨어 스프라이트** |
-| --- | --- | --- |
-| 무엇 | 유닛·건물을 스프라이트로 놓은 것 | 이펙트·두뎃·유닛 **껍데기** |
-| 게임에서 | **진짜 유닛처럼 논다** | **장식일 뿐.** 클릭도 안 되고 유닛이 통과한다 |
-| 플레이어 | 정할 수 있다 | — |
-| 트리거로 만들기 | — | **불가능** (카페 답변) |
+## [지형/배치 메커니즘]
 
-```sh
-splash-cli sprite place 맵 <번호> <x> <y> --owner P --tiles -o 새맵
-splash-cli sprite set 맵 <번호> --as-sprite on|off --disabled on|off -o 새맵
-splash-cli sprite list 맵
-```
+- 메커니즘 이름: Pure Sprite와 doodad의 가림막 레이어 분리
+- 적용 이유/목적: 지형 그림과 유닛이 뒤로 숨는 시각 레이어를 따로 다뤄 오브젝트 외관을 조정한다.
+- 구체적 규칙 (타일 단위, 좌표 단위, 배치 각도, 언덕 연결 규칙 등): Pure Sprite는 이펙트·doodad의 장식 레이어이며 Unit Sprite처럼 선택·소유·이동하는 유닛이 아니다. 강좌는 나무처럼 유닛을 가리는 doodad가 지형 타일과 Pure Sprite 부분을 함께 가진다고 설명한다. 지형 레이어와 스프라이트 레이어를 분리해 확인하고, SCMDraft `Correct Doodads` 로드 옵션이 수정한 조합을 복구하는지 대상 버전에서 검사한다.
+- 잘된 예시 및 실패하는 나쁜 예시: 지형 형태와 가림 레이어를 분리 편집하고 게임 내에서 유닛 겹침이 의도대로 보이면 성공이다. 스프라이트만 남겨 가림막만 표시되거나, 지형만 남겨 납작한 그림이 되거나, 에디터 자동 보정이 변경을 되돌리면 실패다.
 
-## 밀리맵에 중립 건물을 넣는 유일한 방법
+## [에디터 타일/배치 제약사항]
 
-밀리맵으로 실행하면 **스타팅 · 중립 자원 · 중립 크리터 말고는 배치한
-유닛이 전부 무시된다.** 그런데 **유닛 스프라이트는 남는다.**
+- 지형 간 연결 규칙: 스프라이트는 지형 타일의 walk/build/height 속성을 만들지 않으므로 장식 이미지와 실제 지형 충돌을 따로 확인한다. Pure Sprite 이펙트는 에디터에서 반복 재생처럼 보여도 게임에서는 시작 때 한 번 나타나고 사라질 수 있다.
+- 유닛 길막/동선 보장 규칙: Pure Sprite는 장식용이라 클릭·이동 판정의 통로 장애물로 쓰지 않는다. Unit Sprite와 Active 상태 스프라이트는 유닛처럼 보이더라도 속성별 충돌이 다를 수 있다. 충돌이 필요한 벽은 타일/doodad로 만들고 통로를 실제 유닛으로 통과시킨다. 설치 직후 게임이 튕길 수 있는 스프라이트가 있으므로 강좌의 금지 목록과 [Active 예외](disabled-units.md)를 확인하고 한 종류씩 시험한다.
 
-> 원하는 유닛의 **유닛 스프라이트**를 **반드시 플레이어 12(중립) 소유**로
-> 놓으면, 밀리맵으로 실행해도 중립 건물이 나타난다.
-
-래더·리그 맵의 중립 건물(Temple, Khaydarin Crystal 등)이 이렇게 들어간다.
-
-## 퓨어 스프라이트는 두뎃의 "가림막" 부분이다
-
-나무처럼 **유닛이 뒤로 숨을 수 있는 두뎃**은, 지형 부분과 퓨어
-스프라이트 부분이 나뉘어 있다.
-
-- 두뎃을 지형화(`doodad to-terrain`)한 뒤 스프라이트를 지우면 →
-  **가림막 없는 납작한 그림**만 남는다.
-- 반대로 스프라이트만 남기면 가림막만 생긴다.
-
-> **주의.** SCMDraft2 의 `Options - Map Load - Correct Doodads` 가
-> 켜져 있으면, 맵을 열 때 그런 지형을 "잘못된 두뎃" 으로 보고 **자동으로
-> 두뎃으로 되돌린다.** 그렇게 두고 싶으면 그 옵션을 꺼야 한다.
-
-## Active 로 바꾸면 이상해진다 — 그리고 **맵을 날릴 수 있다**
-
-유닛 스프라이트는 기본이 `Inactive` 다. `Active` 로 바꾸면 해괴한
-모습이 된다 (카페 댓글: "비활성화는 더미데이터 상태, 프로토스 파워
-없는 상태").
-
-> **일부 유닛 스프라이트(시즈 모드 시즈탱크 등)를 `Active` 로 바꾸면
-> 맵 파일 자체가 먹통이 되고, 그 상태에서 잘못 저장하면 맵 파일을
-> 날린다.** 손대지 않는다.
-
-## 놓으면 **튕기는** 스프라이트
-
-아무거나 놓으면 안 된다. 카페가 모아 둔 목록이다.
-
-| 갈래 | 튕기는 것 |
-| --- | --- |
-| Unit Sprites – Terran | Allan Turret · Duke Turret 1·2 · Goliath Turret · Tank Turret 1·2 |
-| Pure – Doodads – Installation | Wall Flame Trap 01·02 · Wall Missile Trap 01·02 |
-| Pure – Spells – Protoss | Psionic Storm |
-| Pure – Spells – Terran | Lockdown + EMP Shockwave Missile 1·2 · Optical Flare Grenade · Yamato Gun |
-| Pure – Spells – Zerg | Broodling Parasite · Consume · Plague Cloud |
-| **Pure – Effects – Weapons** | **아래 열 가지 말고 전부 튕긴다** |
-| Pure – Neutral – Resources | Vespene Geyser |
-| Pure – Protoss | Photon Cannon · Archon Energy · Dark Archon Energy |
-| Pure – Terran | Refinery · Civilian · Firebat · Ghost · Marine · Medic · Sarah Kerrigan (Ghost) · Siege Tank Base/Turret (Siege·Tank) · Scanner Sweep |
-| Pure – Zerg | Hydralisk · Infested Kerrigan · Lurker |
-| Pure – Unknown | Unknown White Circle 1·2·3 |
-
-**Weapons 갈래에서 안 튕기는 것:** Scarab + Anti-Matter Missile
-Overlay · Gemini Missiles Trail · Grenade Shot Smoke · Halo Rockets
-Trail · Corrosive Acid Hit · Glave Wurm \ Seeker Spores Hit · Glave
-Wurm Trail · Needle Spines · Seeker Spores Overlay · Subterranean
-Spines.
-
-## 이펙트는 한 번만 나온다
-
-에디터에서는 이펙트가 계속 반복되지만 **게임에서는 시작할 때 한 번
-나오고 사라진다.** 스킬 이펙트를 스프라이트로 깔아 두는 것은 쓸모가
-거의 없다.
-
-## 관련
-
-- [doodads.md](doodads.md) — 두뎃
-- [../game/crashes.md](../game/crashes.md) — 튕기는 원인 모음
-- [../trigger/locations.md](../trigger/locations.md) — 로케이션
+출처: Star Editor Academy [스프라이트와 로케이션](https://cafe.naver.com/edac/book5095361/76408), [유닛 스프라이트의 Active 효과](https://cafe.naver.com/edac/book5095361/76540). 원문은 `_local-corpus/edac/cafe2/09_76408.txt`에서 확인했다.

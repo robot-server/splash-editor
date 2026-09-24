@@ -195,24 +195,6 @@ def main(argv=None):
                   f"{hw.get('ground_dmg_upgrade')}")
         print()
 
-    # 영웅 전체에서 공통으로 드러나는 것
-    n_same_range = sum(1 for r in out if "지상 사거리*" in r["same_uneditable"])
-    n_faster = sum(1 for r in out
-                   if r["diff"].get("ground_cooldown")
-                   and r["diff"]["ground_cooldown"][1]
-                   < r["diff"]["ground_cooldown"][0])
-    n_same_speed = sum(1 for r in out if "이동 속도*" in r["same_uneditable"])
-    n_same_sight = sum(1 for r in out if "시야*" in r["same_uneditable"])
-    n_same_upg = sum(1 for r in out
-                     if r["ground_dmg_upgrade"][0] == r["ground_dmg_upgrade"][1])
-    print("=" * 62)
-    print(f"짝 {len(out)}개 가운데")
-    print(f"  지상 사거리가 일반과 **같은** 영웅   {n_same_range}개")
-    print(f"  공격 주기가 일반보다 **빠른** 영웅   {n_faster}개")
-    print(f"  이동 속도가 일반과 **같은** 영웅     {n_same_speed}개")
-    print(f"  시야가 일반과 **같은** 영웅          {n_same_sight}개")
-    print(f"  공격력 업그레이드가 **같은** 영웅    {n_same_upg}개")
-
     # **무기를 나눠 쓰는 유닛들.** weapons.dat 한 칸을 둘 이상이 쓰면
     # 한쪽을 고칠 수 없다 — 같이 바뀐다. 타사다르와 알다리스가 그렇다.
     shared: dict[int, list] = {}
@@ -252,8 +234,7 @@ def main(argv=None):
         heroless.append(u["name"])
     if heroless:
         print("=" * 62)
-        print(f"**영웅판이 없는 유닛** {len(heroless)}기 — "
-              f"영웅으로 바꿔 쓸 수 없다")
+        print("**영웅판이 없는 유닛** — 영웅으로 바꿔 쓸 수 없다")
         for i in range(0, len(heroless), 3):
             print("  " + " · ".join(f"{n:26s}" for n in heroless[i:i + 3]))
 
@@ -262,15 +243,9 @@ def main(argv=None):
         json.dump({"_about": "영웅 유닛과 같은 겉모습(flingy)을 쓰는 일반 "
                              "유닛의 차이. measure_heroes.py 가 게임 데이터"
                              "(units.dat·weapons.dat·flingy.dat)에서 만든다. "
-                             "same_uneditable 에 든 값은 **맵이 못 고치는데도 "
+                   "same_uneditable 에 든 값은 **맵이 못 고치는데도 "
                              "영웅과 일반이 같은** 것이다 — 그 값을 노리고 "
                              "영웅을 고르면 헛수고다.",
-                   "_summary": {"pairs": len(out),
-                                "same_ground_range": n_same_range,
-                                "faster_cooldown": n_faster,
-                                "same_speed": n_same_speed,
-                                "same_sight": n_same_sight,
-                                "same_damage_upgrade": n_same_upg},
                    "heroless": heroless,
                    "shared_weapons": {str(k): v
                                       for k, v in sorted(shared.items())},

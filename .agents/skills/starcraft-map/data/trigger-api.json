@@ -1,5 +1,5 @@
 {
- "_about": "트리거 조건·액션의 인자 순서. measure_trigger_api.py 가 MappingCore 의 chk.cpp 에서 그대로 뽑는다. **text 가 텍스트 트리거(splash-cli trigger apply)의 차례**이고 classic 은 에디터 창의 차례다. 둘이 다른 것이 있으므로 섞어 쓰면 안 된다.",
+ "_about": "트리거 조건·액션의 인자 순서. MappingCore chk.cpp의 classicArguments와 textArguments에서 생성한다. text는 splash-cli 입력 순서이고 classic은 에디터 창 순서다.",
  "conditions": {
   "0": {
    "name": "No Condition",
@@ -17,10 +17,7 @@
     "numericComparisonCnd",
     "amountCnd"
    ],
-   "differs": false,
-   "observed_arity": {
-    "2": 1161
-   }
+   "differs": false
   },
   "2": {
    "name": "Command",
@@ -36,10 +33,7 @@
     "amountCnd",
     "unitCnd"
    ],
-   "differs": true,
-   "observed_arity": {
-    "4": 5706
-   }
+   "differs": true
   },
   "3": {
    "name": "Bring",
@@ -57,10 +51,7 @@
     "unitCnd",
     "locationCnd"
    ],
-   "differs": true,
-   "observed_arity": {
-    "5": 24826
-   }
+   "differs": true
   },
   "4": {
    "name": "Accumulate",
@@ -76,10 +67,7 @@
     "amountCnd",
     "resourceCnd"
    ],
-   "differs": false,
-   "observed_arity": {
-    "4": 2741
-   }
+   "differs": false
   },
   "5": {
    "name": "Kill",
@@ -95,10 +83,7 @@
     "amountCnd",
     "unitCnd"
    ],
-   "differs": true,
-   "observed_arity": {
-    "4": 4569
-   }
+   "differs": true
   },
   "6": {
    "name": "Command The Most",
@@ -162,10 +147,7 @@
     "switchCnd",
     "switchStateCnd"
    ],
-   "differs": false,
-   "observed_arity": {
-    "2": 18826
-   }
+   "differs": false
   },
   "12": {
    "name": "Elapsed Time",
@@ -177,10 +159,7 @@
     "numericComparisonCnd",
     "amountCnd"
    ],
-   "differs": false,
-   "observed_arity": {
-    "2": 1746
-   }
+   "differs": false
   },
   "13": {
    "name": "Is Briefing",
@@ -200,10 +179,7 @@
     "numericComparisonCnd",
     "amountCnd"
    ],
-   "differs": false,
-   "observed_arity": {
-    "3": 19
-   }
+   "differs": false
   },
   "15": {
    "name": "Deaths",
@@ -219,10 +195,7 @@
     "amountCnd",
     "unitCnd"
    ],
-   "differs": true,
-   "observed_arity": {
-    "4": 16371
-   }
+   "differs": true
   },
   "16": {
    "name": "Command The Least",
@@ -254,10 +227,7 @@
    "classic_args": [
     "unitCnd"
    ],
-   "differs": false,
-   "observed_arity": {
-    "1": 50
-   }
+   "differs": false
   },
   "19": {
    "name": "Lowest Score",
@@ -267,10 +237,7 @@
    "classic_args": [
     "scoreCnd"
    ],
-   "differs": false,
-   "observed_arity": {
-    "1": 22
-   }
+   "differs": false
   },
   "20": {
    "name": "Least Resources",
@@ -296,28 +263,19 @@
     "numericComparisonCnd",
     "amountCnd"
    ],
-   "differs": false,
-   "observed_arity": {
-    "4": 2446
-   }
+   "differs": false
   },
   "22": {
    "name": "Always",
    "text_args": [],
    "classic_args": [],
-   "differs": false,
-   "observed_arity": {
-    "0": 5449
-   }
+   "differs": false
   },
   "23": {
    "name": "Never",
    "text_args": [],
    "classic_args": [],
-   "differs": false,
-   "observed_arity": {
-    "0": 246
-   }
+   "differs": false
   }
  },
  "actions": {
@@ -331,28 +289,19 @@
    "name": "Victory",
    "text_args": [],
    "classic_args": [],
-   "differs": false,
-   "observed_arity": {
-    "0": 200
-   }
+   "differs": false
   },
   "2": {
    "name": "Defeat",
    "text_args": [],
    "classic_args": [],
-   "differs": false,
-   "observed_arity": {
-    "0": 297
-   }
+   "differs": false
   },
   "3": {
    "name": "Preserve Trigger",
    "text_args": [],
    "classic_args": [],
-   "differs": false,
-   "observed_arity": {
-    "0": 21688
-   }
+   "differs": false
   },
   "4": {
    "name": "Wait",
@@ -362,28 +311,19 @@
    "classic_args": [
     "duration"
    ],
-   "differs": false,
-   "observed_arity": {
-    "1": 19631
-   }
+   "differs": false
   },
   "5": {
    "name": "Pause Game",
    "text_args": [],
    "classic_args": [],
-   "differs": false,
-   "observed_arity": {
-    "0": 4
-   }
+   "differs": false
   },
   "6": {
    "name": "Unpause Game",
    "text_args": [],
    "classic_args": [],
-   "differs": false,
-   "observed_arity": {
-    "0": 3
-   }
+   "differs": false
   },
   "7": {
    "name": "Transmission",
@@ -405,11 +345,7 @@
     "amount",
     "string"
    ],
-   "differs": true,
-   "observed_arity": {
-    "8": 709,
-    "9": 8
-   }
+   "differs": true
   },
   "8": {
    "name": "Play Sound",
@@ -431,12 +367,7 @@
    "classic_args": [
     "string"
    ],
-   "differs": true,
-   "observed_arity": {
-    "2": 17731,
-    "4": 8,
-    "3": 50
-   }
+   "differs": true
   },
   "10": {
    "name": "Center View",
@@ -446,10 +377,7 @@
    "classic_args": [
     "location"
    ],
-   "differs": false,
-   "observed_arity": {
-    "1": 2993
-   }
+   "differs": false
   },
   "11": {
    "name": "Create Unit with Properties",
@@ -467,10 +395,7 @@
     "player",
     "cuwp"
    ],
-   "differs": true,
-   "observed_arity": {
-    "5": 2298
-   }
+   "differs": true
   },
   "12": {
    "name": "Set Mission Objectives",
@@ -480,11 +405,7 @@
    "classic_args": [
     "string"
    ],
-   "differs": false,
-   "observed_arity": {
-    "1": 405,
-    "0": 1
-   }
+   "differs": false
   },
   "13": {
    "name": "Set Switch",
@@ -496,10 +417,7 @@
     "switchMod",
     "switch"
    ],
-   "differs": true,
-   "observed_arity": {
-    "2": 5245
-   }
+   "differs": true
   },
   "14": {
    "name": "Set Countdown Timer",
@@ -511,10 +429,7 @@
     "numericMod",
     "duration"
    ],
-   "differs": false,
-   "observed_arity": {
-    "2": 405
-   }
+   "differs": false
   },
   "15": {
    "name": "Run AI Script",
@@ -524,10 +439,7 @@
    "classic_args": [
     "script"
    ],
-   "differs": false,
-   "observed_arity": {
-    "1": 722
-   }
+   "differs": false
   },
   "16": {
    "name": "Run AI Script At Location",
@@ -539,10 +451,7 @@
     "script",
     "location"
    ],
-   "differs": false,
-   "observed_arity": {
-    "2": 792
-   }
+   "differs": false
   },
   "17": {
    "name": "Leader Board (Control)",
@@ -616,10 +525,7 @@
     "unit",
     "player"
    ],
-   "differs": true,
-   "observed_arity": {
-    "2": 4063
-   }
+   "differs": true
   },
   "23": {
    "name": "Kill Unit At Location",
@@ -635,10 +541,7 @@
     "player",
     "location"
    ],
-   "differs": true,
-   "observed_arity": {
-    "4": 6291
-   }
+   "differs": true
   },
   "24": {
    "name": "Remove Unit",
@@ -650,10 +553,7 @@
     "unit",
     "player"
    ],
-   "differs": true,
-   "observed_arity": {
-    "2": 1481
-   }
+   "differs": true
   },
   "25": {
    "name": "Remove Unit At Location",
@@ -669,10 +569,7 @@
     "player",
     "location"
    ],
-   "differs": true,
-   "observed_arity": {
-    "4": 6414
-   }
+   "differs": true
   },
   "26": {
    "name": "Set Resources",
@@ -688,10 +585,7 @@
     "amount",
     "resource"
    ],
-   "differs": false,
-   "observed_arity": {
-    "4": 7755
-   }
+   "differs": false
   },
   "27": {
    "name": "Set Score",
@@ -707,10 +601,7 @@
     "amount",
     "score"
    ],
-   "differs": false,
-   "observed_arity": {
-    "4": 2621
-   }
+   "differs": false
   },
   "28": {
    "name": "Minimap Ping",
@@ -720,10 +611,7 @@
    "classic_args": [
     "location"
    ],
-   "differs": false,
-   "observed_arity": {
-    "1": 2747
-   }
+   "differs": false
   },
   "29": {
    "name": "Talking Portrait",
@@ -735,28 +623,19 @@
     "unit",
     "duration"
    ],
-   "differs": false,
-   "observed_arity": {
-    "2": 101
-   }
+   "differs": false
   },
   "30": {
    "name": "Mute Unit Speech",
    "text_args": [],
    "classic_args": [],
-   "differs": false,
-   "observed_arity": {
-    "0": 2
-   }
+   "differs": false
   },
   "31": {
    "name": "Unmute Unit Speech",
    "text_args": [],
    "classic_args": [],
-   "differs": false,
-   "observed_arity": {
-    "0": 3
-   }
+   "differs": false
   },
   "32": {
    "name": "Leaderboard Computer Players",
@@ -766,10 +645,7 @@
    "classic_args": [
     "stateMod"
    ],
-   "differs": false,
-   "observed_arity": {
-    "1": 133
-   }
+   "differs": false
   },
   "33": {
    "name": "Leaderboard Goal (Control)",
@@ -857,10 +733,7 @@
     "player",
     "location"
    ],
-   "differs": true,
-   "observed_arity": {
-    "4": 3265
-   }
+   "differs": true
   },
   "39": {
    "name": "Move Unit",
@@ -878,10 +751,7 @@
     "location",
     "secondaryLocation"
    ],
-   "differs": true,
-   "observed_arity": {
-    "5": 8875
-   }
+   "differs": true
   },
   "40": {
    "name": "Leaderboard (Greed)",
@@ -901,10 +771,7 @@
    "classic_args": [
     "string"
    ],
-   "differs": false,
-   "observed_arity": {
-    "1": 168
-   }
+   "differs": false
   },
   "42": {
    "name": "Set Doodad State",
@@ -920,10 +787,7 @@
     "player",
     "location"
    ],
-   "differs": true,
-   "observed_arity": {
-    "4": 440
-   }
+   "differs": true
   },
   "43": {
    "name": "Set Invincibility",
@@ -939,10 +803,7 @@
     "player",
     "location"
    ],
-   "differs": true,
-   "observed_arity": {
-    "4": 2731
-   }
+   "differs": true
   },
   "44": {
    "name": "Create Unit",
@@ -958,10 +819,7 @@
     "location",
     "player"
    ],
-   "differs": true,
-   "observed_arity": {
-    "4": 35753
-   }
+   "differs": true
   },
   "45": {
    "name": "Set Deaths",
@@ -977,10 +835,7 @@
     "amount",
     "unit"
    ],
-   "differs": true,
-   "observed_arity": {
-    "4": 16908
-   }
+   "differs": true
   },
   "46": {
    "name": "Order",
@@ -998,10 +853,7 @@
     "order",
     "secondaryLocation"
    ],
-   "differs": true,
-   "observed_arity": {
-    "5": 6531
-   }
+   "differs": true
   },
   "47": {
    "name": "Comment",
@@ -1011,11 +863,7 @@
    "classic_args": [
     "string"
    ],
-   "differs": false,
-   "observed_arity": {
-    "1": 81768,
-    "0": 17
-   }
+   "differs": false
   },
   "48": {
    "name": "Give Units to Player",
@@ -1033,10 +881,7 @@
     "location",
     "destPlayer"
    ],
-   "differs": true,
-   "observed_arity": {
-    "5": 2271
-   }
+   "differs": true
   },
   "49": {
    "name": "Modify Unit Hit Points",
@@ -1054,10 +899,7 @@
     "location",
     "percent"
    ],
-   "differs": true,
-   "observed_arity": {
-    "5": 1600
-   }
+   "differs": true
   },
   "50": {
    "name": "Modify Unit Energy",
@@ -1075,10 +917,7 @@
     "location",
     "percent"
    ],
-   "differs": true,
-   "observed_arity": {
-    "5": 501
-   }
+   "differs": true
   },
   "51": {
    "name": "Modify Unit Shield points",
@@ -1112,10 +951,7 @@
     "location",
     "amount"
    ],
-   "differs": true,
-   "observed_arity": {
-    "4": 3
-   }
+   "differs": true
   },
   "53": {
    "name": "Modify Unit Hangar Count",
@@ -1139,28 +975,19 @@
    "name": "Pause Timer",
    "text_args": [],
    "classic_args": [],
-   "differs": false,
-   "observed_arity": {
-    "0": 39
-   }
+   "differs": false
   },
   "55": {
    "name": "Unpause Timer",
    "text_args": [],
    "classic_args": [],
-   "differs": false,
-   "observed_arity": {
-    "0": 13
-   }
+   "differs": false
   },
   "56": {
    "name": "Draw",
    "text_args": [],
    "classic_args": [],
-   "differs": false,
-   "observed_arity": {
-    "0": 19
-   }
+   "differs": false
   },
   "57": {
    "name": "Set Alliance Status",
@@ -1172,19 +999,13 @@
     "player",
     "allyState"
    ],
-   "differs": false,
-   "observed_arity": {
-    "2": 617
-   }
+   "differs": false
   },
   "58": {
    "name": "Disable Debug Mode",
    "text_args": [],
    "classic_args": [],
-   "differs": false,
-   "observed_arity": {
-    "0": 1
-   }
+   "differs": false
   },
   "59": {
    "name": "Enable Debug Mode",

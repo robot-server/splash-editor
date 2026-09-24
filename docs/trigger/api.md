@@ -1,126 +1,114 @@
-# 트리거 API 레퍼런스 — 인자 순서
+# [트리거/로직 패턴]
 
-**이 문서는 생성된 것이다.** `measure_trigger_api.py` 가
-MappingCore 의 `chk.cpp` 에서 정본 표를 뽑아 쓴다. 손으로 고치지
-않는다 — 고치려면 스크립트를 고친다.
+- 패턴 이름: 에디터 조건·액션을 텍스트 트리거 인자 순서로 옮기기
+- 구현하고자 하는 기능: 기능 조건과 결과 액션을 잘못된 매개변수 순서 없이 CHK 트리거로 저장한다.
+- 조건(Condition) 및 액션(Action) 구조 체인: MappingCore `chk.cpp`의 명령 정의에 따라 `splash-cli trigger apply`의 text 인자 순서를 사용한다. 아래 Condition/Action 표에서 필요한 명령을 고르고, 명령 ID와 각 필드 순서를 그대로 연결한다.
+- 예외 처리/버그 방지 로직 (예: 스위치 리셋, 트리거 순서 등): SCMDraft classic 편집기 창의 표시 순서는 text 명령 순서와 다른 항목이 있으므로, classic 강좌의 필드 순서를 CLI 입력에 그대로 복사하지 않는다. `⚠` 표시가 있는 액션·조건은 순서가 틀리면 엉뚱한 플레이어·유닛·수량·위치가 적용될 수 있어 저장 뒤 맵의 트리거 텍스트를 다시 읽어 확인한다.
 
-## 먼저 알 것 — 인자 순서가 **두 벌**이다
+## Condition 텍스트 인자 순서
 
-| 표 | 어디서 쓰나 |
-| --- | --- |
-| **text** | **텍스트 트리거.** `splash-cli trigger apply` 가 먹는 것 |
-| classic | 에디터의 Classic Trigger 창에 보이는 차례 |
+| ID | 이름 | 텍스트 인자 순서 |
+| ---: | --- | --- |
+| 1 | **Countdown Timer** | 견줌(at least/at most/exactly), 값 |
+| 2 | **Command** ⚠ | 플레이어, 유닛, 견줌(at least/at most/exactly), 값 |
+| 3 | **Bring** ⚠ | 플레이어, 유닛, 로케이션, 견줌(at least/at most/exactly), 값 |
+| 4 | **Accumulate** | 플레이어, 견줌(at least/at most/exactly), 값, 자원 |
+| 5 | **Kill** ⚠ | 플레이어, 유닛, 견줌(at least/at most/exactly), 값 |
+| 6 | **Command The Most** | 유닛 |
+| 7 | **Command The Most At** | 유닛, 로케이션 |
+| 8 | **Most Kills** | 유닛 |
+| 9 | **Highest Score** | 점수 갈래 |
+| 10 | **Most Resources** | 자원 |
+| 11 | **Switch** | 스위치, 스위치 상태(set/not set) |
+| 12 | **Elapsed Time** | 견줌(at least/at most/exactly), 값 |
+| 13 | **Is Briefing** | — |
+| 14 | **Opponents** | 플레이어, 견줌(at least/at most/exactly), 값 |
+| 15 | **Deaths** ⚠ | 플레이어, 유닛, 견줌(at least/at most/exactly), 값 |
+| 16 | **Command The Least** | 유닛 |
+| 17 | **Command The Least At** | 유닛, 로케이션 |
+| 18 | **Least Kills** | 유닛 |
+| 19 | **Lowest Score** | 점수 갈래 |
+| 20 | **Least Resources** | 자원 |
+| 21 | **Score** | 플레이어, 점수 갈래, 견줌(at least/at most/exactly), 값 |
+| 22 | **Always** | — |
+| 23 | **Never** | — |
 
-카페 강좌의 문장(`Player brings comparison quantity units to
-location`)은 **classic 쪽**이다. 그대로 텍스트 트리거에 옮겨 적으면
-틀린다. 내가 여러 번 틀린 자리다.
+### 인자 순서가 다른 명령
 
-두 차례가 다른 것이 **36가지**나 된다. 아래 표에서 ⚠ 표시.
-
-## 조건 (Condition)
-
-| # | 이름 | 텍스트 인자 순서 | 실전 |
-| ---: | --- | --- | ---: |
-| 1 | **Countdown Timer** | 견줌(at least/at most/exactly), 값 | 1,161 |
-| 2 | **Command** ⚠ | 플레이어, 유닛, 견줌(at least/at most/exactly), 값 | 5,706 |
-| 3 | **Bring** ⚠ | 플레이어, 유닛, 로케이션, 견줌(at least/at most/exactly), 값 | 24,826 |
-| 4 | **Accumulate** | 플레이어, 견줌(at least/at most/exactly), 값, 자원 | 2,741 |
-| 5 | **Kill** ⚠ | 플레이어, 유닛, 견줌(at least/at most/exactly), 값 | 4,569 |
-| 6 | **Command The Most** | 유닛 | — |
-| 7 | **Command The Most At** | 유닛, 로케이션 | — |
-| 8 | **Most Kills** | 유닛 | — |
-| 9 | **Highest Score** | 점수 갈래 | — |
-| 10 | **Most Resources** | 자원 | — |
-| 11 | **Switch** | 스위치, 스위치 상태(set/not set) | 18,826 |
-| 12 | **Elapsed Time** | 견줌(at least/at most/exactly), 값 | 1,746 |
-| 13 | **Is Briefing** | — | — |
-| 14 | **Opponents** | 플레이어, 견줌(at least/at most/exactly), 값 | 19 |
-| 15 | **Deaths** ⚠ | 플레이어, 유닛, 견줌(at least/at most/exactly), 값 | 16,371 |
-| 16 | **Command The Least** | 유닛 | — |
-| 17 | **Command The Least At** | 유닛, 로케이션 | — |
-| 18 | **Least Kills** | 유닛 | 50 |
-| 19 | **Lowest Score** | 점수 갈래 | 22 |
-| 20 | **Least Resources** | 자원 | — |
-| 21 | **Score** | 플레이어, 점수 갈래, 견줌(at least/at most/exactly), 값 | 2,446 |
-| 22 | **Always** | — | 5,449 |
-| 23 | **Never** | — | 246 |
-
-### ⚠ 두 차례가 다른 4가지
-
-| 이름 | text (쓸 것) | classic (쓰지 말 것) |
+| 이름 | text (splash-cli) | classic (에디터 창) |
 | --- | --- | --- |
 | Command | `playerCnd, unitCnd, numericComparisonCnd, amountCnd` | `playerCnd, numericComparisonCnd, amountCnd, unitCnd` |
 | Bring | `playerCnd, unitCnd, locationCnd, numericComparisonCnd, amountCnd` | `playerCnd, numericComparisonCnd, amountCnd, unitCnd, locationCnd` |
 | Kill | `playerCnd, unitCnd, numericComparisonCnd, amountCnd` | `playerCnd, numericComparisonCnd, amountCnd, unitCnd` |
 | Deaths | `playerCnd, unitCnd, numericComparisonCnd, amountCnd` | `playerCnd, numericComparisonCnd, amountCnd, unitCnd` |
 
-## 액션 (Action)
+## Action 텍스트 인자 순서
 
-| # | 이름 | 텍스트 인자 순서 | 실전 |
-| ---: | --- | --- | ---: |
-| 1 | **Victory** | — | 200 |
-| 2 | **Defeat** | — | 297 |
-| 3 | **Preserve Trigger** | — | 21,688 |
-| 4 | **Wait** | 밀리초 | 19,631 |
-| 5 | **Pause Game** | — | 4 |
-| 6 | **Unpause Game** | — | 3 |
-| 7 | **Transmission** ⚠ | 글 깃발(Always Display), 글(스트링), 유닛, 로케이션, 고침(Set To/Add/Subtract), 값, 소리(WAV), 밀리초 | 717 |
-| 8 | **Play Sound** ⚠ | 소리(WAV), 밀리초 | — |
-| 9 | **Display Text Message** ⚠ | 글 깃발(Always Display), 글(스트링) | 17,789 |
-| 10 | **Center View** | 로케이션 | 2,993 |
-| 11 | **Create Unit with Properties** ⚠ | 플레이어, 유닛, 마리 수 (All 가능), 로케이션, 유닛 속성(64가지 제한) | 2,298 |
-| 12 | **Set Mission Objectives** | 글(스트링) | 406 |
-| 13 | **Set Switch** ⚠ | 스위치, 스위치 고침(set/clear/toggle/randomize) | 5,245 |
-| 14 | **Set Countdown Timer** | 고침(Set To/Add/Subtract), 밀리초 | 405 |
-| 15 | **Run AI Script** | AI 스크립트 | 722 |
-| 16 | **Run AI Script At Location** | AI 스크립트, 로케이션 | 792 |
-| 17 | **Leader Board (Control)** ⚠ | 글(스트링), 유닛 | — |
-| 18 | **Leader Board (Control At Location)** ⚠ | 글(스트링), 유닛, 로케이션 | — |
-| 19 | **Leader Board (Resources)** ⚠ | 글(스트링), 자원 | — |
-| 20 | **Leader Board (Kills)** ⚠ | 글(스트링), 유닛 | — |
-| 21 | **Leader Board (Points)** ⚠ | 글(스트링), 점수 갈래 | — |
-| 22 | **Kill Unit** ⚠ | 플레이어, 유닛 | 4,063 |
-| 23 | **Kill Unit At Location** ⚠ | 플레이어, 유닛, 마리 수, 로케이션 | 6,291 |
-| 24 | **Remove Unit** ⚠ | 플레이어, 유닛 | 1,481 |
-| 25 | **Remove Unit At Location** ⚠ | 플레이어, 유닛, 마리 수, 로케이션 | 6,414 |
-| 26 | **Set Resources** | 플레이어, 고침(Set To/Add/Subtract), 값, 자원 | 7,755 |
-| 27 | **Set Score** | 플레이어, 고침(Set To/Add/Subtract), 값, 점수 갈래 | 2,621 |
-| 28 | **Minimap Ping** | 로케이션 | 2,747 |
-| 29 | **Talking Portrait** | 유닛, 밀리초 | 101 |
-| 30 | **Mute Unit Speech** | — | 2 |
-| 31 | **Unmute Unit Speech** | — | 3 |
-| 32 | **Leaderboard Computer Players** | 상태(enable/disable/toggle) | 133 |
-| 33 | **Leaderboard Goal (Control)** ⚠ | 글(스트링), 유닛, 값 | — |
-| 34 | **Leaderboard Goal (Control At Location)** ⚠ | 글(스트링), 유닛, 값, 로케이션 | — |
-| 35 | **Leaderboard Goal (Resources)** ⚠ | 글(스트링), 값, 자원 | — |
-| 36 | **Leaderboard Goal (Kills)** ⚠ | 글(스트링), 유닛, 값 | — |
-| 37 | **Leaderboard Goal (Points)** ⚠ | 글(스트링), 점수 갈래, 값 | — |
-| 38 | **Move Location** ⚠ | 플레이어, 유닛, 로케이션, 목적지 로케이션 | 3,265 |
-| 39 | **Move Unit** ⚠ | 플레이어, 유닛, 마리 수, 로케이션, 목적지 로케이션 | 8,875 |
-| 40 | **Leaderboard (Greed)** | 값 | — |
-| 41 | **Set Next Scenario** | 글(스트링) | 168 |
-| 42 | **Set Doodad State** ⚠ | 플레이어, 유닛, 로케이션, 상태(enable/disable/toggle) | 440 |
-| 43 | **Set Invincibility** ⚠ | 플레이어, 유닛, 로케이션, 상태(enable/disable/toggle) | 2,731 |
-| 44 | **Create Unit** ⚠ | 플레이어, 유닛, 마리 수 (All 가능), 로케이션 | 35,753 |
-| 45 | **Set Deaths** ⚠ | 플레이어, 유닛, 고침(Set To/Add/Subtract), 값 | 16,908 |
-| 46 | **Order** ⚠ | 플레이어, 유닛, 로케이션, 목적지 로케이션, 명령(Move/Patrol/Attack) | 6,531 |
-| 47 | **Comment** | 글(스트링) | 81,785 |
-| 48 | **Give Units to Player** ⚠ | 플레이어, 받는 플레이어, 유닛, 마리 수, 로케이션 | 2,271 |
-| 49 | **Modify Unit Hit Points** ⚠ | 플레이어, 유닛, 퍼센트, 마리 수 (All 가능), 로케이션 | 1,600 |
-| 50 | **Modify Unit Energy** ⚠ | 플레이어, 유닛, 퍼센트, 마리 수 (All 가능), 로케이션 | 501 |
-| 51 | **Modify Unit Shield points** ⚠ | 플레이어, 유닛, 퍼센트, 마리 수 (All 가능), 로케이션 | — |
-| 52 | **Modify Unit Resource Amount** ⚠ | 플레이어, 값, 마리 수 (All 가능), 로케이션 | 3 |
-| 53 | **Modify Unit Hangar Count** ⚠ | 플레이어, 유닛, 값, 마리 수 (All 가능), 로케이션 | — |
-| 54 | **Pause Timer** | — | 39 |
-| 55 | **Unpause Timer** | — | 13 |
-| 56 | **Draw** | — | 19 |
-| 57 | **Set Alliance Status** | 플레이어, 동맹 상태(Enemy/Ally/Allied Victory) | 617 |
-| 58 | **Disable Debug Mode** | — | 1 |
-| 59 | **Enable Debug Mode** | — | — |
+| ID | 이름 | 텍스트 인자 순서 |
+| ---: | --- | --- |
+| 1 | **Victory** | — |
+| 2 | **Defeat** | — |
+| 3 | **Preserve Trigger** | — |
+| 4 | **Wait** | 밀리초 |
+| 5 | **Pause Game** | — |
+| 6 | **Unpause Game** | — |
+| 7 | **Transmission** ⚠ | 글 깃발(Always Display), 글(스트링), 유닛, 로케이션, 고침(Set To/Add/Subtract), 값, 소리(WAV), 밀리초 |
+| 8 | **Play Sound** ⚠ | 소리(WAV), 밀리초 |
+| 9 | **Display Text Message** ⚠ | 글 깃발(Always Display), 글(스트링) |
+| 10 | **Center View** | 로케이션 |
+| 11 | **Create Unit with Properties** ⚠ | 플레이어, 유닛, 마리 수 (All 가능), 로케이션, 유닛 속성(64가지 제한) |
+| 12 | **Set Mission Objectives** | 글(스트링) |
+| 13 | **Set Switch** ⚠ | 스위치, 스위치 고침(set/clear/toggle/randomize) |
+| 14 | **Set Countdown Timer** | 고침(Set To/Add/Subtract), 밀리초 |
+| 15 | **Run AI Script** | AI 스크립트 |
+| 16 | **Run AI Script At Location** | AI 스크립트, 로케이션 |
+| 17 | **Leader Board (Control)** ⚠ | 글(스트링), 유닛 |
+| 18 | **Leader Board (Control At Location)** ⚠ | 글(스트링), 유닛, 로케이션 |
+| 19 | **Leader Board (Resources)** ⚠ | 글(스트링), 자원 |
+| 20 | **Leader Board (Kills)** ⚠ | 글(스트링), 유닛 |
+| 21 | **Leader Board (Points)** ⚠ | 글(스트링), 점수 갈래 |
+| 22 | **Kill Unit** ⚠ | 플레이어, 유닛 |
+| 23 | **Kill Unit At Location** ⚠ | 플레이어, 유닛, 마리 수, 로케이션 |
+| 24 | **Remove Unit** ⚠ | 플레이어, 유닛 |
+| 25 | **Remove Unit At Location** ⚠ | 플레이어, 유닛, 마리 수, 로케이션 |
+| 26 | **Set Resources** | 플레이어, 고침(Set To/Add/Subtract), 값, 자원 |
+| 27 | **Set Score** | 플레이어, 고침(Set To/Add/Subtract), 값, 점수 갈래 |
+| 28 | **Minimap Ping** | 로케이션 |
+| 29 | **Talking Portrait** | 유닛, 밀리초 |
+| 30 | **Mute Unit Speech** | — |
+| 31 | **Unmute Unit Speech** | — |
+| 32 | **Leaderboard Computer Players** | 상태(enable/disable/toggle) |
+| 33 | **Leaderboard Goal (Control)** ⚠ | 글(스트링), 유닛, 값 |
+| 34 | **Leaderboard Goal (Control At Location)** ⚠ | 글(스트링), 유닛, 값, 로케이션 |
+| 35 | **Leaderboard Goal (Resources)** ⚠ | 글(스트링), 값, 자원 |
+| 36 | **Leaderboard Goal (Kills)** ⚠ | 글(스트링), 유닛, 값 |
+| 37 | **Leaderboard Goal (Points)** ⚠ | 글(스트링), 점수 갈래, 값 |
+| 38 | **Move Location** ⚠ | 플레이어, 유닛, 로케이션, 목적지 로케이션 |
+| 39 | **Move Unit** ⚠ | 플레이어, 유닛, 마리 수, 로케이션, 목적지 로케이션 |
+| 40 | **Leaderboard (Greed)** | 값 |
+| 41 | **Set Next Scenario** | 글(스트링) |
+| 42 | **Set Doodad State** ⚠ | 플레이어, 유닛, 로케이션, 상태(enable/disable/toggle) |
+| 43 | **Set Invincibility** ⚠ | 플레이어, 유닛, 로케이션, 상태(enable/disable/toggle) |
+| 44 | **Create Unit** ⚠ | 플레이어, 유닛, 마리 수 (All 가능), 로케이션 |
+| 45 | **Set Deaths** ⚠ | 플레이어, 유닛, 고침(Set To/Add/Subtract), 값 |
+| 46 | **Order** ⚠ | 플레이어, 유닛, 로케이션, 목적지 로케이션, 명령(Move/Patrol/Attack) |
+| 47 | **Comment** | 글(스트링) |
+| 48 | **Give Units to Player** ⚠ | 플레이어, 받는 플레이어, 유닛, 마리 수, 로케이션 |
+| 49 | **Modify Unit Hit Points** ⚠ | 플레이어, 유닛, 퍼센트, 마리 수 (All 가능), 로케이션 |
+| 50 | **Modify Unit Energy** ⚠ | 플레이어, 유닛, 퍼센트, 마리 수 (All 가능), 로케이션 |
+| 51 | **Modify Unit Shield points** ⚠ | 플레이어, 유닛, 퍼센트, 마리 수 (All 가능), 로케이션 |
+| 52 | **Modify Unit Resource Amount** ⚠ | 플레이어, 값, 마리 수 (All 가능), 로케이션 |
+| 53 | **Modify Unit Hangar Count** ⚠ | 플레이어, 유닛, 값, 마리 수 (All 가능), 로케이션 |
+| 54 | **Pause Timer** | — |
+| 55 | **Unpause Timer** | — |
+| 56 | **Draw** | — |
+| 57 | **Set Alliance Status** | 플레이어, 동맹 상태(Enemy/Ally/Allied Victory) |
+| 58 | **Disable Debug Mode** | — |
+| 59 | **Enable Debug Mode** | — |
 
-### ⚠ 두 차례가 다른 32가지
+### 인자 순서가 다른 명령
 
-| 이름 | text (쓸 것) | classic (쓰지 말 것) |
+| 이름 | text (splash-cli) | classic (에디터 창) |
 | --- | --- | --- |
 | Transmission | `textFlags, string, unit, location, numericMod, amount, sound, duration` | `unit, location, sound, numericMod, amount, string` |
 | Play Sound | `sound, duration` | `sound` |
@@ -155,13 +143,6 @@ location`)은 **classic 쪽**이다. 그대로 텍스트 트리거에 옮겨 적
 | Modify Unit Resource Amount | `player, amount, unitQuantity, location` | `numUnits, player, location, amount` |
 | Modify Unit Hangar Count | `player, unit, amount, unitQuantity, location` | `amount, numUnits, unit, location, player` |
 
-## 대조
+## 근거
 
-실제 유즈맵에서 뽑은 트리거 텍스트로 **58가지를 350,499번** 보았고,
-인자 개수가 위 표와 모두 맞았다.
-
-## 관련
-
-- [conditions.md](conditions.md) — 조건이 무엇을 뜻하나
-- [actions.md](actions.md) — 액션이 무엇을 하나
-- [recipes.md](recipes.md) — 바로 쓰는 조각
+각 인자 배열은 MappingCore `chk.cpp`의 `textArguments` 및 `classicArguments` 정의를 따른다. 예시 호출은 [recipes.md](recipes.md)를, 의미와 동작은 [conditions.md](conditions.md) 및 [actions.md](actions.md)를 참조한다.

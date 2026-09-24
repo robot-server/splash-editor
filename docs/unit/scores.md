@@ -1,80 +1,16 @@
-# 점수 — 리더보드가 세는 것
+# 점수 설정
 
-출처: 스타 에디터 아카데미
-[[팁] 유닛별 킬 스코어 목록](https://cafe.naver.com/edac/book5095361/76475)
-+ 게임 데이터 실측.
+## [트리거/로직 패턴]
 
-실측 유즈맵의 **82%가 리더보드**를 쓴다. 그 가운데 `Leaderboard
-(Points)` 는 **점수**로 줄을 세우는데, 그 점수가 어디서 나오는지 알아야
-"왜 저 사람이 1등이지" 를 설계할 수 있다.
+- 패턴 이름: 게임 기본 점수와 시나리오 점수 분리
+- 구현하고자 하는 기능: 유닛 보유/처치 점수를 표시하거나, 맵 고유 경제·진행 점수를 기록한다.
+- 조건(Condition) 및 액션(Action) 구조 체인: 기본 유닛 점수를 보여 주려면 `Score` 조건과 Leader Board 계열 액션에서 어떤 점수 종류를 참조하는지 확인한다. 맵 고유 점수는 트리거가 사용자 점수 값을 갱신하고 같은 값을 표시하도록 연결한다. 유닛 보유 가치와 파괴 점수는 게임 데이터의 서로 다른 항목으로 취급한다.
+- 예외 처리/버그 방지 로직 (예: 스위치 리셋, 트리거 순서 등): 영웅/특수 유닛의 점수값은 기본 단위와 다를 수 있으므로 게임 데이터나 CLI로 확인한다. custom 점수와 자동 kill/razing 점수가 혼합되지 않는지 선택한 leaderboard 종류로 테스트한다. 점수 동작은 [트리거 액션](../trigger/actions.md) 및 [조건](../trigger/conditions.md)을 본다.
 
-## 리더보드로 안 보여 줘도 점수는 쌓인다
-
-`Score` 조건과 `Set Score` 액션이 그 값을 읽고 쓴다.
-
-| `points` 갈래 | 무엇을 세나 |
-| --- | --- |
-| `kills` | 죽인 **유닛** 점수 |
-| `razings` | 부순 **건물** 점수 |
-| `kills and razings` | 둘 다 |
-| `units` | 가진 유닛 점수 |
-| `buildings` | 가진 건물 점수 |
-| `units and buildings` | 둘 다 |
-| `custom` | **트리거로만 쓰는 값** |
-
-**`custom` 이 유즈맵의 기본**이다. 게임이 주는 점수와 섞이지 않는다.
-
-## 만들 때와 부술 때가 다르다
-
-`units.dat` 에 **`buildScore`** 와 **`destroyScore`** 가 따로 있다.
-**171가지가 서로 다르고, 대개 부술 때가 두 배다.**
-
-| 유닛 | 가지고 있으면 | 부수면 |
-| --- | ---: | ---: |
-| Terran Marine | 50 | **100** |
-| Terran Siege Tank (Tank) | 350 | **700** |
-| Terran Science Vessel | 625 | **1250** |
-| Gui Montag (Firebat) | **0** | 400 |
-
-> **영웅은 `buildScore` 가 0 인 것이 있다.** 가지고 있어도 `units` 점수가
-> 안 오른다. "유닛 점수" 로 순위를 매기는 맵에서 영웅을 주면 **순위에
-> 안 잡힌다.**
-
-## 값이 큰 것
-
-| 유닛 | 부수면 |
-| --- | ---: |
-| 배틀크루저 영웅 넷 (히페리온 · 노라드II · 멩스크 · 듀갈) | **4800** |
-| Danimoth (Arbiter) | 4100 |
-| Infested Kerrigan (Infested Terran) | 4000 |
-| Gantrithor (Carrier) | 3800 |
-| Terran Battlecruiser | 2400 |
-
-| 건물 | 부수면 |
-| --- | ---: |
-| **Zerg Overmind** | **10000** |
-| Xel'Naga Temple · Protoss Temple · Ion Cannon · Mature Crysalis | 5000 |
-
-## 카페 표와 대조했다
-
-카페가 손으로 적어 둔 테란 유닛 14가지를 게임 데이터와 견줬다 —
-**14개 모두 맞는다.** 그러니 표를 따로 옮겨 적지 않는다. 필요할 때
-데이터에서 읽는다.
+## 데이터 읽기
 
 ```sh
-splash-cli unit-stats "$SC_INSTALL" --json   # build_score · destroy_score
+splash-cli unit-stats "$SC_INSTALL" --json
 ```
 
-## 맵이 점수를 바꿀 수 있나
-
-**없다.** `unitdef set` 에 점수 칸이 없다. 게임 데이터에 박혀 있어
-DatEdit 쪽 이야기다 ([../tools/editors.md](../tools/editors.md)).
-
-점수로 순위를 매기려면 **`custom` 점수를 트리거로 직접 쌓는 편**이
-낫다 — 유닛마다 얼마인지 외울 필요가 없고 설계한 대로 나온다.
-
-## 관련
-
-- [../trigger/actions.md](../trigger/actions.md) — `Leaderboard` · `Set Score`
-- [../trigger/conditions.md](../trigger/conditions.md) — `Score` 조건
-- [settings.md](settings.md) — 맵이 고칠 수 있는 것
+데이터 값은 점수 표시를 설계하기 위한 입력이며, 표본 사용 빈도는 필요 여부를 결정하지 않는다. 출처: [스타 에디터 아카데미 유닛별 킬 스코어](https://cafe.naver.com/edac/book5095361/76475).

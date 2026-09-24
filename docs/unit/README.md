@@ -1,24 +1,10 @@
-# 유닛
+# 유닛 데이터
 
-유닛을 **고르는 것**과 **고치는 것**.
+- [settings.md](settings.md): 역할에 맞춰 사용자 지정 이름, 설정 기본값, 체력 및 무기를 함께 편집하는 절차
+- [damage.md](damage.md): 공격 타입과 무기 데이터가 실제 피해에 반영되는 방식
+- [heroes.md](heroes.md): 영웅 유닛별 데이터 예외
+- [quirks.md](quirks.md): 생성·표시·게임 동작의 특수 사례
+- [repair-heal.md](repair-heal.md): 수리와 회복 동작
+- [scores.md](scores.md): 점수 설정
 
-| 글 | 무엇 |
-| --- | --- |
-| [settings.md](settings.md) | 맵이 정하는 유닛 능력치. 유즈맵 98%가 쓴다 |
-| [heroes.md](heroes.md) | 영웅은 "센 판"이 아니다. 맵이 못 고치는 값들 |
-| [damage.md](damage.md) | 공격 형태 × 덩치. 적힌 피해가 그대로 안 들어간다 |
-| [repair-heal.md](repair-heal.md) | 누가 누구를 살리나. 생체·기계와 편 가르기 |
-| [quirks.md](quirks.md) | 유닛별 예외. 트리거가 안 먹는 유닛, 튕기는 조합 |
-| [scores.md](scores.md) | 리더보드가 세는 점수. 만들 때와 부술 때가 다르다 |
-
-## 한 줄 요약
-
-**맵이 고칠 수 있는 것은 다섯 가지뿐이다** — 체력·방패·방어력·생산시간·값.
-사거리·공격 주기·시야·이동 속도는 게임 데이터에 박혀 있어 못 고친다.
-그 값이 필요하면 **유닛 번호를 바꾸는 수밖에 없다.**
-
-```sh
-splash-cli unit-stats "$SC_INSTALL"          # 게임 데이터 전체
-python3 $S/measure_heroes.py                 # 영웅 ↔ 일반 35짝 비교
-python3 $S/measure_unitdefs.py <맵폴더>       # 실측 맵이 무엇을 고치나
-```
+문서의 예시는 기능을 설명하기 위한 것이다. 맵 장르, 플레이 역할, 실제 플레이 검증 없이 표본 빈도나 임의의 프로필 값을 기본값으로 사용하지 않는다.

@@ -28,7 +28,6 @@ import random
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import corpus
 import scmap
 from scmap import Cli, CliError
 
@@ -229,7 +228,6 @@ def main(argv=None):
     ts = TILESETS[a.tileset]
 
     print(f"OX 퀴즈 {W}x{H} {a.tileset}, {a.players}명, 문제 {len(questions)}개")
-    print("  " + corpus.describe("usemap", a.tileset))
     cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False,
                         install=a.install)
 
@@ -261,10 +259,7 @@ def main(argv=None):
     lobby = (ox + PAD_W, oy, MID_W, PAD_H)
     pad_x = (ox + PAD_W + MID_W, oy, PAD_W, PAD_H)
 
-    # 바닥·통로·테두리·발판·벽을 **다섯 몫으로** 나눠 쓴다. 한 가지로
-    # 깔고 벽만 검게 뚫던 앞판은 실측과 어긋났다 (실측 유즈맵 486장의
-    # 검은 칸 중앙값 0.0%, 1% 넘게 쓰는 그룹 중앙값 10개 — 내 것은
-    # 검은 칸 55~89%, 그룹 1개였다. 그려 놓고 나란히 보고서야 알았다).
+    # 바닥·통로·테두리·발판·벽은 이동과 시각 안내 역할에 맞춰 구분한다.
     pal = scmap.Palette(cli, ts, rng, "usemap")
     print(f"  지형: {pal.describe()}")
 
@@ -332,7 +327,7 @@ def main(argv=None):
     scmap.reveal_for_all(cli, a.players)
 
 
-    # 방 테두리를 두뎃으로 꾸민다. 실측 유즈맵 76장 중 70장(92%)이
+    # 방 테두리 두뎃은 실제 보행·시야·배치 검증 뒤 선택한다.
     # 두뎃 타일을 쓰고, 중앙 868칸이며 그 89%가 걷기 경계 두 칸 안에
     # 몰려 있다. 내 맵은 0칸이었다 — 그림으로 보고서야 알았다.
     # 걷기를 막는 두뎃은 `data/doodad-walk.json` 을 보고 걸러 낸다.

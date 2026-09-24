@@ -24,7 +24,6 @@ import random
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import corpus
 import scmap
 from scmap import Cli, CliError
 
@@ -251,7 +250,6 @@ def main(argv=None):
     enemy, boss_p = f"Player {enemy_no}", f"Player {boss_no}"
 
     print(f"키우기 {W}x{H} {a.tileset}, {a.players}명, 구역 {a.zones}개")
-    print("  " + corpus.describe("usemap", a.tileset))
     cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False,
                         install=a.install)
 
@@ -286,15 +284,12 @@ def main(argv=None):
     band_y = cells[0][1]
     BAND_H = ROOM_H
 
-    # **RPG 는 ISOM 으로 짓는다.** 실측 유즈맵 479장에서 RPG 의 ISOM
-    # 다양도 중앙값은 0.445, 타일 그룹은 248개다 — 디펜스(0.000, 15개)
-    # 와 정반대다. RPG 는 지형 자체가 콘텐츠라 네모난 방으로는 심심하다
-    # (docs/usemap/terrain.md).
+    # 이동 경관이 콘텐츠가 되는 이 생성기의 구역 연결은 ISOM으로 시작한다.
     #
     # 순서가 사각형 방식과 뒤집힌다. 다 덮고 방을 뚫는 것이 아니라,
     # **바닥을 먼저 깔고 그 위에 지형 덩이를 키운다.**
     pal = scmap.Palette(cli, ts, rng, "usemap")
-    mode = scmap.terrain_mode("rpg")
+    mode = scmap.terrain_mode("rpg", default="isom")
     print(f"  지형: {pal.describe()}  ({mode})")
 
     if mode == "isom":
@@ -419,7 +414,7 @@ def main(argv=None):
     scmap.reveal_for_all(cli, a.players)
 
 
-    # 방 테두리를 두뎃으로 꾸민다. 실측 유즈맵 76장 중 70장(92%)이
+    # 방 테두리 두뎃은 실제 보행·시야·배치 검증 뒤 선택한다.
     # 두뎃 타일을 쓰고, 중앙 868칸이며 그 89%가 걷기 경계 두 칸 안에
     # 몰려 있다. 내 맵은 0칸이었다 — 그림으로 보고서야 알았다.
     # 걷기를 막는 두뎃은 `data/doodad-walk.json` 을 보고 걸러 낸다.

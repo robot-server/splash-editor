@@ -42,7 +42,7 @@ export SC_INSTALL=/경로/StarCraft
 | 어긋난 두뎃 고치기 | `$CLI doodad repair map.scx --install "$SC_INSTALL" --in-place` |
 
 `terrain mirror` 는 **절벽이 있는 지형에 쓰지 않는다** —
-[melee-terrain.md](../melee/terrain.md) 참고.
+[밀리 지형 원칙](../melee/terrain.md) 참고.
 
 ## 유닛
 
@@ -122,27 +122,18 @@ export SC_INSTALL=/경로/StarCraft
 | 램프 타일 | `$CLI tileset-ramps "$SC_INSTALL" 4` |
 | 유닛 분류 | `$CLI unit-classes "$SC_INSTALL"` |
 
-## 스크립트
+## 맵을 렌더하고 원본 구조 확인
 
 | | |
 | --- | --- |
-| 밀리맵 뼈대 | `python3 scripts/make_melee.py out.scx --players 4 --tileset jungle` |
-| 유즈맵 뼈대 | `python3 scripts/make_usemap.py out.scx --genre defense --players 6` |
-| 재기 | `python3 scripts/verify_map.py out.scx` |
-| 그려 보기 | `python3 scripts/preview.py out.scx look.png --tiles 0 0 42 32` |
+| 지형·유닛·로케이션 렌더 | `$CLI render map.scx "$SC_INSTALL" out.ppm --units --locations` |
+| 트리거 실행 체인 확인 | `$CLI trigger show map.scx triggers.txt --install "$SC_INSTALL"` |
+| 맵의 메타데이터 확인 | `$CLI info map.scx` |
+| 저장 CHK 바이트 round-trip | `$CLI roundtrip map.scx` |
 
-`scripts/scmap.py` 를 `import` 하면 파이썬에서 직접 두드릴 수 있다:
-
-```python
-import scmap
-cli = scmap.new_map("out.scx", 128, 128, 4, terrain="Dirt")
-cli.isom(20, 20, terrain=3)                 # 타일 좌표로 ISOM
-scmap.place_ramp(cli, 18, 27, base=0x4300)  # 램프
-scmap.place_base(cli, 20, 20, owner=1)      # 스타팅 + 자원 한 벌
-scmap.set_all_resources(cli)                # 자원량 맞추기 (마지막에 한 번)
-cli.apply_triggers(text)
-print(cli.info())
-```
+맵 구조는 직접 원본 사례에서 옮긴 규칙으로 만들고, 정적 검사 결과와
+렌더를 확인한다. 과거 생성기·검증기 스크립트는 코퍼스 통계와 검증되지
+않은 설계 가정을 포함하므로 이 절차의 입력으로 쓰지 않는다.
 
 ## 걸리기 쉬운 것
 
