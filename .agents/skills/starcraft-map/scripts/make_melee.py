@@ -61,6 +61,8 @@ def start_positions(players: int, symmetry: str, width: int, height: int,
                     inset: int) -> list[tuple[int, int]]:
     """스타팅 자리를 대칭에 맞춰 고른다."""
     if symmetry == "rot90":
+        if players != 4:
+            raise CliError("rot90 대칭은 4인용에서만 됩니다.")
         if width != height:
             raise CliError("90도 회전 대칭은 가로세로가 같은 맵에서만 됩니다.")
         base = (inset, inset)
