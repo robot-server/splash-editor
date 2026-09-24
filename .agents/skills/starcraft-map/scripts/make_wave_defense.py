@@ -481,8 +481,6 @@ def main(argv=None):
         used = scmap.units_in_play(cli, cli.trigger_text())
     except Exception:
         used = None
-    n_unit = scmap.setup_usemap_units(cli, sorted(used) if used else None)
-    print(f"  유닛 {n_unit}종의 능력치를 유즈맵 값으로 정했습니다")
 
     if a.name:
         cli.set_map_name(a.name,

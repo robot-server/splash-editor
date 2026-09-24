@@ -5,16 +5,9 @@
 
 | 글 | 무엇 |
 | --- | --- |
-| [dopamine.md](dopamine.md) | **먼저 읽는다.** 유즈맵 329장 전수 실측, 재미 구조 |
+| [dopamine.md](dopamine.md) | 표본 조사 기록과 피드백 설계 참고. 수치는 제작 규칙이 아니다 |
+| [functional-design.md](functional-design.md) | **제작할 때 적용한다.** 선택·구매·안내·웨이브의 조건-액션과 실패 경로 |
 | [essentials.md](essentials.md) | 빠뜨리면 안 되는 필수품 |
 | [terrain.md](terrain.md) | **ISOM 이냐 사각형이냐는 장르가 정한다.** 사각형의 위험 |
 | [genres.md](genres.md) | 장르를 트리거 지문으로 가른다 |
 | [sound.md](sound.md) | 소리. ogg 를 쓴다, 기본 사운드는 용량을 안 먹는다 |
-
-## 한 줄씩
-
-- 유닛 중앙 **677개**, 트리거 **237개**, 이름 붙인 로케이션 **114개**
-- `Create Unit` + `Preserve Trigger` 가 나란히 **98%**
-- `Bring` 조건 **97%** — 판정의 거의 전부가 로케이션이다
-- 유닛 설정을 **98%** 가 고친다 ([../unit/settings.md](../unit/settings.md))
-- 순위표 **82%**, 화면 이동 **74%**, 강화 **89%**

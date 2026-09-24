@@ -353,20 +353,6 @@ def main(argv=None):
     print("트리거를 짭니다...")
     cli.apply_triggers(build_triggers(a.players, questions, a.lives, a.seconds))
 
-    # **유닛 능력치를 유즈맵 값으로 정한다.**
-    #
-    # 실측 유즈맵 479장 중 473장(98%)이 유닛 설정을 고치고 중앙 90종을
-    # 건드린다. 마린 체력 중앙값이 250 이다 — 원래 40 이니 여섯 배다.
-    # 그대로 두면 유즈맵이 아니라 "스타 유닛으로 노는 맵" 이다
-    # (docs/unit/settings.md).
-    #
-    # 트리거를 넣은 **뒤에** 부른다 — 맵에 실제로 나오는 유닛만 고치려면
-    # 트리거가 무엇을 만드는지 알아야 한다.
-    try:
-        _used = scmap.units_in_play(cli, cli.trigger_text())
-    except Exception:
-        _used = None
-    scmap.setup_usemap_units(cli, sorted(_used) if _used else None)
 
     if a.name:
         cli.set_map_name(a.name,
