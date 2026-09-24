@@ -812,37 +812,43 @@ GameGraphics::doodads(std::uint16_t tilesetId) const
     return impl_->doodadLists.emplace(tilesetId, std::move(out)).first->second;
 }
 
-bool GameGraphics::doodadFits(std::uint16_t tilesetId, std::uint16_t doodadId,
-                              const std::vector<std::uint16_t> & mapTiles,
-                              int mapWidth, int mapHeight, int tileX, int tileY) const
+std::optional<bool> GameGraphics::doodadFits(std::uint16_t tilesetId,
+                                             std::uint16_t doodadId,
+                                             const std::vector<std::uint16_t> & mapTiles,
+                                             int mapWidth, int mapHeight,
+                                             int tileX, int tileY) const
 {
+    // 배치 가능 여부를 증명할 데이터가 없으면 판정 불가를 돌려준다.
     if (!impl_->loaded)
-        return true;
+        return std::nullopt;
 
     const Sc::Terrain::Tiles & tiles = impl_->tiles(tilesetId);
 
     const auto found = tiles.doodadIdToTileGroup.find(doodadId);
     if (found == tiles.doodadIdToTileGroup.end())
-        return true;
+        return std::nullopt;
 
     const std::uint16_t startGroup = found->second;
     if (startGroup >= tiles.tileGroups.size())
-        return true;
+        return std::nullopt;
 
     const auto & doodad = asDoodad(tiles.tileGroups[startGroup]);
     const int width = doodad.tileWidth;
     const int height = doodad.tileHeight;
     if (width <= 0 || height <= 0)
-        return true;
+        return std::nullopt;
 
-    // 배치 가능 표가 없으면 따질 것이 없다.
+    // 배치 가능 표가 없으면 적합성을 확인할 수 없다.
     if (doodad.ddDataIndex >= tiles.doodadPlacibility.size())
-        return true;
+        return std::nullopt;
 
     const auto & placibility = tiles.doodadPlacibility[doodad.ddDataIndex];
 
     const int left = tileX - width / 2;
     const int top = tileY - height / 2;
+    if (left < 0 || top < 0 || left + width > mapWidth || top + height > mapHeight ||
+        mapTiles.size() < static_cast<std::size_t>(mapWidth) * mapHeight)
+        return false;
 
     for (int y = 0; y < height; ++y)
     {

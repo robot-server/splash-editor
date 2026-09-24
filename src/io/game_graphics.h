@@ -12,6 +12,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -298,9 +299,9 @@ public:
     ///
     /// 표는 칸마다 "여기에 이 타일 그룹이 있어야 한다"를 적어 둔다. 0 이면
     /// 어떤 지형이든 좋다.
-    bool doodadFits(std::uint16_t tilesetId, std::uint16_t doodadId,
-                    const std::vector<std::uint16_t> & mapTiles,
-                    int mapWidth, int mapHeight, int tileX, int tileY) const;
+    std::optional<bool> doodadFits(std::uint16_t tilesetId, std::uint16_t doodadId,
+                                   const std::vector<std::uint16_t> & mapTiles,
+                                   int mapWidth, int mapHeight, int tileX, int tileY) const;
 
     /// 두들이 덮는 타일 값들 (왼쪽 위부터 가로 순서).
     std::vector<std::uint16_t> doodadTiles(std::uint16_t tilesetId, std::uint16_t doodadId) const;

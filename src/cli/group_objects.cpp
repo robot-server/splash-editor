@@ -627,6 +627,27 @@ int doodadPlace(Args & args)
     });
 }
 
+int doodadFits(Args & args)
+{
+    io::GameGraphics graphics;
+    if (!loadGraphics(args, graphics))
+        return 1;
+    args.finish();
+
+    const std::string mapPath = args.at(0);
+    const auto doodadId = static_cast<std::uint16_t>(args.integer(1));
+    const int tileX = static_cast<int>(args.integer(2));
+    const int tileY = static_cast<int>(args.integer(3));
+    return readMap(mapPath, [&](io::MapArchive & archive) {
+        const auto fits = archive.doodadFits(graphics, doodadId, tileX, tileY);
+        const char * verdict = !fits ? "판정 불가" : (*fits ? "예" : "아니오");
+        std::cout << "  배치 가능: " << verdict
+                  << "  두들 " << doodadId << " @ 타일 ("
+                  << tileX << ", " << tileY << ")\n";
+        return 0;
+    });
+}
+
 int doodadRemove(Args & args)
 {
     const SaveTarget target = takeSaveTarget(args);
@@ -1025,6 +1046,8 @@ std::vector<Group> objectGroups()
         Group{"doodad", "지형에 얹는 두들 (DD2)", {
             {"list",       "<맵> [--install 설치폴더] [--catalogue]",
                            "맵에 놓인 두들을, --catalogue 면 타일셋의 두들 종류를 나열한다.", doodadList},
+            {"fits",       "<맵> <두들번호> <중앙타일x> <중앙타일y> --install 설치폴더",
+                           "배치 가능 표를 검사한다. 표가 없으면 판정 불가.", doodadFits},
             {"place",      "<맵> <두들번호> <타일x> <타일y> [--owner P] --install 설치폴더 -o <출력맵>",
                            "두들을 놓는다.", doodadPlace},
             {"remove",     "<맵> <번호...> --install 설치폴더 -o <출력맵>", "두들을 지운다.", doodadRemove},

@@ -1152,6 +1152,38 @@ std::vector<MapArchive::RawDoodad> MapArchive::doodads() const
     return out;
 }
 
+std::optional<bool> MapArchive::doodadFits(const GameGraphics & graphics,
+                                           std::uint16_t doodadId,
+                                           int tileX, int tileY) const
+{
+    if (!impl_->isOpen())
+        return std::nullopt;
+
+    const MapFile & map = *impl_->mapFile;
+    try
+    {
+        const int width = static_cast<int>(map.getTileWidth());
+        const int height = static_cast<int>(map.getTileHeight());
+        std::vector<std::uint16_t> gameTiles;
+        gameTiles.reserve(static_cast<std::size_t>(width) * height);
+        for (int y = 0; y < height; ++y)
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                gameTiles.push_back(map.getTile(static_cast<std::size_t>(x),
+                                                static_cast<std::size_t>(y),
+                                                Chk::Scope::Game));
+            }
+        }
+        return graphics.doodadFits(static_cast<std::uint16_t>(map.getTileset()),
+                                   doodadId, gameTiles, width, height, tileX, tileY);
+    }
+    catch (const std::exception &)
+    {
+        return std::nullopt;
+    }
+}
+
 Result MapArchive::placeDoodad(const GameGraphics & graphics, std::uint16_t doodadId,
                                int tileX, int tileY, std::uint8_t owner)
 {
