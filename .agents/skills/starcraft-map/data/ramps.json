@@ -1,0 +1,7141 @@
+{
+ "_about": "타일셋의 램프 doodad 방향·국소 보행 후보. measure_ramps.py 가 만든다. id 는 doodad 번호, w·h 는 타일 수, kind 는 갈래, dir 는 Ramp 깃발이 놓인 방향, ramp_tiles 는 해당 타일 수, walks 는 시험 지형의 미니타일 경로 연결 여부다. DoodadPlacibility 배치 허용 여부나 게임 엔진 통과를 보증하지 않는다.",
+ "ramps": {
+  "badlands": [
+   {
+    "id": 77,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 78,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 363,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 364,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 365,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 366,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 367,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 368,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 369,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 370,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 371,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 372,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 373,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 374,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 375,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 376,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 377,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 378,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 379,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 380,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 381,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 382,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 383,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 384,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 385,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 386,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 387,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 388,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 389,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 390,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 391,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 392,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 393,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 394,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 45,
+    "w": 4,
+    "h": 4,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 6,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 46,
+    "w": 4,
+    "h": 4,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 6,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 331,
+    "w": 8,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 332,
+    "w": 4,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 333,
+    "w": 6,
+    "h": 6,
+    "kind": "Structure Wall",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 334,
+    "w": 6,
+    "h": 6,
+    "kind": "Structure Wall",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 335,
+    "w": 4,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 336,
+    "w": 6,
+    "h": 6,
+    "kind": "Structure Wall",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 337,
+    "w": 6,
+    "h": 6,
+    "kind": "Structure Wall",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 338,
+    "w": 8,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 339,
+    "w": 8,
+    "h": 3,
+    "kind": "Structure Wall",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 340,
+    "w": 8,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 341,
+    "w": 8,
+    "h": 3,
+    "kind": "Structure Wall",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 342,
+    "w": 2,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 343,
+    "w": 4,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 344,
+    "w": 2,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 345,
+    "w": 4,
+    "h": 6,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Grass"
+   },
+   {
+    "id": 346,
+    "w": 5,
+    "h": 6,
+    "kind": "Structure Wall",
+    "dir": "left",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Grass"
+   },
+   {
+    "id": 347,
+    "w": 5,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 348,
+    "w": 4,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Grass"
+   },
+   {
+    "id": 349,
+    "w": 6,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "left",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 350,
+    "w": 6,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 351,
+    "w": 2,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 352,
+    "w": 4,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 353,
+    "w": 2,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 354,
+    "w": 4,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 355,
+    "w": 6,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 356,
+    "w": 6,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 357,
+    "w": 4,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 358,
+    "w": 6,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 359,
+    "w": 6,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 360,
+    "w": 8,
+    "h": 3,
+    "kind": "Structure Wall",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 361,
+    "w": 8,
+    "h": 5,
+    "kind": "Structure Wall",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Structure"
+   },
+   {
+    "id": 362,
+    "w": 8,
+    "h": 3,
+    "kind": "Structure Wall",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Structure"
+   }
+  ],
+  "space": [
+   {
+    "id": 262,
+    "w": 6,
+    "h": 6,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 263,
+    "w": 6,
+    "h": 6,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 264,
+    "w": 8,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 265,
+    "w": 4,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 266,
+    "w": 6,
+    "h": 6,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 267,
+    "w": 6,
+    "h": 6,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 268,
+    "w": 4,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 269,
+    "w": 6,
+    "h": 6,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 270,
+    "w": 6,
+    "h": 6,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 271,
+    "w": 8,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 272,
+    "w": 8,
+    "h": 3,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 273,
+    "w": 8,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 274,
+    "w": 8,
+    "h": 3,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 275,
+    "w": 2,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 276,
+    "w": 4,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 277,
+    "w": 2,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 278,
+    "w": 4,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 279,
+    "w": 6,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "up",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 280,
+    "w": 6,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 281,
+    "w": 4,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 282,
+    "w": 6,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "left",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 283,
+    "w": 6,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 284,
+    "w": 2,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 285,
+    "w": 4,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 286,
+    "w": 2,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 287,
+    "w": 4,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 288,
+    "w": 6,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 289,
+    "w": 6,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 290,
+    "w": 4,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 291,
+    "w": 6,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 292,
+    "w": 6,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 293,
+    "w": 8,
+    "h": 3,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 294,
+    "w": 8,
+    "h": 5,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Elevated Catwalk"
+   },
+   {
+    "id": 295,
+    "w": 8,
+    "h": 3,
+    "kind": "Elevated Catwalk Ramps",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 196,
+    "w": 6,
+    "h": 4,
+    "kind": "Low Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 197,
+    "w": 6,
+    "h": 4,
+    "kind": "Low Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 296,
+    "w": 8,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 297,
+    "w": 4,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 298,
+    "w": 6,
+    "h": 6,
+    "kind": "Low Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 299,
+    "w": 6,
+    "h": 6,
+    "kind": "Low Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 300,
+    "w": 4,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 301,
+    "w": 6,
+    "h": 6,
+    "kind": "Low Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 302,
+    "w": 6,
+    "h": 6,
+    "kind": "Low Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 303,
+    "w": 8,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 304,
+    "w": 8,
+    "h": 3,
+    "kind": "Low Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 305,
+    "w": 8,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 306,
+    "w": 8,
+    "h": 3,
+    "kind": "Low Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 307,
+    "w": 2,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 308,
+    "w": 4,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 309,
+    "w": 2,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 310,
+    "w": 4,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 311,
+    "w": 6,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 312,
+    "w": 6,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 313,
+    "w": 4,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 314,
+    "w": 6,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 315,
+    "w": 6,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 316,
+    "w": 2,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 317,
+    "w": 4,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 318,
+    "w": 2,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 319,
+    "w": 4,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 320,
+    "w": 6,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 321,
+    "w": 6,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 322,
+    "w": 4,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 323,
+    "w": 6,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 324,
+    "w": 6,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 325,
+    "w": 8,
+    "h": 3,
+    "kind": "Low Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 326,
+    "w": 8,
+    "h": 5,
+    "kind": "Low Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 327,
+    "w": 8,
+    "h": 3,
+    "kind": "Low Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 156,
+    "w": 4,
+    "h": 4,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 157,
+    "w": 4,
+    "h": 4,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 158,
+    "w": 8,
+    "h": 6,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 9,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 159,
+    "w": 8,
+    "h": 6,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 9,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 360,
+    "w": 8,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 361,
+    "w": 4,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 362,
+    "w": 6,
+    "h": 6,
+    "kind": "Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 363,
+    "w": 6,
+    "h": 6,
+    "kind": "Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 364,
+    "w": 4,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 365,
+    "w": 6,
+    "h": 6,
+    "kind": "Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 366,
+    "w": 6,
+    "h": 6,
+    "kind": "Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 367,
+    "w": 8,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 368,
+    "w": 8,
+    "h": 3,
+    "kind": "Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 369,
+    "w": 8,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 370,
+    "w": 8,
+    "h": 3,
+    "kind": "Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 371,
+    "w": 2,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 372,
+    "w": 4,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 373,
+    "w": 2,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 374,
+    "w": 4,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 375,
+    "w": 6,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 376,
+    "w": 6,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 377,
+    "w": 4,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 378,
+    "w": 6,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 379,
+    "w": 6,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 380,
+    "w": 2,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 381,
+    "w": 4,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 382,
+    "w": 2,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 383,
+    "w": 4,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 384,
+    "w": 6,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 385,
+    "w": 6,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 386,
+    "w": 4,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 387,
+    "w": 6,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 388,
+    "w": 6,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 389,
+    "w": 8,
+    "h": 3,
+    "kind": "Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 390,
+    "w": 8,
+    "h": 5,
+    "kind": "Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 391,
+    "w": 8,
+    "h": 3,
+    "kind": "Platform Wall",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 328,
+    "w": 8,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 329,
+    "w": 4,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 330,
+    "w": 6,
+    "h": 6,
+    "kind": "Rusty Pit Wall",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 331,
+    "w": 6,
+    "h": 6,
+    "kind": "Rusty Pit Wall",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 332,
+    "w": 4,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 333,
+    "w": 6,
+    "h": 6,
+    "kind": "Rusty Pit Wall",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 334,
+    "w": 6,
+    "h": 6,
+    "kind": "Rusty Pit Wall",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 335,
+    "w": 8,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 336,
+    "w": 8,
+    "h": 3,
+    "kind": "Rusty Pit Wall",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 337,
+    "w": 8,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 338,
+    "w": 8,
+    "h": 3,
+    "kind": "Rusty Pit Wall",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 339,
+    "w": 2,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 340,
+    "w": 4,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 341,
+    "w": 2,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 342,
+    "w": 4,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 343,
+    "w": 6,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "up",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 344,
+    "w": 6,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 345,
+    "w": 4,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 346,
+    "w": 6,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "left",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 347,
+    "w": 6,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 348,
+    "w": 2,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 349,
+    "w": 4,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 350,
+    "w": 2,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 351,
+    "w": 4,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 352,
+    "w": 6,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 353,
+    "w": 6,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 354,
+    "w": 4,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 355,
+    "w": 6,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 356,
+    "w": 6,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 357,
+    "w": 8,
+    "h": 3,
+    "kind": "Rusty Pit Wall",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Platform"
+   },
+   {
+    "id": 358,
+    "w": 8,
+    "h": 5,
+    "kind": "Rusty Pit Wall",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Plating"
+   },
+   {
+    "id": 359,
+    "w": 8,
+    "h": 3,
+    "kind": "Rusty Pit Wall",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Plating"
+   }
+  ],
+  "installation": [
+   {
+    "id": 71,
+    "w": 4,
+    "h": 5,
+    "kind": "Substructure Wall",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Floor"
+   },
+   {
+    "id": 72,
+    "w": 4,
+    "h": 5,
+    "kind": "Substructure Wall",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Floor"
+   }
+  ],
+  "ashworld": [
+   {
+    "id": 45,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 6,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 46,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 6,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 143,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 144,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 145,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 146,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 147,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 148,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 149,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 150,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Lava"
+   },
+   {
+    "id": 151,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "High Lava"
+   },
+   {
+    "id": 152,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 153,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 154,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Lava"
+   },
+   {
+    "id": 155,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 156,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Lava"
+   },
+   {
+    "id": 157,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 158,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 159,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 160,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Lava"
+   },
+   {
+    "id": 161,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 162,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 163,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Lava"
+   },
+   {
+    "id": 164,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 165,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Lava"
+   },
+   {
+    "id": 166,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 167,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Lava"
+   },
+   {
+    "id": 168,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 169,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 170,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Lava"
+   },
+   {
+    "id": 171,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 172,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "High Lava"
+   },
+   {
+    "id": 173,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 174,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "High Dirt"
+   }
+  ],
+  "jungle": [
+   {
+    "id": 12,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Ruins"
+   },
+   {
+    "id": 13,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Ruins"
+   },
+   {
+    "id": 272,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 273,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 274,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Ruins"
+   },
+   {
+    "id": 275,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Ruins"
+   },
+   {
+    "id": 276,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 277,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Ruins"
+   },
+   {
+    "id": 278,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Ruins"
+   },
+   {
+    "id": 279,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 280,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Raised Jungle"
+   },
+   {
+    "id": 281,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 282,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Raised Jungle"
+   },
+   {
+    "id": 283,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 284,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 285,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 286,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 287,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 288,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 289,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 290,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 291,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 292,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 293,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 294,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 295,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 296,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 297,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Raised Jungle"
+   },
+   {
+    "id": 298,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 299,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 300,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 301,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Raised Jungle"
+   },
+   {
+    "id": 302,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 303,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Raised Jungle"
+   },
+   {
+    "id": 224,
+    "w": 8,
+    "h": 7,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Ruins"
+   },
+   {
+    "id": 225,
+    "w": 8,
+    "h": 7,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Ruins"
+   },
+   {
+    "id": 336,
+    "w": 8,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 337,
+    "w": 4,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 338,
+    "w": 6,
+    "h": 6,
+    "kind": "High Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Ruins"
+   },
+   {
+    "id": 339,
+    "w": 6,
+    "h": 6,
+    "kind": "High Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Ruins"
+   },
+   {
+    "id": 340,
+    "w": 4,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 341,
+    "w": 6,
+    "h": 6,
+    "kind": "High Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Ruins"
+   },
+   {
+    "id": 342,
+    "w": 6,
+    "h": 6,
+    "kind": "High Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Ruins"
+   },
+   {
+    "id": 343,
+    "w": 8,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 344,
+    "w": 8,
+    "h": 3,
+    "kind": "High Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Raised Jungle"
+   },
+   {
+    "id": 345,
+    "w": 8,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 346,
+    "w": 8,
+    "h": 3,
+    "kind": "High Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Raised Jungle"
+   },
+   {
+    "id": 347,
+    "w": 2,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 348,
+    "w": 4,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 349,
+    "w": 2,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 350,
+    "w": 4,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 351,
+    "w": 6,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 352,
+    "w": 6,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 353,
+    "w": 4,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 354,
+    "w": 6,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 355,
+    "w": 6,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 356,
+    "w": 2,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 357,
+    "w": 4,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 358,
+    "w": 2,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 359,
+    "w": 4,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Raised Jungle"
+   },
+   {
+    "id": 360,
+    "w": 6,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 361,
+    "w": 6,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Raised Jungle"
+   },
+   {
+    "id": 362,
+    "w": 4,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Raised Jungle"
+   },
+   {
+    "id": 363,
+    "w": 6,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 364,
+    "w": 6,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 365,
+    "w": 8,
+    "h": 3,
+    "kind": "High Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Raised Jungle"
+   },
+   {
+    "id": 366,
+    "w": 8,
+    "h": 5,
+    "kind": "High Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 367,
+    "w": 8,
+    "h": 3,
+    "kind": "High Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Raised Jungle"
+   },
+   {
+    "id": 222,
+    "w": 8,
+    "h": 7,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Ruins"
+   },
+   {
+    "id": 223,
+    "w": 8,
+    "h": 7,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Ruins"
+   },
+   {
+    "id": 304,
+    "w": 8,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 305,
+    "w": 4,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 306,
+    "w": 6,
+    "h": 6,
+    "kind": "Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Ruins"
+   },
+   {
+    "id": 307,
+    "w": 6,
+    "h": 6,
+    "kind": "Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Ruins"
+   },
+   {
+    "id": 308,
+    "w": 4,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 309,
+    "w": 6,
+    "h": 6,
+    "kind": "Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Ruins"
+   },
+   {
+    "id": 310,
+    "w": 6,
+    "h": 6,
+    "kind": "Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Ruins"
+   },
+   {
+    "id": 311,
+    "w": 8,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 312,
+    "w": 8,
+    "h": 3,
+    "kind": "Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Raised Jungle"
+   },
+   {
+    "id": 313,
+    "w": 8,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 314,
+    "w": 8,
+    "h": 3,
+    "kind": "Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Raised Jungle"
+   },
+   {
+    "id": 315,
+    "w": 2,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 316,
+    "w": 4,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 317,
+    "w": 2,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 318,
+    "w": 4,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 319,
+    "w": 6,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 320,
+    "w": 6,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 321,
+    "w": 4,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 322,
+    "w": 6,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 323,
+    "w": 6,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 324,
+    "w": 2,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 325,
+    "w": 4,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 326,
+    "w": 2,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 327,
+    "w": 4,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Raised Jungle"
+   },
+   {
+    "id": 328,
+    "w": 6,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 329,
+    "w": 6,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Raised Jungle"
+   },
+   {
+    "id": 330,
+    "w": 4,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Raised Jungle"
+   },
+   {
+    "id": 331,
+    "w": 6,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 332,
+    "w": 6,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 333,
+    "w": 8,
+    "h": 3,
+    "kind": "Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Raised Jungle"
+   },
+   {
+    "id": 334,
+    "w": 8,
+    "h": 5,
+    "kind": "Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Jungle"
+   },
+   {
+    "id": 335,
+    "w": 8,
+    "h": 3,
+    "kind": "Temple Wall",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Raised Jungle"
+   }
+  ],
+  "desert": [
+   {
+    "id": 230,
+    "w": 10,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 15,
+    "walks": true,
+    "walks_with": "High Crags"
+   },
+   {
+    "id": 231,
+    "w": 10,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 17,
+    "walks": true,
+    "walks_with": "High Crags"
+   },
+   {
+    "id": 372,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 373,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 374,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Crags"
+   },
+   {
+    "id": 375,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Crags"
+   },
+   {
+    "id": 376,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 377,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Crags"
+   },
+   {
+    "id": 378,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Crags"
+   },
+   {
+    "id": 379,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 380,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 381,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 382,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 383,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 384,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 385,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 386,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 387,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 388,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 389,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 390,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 391,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 392,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 393,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 394,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 395,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 396,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 397,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 398,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 399,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 400,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 401,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 402,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 403,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 190,
+    "w": 8,
+    "h": 7,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "High Crags"
+   },
+   {
+    "id": 191,
+    "w": 8,
+    "h": 7,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "High Crags"
+   },
+   {
+    "id": 244,
+    "w": 8,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 245,
+    "w": 4,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 246,
+    "w": 6,
+    "h": 6,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Crags"
+   },
+   {
+    "id": 247,
+    "w": 6,
+    "h": 6,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Crags"
+   },
+   {
+    "id": 248,
+    "w": 4,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 249,
+    "w": 6,
+    "h": 6,
+    "kind": "Compound",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Crags"
+   },
+   {
+    "id": 250,
+    "w": 6,
+    "h": 6,
+    "kind": "Compound",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Crags"
+   },
+   {
+    "id": 251,
+    "w": 8,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 252,
+    "w": 8,
+    "h": 3,
+    "kind": "Compound",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 253,
+    "w": 8,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 254,
+    "w": 8,
+    "h": 3,
+    "kind": "Compound",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 255,
+    "w": 2,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 256,
+    "w": 4,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 257,
+    "w": 2,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 258,
+    "w": 4,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 259,
+    "w": 6,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 260,
+    "w": 6,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 261,
+    "w": 4,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 262,
+    "w": 6,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "left",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 263,
+    "w": 6,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 264,
+    "w": 2,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 265,
+    "w": 4,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 266,
+    "w": 2,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 267,
+    "w": 4,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 268,
+    "w": 6,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 269,
+    "w": 6,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 270,
+    "w": 4,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 271,
+    "w": 6,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 272,
+    "w": 6,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 273,
+    "w": 8,
+    "h": 3,
+    "kind": "Compound",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 274,
+    "w": 8,
+    "h": 5,
+    "kind": "Compound",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 275,
+    "w": 8,
+    "h": 3,
+    "kind": "Compound",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 197,
+    "w": 8,
+    "h": 7,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "High Crags"
+   },
+   {
+    "id": 198,
+    "w": 8,
+    "h": 7,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "High Crags"
+   },
+   {
+    "id": 276,
+    "w": 8,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 277,
+    "w": 4,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 278,
+    "w": 6,
+    "h": 6,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Crags"
+   },
+   {
+    "id": 279,
+    "w": 6,
+    "h": 6,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Crags"
+   },
+   {
+    "id": 280,
+    "w": 4,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 281,
+    "w": 6,
+    "h": 6,
+    "kind": "High Compound",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Crags"
+   },
+   {
+    "id": 282,
+    "w": 6,
+    "h": 6,
+    "kind": "High Compound",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Crags"
+   },
+   {
+    "id": 283,
+    "w": 8,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 284,
+    "w": 8,
+    "h": 3,
+    "kind": "High Compound",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 285,
+    "w": 8,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 286,
+    "w": 8,
+    "h": 3,
+    "kind": "High Compound",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 287,
+    "w": 2,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 288,
+    "w": 4,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 289,
+    "w": 2,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 290,
+    "w": 4,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 291,
+    "w": 6,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 292,
+    "w": 6,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 293,
+    "w": 4,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 294,
+    "w": 6,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "left",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 295,
+    "w": 6,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 296,
+    "w": 2,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 297,
+    "w": 4,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 298,
+    "w": 2,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 299,
+    "w": 4,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 300,
+    "w": 6,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 301,
+    "w": 6,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 302,
+    "w": 4,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 303,
+    "w": 6,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 304,
+    "w": 6,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 305,
+    "w": 8,
+    "h": 3,
+    "kind": "High Compound",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 306,
+    "w": 8,
+    "h": 5,
+    "kind": "High Compound",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Sand Dunes"
+   },
+   {
+    "id": 307,
+    "w": 8,
+    "h": 3,
+    "kind": "High Compound",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 340,
+    "w": 8,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 341,
+    "w": 4,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 342,
+    "w": 6,
+    "h": 6,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 343,
+    "w": 6,
+    "h": 6,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 344,
+    "w": 4,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 345,
+    "w": 6,
+    "h": 6,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 346,
+    "w": 6,
+    "h": 6,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 347,
+    "w": 8,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 348,
+    "w": 8,
+    "h": 3,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 349,
+    "w": 8,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 350,
+    "w": 8,
+    "h": 3,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 351,
+    "w": 2,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 352,
+    "w": 4,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 353,
+    "w": 2,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 354,
+    "w": 4,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 355,
+    "w": 6,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 356,
+    "w": 6,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 357,
+    "w": 4,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 358,
+    "w": 6,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 359,
+    "w": 6,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 360,
+    "w": 2,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 361,
+    "w": 4,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 362,
+    "w": 2,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 363,
+    "w": 4,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 364,
+    "w": 6,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 365,
+    "w": 6,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 366,
+    "w": 4,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 367,
+    "w": 6,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 368,
+    "w": 6,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 369,
+    "w": 8,
+    "h": 3,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 370,
+    "w": 8,
+    "h": 5,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 371,
+    "w": 8,
+    "h": 3,
+    "kind": "High Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 308,
+    "w": 8,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 309,
+    "w": 4,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 310,
+    "w": 6,
+    "h": 6,
+    "kind": "Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 311,
+    "w": 6,
+    "h": 6,
+    "kind": "Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 312,
+    "w": 4,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 313,
+    "w": 6,
+    "h": 6,
+    "kind": "Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 314,
+    "w": 6,
+    "h": 6,
+    "kind": "Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 315,
+    "w": 8,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 316,
+    "w": 8,
+    "h": 3,
+    "kind": "Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 317,
+    "w": 8,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 318,
+    "w": 8,
+    "h": 3,
+    "kind": "Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 319,
+    "w": 2,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 320,
+    "w": 4,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 321,
+    "w": 2,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 322,
+    "w": 4,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 323,
+    "w": 6,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 324,
+    "w": 6,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 325,
+    "w": 4,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 326,
+    "w": 6,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 327,
+    "w": 6,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 328,
+    "w": 2,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 329,
+    "w": 4,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 330,
+    "w": 2,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 331,
+    "w": 4,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 332,
+    "w": 6,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 333,
+    "w": 6,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 334,
+    "w": 4,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 335,
+    "w": 6,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 336,
+    "w": 6,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 337,
+    "w": 8,
+    "h": 3,
+    "kind": "Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 338,
+    "w": 8,
+    "h": 5,
+    "kind": "Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   },
+   {
+    "id": 339,
+    "w": 8,
+    "h": 3,
+    "kind": "Sandy Sunken Pit",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": true,
+    "walks_with": "Sandy Sunken Pit"
+   }
+  ],
+  "ice": [
+   {
+    "id": 0,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 1,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 268,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 269,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 270,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 271,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 272,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 273,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 274,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 275,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 276,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 277,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 278,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 279,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 280,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 281,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 282,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 283,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 284,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 285,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 286,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 287,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 288,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 289,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 290,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 291,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 292,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 293,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 294,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 295,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 296,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 297,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 298,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 299,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 171,
+    "w": 8,
+    "h": 7,
+    "kind": "High Outpost",
+    "dir": "left",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 172,
+    "w": 8,
+    "h": 7,
+    "kind": "High Outpost",
+    "dir": "up",
+    "ramp_tiles": 9,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 300,
+    "w": 8,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 301,
+    "w": 4,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 302,
+    "w": 6,
+    "h": 6,
+    "kind": "High Outpost",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 303,
+    "w": 6,
+    "h": 6,
+    "kind": "High Outpost",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 304,
+    "w": 4,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 305,
+    "w": 6,
+    "h": 6,
+    "kind": "High Outpost",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 306,
+    "w": 6,
+    "h": 6,
+    "kind": "High Outpost",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 307,
+    "w": 8,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 308,
+    "w": 8,
+    "h": 3,
+    "kind": "High Outpost",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 309,
+    "w": 8,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 310,
+    "w": 8,
+    "h": 3,
+    "kind": "High Outpost",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 311,
+    "w": 2,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 312,
+    "w": 4,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 313,
+    "w": 2,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 314,
+    "w": 4,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 315,
+    "w": 6,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "up",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 316,
+    "w": 6,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 317,
+    "w": 4,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 318,
+    "w": 6,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "left",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 319,
+    "w": 6,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 320,
+    "w": 2,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 321,
+    "w": 4,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 322,
+    "w": 2,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 323,
+    "w": 4,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 324,
+    "w": 6,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 325,
+    "w": 6,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 326,
+    "w": 4,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 327,
+    "w": 6,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 328,
+    "w": 6,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 329,
+    "w": 8,
+    "h": 3,
+    "kind": "High Outpost",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 330,
+    "w": 8,
+    "h": 5,
+    "kind": "High Outpost",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 331,
+    "w": 8,
+    "h": 3,
+    "kind": "High Outpost",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 163,
+    "w": 8,
+    "h": 7,
+    "kind": "Outpost",
+    "dir": "left",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 164,
+    "w": 8,
+    "h": 7,
+    "kind": "Outpost",
+    "dir": "up",
+    "ramp_tiles": 9,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 236,
+    "w": 8,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 237,
+    "w": 4,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 238,
+    "w": 6,
+    "h": 6,
+    "kind": "Outpost",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 239,
+    "w": 6,
+    "h": 6,
+    "kind": "Outpost",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 240,
+    "w": 4,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 241,
+    "w": 6,
+    "h": 6,
+    "kind": "Outpost",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 242,
+    "w": 6,
+    "h": 6,
+    "kind": "Outpost",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 243,
+    "w": 8,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 244,
+    "w": 8,
+    "h": 3,
+    "kind": "Outpost",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 245,
+    "w": 8,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 246,
+    "w": 8,
+    "h": 3,
+    "kind": "Outpost",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 247,
+    "w": 2,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 248,
+    "w": 4,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 249,
+    "w": 2,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 250,
+    "w": 4,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 251,
+    "w": 6,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "up",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 252,
+    "w": 6,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 253,
+    "w": 4,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 254,
+    "w": 6,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "left",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 255,
+    "w": 6,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 256,
+    "w": 2,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 257,
+    "w": 4,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 258,
+    "w": 2,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 259,
+    "w": 4,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 260,
+    "w": 6,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 261,
+    "w": 6,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 262,
+    "w": 4,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 263,
+    "w": 6,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 264,
+    "w": 6,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 265,
+    "w": 8,
+    "h": 3,
+    "kind": "Outpost",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 266,
+    "w": 8,
+    "h": 5,
+    "kind": "Outpost",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Dirt"
+   },
+   {
+    "id": 267,
+    "w": 8,
+    "h": 3,
+    "kind": "Outpost",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   }
+  ],
+  "twilight": [
+   {
+    "id": 154,
+    "w": 8,
+    "h": 7,
+    "kind": "Basilica",
+    "dir": "right",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Flagstones"
+   },
+   {
+    "id": 155,
+    "w": 8,
+    "h": 7,
+    "kind": "Basilica",
+    "dir": "left",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Flagstones"
+   },
+   {
+    "id": 247,
+    "w": 8,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 248,
+    "w": 4,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 249,
+    "w": 6,
+    "h": 6,
+    "kind": "Basilica",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Flagstones"
+   },
+   {
+    "id": 250,
+    "w": 6,
+    "h": 6,
+    "kind": "Basilica",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Flagstones"
+   },
+   {
+    "id": 251,
+    "w": 4,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 252,
+    "w": 6,
+    "h": 6,
+    "kind": "Basilica",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Flagstones"
+   },
+   {
+    "id": 253,
+    "w": 6,
+    "h": 6,
+    "kind": "Basilica",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Flagstones"
+   },
+   {
+    "id": 254,
+    "w": 8,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 255,
+    "w": 8,
+    "h": 3,
+    "kind": "Basilica",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 256,
+    "w": 8,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 257,
+    "w": 8,
+    "h": 3,
+    "kind": "Basilica",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 258,
+    "w": 2,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 259,
+    "w": 4,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 260,
+    "w": 2,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 261,
+    "w": 4,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 262,
+    "w": 6,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "up",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 263,
+    "w": 6,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 264,
+    "w": 4,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 265,
+    "w": 6,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "left",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 266,
+    "w": 6,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 267,
+    "w": 2,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 268,
+    "w": 4,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 269,
+    "w": 2,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 270,
+    "w": 4,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 271,
+    "w": 6,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 272,
+    "w": 6,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 273,
+    "w": 4,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 274,
+    "w": 6,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 275,
+    "w": 6,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 276,
+    "w": 8,
+    "h": 3,
+    "kind": "Basilica",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 277,
+    "w": 8,
+    "h": 5,
+    "kind": "Basilica",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 278,
+    "w": 8,
+    "h": 3,
+    "kind": "Basilica",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 0,
+    "w": 6,
+    "h": 4,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 9,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 1,
+    "w": 6,
+    "h": 4,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 9,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 311,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 312,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 313,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Flagstones"
+   },
+   {
+    "id": 314,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Flagstones"
+   },
+   {
+    "id": 315,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 316,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Flagstones"
+   },
+   {
+    "id": 317,
+    "w": 6,
+    "h": 6,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Flagstones"
+   },
+   {
+    "id": 318,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 319,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 320,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 321,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 322,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 323,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 324,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 325,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 326,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 327,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 328,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 329,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 330,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 331,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 332,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 333,
+    "w": 2,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 334,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 335,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 336,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 337,
+    "w": 4,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 338,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 339,
+    "w": 6,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 340,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 341,
+    "w": 8,
+    "h": 5,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 342,
+    "w": 8,
+    "h": 3,
+    "kind": "Cliff",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 161,
+    "w": 8,
+    "h": 7,
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Flagstones"
+   },
+   {
+    "id": 162,
+    "w": 8,
+    "h": 7,
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Flagstones"
+   },
+   {
+    "id": 279,
+    "w": 8,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "right",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 280,
+    "w": 4,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "up",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 281,
+    "w": 6,
+    "h": 6,
+    "kind": "High Basilica",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Flagstones"
+   },
+   {
+    "id": 282,
+    "w": 6,
+    "h": 6,
+    "kind": "High Basilica",
+    "dir": "up",
+    "ramp_tiles": 7,
+    "walks": true,
+    "walks_with": "High Flagstones"
+   },
+   {
+    "id": 283,
+    "w": 4,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 284,
+    "w": 6,
+    "h": 6,
+    "kind": "High Basilica",
+    "dir": "right",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Flagstones"
+   },
+   {
+    "id": 285,
+    "w": 6,
+    "h": 6,
+    "kind": "High Basilica",
+    "dir": "left",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Flagstones"
+   },
+   {
+    "id": 286,
+    "w": 8,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "left",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 287,
+    "w": 8,
+    "h": 3,
+    "kind": "High Basilica",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 288,
+    "w": 8,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "right",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 289,
+    "w": 8,
+    "h": 3,
+    "kind": "High Basilica",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 290,
+    "w": 2,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 291,
+    "w": 4,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "up",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 292,
+    "w": 2,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "up",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 293,
+    "w": 4,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 294,
+    "w": 6,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "up",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 295,
+    "w": 6,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 296,
+    "w": 4,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 297,
+    "w": 6,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "left",
+    "ramp_tiles": 10,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 298,
+    "w": 6,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "up",
+    "ramp_tiles": 3,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 299,
+    "w": 2,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 300,
+    "w": 4,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 8,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 301,
+    "w": 2,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 2,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 302,
+    "w": 4,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 303,
+    "w": 6,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 304,
+    "w": 6,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "right",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 305,
+    "w": 4,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 306,
+    "w": 6,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "down",
+    "ramp_tiles": 5,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 307,
+    "w": 6,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 308,
+    "w": 8,
+    "h": 3,
+    "kind": "High Basilica",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   },
+   {
+    "id": 309,
+    "w": 8,
+    "h": 5,
+    "kind": "High Basilica",
+    "dir": "left",
+    "ramp_tiles": 4,
+    "walks": true,
+    "walks_with": "High Crushed Rock"
+   },
+   {
+    "id": 310,
+    "w": 8,
+    "h": 3,
+    "kind": "High Basilica",
+    "dir": "left",
+    "ramp_tiles": 1,
+    "walks": false,
+    "walks_with": null
+   }
+  ]
+ }
+}

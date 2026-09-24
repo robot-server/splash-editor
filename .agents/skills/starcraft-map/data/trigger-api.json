@@ -1,0 +1,1017 @@
+{
+ "_about": "트리거 조건·액션의 인자 순서. MappingCore chk.cpp의 classicArguments와 textArguments에서 생성한다. text는 splash-cli 입력 순서이고 classic은 에디터 창 순서다.",
+ "conditions": {
+  "0": {
+   "name": "No Condition",
+   "text_args": [],
+   "classic_args": [],
+   "differs": false
+  },
+  "1": {
+   "name": "Countdown Timer",
+   "text_args": [
+    "numericComparisonCnd",
+    "amountCnd"
+   ],
+   "classic_args": [
+    "numericComparisonCnd",
+    "amountCnd"
+   ],
+   "differs": false
+  },
+  "2": {
+   "name": "Command",
+   "text_args": [
+    "playerCnd",
+    "unitCnd",
+    "numericComparisonCnd",
+    "amountCnd"
+   ],
+   "classic_args": [
+    "playerCnd",
+    "numericComparisonCnd",
+    "amountCnd",
+    "unitCnd"
+   ],
+   "differs": true
+  },
+  "3": {
+   "name": "Bring",
+   "text_args": [
+    "playerCnd",
+    "unitCnd",
+    "locationCnd",
+    "numericComparisonCnd",
+    "amountCnd"
+   ],
+   "classic_args": [
+    "playerCnd",
+    "numericComparisonCnd",
+    "amountCnd",
+    "unitCnd",
+    "locationCnd"
+   ],
+   "differs": true
+  },
+  "4": {
+   "name": "Accumulate",
+   "text_args": [
+    "playerCnd",
+    "numericComparisonCnd",
+    "amountCnd",
+    "resourceCnd"
+   ],
+   "classic_args": [
+    "playerCnd",
+    "numericComparisonCnd",
+    "amountCnd",
+    "resourceCnd"
+   ],
+   "differs": false
+  },
+  "5": {
+   "name": "Kill",
+   "text_args": [
+    "playerCnd",
+    "unitCnd",
+    "numericComparisonCnd",
+    "amountCnd"
+   ],
+   "classic_args": [
+    "playerCnd",
+    "numericComparisonCnd",
+    "amountCnd",
+    "unitCnd"
+   ],
+   "differs": true
+  },
+  "6": {
+   "name": "Command The Most",
+   "text_args": [
+    "unitCnd"
+   ],
+   "classic_args": [
+    "unitCnd"
+   ],
+   "differs": false
+  },
+  "7": {
+   "name": "Command The Most At",
+   "text_args": [
+    "unitCnd",
+    "locationCnd"
+   ],
+   "classic_args": [
+    "unitCnd",
+    "locationCnd"
+   ],
+   "differs": false
+  },
+  "8": {
+   "name": "Most Kills",
+   "text_args": [
+    "unitCnd"
+   ],
+   "classic_args": [
+    "unitCnd"
+   ],
+   "differs": false
+  },
+  "9": {
+   "name": "Highest Score",
+   "text_args": [
+    "scoreCnd"
+   ],
+   "classic_args": [
+    "scoreCnd"
+   ],
+   "differs": false
+  },
+  "10": {
+   "name": "Most Resources",
+   "text_args": [
+    "resourceCnd"
+   ],
+   "classic_args": [
+    "resourceCnd"
+   ],
+   "differs": false
+  },
+  "11": {
+   "name": "Switch",
+   "text_args": [
+    "switchCnd",
+    "switchStateCnd"
+   ],
+   "classic_args": [
+    "switchCnd",
+    "switchStateCnd"
+   ],
+   "differs": false
+  },
+  "12": {
+   "name": "Elapsed Time",
+   "text_args": [
+    "numericComparisonCnd",
+    "amountCnd"
+   ],
+   "classic_args": [
+    "numericComparisonCnd",
+    "amountCnd"
+   ],
+   "differs": false
+  },
+  "13": {
+   "name": "Is Briefing",
+   "text_args": [],
+   "classic_args": [],
+   "differs": false
+  },
+  "14": {
+   "name": "Opponents",
+   "text_args": [
+    "playerCnd",
+    "numericComparisonCnd",
+    "amountCnd"
+   ],
+   "classic_args": [
+    "playerCnd",
+    "numericComparisonCnd",
+    "amountCnd"
+   ],
+   "differs": false
+  },
+  "15": {
+   "name": "Deaths",
+   "text_args": [
+    "playerCnd",
+    "unitCnd",
+    "numericComparisonCnd",
+    "amountCnd"
+   ],
+   "classic_args": [
+    "playerCnd",
+    "numericComparisonCnd",
+    "amountCnd",
+    "unitCnd"
+   ],
+   "differs": true
+  },
+  "16": {
+   "name": "Command The Least",
+   "text_args": [
+    "unitCnd"
+   ],
+   "classic_args": [
+    "unitCnd"
+   ],
+   "differs": false
+  },
+  "17": {
+   "name": "Command The Least At",
+   "text_args": [
+    "unitCnd",
+    "locationCnd"
+   ],
+   "classic_args": [
+    "unitCnd",
+    "locationCnd"
+   ],
+   "differs": false
+  },
+  "18": {
+   "name": "Least Kills",
+   "text_args": [
+    "unitCnd"
+   ],
+   "classic_args": [
+    "unitCnd"
+   ],
+   "differs": false
+  },
+  "19": {
+   "name": "Lowest Score",
+   "text_args": [
+    "scoreCnd"
+   ],
+   "classic_args": [
+    "scoreCnd"
+   ],
+   "differs": false
+  },
+  "20": {
+   "name": "Least Resources",
+   "text_args": [
+    "resourceCnd"
+   ],
+   "classic_args": [
+    "resourceCnd"
+   ],
+   "differs": false
+  },
+  "21": {
+   "name": "Score",
+   "text_args": [
+    "playerCnd",
+    "scoreCnd",
+    "numericComparisonCnd",
+    "amountCnd"
+   ],
+   "classic_args": [
+    "playerCnd",
+    "scoreCnd",
+    "numericComparisonCnd",
+    "amountCnd"
+   ],
+   "differs": false
+  },
+  "22": {
+   "name": "Always",
+   "text_args": [],
+   "classic_args": [],
+   "differs": false
+  },
+  "23": {
+   "name": "Never",
+   "text_args": [],
+   "classic_args": [],
+   "differs": false
+  }
+ },
+ "actions": {
+  "0": {
+   "name": "No Action",
+   "text_args": [],
+   "classic_args": [],
+   "differs": false
+  },
+  "1": {
+   "name": "Victory",
+   "text_args": [],
+   "classic_args": [],
+   "differs": false
+  },
+  "2": {
+   "name": "Defeat",
+   "text_args": [],
+   "classic_args": [],
+   "differs": false
+  },
+  "3": {
+   "name": "Preserve Trigger",
+   "text_args": [],
+   "classic_args": [],
+   "differs": false
+  },
+  "4": {
+   "name": "Wait",
+   "text_args": [
+    "duration"
+   ],
+   "classic_args": [
+    "duration"
+   ],
+   "differs": false
+  },
+  "5": {
+   "name": "Pause Game",
+   "text_args": [],
+   "classic_args": [],
+   "differs": false
+  },
+  "6": {
+   "name": "Unpause Game",
+   "text_args": [],
+   "classic_args": [],
+   "differs": false
+  },
+  "7": {
+   "name": "Transmission",
+   "text_args": [
+    "textFlags",
+    "string",
+    "unit",
+    "location",
+    "numericMod",
+    "amount",
+    "sound",
+    "duration"
+   ],
+   "classic_args": [
+    "unit",
+    "location",
+    "sound",
+    "numericMod",
+    "amount",
+    "string"
+   ],
+   "differs": true
+  },
+  "8": {
+   "name": "Play Sound",
+   "text_args": [
+    "sound",
+    "duration"
+   ],
+   "classic_args": [
+    "sound"
+   ],
+   "differs": true
+  },
+  "9": {
+   "name": "Display Text Message",
+   "text_args": [
+    "textFlags",
+    "string"
+   ],
+   "classic_args": [
+    "string"
+   ],
+   "differs": true
+  },
+  "10": {
+   "name": "Center View",
+   "text_args": [
+    "location"
+   ],
+   "classic_args": [
+    "location"
+   ],
+   "differs": false
+  },
+  "11": {
+   "name": "Create Unit with Properties",
+   "text_args": [
+    "player",
+    "unit",
+    "unitQuantity",
+    "location",
+    "cuwp"
+   ],
+   "classic_args": [
+    "unitQuantity",
+    "unit",
+    "location",
+    "player",
+    "cuwp"
+   ],
+   "differs": true
+  },
+  "12": {
+   "name": "Set Mission Objectives",
+   "text_args": [
+    "string"
+   ],
+   "classic_args": [
+    "string"
+   ],
+   "differs": false
+  },
+  "13": {
+   "name": "Set Switch",
+   "text_args": [
+    "switch",
+    "switchMod"
+   ],
+   "classic_args": [
+    "switchMod",
+    "switch"
+   ],
+   "differs": true
+  },
+  "14": {
+   "name": "Set Countdown Timer",
+   "text_args": [
+    "numericMod",
+    "duration"
+   ],
+   "classic_args": [
+    "numericMod",
+    "duration"
+   ],
+   "differs": false
+  },
+  "15": {
+   "name": "Run AI Script",
+   "text_args": [
+    "script"
+   ],
+   "classic_args": [
+    "script"
+   ],
+   "differs": false
+  },
+  "16": {
+   "name": "Run AI Script At Location",
+   "text_args": [
+    "script",
+    "location"
+   ],
+   "classic_args": [
+    "script",
+    "location"
+   ],
+   "differs": false
+  },
+  "17": {
+   "name": "Leader Board (Control)",
+   "text_args": [
+    "string",
+    "unit"
+   ],
+   "classic_args": [
+    "unit",
+    "string"
+   ],
+   "differs": true
+  },
+  "18": {
+   "name": "Leader Board (Control At Location)",
+   "text_args": [
+    "string",
+    "unit",
+    "location"
+   ],
+   "classic_args": [
+    "unit",
+    "location",
+    "string"
+   ],
+   "differs": true
+  },
+  "19": {
+   "name": "Leader Board (Resources)",
+   "text_args": [
+    "string",
+    "resource"
+   ],
+   "classic_args": [
+    "resource",
+    "string"
+   ],
+   "differs": true
+  },
+  "20": {
+   "name": "Leader Board (Kills)",
+   "text_args": [
+    "string",
+    "unit"
+   ],
+   "classic_args": [
+    "unit",
+    "string"
+   ],
+   "differs": true
+  },
+  "21": {
+   "name": "Leader Board (Points)",
+   "text_args": [
+    "string",
+    "score"
+   ],
+   "classic_args": [
+    "score",
+    "string"
+   ],
+   "differs": true
+  },
+  "22": {
+   "name": "Kill Unit",
+   "text_args": [
+    "player",
+    "unit"
+   ],
+   "classic_args": [
+    "unit",
+    "player"
+   ],
+   "differs": true
+  },
+  "23": {
+   "name": "Kill Unit At Location",
+   "text_args": [
+    "player",
+    "unit",
+    "numUnits",
+    "location"
+   ],
+   "classic_args": [
+    "numUnits",
+    "unit",
+    "player",
+    "location"
+   ],
+   "differs": true
+  },
+  "24": {
+   "name": "Remove Unit",
+   "text_args": [
+    "player",
+    "unit"
+   ],
+   "classic_args": [
+    "unit",
+    "player"
+   ],
+   "differs": true
+  },
+  "25": {
+   "name": "Remove Unit At Location",
+   "text_args": [
+    "player",
+    "unit",
+    "numUnits",
+    "location"
+   ],
+   "classic_args": [
+    "numUnits",
+    "unit",
+    "player",
+    "location"
+   ],
+   "differs": true
+  },
+  "26": {
+   "name": "Set Resources",
+   "text_args": [
+    "player",
+    "numericMod",
+    "amount",
+    "resource"
+   ],
+   "classic_args": [
+    "player",
+    "numericMod",
+    "amount",
+    "resource"
+   ],
+   "differs": false
+  },
+  "27": {
+   "name": "Set Score",
+   "text_args": [
+    "player",
+    "numericMod",
+    "amount",
+    "score"
+   ],
+   "classic_args": [
+    "player",
+    "numericMod",
+    "amount",
+    "score"
+   ],
+   "differs": false
+  },
+  "28": {
+   "name": "Minimap Ping",
+   "text_args": [
+    "location"
+   ],
+   "classic_args": [
+    "location"
+   ],
+   "differs": false
+  },
+  "29": {
+   "name": "Talking Portrait",
+   "text_args": [
+    "unit",
+    "duration"
+   ],
+   "classic_args": [
+    "unit",
+    "duration"
+   ],
+   "differs": false
+  },
+  "30": {
+   "name": "Mute Unit Speech",
+   "text_args": [],
+   "classic_args": [],
+   "differs": false
+  },
+  "31": {
+   "name": "Unmute Unit Speech",
+   "text_args": [],
+   "classic_args": [],
+   "differs": false
+  },
+  "32": {
+   "name": "Leaderboard Computer Players",
+   "text_args": [
+    "stateMod"
+   ],
+   "classic_args": [
+    "stateMod"
+   ],
+   "differs": false
+  },
+  "33": {
+   "name": "Leaderboard Goal (Control)",
+   "text_args": [
+    "string",
+    "unit",
+    "amount"
+   ],
+   "classic_args": [
+    "amount",
+    "unit",
+    "string"
+   ],
+   "differs": true
+  },
+  "34": {
+   "name": "Leaderboard Goal (Control At Location)",
+   "text_args": [
+    "string",
+    "unit",
+    "amount",
+    "location"
+   ],
+   "classic_args": [
+    "amount",
+    "unit",
+    "location",
+    "string"
+   ],
+   "differs": true
+  },
+  "35": {
+   "name": "Leaderboard Goal (Resources)",
+   "text_args": [
+    "string",
+    "amount",
+    "resource"
+   ],
+   "classic_args": [
+    "amount",
+    "resource",
+    "string"
+   ],
+   "differs": true
+  },
+  "36": {
+   "name": "Leaderboard Goal (Kills)",
+   "text_args": [
+    "string",
+    "unit",
+    "amount"
+   ],
+   "classic_args": [
+    "amount",
+    "unit",
+    "string"
+   ],
+   "differs": true
+  },
+  "37": {
+   "name": "Leaderboard Goal (Points)",
+   "text_args": [
+    "string",
+    "score",
+    "amount"
+   ],
+   "classic_args": [
+    "amount",
+    "score",
+    "string"
+   ],
+   "differs": true
+  },
+  "38": {
+   "name": "Move Location",
+   "text_args": [
+    "player",
+    "unit",
+    "location",
+    "secondaryLocation"
+   ],
+   "classic_args": [
+    "secondaryLocation",
+    "unit",
+    "player",
+    "location"
+   ],
+   "differs": true
+  },
+  "39": {
+   "name": "Move Unit",
+   "text_args": [
+    "player",
+    "unit",
+    "numUnits",
+    "location",
+    "secondaryLocation"
+   ],
+   "classic_args": [
+    "numUnits",
+    "unit",
+    "player",
+    "location",
+    "secondaryLocation"
+   ],
+   "differs": true
+  },
+  "40": {
+   "name": "Leaderboard (Greed)",
+   "text_args": [
+    "amount"
+   ],
+   "classic_args": [
+    "amount"
+   ],
+   "differs": false
+  },
+  "41": {
+   "name": "Set Next Scenario",
+   "text_args": [
+    "string"
+   ],
+   "classic_args": [
+    "string"
+   ],
+   "differs": false
+  },
+  "42": {
+   "name": "Set Doodad State",
+   "text_args": [
+    "player",
+    "unit",
+    "location",
+    "stateMod"
+   ],
+   "classic_args": [
+    "stateMod",
+    "unit",
+    "player",
+    "location"
+   ],
+   "differs": true
+  },
+  "43": {
+   "name": "Set Invincibility",
+   "text_args": [
+    "player",
+    "unit",
+    "location",
+    "stateMod"
+   ],
+   "classic_args": [
+    "stateMod",
+    "unit",
+    "player",
+    "location"
+   ],
+   "differs": true
+  },
+  "44": {
+   "name": "Create Unit",
+   "text_args": [
+    "player",
+    "unit",
+    "unitQuantity",
+    "location"
+   ],
+   "classic_args": [
+    "unitQuantity",
+    "unit",
+    "location",
+    "player"
+   ],
+   "differs": true
+  },
+  "45": {
+   "name": "Set Deaths",
+   "text_args": [
+    "player",
+    "unit",
+    "numericMod",
+    "amount"
+   ],
+   "classic_args": [
+    "player",
+    "numericMod",
+    "amount",
+    "unit"
+   ],
+   "differs": true
+  },
+  "46": {
+   "name": "Order",
+   "text_args": [
+    "player",
+    "unit",
+    "location",
+    "secondaryLocation",
+    "order"
+   ],
+   "classic_args": [
+    "unit",
+    "player",
+    "location",
+    "order",
+    "secondaryLocation"
+   ],
+   "differs": true
+  },
+  "47": {
+   "name": "Comment",
+   "text_args": [
+    "string"
+   ],
+   "classic_args": [
+    "string"
+   ],
+   "differs": false
+  },
+  "48": {
+   "name": "Give Units to Player",
+   "text_args": [
+    "player",
+    "destPlayer",
+    "unit",
+    "numUnits",
+    "location"
+   ],
+   "classic_args": [
+    "numUnits",
+    "unit",
+    "player",
+    "location",
+    "destPlayer"
+   ],
+   "differs": true
+  },
+  "49": {
+   "name": "Modify Unit Hit Points",
+   "text_args": [
+    "player",
+    "unit",
+    "percent",
+    "unitQuantity",
+    "location"
+   ],
+   "classic_args": [
+    "numUnits",
+    "unit",
+    "player",
+    "location",
+    "percent"
+   ],
+   "differs": true
+  },
+  "50": {
+   "name": "Modify Unit Energy",
+   "text_args": [
+    "player",
+    "unit",
+    "percent",
+    "unitQuantity",
+    "location"
+   ],
+   "classic_args": [
+    "numUnits",
+    "unit",
+    "player",
+    "location",
+    "percent"
+   ],
+   "differs": true
+  },
+  "51": {
+   "name": "Modify Unit Shield points",
+   "text_args": [
+    "player",
+    "unit",
+    "percent",
+    "unitQuantity",
+    "location"
+   ],
+   "classic_args": [
+    "numUnits",
+    "unit",
+    "player",
+    "location",
+    "percent"
+   ],
+   "differs": true
+  },
+  "52": {
+   "name": "Modify Unit Resource Amount",
+   "text_args": [
+    "player",
+    "amount",
+    "unitQuantity",
+    "location"
+   ],
+   "classic_args": [
+    "numUnits",
+    "player",
+    "location",
+    "amount"
+   ],
+   "differs": true
+  },
+  "53": {
+   "name": "Modify Unit Hangar Count",
+   "text_args": [
+    "player",
+    "unit",
+    "amount",
+    "unitQuantity",
+    "location"
+   ],
+   "classic_args": [
+    "amount",
+    "numUnits",
+    "unit",
+    "location",
+    "player"
+   ],
+   "differs": true
+  },
+  "54": {
+   "name": "Pause Timer",
+   "text_args": [],
+   "classic_args": [],
+   "differs": false
+  },
+  "55": {
+   "name": "Unpause Timer",
+   "text_args": [],
+   "classic_args": [],
+   "differs": false
+  },
+  "56": {
+   "name": "Draw",
+   "text_args": [],
+   "classic_args": [],
+   "differs": false
+  },
+  "57": {
+   "name": "Set Alliance Status",
+   "text_args": [
+    "player",
+    "allyState"
+   ],
+   "classic_args": [
+    "player",
+    "allyState"
+   ],
+   "differs": false
+  },
+  "58": {
+   "name": "Disable Debug Mode",
+   "text_args": [],
+   "classic_args": [],
+   "differs": false
+  },
+  "59": {
+   "name": "Enable Debug Mode",
+   "text_args": [],
+   "classic_args": [],
+   "differs": false
+  }
+ }
+}

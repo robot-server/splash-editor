@@ -277,7 +277,10 @@ splash-cli string set map.scx 1 "새 글자" --encoding cp949 -o out.scx
 ./build/src/cli/splash-cli chk map.scx scenario.chk
 
 # 빈 맵 만들기 (확장자로 포맷 결정: .scm=하이브리드, .scx=브루드워)
-./build/src/cli/splash-cli new new.scx 128 128 4 --melee
+# --install 을 주면 고른 지형으로 바닥을 채운다. 주지 않으면 타일이 0 으로
+# 남아 terrain isom 이 아무것도 놓지 못한다.
+./build/src/cli/splash-cli new new.scx 128 128 4 --melee \
+    --install "/경로/StarCraft" --terrain Dirt
 
 # 게임 설치본 조사 — 아카이브 종류와 타일셋 데이터 유무를 확인한다
 ./build/src/cli/splash-cli assets "/경로/StarCraft"
@@ -293,11 +296,46 @@ splash-cli string set map.scx 1 "새 글자" --encoding cp949 -o out.scx
 
 # 타일셋 조사 / 타일 시트 뽑기
 ./build/src/cli/splash-cli tileset-info "/경로/StarCraft" 4
+
+# 램프 타일 찾기 — ISOM 브러시에는 램프가 없어서 타일을 직접 찍어야 한다
+./build/src/cli/splash-cli tileset-ramps "/경로/StarCraft" 4
 ./build/src/cli/splash-cli tile-sheet "/경로/StarCraft" 4 0 16 sheet.ppm
 ```
 
 예전 이름(`move-unit`, `place-isom`, `set-triggers`, `units`, `triggers` …)도
 그대로 받는다. 새 이름은 갈래 쪽이다.
+
+---
+
+## AI 로 맵 만들기
+
+프롬프트 지시로 맵을 만드는 에이전트 스킬이 `.agents/skills/starcraft-map`
+에 있다. Claude Code 는 `.claude/skills/` 만 뒤지므로 그쪽에 심볼릭 링크를
+걸어 두었다 — 알맹이는 `.agents` 쪽 한 곳뿐이다.
+
+```sh
+export SC_INSTALL=/경로/StarCraft
+S=.agents/skills/starcraft-map/scripts
+
+# 밀리맵 뼈대 — 대칭 스타팅, 본진 고지대, 램프, 앞마당, 바깥 멀티
+python3 $S/make_melee.py out.scx --players 4 --tileset jungle
+
+# 유즈맵 뼈대 — 장르에 맞는 트리거 고리까지
+python3 $S/make_usemap.py out.scx --genre defense --players 6
+
+# 재기 (자리 밸런스 + 종족 밸런스 기울기) 와 그려 보기
+python3 $S/verify_map.py out.scx
+python3 $S/preview.py out.scx look.png
+```
+
+스킬에는 공식 리그 맵 56개와 인기 유즈맵 93개를 실제로 뜯어 잰 값이
+함께 들어 있다 — 본진 미네랄 9개·가스 1개, 미네랄 1500·가스 5000,
+2인용은 예외 없이 180도 회전 대칭, 유즈맵 트리거 중앙값 153개 같은 것들이다.
+종족 밸런스를 어느 손잡이로 기울이는지도 근거와 함께 적어 두었다.
+
+EUD·비표준 크기·unused unit 처럼 판본을 타거나 위험한 것은 **쓰기 전에
+사용자에게 묻도록** 되어 있고, 플레이어 컴퓨터에 해를 끼칠 수 있는 EUD
+요구는 거절한다.
 
 ---
 

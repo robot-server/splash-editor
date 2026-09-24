@@ -12,6 +12,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -139,6 +140,113 @@ public:
     };
     UnitRanges unitRanges(std::uint16_t unitType) const;
 
+    /// units.dat·weapons.dat 에 박혀 있는 한 유닛의 값들.
+    ///
+    /// **맵이 고칠 수 있는 것과 없는 것을 가르는 자리다.** 맵의 유닛
+    /// 설정(UNIS·UNIx)이 건드리는 것은 체력·방패·방어력·생산시간·값
+    /// 뿐이고, 여기 있는 **사거리·이동속도·시야·AI 스크립트**는 못
+    /// 고친다. 영웅 유닛이 같은 모양의 일반 유닛과 다른 까닭이 대개
+    /// 이쪽이므로, 유즈맵에서 유닛을 고를 때 이 값을 봐야 한다.
+    struct UnitStats
+    {
+        std::uint32_t hitPoints = 0;   ///< 표시값 (내부값 >> 8)
+        std::uint16_t shields = 0;     ///< 방패를 안 쓰면 0
+        std::uint8_t armor = 0;
+        /// 이 유닛의 방어력을 올려 주는 업그레이드 번호 (units.dat).
+        /// 공격력 업그레이드와 **다른 종족 것일 수 있다** — 감염된
+        /// 듀란은 방어력이 저그, 공격력이 테란이다.
+        std::uint8_t armorUpgrade = 61;
+        std::uint8_t sightRange = 0;            ///< 타일
+        std::uint8_t targetAcquisitionRange = 0; ///< 타일. 먼저 무는 거리
+        std::uint8_t unitSize = 0;              ///< 1=소형 2=중형 3=대형
+        std::uint32_t topSpeed = 0;             ///< flingy.dat. 클수록 빠르다
+        std::uint16_t flingy = 0;
+        /// flingy.dat 의 이동 제어. 0·1 이면 topSpeed 가 실제 속도고,
+        /// **2(iscript) 면 topSpeed 는 1 짜리 자리표시자**다 — 마린·질럿·
+        /// 드라군·저글링이 그렇다. 속도를 비교하려면 이 값을 먼저 봐야 한다.
+        std::uint8_t moveControl = 0;
+        std::uint8_t groundWeapon = 130;        ///< 130 = 없음
+        std::uint8_t airWeapon = 130;
+        /// 한 번 쏠 때 **몇 발 나가는가**. 게임에 보이는 공격력은
+        /// damage × hits 다 — 골리앗 미사일은 10 짜리가 2발이라 20 으로
+        /// 보인다. dat 값만 보면 절반으로 읽게 된다.
+        std::uint8_t maxGroundHits = 0;
+        std::uint8_t maxAirHits = 0;
+        std::uint32_t groundRange = 0;          ///< 픽셀
+        std::uint16_t groundDamage = 0;
+        std::uint16_t groundDamageBonus = 0;    ///< 업그레이드 한 단계당
+        std::uint8_t groundCooldown = 0;        ///< 프레임
+        std::uint32_t airRange = 0;
+        std::uint16_t airDamage = 0;
+        /// 이 무기의 피해를 올려 주는 업그레이드 번호. 61 이면 없다.
+        /// **영웅 무기는 대개 일반 무기와 다른 번호를 쓴다** — 그래서
+        /// 일반 유닛만 업그레이드를 받고 영웅은 못 받는 일이 생긴다.
+        /// 공격 형태 (weapons.dat 의 weaponType). **유닛 덩치와 곱해져
+        /// 실제 피해가 정해진다** — 적힌 숫자가 그대로 들어가지 않는다.
+        /// 0 독립 · 1 폭발형 · 2 진동형 · 3 일반형 · 4 방어무시
+        /// **1회 공격에 나가는 투사체 수** (weapons.dat 의 damageFactor).
+        /// 2 면 두 발이 나가 게임 표기 공격력이 두 배로 보인다 — 골리앗이
+        /// 그렇다. 3 이상은 1 로 적용되고, 근접 무기는 이미지 스크립트가
+        /// 공격을 담당해 적용되지 않는다.
+        /// 스플래시 반경 세 겹 (픽셀). 안쪽은 100%, 중간은 50%,
+        /// 바깥은 25% 가 들어간다. 0 이면 스플래시가 없다.
+        std::uint16_t splashInner = 0;
+        std::uint16_t splashMedium = 0;
+        std::uint16_t splashOuter = 0;
+        std::uint8_t groundDamageFactor = 1;
+        std::uint8_t airDamageFactor = 1;
+        std::uint8_t groundDamageType = 0;
+        std::uint8_t airDamageType = 0;
+        std::uint8_t groundDamageUpgrade = 61;
+        std::uint8_t airDamageUpgrade = 61;
+        /// AI 스크립트 번호. 컴퓨터가 이 유닛을 어떻게 굴리는가 —
+        /// 쫓아갔다 돌아오는지, 끝까지 쫓아가는지가 여기서 갈린다.
+        std::uint8_t aiCompIdle = 0;
+        std::uint8_t aiHumanIdle = 0;
+        std::uint8_t aiReturnToIdle = 0;
+        std::uint8_t aiAttackUnit = 0;
+        std::uint8_t aiAttackMove = 0;
+        std::uint32_t flags = 0;
+        std::uint16_t mineralCost = 0;
+        std::uint16_t vespeneCost = 0;
+        std::uint16_t buildTime = 0;
+        std::uint8_t supplyRequired = 0;
+        /// 이 유닛이 **채워 주는** 인구수. 오버로드 영웅 이그드라실처럼
+        /// 일반과 크게 다른 것이 있다. supplyRequired 와 헷갈리지 않는다.
+        std::uint8_t supplyProvided = 0;
+        /// Score 트리거가 쓰는 점수. 만들면 buildScore, 부수면 destroyScore
+        /// 가 쌓인다. 리더보드로 안 보여 줘도 자동으로 쌓인다.
+        std::uint16_t buildScore = 0;
+        std::uint16_t destroyScore = 0;
+        bool hero = false;        ///< units.dat 의 Hero 깃발
+        bool invincible = false;
+        bool autoAttackAndMove = false;  ///< 스스로 무는가
+        bool regeneratesHp = false;
+        bool spellcaster = false;
+        bool detector = false;
+        bool cloakable = false;
+        bool permanentCloak = false;
+        bool flyer = false;
+        bool mechanical = false;
+        bool organic = false;
+        /// units.dat 의 StarEdit 갈래 깃발. 에디터 팔레트에 나오는가를
+        /// 정하고, 카페에 따르면 **`Create Unit` 트리거로 만들 수 있는가**
+        /// 와도 이어진다. 0x08 Men · 0x10 Building · 0x20 Factory.
+        std::uint8_t starEditGroupFlags = 0;
+        /// units.dat 의 StarEdit 사용 가능 깃발 (16비트).
+        std::uint16_t starEditAvailability = 0;
+        bool canAttack = false;   ///< units.dat 의 CanAttack 깃발
+        /// 이 유닛에 딸린 아랫유닛(포탑 등). 228 이면 없다.
+        std::uint16_t subunit1 = 228;
+        std::uint16_t subunit2 = 228;
+    };
+
+    /// 한 유닛의 게임 데이터 값. 번호가 범위를 넘으면 기본값이 나온다.
+    UnitStats unitStats(std::uint16_t unitType) const;
+
+    /// units.dat 가 아는 유닛 종류 수 (보통 228). 못 읽었으면 0.
+    std::size_t unitTypeCount() const;
+
     /// 유닛이 차지하는 자리. 유닛 좌표에서 각 방향으로 몇 픽셀인지다
     /// (units.dat 의 unitSize*). 겹침 검사와 격자 맞춤에 쓴다.
     struct UnitBounds
@@ -191,9 +299,9 @@ public:
     ///
     /// 표는 칸마다 "여기에 이 타일 그룹이 있어야 한다"를 적어 둔다. 0 이면
     /// 어떤 지형이든 좋다.
-    bool doodadFits(std::uint16_t tilesetId, std::uint16_t doodadId,
-                    const std::vector<std::uint16_t> & mapTiles,
-                    int mapWidth, int mapHeight, int tileX, int tileY) const;
+    std::optional<bool> doodadFits(std::uint16_t tilesetId, std::uint16_t doodadId,
+                                   const std::vector<std::uint16_t> & mapTiles,
+                                   int mapWidth, int mapHeight, int tileX, int tileY) const;
 
     /// 두들이 덮는 타일 값들 (왼쪽 위부터 가로 순서).
     std::vector<std::uint16_t> doodadTiles(std::uint16_t tilesetId, std::uint16_t doodadId) const;
@@ -224,6 +332,16 @@ public:
         /// VF4 의 "시야 막음" 비트. 실제 타일셋에는 쓰이지 않는다 — 정글
         /// 8192 타일을 세어 0개였다. 게임은 높이 차이로 시야를 가린다.
         bool blocksView = false;
+
+        /// VF4 의 램프 비트. 높이가 다른 땅을 잇는 비탈이다. ISOM 브러시에는
+        /// 램프가 없으므로(지형 종류 표에 없다), 램프를 놓으려면 이 비트가
+        /// 선 타일을 찾아 직접 써야 한다.
+        bool ramp = false;
+
+        /// 미니타일 16칸의 걷기 여부를 한 비트씩 담는다. 비트 y*4+x 가
+        /// (x, y) 칸이다. 게임은 타일이 아니라 이 칸 단위로 길을 찾으므로,
+        /// "여기서 저기로 걸어갈 수 있는가" 를 따지려면 이것이 있어야 한다.
+        std::uint16_t walkMask = 0;
 
         /// 크립이 퍼질 수 있는 땅인지 (저그 건물을 놓을 수 있다).
         bool creep = false;

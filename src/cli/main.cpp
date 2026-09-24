@@ -10,7 +10,12 @@
 #include "io/game_graphics.h"
 #include "io/map_archive.h"
 
+#include <algorithm>
+
+#include <cstdlib>
+#include <ctime>
 #include <filesystem>
+#include <unistd.h>
 #include <set>
 #include <fstream>
 #include <iomanip>
@@ -39,12 +44,18 @@ int usage(const char * argv0)
         "  " << argv0 << " chk <맵파일> <출력.chk>\n"
         "      맵 안의 시나리오 청크(CHK)를 그대로 꺼낸다.\n\n"
         "  " << argv0 << " new <출력파일> [가로] [세로] [타일셋ID] [--melee]\n"
+        "          [--install 설치폴더] [--terrain 지형]\n"
         "      빈 맵을 만든다. 확장자로 포맷을 고른다(.scm=하이브리드, .scx=브루드워).\n"
-        "      기본값: 64 64 4(Jungle)\n\n"
+        "      기본값: 64 64 4(Jungle)\n"
+        "      --install 을 주면 고른 지형으로 바닥을 채운다. 주지 않으면 타일이\n"
+        "      0 으로 남아 terrain isom 이 아무것도 놓지 못한다.\n"
+        "      --terrain 은 terrain types 가 내는 번호나 이름이다(기본: 첫 지형).\n\n"
         "  " << argv0 << " assets <StarCraft 설치폴더>\n"
         "      설치본을 조사한다. 아카이브를 열고 타일셋 데이터가 읽히는지 확인한다.\n\n"
         "  " << argv0 << " render <맵파일> <설치폴더> <출력.ppm> [--units] [--locations] [--creep]\n"
         "      맵 지형을 이미지로 그린다 (scenario image 와 같다).\n\n"
+        "  " << argv0 << " unit-stats <설치폴더> [--json]\n"
+        "      units.dat·weapons.dat 를 그대로 낸다 (사거리·속도·AI 는 맵이 못 고친다).\n"
         "  " << argv0 << " unit-image <설치폴더> <유닛번호> <출력.ppm> [소유자] [타일셋]\n"
         "      유닛 하나를 격자 배경 위에 그린다. 스프라이트 검증용이다.\n\n"
         "  " << argv0 << " icon <설치폴더> <아이콘번호> <출력.ppm>\n"
@@ -56,6 +67,9 @@ int usage(const char * argv0)
         "  " << argv0 << " images-tbl <설치폴더> [찾을글자]\n"
         "  " << argv0 << " has-asset <설치폴더> <아카이브경로>\n"
         "  " << argv0 << " icon-histogram <설치폴더> <아이콘번호>\n"
+        "  " << argv0 << " tileset-groups <설치폴더> <타일셋>\n"
+        "  " << argv0 << " tileset-tiles <설치폴더> <타일셋>\n"
+        "  " << argv0 << " tileset-ramps <설치폴더> <타일셋>\n"
         "  " << argv0 << " find-creep <설치폴더> <타일셋>\n"
         "  " << argv0 << " creep-kin <설치폴더> <타일셋> <메가타일> <개수>\n"
         "      설치본 자료를 들여다본다.\n\n"
@@ -131,6 +145,43 @@ std::size_t firstDifference(const std::vector<std::uint8_t> & a,
     return (a.size() == b.size()) ? std::string::npos : shared;
 }
 
+/// 지형을 브러시 번호나 이름으로 고른다. 이름은 빈칸·대소문자를 가리지
+/// 않고, 딱 하나만 걸리면 부분 일치도 받는다 (parseUnitType 과 같은 잣대).
+std::optional<std::size_t> findTerrainType(
+    const std::vector<splash::io::GameGraphics::TerrainType> & types,
+    const std::string & text)
+{
+    if (!text.empty() && text.find_first_not_of("0123456789") == std::string::npos)
+    {
+        const auto want = static_cast<std::size_t>(std::stoull(text));
+        for (const auto & type : types)
+        {
+            if (type.brushIndex == want)
+                return type.brushIndex;
+        }
+        return std::nullopt;
+    }
+
+    const std::string want = splash::cli::squashName(text);
+    for (const auto & type : types)
+    {
+        if (splash::cli::squashName(type.name) == want)
+            return type.brushIndex;
+    }
+
+    std::optional<std::size_t> partial;
+    std::size_t hits = 0;
+    for (const auto & type : types)
+    {
+        if (splash::cli::squashName(type.name).find(want) != std::string::npos)
+        {
+            partial = type.brushIndex;
+            ++hits;
+        }
+    }
+    return (hits == 1) ? partial : std::nullopt;
+}
+
 int cmdNew(const std::vector<std::string> & args)
 {
     const std::string & outPath = args[1];
@@ -139,12 +190,18 @@ int cmdNew(const std::vector<std::string> & args)
     std::uint16_t height = 64;
     std::uint16_t tilesetId = 4; // Jungle
     bool melee = false;
+    std::string installPath;
+    std::string terrainArg;
 
     std::vector<std::string> positional;
     for (std::size_t i = 2; i < args.size(); ++i)
     {
         if (args[i] == "--melee")
             melee = true;
+        else if (args[i] == "--install" && i + 1 < args.size())
+            installPath = args[++i];
+        else if (args[i] == "--terrain" && i + 1 < args.size())
+            terrainArg = args[++i];
         else
             positional.push_back(args[i]);
     }
@@ -168,10 +225,48 @@ int cmdNew(const std::vector<std::string> & args)
     const auto format = (ext == ".scx") ? splash::io::MapFormat::ExpansionScx
                                         : splash::io::MapFormat::HybridScm;
 
+    // 설치본을 주면 고른 지형으로 바닥을 제대로 채운다. 주지 않으면 타일이
+    // 0 으로 남아 ISOM 브러시가 아무것도 놓지 못한다 — 빈 칸 위에는 절벽·
+    // 경계를 이을 수 없기 때문이다.
+    splash::io::GameGraphics graphics;
+    const splash::io::GameGraphics * graphicsPtr = nullptr;
+    std::size_t terrainBrush = 0;
+    if (!installPath.empty())
+    {
+        std::string error;
+        if (!graphics.load(installPath, &error))
+        {
+            std::cerr << "게임 데이터 로드 실패: " << error << "\n";
+            return 1;
+        }
+        graphicsPtr = &graphics;
+
+        const auto types = graphics.terrainTypes(tilesetId);
+        if (!terrainArg.empty())
+        {
+            const auto found = findTerrainType(types, terrainArg);
+            if (!found)
+            {
+                std::cerr << "지형을 찾지 못했습니다: " << terrainArg << "\n";
+                std::cerr << "고를 수 있는 것:\n";
+                for (const auto & type : types)
+                    std::cerr << "  " << type.brushIndex << "  " << type.name << "\n";
+                return 2;
+            }
+            terrainBrush = *found;
+        }
+    }
+    else if (!terrainArg.empty())
+    {
+        std::cerr << "--terrain 은 --install 과 함께 써야 합니다.\n";
+        return 2;
+    }
+
     splash::io::MapArchive archive;
     if (auto r = archive.createNew(format, tilesetId, width, height,
             melee ? splash::io::MapArchive::DefaultTriggers::Melee
-                  : splash::io::MapArchive::DefaultTriggers::None); !r)
+                  : splash::io::MapArchive::DefaultTriggers::None,
+            graphicsPtr, terrainBrush); !r)
     {
         std::cerr << "생성 실패: " << r.message << "\n";
         return 1;
@@ -949,6 +1044,129 @@ int cmdImagesTbl(const std::string & installPath, const std::string & needle)
     return 0;
 }
 
+/// 램프 타일을 그룹별로 모아 보여 준다.
+///
+/// ISOM 브러시에는 램프가 없다 — 지형 종류 표(`terrain types`)에 램프
+/// 항목이 없고, 고지대를 칠하면 절벽만 생긴다. 램프는 VF4 의 램프 비트가
+/// 선 타일로만 놓을 수 있어서, 그 타일 번호를 알아야 한다.
+int cmdTilesetRamps(const std::string & installPath, std::uint16_t tilesetId)
+{
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const auto info = graphics.describeTileset(tilesetId);
+
+    // 같은 그룹의 타일은 같은 램프의 조각들이다. 그룹째 묶어 내야 어느
+    // 타일을 나란히 놓아야 비탈이 되는지 보인다.
+    std::size_t groupCount = 0;
+    std::size_t tileCount = 0;
+    for (std::size_t group = 0; group < info.tileGroupCount; ++group)
+    {
+        std::vector<std::uint16_t> rampTiles;
+        int elevation = 0;
+        for (std::uint16_t sub = 0; sub < 16; ++sub)
+        {
+            const auto tileId = static_cast<std::uint16_t>(group * 16 + sub);
+            const auto terrain = graphics.tileTerrain(tilesetId, tileId);
+            if (terrain.ramp)
+            {
+                rampTiles.push_back(tileId);
+                elevation = terrain.elevation;
+            }
+        }
+        if (rampTiles.empty())
+            continue;
+
+        ++groupCount;
+        tileCount += rampTiles.size();
+        std::cout << "  그룹 " << std::setw(4) << group
+                  << "  높이 " << elevation
+                  << "  타일 " << rampTiles.size() << "개 :";
+        for (const auto tileId : rampTiles)
+            std::cout << " " << tileId;
+        std::cout << "\n";
+    }
+
+    std::cout << "  타일셋 " << tilesetId << " 의 램프 그룹 " << groupCount
+              << "개, 타일 " << tileCount << "개\n";
+    if (groupCount == 0)
+        std::cout << "  (이 타일셋에는 램프가 없습니다 — 높이 차이가 없는 타일셋입니다)\n";
+    return 0;
+}
+
+/// 타일 그룹마다 높이·걷기·짓기·램프 여부를 한 줄씩 낸다.
+///
+/// 지형을 수로 재려면 "이 타일이 고지대인가, 걸을 수 있는가" 를 알아야
+/// 하는데 타일 값만으로는 알 수 없다. 맵의 지형을 훑을 때 이 표를 옆에
+/// 놓고 타일 값 / 16 으로 찾아본다.
+/// 타일 하나하나의 성질을 낸다 (그룹이 아니라 변종 단위).
+///
+/// 같은 그룹 안의 변종들은 같은 지형의 다른 그림이다. 그림만 바꾸려면
+/// 높이·걷기·짓기가 **똑같은** 변종끼리만 바꿔치기해야 한다. 그러려면
+/// 변종마다의 값이 있어야 한다.
+int cmdTilesetTiles(const std::string & installPath, std::uint16_t tilesetId)
+{
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const auto info = graphics.describeTileset(tilesetId);
+    std::cout << "# 타일 높이 걷기 짓기 램프 걷기비트16진\n";
+    std::size_t emitted = 0;
+    for (std::size_t group = 0; group < info.tileGroupCount; ++group)
+    {
+        for (std::uint16_t sub = 0; sub < 16; ++sub)
+        {
+            const auto tileId = static_cast<std::uint16_t>(group * 16 + sub);
+            // 메가타일이 배정되지 않은 칸은 건너뛴다 — 찍으면 검게 나온다.
+            if (graphics.tileMegaTile(tilesetId, tileId) == 0 && sub != 0)
+                continue;
+            const auto t = graphics.tileTerrain(tilesetId, tileId);
+            std::cout << tileId << " " << t.elevation << " " << (t.walkable ? 1 : 0)
+                      << " " << (t.buildable ? 1 : 0) << " " << (t.ramp ? 1 : 0)
+                      << " " << std::hex << t.walkMask << std::dec << "\n";
+            ++emitted;
+        }
+    }
+    std::cout << "# 타일셋 " << tilesetId << " 타일 " << emitted << "개\n";
+    return 0;
+}
+
+int cmdTilesetGroups(const std::string & installPath, std::uint16_t tilesetId)
+{
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const auto info = graphics.describeTileset(tilesetId);
+    std::cout << "# 그룹 높이 걷기 모두걷기 짓기 램프 걷기비트16진\n";
+    for (std::size_t group = 0; group < info.tileGroupCount; ++group)
+    {
+        // 그룹의 대표로 첫 칸을 본다. 같은 그룹은 성질이 같다.
+        const auto tileId = static_cast<std::uint16_t>(group * 16);
+        const auto t = graphics.tileTerrain(tilesetId, tileId);
+        std::cout << group << " " << t.elevation << " " << (t.walkable ? 1 : 0)
+                  << " " << (t.fullyWalkable ? 1 : 0) << " " << (t.buildable ? 1 : 0)
+                  << " " << (t.ramp ? 1 : 0) << " " << std::hex << t.walkMask
+                  << std::dec << "\n";
+    }
+    std::cout << "# 타일셋 " << tilesetId << " 그룹 " << info.tileGroupCount << "개\n";
+    return 0;
+}
+
 int cmdFindCreep(const std::string & installPath, std::uint16_t tilesetId)
 {
     splash::io::GameGraphics graphics;
@@ -1114,6 +1332,147 @@ int cmdTilesetInfo(const std::string & installPath, std::uint16_t tilesetId)
     show("Creep", info.creepGroups);
     show("TempCreep", info.tempCreepGroups);
     show("Receding", info.recedingGroups);
+    return 0;
+}
+
+// units.dat · weapons.dat 를 그대로 찍는다.
+//
+// **왜 필요한가.** 영웅 유닛은 같은 모양의 일반 유닛과 능력치가 다르다.
+// 그런데 맵 편집기의 유닛 설정(UNIS/UNIx)으로 고칠 수 있는 것은 체력·
+// 방패·방어력·생산시간·값 뿐이다. **사거리·이동속도·시야·AI 는 맵이
+// 못 고친다** — 게임 데이터에 박혀 있다. 그래서 유즈맵에서 영웅을 쓸
+// 때는 "센 놈" 이 아니라 **특성이 맞는 놈**을 골라야 한다.
+//
+// 손으로 표를 쓰면 틀리므로 여기서 게임 데이터를 그대로 낸다.
+int cmdUnitStats(const std::string & installPath, bool json)
+{
+    splash::io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(installPath, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    const std::size_t total = graphics.unitTypeCount();
+    if (total == 0)
+    {
+        std::cerr << "유닛 자료를 읽지 못했습니다 (units.dat).\n";
+        return 1;
+    }
+
+    if (json)
+        std::cout << "{\n";
+    else
+        std::cout << "번호 이름                          체력 방패 방어 시야 "
+                     "크기  속도  지상(사거리/피해+보너스/쿨) 공중(사거리/피해) "
+                     "AI(쉼/복귀/공격/어택땅)\n";
+
+    bool first = true;
+    for (std::size_t t = 0; t < total; ++t)
+    {
+        const auto d = graphics.unitStats(static_cast<std::uint16_t>(t));
+        const std::string name =
+            splash::io::unitTypeName(static_cast<std::uint16_t>(t));
+
+        if (json)
+        {
+            if (!first) std::cout << ",\n";
+            first = false;
+            std::cout << " \"" << t << "\": {\"name\": \"" << name << "\""
+                      << ", \"hp\": " << d.hitPoints
+                      << ", \"shields\": " << d.shields
+                      << ", \"armor\": " << int(d.armor)
+                      << ", \"armor_upgrade\": " << int(d.armorUpgrade)
+                      << ", \"sight\": " << int(d.sightRange)
+                      << ", \"target_range\": " << int(d.targetAcquisitionRange)
+                      << ", \"size\": " << int(d.unitSize)
+                      << ", \"speed\": " << d.topSpeed
+                      << ", \"flingy\": " << d.flingy
+                      << ", \"move_control\": " << int(d.moveControl)
+                      << ", \"ground_weapon\": " << int(d.groundWeapon)
+                      << ", \"air_weapon\": " << int(d.airWeapon)
+                      << ", \"ground_range\": " << d.groundRange
+                      << ", \"ground_damage\": " << d.groundDamage
+                      << ", \"ground_bonus\": " << d.groundDamageBonus
+                      << ", \"ground_cooldown\": " << int(d.groundCooldown)
+                      << ", \"ground_hits\": " << int(d.maxGroundHits)
+                      << ", \"air_hits\": " << int(d.maxAirHits)
+                      << ", \"air_range\": " << d.airRange
+                      << ", \"air_damage\": " << d.airDamage
+                      << ", \"ai_comp_idle\": " << int(d.aiCompIdle)
+                      << ", \"ai_human_idle\": " << int(d.aiHumanIdle)
+                      << ", \"ai_return_idle\": " << int(d.aiReturnToIdle)
+                      << ", \"ai_attack_unit\": " << int(d.aiAttackUnit)
+                      << ", \"ai_attack_move\": " << int(d.aiAttackMove)
+                      << ", \"flags\": " << d.flags
+                      << ", \"minerals\": " << d.mineralCost
+                      << ", \"gas\": " << d.vespeneCost
+                      << ", \"build_time\": " << d.buildTime
+                      << ", \"supply\": " << int(d.supplyRequired)
+                      << ", \"supply_provided\": " << int(d.supplyProvided)
+                      << ", \"build_score\": " << d.buildScore
+                      << ", \"destroy_score\": " << d.destroyScore
+                      << ", \"splash_inner\": " << d.splashInner
+                      << ", \"splash_medium\": " << d.splashMedium
+                      << ", \"splash_outer\": " << d.splashOuter
+                      << ", \"ground_dmg_factor\": " << int(d.groundDamageFactor)
+                      << ", \"air_dmg_factor\": " << int(d.airDamageFactor)
+                      << ", \"ground_dmg_type\": " << int(d.groundDamageType)
+                      << ", \"air_dmg_type\": " << int(d.airDamageType)
+                      << ", \"ground_dmg_upgrade\": " << int(d.groundDamageUpgrade)
+                      << ", \"air_dmg_upgrade\": " << int(d.airDamageUpgrade)
+                      << ", \"hero\": " << (d.hero ? "true" : "false")
+                      << ", \"invincible\": " << (d.invincible ? "true" : "false")
+                      << ", \"auto_attack_move\": " << (d.autoAttackAndMove ? "true" : "false")
+                      << ", \"regenerates_hp\": " << (d.regeneratesHp ? "true" : "false")
+                      << ", \"spellcaster\": " << (d.spellcaster ? "true" : "false")
+                      << ", \"detector\": " << (d.detector ? "true" : "false")
+                      << ", \"cloakable\": " << (d.cloakable ? "true" : "false")
+                      << ", \"permanent_cloak\": " << (d.permanentCloak ? "true" : "false")
+                      << ", \"flyer\": " << (d.flyer ? "true" : "false")
+                      << ", \"mechanical\": " << (d.mechanical ? "true" : "false")
+                      << ", \"organic\": " << (d.organic ? "true" : "false")
+                      << ", \"can_attack\": " << (d.canAttack ? "true" : "false")
+                      << ", \"staredit_group\": " << int(d.starEditGroupFlags)
+                      << ", \"staredit_avail\": " << d.starEditAvailability
+                      << ", \"subunit1\": " << d.subunit1
+                      << ", \"subunit2\": " << d.subunit2
+                      << "}";
+        }
+        else
+        {
+            std::cout << std::setw(4) << t << " " << std::left << std::setw(29)
+                      << name.substr(0, 29) << std::right
+                      << std::setw(5) << d.hitPoints
+                      << std::setw(5) << d.shields
+                      << std::setw(5) << int(d.armor)
+                      << std::setw(5) << int(d.sightRange)
+                      << std::setw(5) << int(d.unitSize)
+                      << std::setw(6) << d.topSpeed << "  ";
+            if (int(d.groundWeapon) < 130)
+                std::cout << std::setw(5) << d.groundRange << "/"
+                          << d.groundDamage << "+" << d.groundDamageBonus << "/"
+                          << int(d.groundCooldown);
+            else
+                std::cout << "         -";
+            std::cout << "   ";
+            if (int(d.airWeapon) < 130)
+                std::cout << std::setw(5) << d.airRange << "/" << d.airDamage;
+            else
+                std::cout << "       -";
+            std::cout << "    " << int(d.aiCompIdle) << "/" << int(d.aiReturnToIdle)
+                      << "/" << int(d.aiAttackUnit) << "/" << int(d.aiAttackMove);
+            if (d.hero) std::cout << " 영웅";
+            if (d.autoAttackAndMove) std::cout << " 스스로문다";
+            if (d.invincible) std::cout << " 무적";
+            if (int(d.groundDamageUpgrade) != 61)
+                std::cout << " 지상업" << int(d.groundDamageUpgrade);
+            std::cout << "\n";
+        }
+    }
+    if (json)
+        std::cout << "\n}\n";
     return 0;
 }
 
@@ -1960,6 +2319,16 @@ int briefingArgsCommand(const std::string & mapPath, const std::string & install
 
 int main(int argc, char ** argv)
 {
+    // MappingCore 의 ISOM 솔버는 같은 지형을 채울 때 어느 변종을 쓸지
+    // std::rand 로 고른다. 그런데 아무도 씨앗을 심지 않아서, 명령을 돌릴
+    // 때마다 똑같은 난수열이 나온다 — 지형이 늘 같은 무늬로 깔린다.
+    // 여기서 한 번 심는다. 같은 맵을 다시 만들고 싶으면 SPLASH_SEED 를 준다.
+    if (const char * seedText = std::getenv("SPLASH_SEED"))
+        std::srand(static_cast<unsigned>(std::strtoul(seedText, nullptr, 10)));
+    else
+        std::srand(static_cast<unsigned>(std::time(nullptr)) ^
+                   (static_cast<unsigned>(::getpid()) << 16));
+
     const std::vector<std::string> args(argv + 1, argv + argc);
     if (args.empty())
         return usage(argv[0]);
@@ -2037,6 +2406,24 @@ int main(int argc, char ** argv)
         catch (const std::exception &) { return usage(argv[0]); }
     }
 
+    if (command == "tileset-tiles" && args.size() == 3)
+    {
+        try { return cmdTilesetTiles(args[1], static_cast<std::uint16_t>(std::stoul(args[2]))); }
+        catch (const std::exception &) { return usage(argv[0]); }
+    }
+
+    if (command == "tileset-groups" && args.size() == 3)
+    {
+        try { return cmdTilesetGroups(args[1], static_cast<std::uint16_t>(std::stoul(args[2]))); }
+        catch (const std::exception &) { return usage(argv[0]); }
+    }
+
+    if (command == "tileset-ramps" && args.size() == 3)
+    {
+        try { return cmdTilesetRamps(args[1], static_cast<std::uint16_t>(std::stoul(args[2]))); }
+        catch (const std::exception &) { return usage(argv[0]); }
+    }
+
     if (command == "tile-sheet" && args.size() == 6)
     {
         try {
@@ -2055,6 +2442,10 @@ int main(int argc, char ** argv)
 
     if (command == "unit-classes" && args.size() == 2)
         return cmdUnitClasses(args[1]);
+
+    if (command == "unit-stats" && args.size() >= 2)
+        return cmdUnitStats(args[1],
+            std::find(args.begin(), args.end(), std::string("--json")) != args.end());
 
     if (command == "unit-image" && args.size() >= 4)
     {

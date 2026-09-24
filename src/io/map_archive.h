@@ -755,6 +755,10 @@ public:
 
     std::vector<RawDoodad> doodads() const;
 
+    /// 주어진 중앙 타일 좌표에 이 doodad가 타일셋 배치 가능 표와 맞는지 본다.
+    std::optional<bool> doodadFits(const GameGraphics & graphics, std::uint16_t doodadId,
+                                   int tileX, int tileY) const;
+
     /// 두들을 놓는다. 지형 타일도 함께 바꾼다 — 두들은 타일로 그려진다.
     Result placeDoodad(const GameGraphics & graphics, std::uint16_t doodadId,
                        int tileX, int tileY, std::uint8_t owner = 0);

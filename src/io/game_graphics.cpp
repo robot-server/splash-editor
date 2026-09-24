@@ -22,6 +22,32 @@
 #include <vector>
 
 namespace splash::io {
+namespace {
+
+/// 전역 난수를 잠깐 고정했다가 되돌린다.
+///
+/// MappingCore 는 방향이 정해지지 않은 유닛을 그릴 때 std::rand 를 쓴다.
+/// 같은 유닛이 늘 같은 방향을 보게 하려면 씨앗을 고정해야 하는데, 전역
+/// 난수를 그대로 두고 나오면 **지형 생성이 그 씨앗을 물려받는다** —
+/// ISOM 솔버도 같은 std::rand 를 쓰기 때문이다. 그러면 맵 전체가 한
+/// 패턴으로 깔려 바둑판처럼 보인다. 그리고 나서는 되돌려 놓는다.
+class ScopedRandSeed
+{
+public:
+    explicit ScopedRandSeed(unsigned seed) { std::srand(seed); }
+    ~ScopedRandSeed()
+    {
+        // 원래 상태는 읽을 수 없으므로, 흐르는 값으로 다시 심어 둔다.
+        static unsigned counter = 0x9E3779B9u;
+        counter = counter * 1664525u + 1013904223u;
+        std::srand(counter);
+    }
+    ScopedRandSeed(const ScopedRandSeed &) = delete;
+    ScopedRandSeed & operator=(const ScopedRandSeed &) = delete;
+};
+
+} // namespace
+
 
 struct GameGraphics::Impl
 {
@@ -471,6 +497,120 @@ std::vector<std::uint8_t> GameGraphics::unitSound(std::uint16_t unitType) const
     return out;
 }
 
+std::size_t GameGraphics::unitTypeCount() const
+{
+    if (impl_ == nullptr || impl_->scData == nullptr)
+        return 0;
+    return impl_->scData->units.numUnitTypes();
+}
+
+GameGraphics::UnitStats GameGraphics::unitStats(std::uint16_t unitType) const
+{
+    UnitStats out;
+    if (impl_ == nullptr || impl_->scData == nullptr)
+        return out;
+
+    const Sc::Unit & units = impl_->scData->units;
+    if (unitType >= units.numUnitTypes())
+        return out;
+
+    try
+    {
+        // 무기 자료는 따로 읽는다. 한 번만 읽고 들고 있는다.
+        if (!impl_->weaponsLoaded)
+        {
+            impl_->weaponsLoaded = true;
+            impl_->scData->weapons.load(*impl_->cluster);
+        }
+
+        const auto & d = units.getUnit(Sc::Unit::Type(unitType));
+        out.hitPoints = d.hitPoints >> 8;
+        out.shields = d.shieldEnable ? d.shieldAmount : std::uint16_t(0);
+        out.armor = d.armor;
+        out.armorUpgrade = d.armorUpgrade;
+        out.sightRange = d.sightRange;
+        out.targetAcquisitionRange = d.targetAcquisitionRange;
+        out.unitSize = d.unitSize;
+        out.flingy = d.graphics;
+        out.groundWeapon = d.groundWeapon;
+        out.airWeapon = d.airWeapon;
+        out.maxGroundHits = d.maxGroundHits;
+        out.maxAirHits = d.maxAirHits;
+        out.flags = d.flags;
+        const auto has = [&](std::uint32_t bit) { return (d.flags & bit) != 0; };
+        out.hero = has(Sc::Unit::Flags::Hero);
+        out.invincible = has(Sc::Unit::Flags::Invincible);
+        out.autoAttackAndMove = has(Sc::Unit::Flags::AutoAttackAndMove);
+        out.regeneratesHp = has(Sc::Unit::Flags::RegeneratesHP);
+        out.spellcaster = has(Sc::Unit::Flags::Spellcaster);
+        out.detector = has(Sc::Unit::Flags::Detector);
+        out.cloakable = has(Sc::Unit::Flags::Cloakable);
+        out.permanentCloak = has(Sc::Unit::Flags::PermanentCloak);
+        out.flyer = has(Sc::Unit::Flags::Flyer);
+        out.mechanical = has(Sc::Unit::Flags::Mechanical);
+        out.organic = has(Sc::Unit::Flags::Organicunit);
+        out.canAttack = has(Sc::Unit::Flags::CanAttack);
+        out.starEditGroupFlags = d.starEditGroupFlags;
+        out.starEditAvailability = d.starEditAvailabilityFlags;
+        out.subunit1 = static_cast<std::uint16_t>(d.subunit1);
+        out.subunit2 = static_cast<std::uint16_t>(d.subunit2);
+        out.mineralCost = d.mineralCost;
+        out.vespeneCost = d.vespeneCost;
+        out.buildTime = d.buildTime;
+        out.supplyRequired = d.supplyRequired;
+        out.supplyProvided = d.supplyProvided;
+        out.buildScore = d.buildScore;
+        out.destroyScore = d.destroyScore;
+        out.aiCompIdle = d.compAIIdle;
+        out.aiHumanIdle = d.humanAIIdle;
+        out.aiReturnToIdle = d.returntoIdle;
+        out.aiAttackUnit = d.attackUnit;
+        out.aiAttackMove = d.attackMove;
+
+        // 이동 속도는 유닛이 아니라 flingy.dat 에 있다.
+        try
+        {
+            const auto & fl = units.getFlingy(d.graphics);
+            out.topSpeed = fl.topSpeed;
+            out.moveControl = fl.moveControl;
+        }
+        catch (const std::exception &)
+        {
+        }
+
+        const auto weapon = [&](std::uint8_t id) -> const Sc::Weapon::DatEntry * {
+            if (id >= Sc::Weapon::Total)
+                return nullptr;
+            return &impl_->scData->weapons.get(Sc::Weapon::Type(id));
+        };
+        if (const auto * gw = weapon(d.groundWeapon))
+        {
+            out.groundRange = gw->maximumRange;
+            out.groundDamage = gw->damageAmount;
+            out.groundDamageBonus = gw->damageBonus;
+            out.groundCooldown = gw->weaponCooldown;
+            out.groundDamageUpgrade = gw->damageUpgrade;
+            out.groundDamageType = gw->weaponType;
+            out.groundDamageFactor = gw->damageFactor;
+            out.splashInner = gw->innerSplashRadius;
+            out.splashMedium = gw->mediumSplashRadius;
+            out.splashOuter = gw->outerSplashRadius;
+        }
+        if (const auto * aw = weapon(d.airWeapon))
+        {
+            out.airRange = aw->maximumRange;
+            out.airDamage = aw->damageAmount;
+            out.airDamageUpgrade = aw->damageUpgrade;
+            out.airDamageType = aw->weaponType;
+            out.airDamageFactor = aw->damageFactor;
+        }
+    }
+    catch (const std::exception &)
+    {
+    }
+    return out;
+}
+
 GameGraphics::UnitRanges GameGraphics::unitRanges(std::uint16_t unitType) const
 {
     UnitRanges ranges;
@@ -672,37 +812,43 @@ GameGraphics::doodads(std::uint16_t tilesetId) const
     return impl_->doodadLists.emplace(tilesetId, std::move(out)).first->second;
 }
 
-bool GameGraphics::doodadFits(std::uint16_t tilesetId, std::uint16_t doodadId,
-                              const std::vector<std::uint16_t> & mapTiles,
-                              int mapWidth, int mapHeight, int tileX, int tileY) const
+std::optional<bool> GameGraphics::doodadFits(std::uint16_t tilesetId,
+                                             std::uint16_t doodadId,
+                                             const std::vector<std::uint16_t> & mapTiles,
+                                             int mapWidth, int mapHeight,
+                                             int tileX, int tileY) const
 {
+    // 배치 가능 여부를 증명할 데이터가 없으면 판정 불가를 돌려준다.
     if (!impl_->loaded)
-        return true;
+        return std::nullopt;
 
     const Sc::Terrain::Tiles & tiles = impl_->tiles(tilesetId);
 
     const auto found = tiles.doodadIdToTileGroup.find(doodadId);
     if (found == tiles.doodadIdToTileGroup.end())
-        return true;
+        return std::nullopt;
 
     const std::uint16_t startGroup = found->second;
     if (startGroup >= tiles.tileGroups.size())
-        return true;
+        return std::nullopt;
 
     const auto & doodad = asDoodad(tiles.tileGroups[startGroup]);
     const int width = doodad.tileWidth;
     const int height = doodad.tileHeight;
     if (width <= 0 || height <= 0)
-        return true;
+        return std::nullopt;
 
-    // 배치 가능 표가 없으면 따질 것이 없다.
+    // 배치 가능 표가 없으면 적합성을 확인할 수 없다.
     if (doodad.ddDataIndex >= tiles.doodadPlacibility.size())
-        return true;
+        return std::nullopt;
 
     const auto & placibility = tiles.doodadPlacibility[doodad.ddDataIndex];
 
     const int left = tileX - width / 2;
     const int top = tileY - height / 2;
+    if (left < 0 || top < 0 || left + width > mapWidth || top + height > mapHeight ||
+        mapTiles.size() < static_cast<std::size_t>(mapWidth) * mapHeight)
+        return false;
 
     for (int y = 0; y < height; ++y)
     {
@@ -869,20 +1015,27 @@ GameGraphics::TileTerrain GameGraphics::tileTerrain(std::uint16_t tilesetId,
 
         std::size_t walkableCount = 0;
         std::size_t blockingCount = 0;
+        std::size_t rampCount = 0;
         for (std::size_t y = 0; y < 4; ++y)
         {
             for (std::size_t x = 0; x < 4; ++x)
             {
                 if (tileFlags.miniTileFlags[y][x].isWalkable())
+                {
                     ++walkableCount;
+                    terrain.walkMask |= static_cast<std::uint16_t>(1u << (y * 4 + x));
+                }
                 if (tileFlags.miniTileFlags[y][x].blocksView())
                     ++blockingCount;
+                if (tileFlags.miniTileFlags[y][x].isRamp())
+                    ++rampCount;
             }
         }
 
         terrain.walkable = walkableCount > 0;
         terrain.fullyWalkable = walkableCount == 16;
         terrain.blocksView = blockingCount > 0;
+        terrain.ramp = rampCount > 0;
     }
 
     return terrain;
@@ -1765,8 +1918,9 @@ UnitImage GameGraphics::renderUnit(std::uint16_t unitType,
         // 방향이 달라져서, 유닛을 하나 놓을 때마다 화면에 있는 유닛이 전부
         // 돌아간다. 씨앗을 유닛 종류·소유자로 고정해 같은 유닛은 언제나
         // 같은 방향으로 그린다.
-        std::srand(static_cast<unsigned>(unitType) * 2654435761u +
-                   static_cast<unsigned>(owner));
+        const ScopedRandSeed facingSeed(
+            static_cast<unsigned>(unitType) * 2654435761u +
+            static_cast<unsigned>(owner));
 
         MapActor actor {};
         impl_->anim->initializeUnitActor(actor, /*isClipboard*/ false, /*unitIndex*/ 0,
@@ -1820,8 +1974,9 @@ UnitImage GameGraphics::renderSprite(std::uint16_t spriteType,
             : Chk::Sprite::toSpriteUnitFlags(0);
 
         // 유닛과 같은 이유로 씨앗을 고정한다 (아래 renderUnit 의 설명 참고).
-        std::srand(static_cast<unsigned>(spriteType) * 2654435761u +
-                   static_cast<unsigned>(owner));
+        const ScopedRandSeed facingSeed(
+            static_cast<unsigned>(spriteType) * 2654435761u +
+            static_cast<unsigned>(owner));
 
         MapActor actor {};
         impl_->anim->initializeSpriteActor(actor, /*isClipboard*/ false, /*spriteIndex*/ 0,
