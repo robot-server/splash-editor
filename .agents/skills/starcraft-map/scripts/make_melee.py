@@ -31,14 +31,20 @@ from scmap import TILE, Cli, CliError
 
 # 타일셋 이름 → 번호, 그리고 그 타일셋에서 쓸 저지대·고지대 ISOM 지형 이름.
 # 이름은 `splash-cli terrain types <맵> --install ...` 이 내는 것과 같다.
+# Installation은 밀리 타일셋으로 제공하지 않는다: 설치본에서 일곱 ISOM
+# 지형을 각각 생성해 MTXM walk/build 속성을 읽었을 때 buildable 타일이 없었다.
+# 본진과 자원 포켓을 놓을 수 없어 시작 가능한 밀리맵이 되지 않는다.
 TILESETS = {
     "badlands": (0, "Dirt", "High Dirt"),
     "space":    (1, "Platform", "High Platform"),
-    "install":  (2, "Substructure", "Substructure"),
-    "ashworld": (3, "Magma", "High Dirt"),
+    # Magma is a low ISOM class but does not provide ordinary resource/depot
+    # placement in the generated start pockets. Use the buildable low dirt.
+    "ashworld": (3, "Dirt", "High Dirt"),
     "jungle":   (4, "Jungle", "High Dirt"),
-    "desert":   (5, "Tar", "High Dirt"),
-    "ice":      (6, "Ice", "High Snow"),
+    # Tar and Ice are thematic ground classes, but the start-resource solver
+    # requires a buildable floor across the full depot footprint.
+    "desert":   (5, "Dirt", "High Dirt"),
+    "ice":      (6, "Snow", "High Snow"),
     "twilight": (7, "Dirt", "High Dirt"),
 }
 

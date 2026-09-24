@@ -5,14 +5,16 @@ description: StarCraft: Brood War 맵(.scm/.scx)의 밀리·유즈맵을 실제 
 
 # StarCraft 맵 제작
 
-`splash-cli`로 맵 구조를 읽고 수정하며, 렌더 결과를 확인한다. 과거 실험인 `scripts/make_*.py`, `compose_melee.py`, `verify_map.py`는 코퍼스 집계값과 미검증 설계 기준을 출력하거나 사용하므로 설계·검수·최종 산출에 쓰지 않는다. 램프 등 개별 분석 도구는 해당 문서에서 측정 범위와 한계를 확인한 뒤 쓴다. 새 맵은 레포가 아닌 사용자의 StarCraft `Maps` 폴더 아래에 둔다. 개인 경로를 코드·문서·예시에 하드코딩하지 않는다. `STARCRAFT_MAPS`가 있으면 우선 쓰고, 없으면 기기에서 설치/사용자 Maps 폴더를 찾아 선택한다. 후보가 모호하거나 찾지 못하면 사용자에게 경로를 묻는다. 임의 fallback으로 레포에 저장하지 않는다.
+`splash-cli`와 `.agents/skills/starcraft-map/scripts/`의 Python 생성기·조립 도구를 모두 맵 제작 도구로 쓴다. 요청한 장르와 가까운 레시피가 있으면 그 코드와 옵션을 살펴 출발점으로 삼고, 맵 목적·타일셋·인원에 맞춰 조정한다. 생성기 출력은 완성 증거가 아니므로 맵 구조·렌더·게임 동작을 따로 확인한다. 램프 등 개별 분석 도구는 해당 문서에서 측정 범위와 한계를 확인한 뒤 쓴다. 새 맵은 레포가 아닌 사용자의 StarCraft `Maps` 폴더 아래에 둔다. 개인 경로를 코드·문서·예시에 하드코딩하지 않는다. `STARCRAFT_MAPS`가 있으면 우선 쓰고, 없으면 기기에서 설치/사용자 Maps 폴더를 찾아 선택한다. 후보가 모호하거나 찾지 못하면 사용자에게 경로를 묻는다. 임의 fallback으로 레포에 저장하지 않는다.
 
-`data/`의 집계 JSON과 이전 자동 생성 코드는 설계 근거가 아니다. 지형·기능·배치 선택은 `docs/README.md`에서 관련 메커니즘 문서로 이동해 근거와 적용 범위를 확인하고, 맵의 목적에 맞춰 결정한다. 각 문서에 기록된 관찰과 권고를 구분해 적용한다.
+`data/`의 코퍼스 집계 JSON과 이전 결과물은 설계 목표나 정답의 근거가 아니다. Python 생성기와 조립 도구는 재사용 가능한 구현 레시피로 검토하되, 그 안의 통계 기본값·추론·검사 범위가 요청한 맵에 맞는지 확인한다. 지형·기능·배치 선택은 `docs/README.md`에서 관련 메커니즘 문서로 이동해 근거와 적용 범위를 확인하고, 문서의 관찰과 권고를 구분해 적용한다.
 
 설치 에셋이 필요한 작업은 사용자가 제공한 설치 경로 또는 `SC_INSTALL`을 쓴다. 경로를 임의로 가정하지 않는다.
 
 ## 제작 지식 확인
 
+- 레시피 시작점: 밀리맵은 [`make_melee.py`](scripts/make_melee.py), 퀴즈는 [`make_quiz.py`](scripts/make_quiz.py), 컨트롤 전투는 [`make_control.py`](scripts/make_control.py), RPG는 [`make_rpg.py`](scripts/make_rpg.py), 사각/웨이브 디펜스는 [`make_square_defense.py`](scripts/make_square_defense.py)·[`make_wave_defense.py`](scripts/make_wave_defense.py), 좀비 생존은 [`make_zombie.py`](scripts/make_zombie.py)를 살핀다. 먼저 `--help`와 해당 생성 코드가 실제로 놓는 유닛·지형·로케이션·트리거를 읽고, 가장 가까운 레시피를 맵 목적에 맞게 바꾼다. 이름만 비슷한 레시피를 그대로 복사하지 않는다.
+- `verify_map.py`와 개별 측정 스크립트는 검사 대상과 한계를 확인한 뒤 진단 보조로 쓴다. 통과 결과만으로 게임 플레이 동작을 확정하지 않는다.
 - 문서의 수치 빈도, 평균, 중앙값을 설계 목표로 복사하지 않는다.
 - 구조 지식을 적용할 때는 [docs/README.md](../../../docs/README.md)에서 관련 기능 문서로 이동한다. 트리거는 [조건](../../../docs/trigger/conditions.md), [액션](../../../docs/trigger/actions.md), [실행 순서](../../../docs/trigger/execution.md), [Deaths 상태값](../../../docs/trigger/death-counts.md), [Bring 판정](../../../docs/trigger/bring-command.md), [로케이션](../../../docs/trigger/locations.md), [기능 조립 예시](../../../docs/trigger/recipes.md)를 함께 참조한다.
 - 유즈맵 상호작용은 [기능 설계](../../../docs/usemap/functional-design.md), [장르별 공간 구성](../../../docs/usemap/genres.md), [지형·이동 제약](../../../docs/usemap/terrain.md)을 참조한다. 유닛 생성 예외는 [유닛 특이 동작](../../../docs/unit/quirks.md), 스킬 반복 타이머는 [스킬 트리거 지침](../../../docs/trigger/skills.md)을 확인한다.
