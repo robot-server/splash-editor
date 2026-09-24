@@ -22,7 +22,7 @@
 **길은 벽으로 감싼다.** 앞판은 맵 전체를 걷는 바닥으로 깔아 놓고 길을
 색만 다르게 칠했다 — 그림으로는 길인데 게임에서는 벌판이었다. 다만
 맵을 통째로 못 걷게 덮으면 66% 를 넘겨 튕기므로(docs/game/crashes.md),
-**길 양옆 세 칸만** 막는다.
+**길 양옆 한 칸만** 막는다.
 
 보기:
     python3 make_wave_defense.py out.scx --players 6 --waves 15
@@ -41,8 +41,8 @@ import scmap  # noqa: E402
 TILESETS = {"badlands": 0, "space": 1, "ashworld": 3, "jungle": 4,
             "desert": 5, "ice": 6, "twilight": 7}
 
-LANE = 9        # 길 너비
-WALLT = 3       # 길 양옆 벽 두께
+LANE = 13       # 길 너비 — 길과 길목 방이 맵에서 충분한 걷는 면적을 차지한다
+WALLT = 1       # 길 양옆 벽 두께 — 128x128 Jungle 에서 불가 지형 41% (기존 59%)
 LANE_MARGIN = 12  # 맵 가장자리에서 길까지
 STOP_W, STOP_H = 12, 10   # 길목 방 (두뎃이 들어갈 만큼 넉넉히)
 
@@ -68,7 +68,7 @@ def lane_turns(W: int) -> int:
 
     굽이를 4로 못 박아 두었더니 128칸 맵에서 세로 다리 사이가 26칸씩
     벌어져, 그림의 절반이 아무도 안 가는 벌판이 됐다. 다리 하나가
-    차지하는 폭은 길 9 + 양옆 벽 6 = 15칸이니 그 간격으로 채운다.
+    차지하는 폭은 길과 양옆 벽을 합쳐 15칸이니 그 간격으로 채운다.
     """
     span = W - 2 * LANE_MARGIN
     return max(3, round(span / (LANE + 2 * WALLT + 2)))
@@ -389,8 +389,9 @@ def main(argv=None):
     # 방도 아닌 빈 벌판이었다 (실측).
     #
     # 그렇다고 벽으로 덮는 것이 언제나 옳지도 않다. **못 걷는 지형이
-    # 66% 를 넘으면 튕긴다**(docs/game/crashes.md). 이 짜임에서는 길이
-    # 맵의 40% 라 벽이 55% 에 머문다. `verify_map.py` 가 넘으면 잡는다.
+    # 66% 를 넘으면 튕긴다**(docs/game/crashes.md). 이전 폭(9)·두께(3)은
+    # 128x128 Jungle 에서 59% 를 막았다. 길을 13칸, 벽을 1칸으로 바꾸면
+    # 41% 가 막혀 여유가 생기고 벽 경로도 유지된다.
     pal.fill(cli, "wall", 0, 0, W, H)
 
     pts = lane_points(W, H)

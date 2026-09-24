@@ -66,25 +66,90 @@ def cluster_points(points, radius=8):
     return groups
 
 
-def point_symmetry(points, width, height, tol=4.0):
+def point_symmetry(points, width, height, tol=4.0, players=None,
+                   reference_points=None):
     if not points:
         return {}
     cx, cy = (width - 1) / 2.0, (height - 1) / 2.0
 
     def score(f):
-        ok = 0
-        for (x, y) in points:
-            tx, ty = f(x, y)
-            if any(abs(tx - qx) <= tol and abs(ty - qy) <= tol for (qx, qy) in points):
-                ok += 1
-        return round(100.0 * ok / len(points), 1)
+        # A transformed cluster can match only one counterpart. Counting each
+        # source point's nearest neighbor independently let several clusters
+        # claim the same target and inflated symmetry scores.
+        matches = {}
 
-    return {
+        def assign(source, seen):
+            x, y = f(*points[source])
+            for target, (qx, qy) in enumerate(points):
+                if target in seen or abs(x - qx) > tol or abs(y - qy) > tol:
+                    continue
+                seen.add(target)
+                if target not in matches or assign(matches[target], seen):
+                    matches[target] = source
+                    return True
+            return False
+
+        for source in range(len(points)):
+            assign(source, set())
+        return round(100.0 * len(matches) / len(points), 1)
+
+    result = {
         "rot180": score(lambda x, y: (2 * cx - x, 2 * cy - y)),
         "rot90": score(lambda x, y: (cx + (y - cy), cy - (x - cx))),
         "mirror_h": score(lambda x, y: (2 * cx - x, y)),
         "mirror_v": score(lambda x, y: (x, 2 * cy - y)),
     }
+    # A three-player layout may be radial or mirrored. Derive the transform
+    # from the actual start positions rather than assuming the map center: the
+    # editor can move starts while retaining a valid triangular layout.
+    if players == 3:
+        refs = reference_points or []
+        if len(refs) == 3:
+            cx, cy = sum(p[0] for p in refs) / 3, sum(p[1] for p in refs) / 3
+            # Test non-identity vertex permutations as rigid transforms. Reject
+            # mappings that distort the start triangle instead of allowing a
+            # similarity transform to stretch one layout into another.
+            transforms = []
+            for perm in ((1, 2, 0), (2, 0, 1), (1, 0, 2),
+                         (2, 1, 0), (0, 2, 1)):
+                src = refs
+                dst = [refs[i] for i in perm]
+                sx = sum(x for x, _ in src) / 3
+                sy = sum(y for _, y in src) / 3
+                dx = sum(x for x, _ in dst) / 3
+                dy = sum(y for _, y in dst) / 3
+                u = [(x - sx, y - sy) for x, y in src]
+                v = [(x - dx, y - dy) for x, y in dst]
+                dot = sum(ux * vx + uy * vy for (ux, uy), (vx, vy) in zip(u, v))
+                cross = sum(ux * vy - uy * vx for (ux, uy), (vx, vy) in zip(u, v))
+                norm = sum(ux * ux + uy * uy for ux, uy in u)
+                if norm == 0:
+                    continue
+                angle = math.atan2(cross, dot)
+                cos_a, sin_a = math.cos(angle), math.sin(angle)
+                fit = [
+                    (dx + cos_a * (x - sx) - sin_a * (y - sy),
+                     dy + sin_a * (x - sx) + cos_a * (y - sy))
+                    for (x, y) in src
+                ]
+                if max(math.dist(q, t) for q, t in zip(fit, dst)) > 1.0:
+                    continue
+                transforms.append(lambda x, y, sx=sx, sy=sy, dx=dx, dy=dy,
+                                  c=cos_a, s=sin_a: (
+                    dx + c * (x - sx) - s * (y - sy),
+                    dy + s * (x - sx) + c * (y - sy)))
+            scores = [score(f) for f in transforms]
+            result["player_triangle"] = max(scores, default=0.0)
+        else:
+            # Fallback for maps without three distinct detected starts.
+            scores = []
+            for turns in (1, 2):
+                angle = 2 * math.pi * turns / 3
+                scores.append(score(lambda x, y, a=angle: (
+                    cx + (x - cx) * math.cos(a) - (y - cy) * math.sin(a),
+                    cy + (x - cx) * math.sin(a) + (y - cy) * math.cos(a))))
+            result["rot120"] = round(sum(scores) / len(scores), 1)
+    return result
 
 
 PLAYABLE_SLOTS = ("열림", "사람(게임)", "컴퓨터", "컴퓨터(게임)")
@@ -225,7 +290,9 @@ def measure(cli: Cli) -> dict:
         "start_distances": distances,
         "symmetry": point_symmetry(tiles, width, height),
         "resource_symmetry": point_symmetry([(c["x"], c["y"]) for c in clusters],
-                                            width, height, tol=5.0),
+                                            width, height, tol=5.0,
+                                            players=len(starts),
+                                            reference_points=tiles),
     }
 
 
@@ -888,6 +955,12 @@ def check_basics(cli: Cli, m: dict) -> list[tuple[str, str]]:
 def check_fairness(m: dict) -> list[tuple[str, str]]:
     """자리 밸런스 — 어느 스타팅을 받아도 같은가."""
     out = []
+    # The structured JSON report includes both melee and use-map sections,
+    # while the human report skips melee fairness checks for use maps.
+    # Keep those two outputs consistent: sealed arenas and asymmetric
+    # objectives are normal in use maps.
+    if classify(m) != "melee":
+        return out
     ps = m["per_start"]
     if m["n_starts"] < 2:
         out.append(("!!", f"스타팅이 {m['n_starts']}개입니다. 밀리맵은 2개 이상이어야 합니다."))

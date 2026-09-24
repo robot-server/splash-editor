@@ -359,7 +359,9 @@ class Cli:
     def roundtrip(self) -> bool:
         """열고 다시 저장했을 때 CHK 바이트가 그대로인지."""
         out = self.run("roundtrip", self.path)
-        return "같습니다" in out or "동일" in out
+        return ("CHK 바이트 일치 : 예" in out
+                or "CHK bytes match: yes" in out
+                or "같습니다" in out or "동일" in out)
 
     def render(self, out_path: str, units: bool = True, locations: bool = False):
         args = ["render", self.path, self.install, out_path]

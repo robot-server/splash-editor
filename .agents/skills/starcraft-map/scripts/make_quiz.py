@@ -81,6 +81,10 @@ def build_triggers(players, questions, lives, secs):
     add = T.append
     HUMANS = ",".join(f'"Player {p}"' for p in range(1, players + 1))
     nq = len(questions)
+    # Countdown Timer uses game seconds: each unit lasts 0.672 real seconds
+    # at Fastest. Keep the displayed duration in real seconds and convert the
+    # trigger value so the timer matches what players are told.
+    timer_ticks = max(1, round(secs / 0.672))
 
     T.extend(scmap.hyper_triggers("Player 8"))
     T.extend(scmap.absent_player_cleanup(players, "Player 8"))
@@ -97,7 +101,7 @@ Actions:
 \tDisplay Text Message(Always Display, "\\x04OX 퀴즈\\x02 — 문제 {nq}개. 목숨 \\x07{lives}개\\x02.");
 \tDisplay Text Message(Always Display, "\\x03문제가 뜨면 {secs}초 안에 \\x04왼쪽 O\\x03 나 \\x06오른쪽 X\\x03 발판으로 옮기세요.");
 \tSet Mission Objectives("\\x04OX 퀴즈\\x02\\n\\x03- 문제 {nq}개, 한 문제에 {secs}초\\n- 왼쪽이 O, 오른쪽이 X 입니다\\n- 틀리면 목숨이 하나 줍니다 (목숨 {lives}개)\\n- 끝까지 살아남으면 이깁니다");
-\tSet Countdown Timer(Set To, {secs});
+\tSet Countdown Timer(Set To, {timer_ticks});
 }}''')
 
     add('''Trigger("All players"){
@@ -117,7 +121,7 @@ Conditions:
 
 Actions:
 \tSet Deaths("Player 8", "{QNUM}", Add, 1);
-\tSet Countdown Timer(Set To, {secs});
+\tSet Countdown Timer(Set To, {timer_ticks});
 \tPreserve Trigger();
 }}''')
 
@@ -308,7 +312,6 @@ def main(argv=None):
         sy = lobby[1] + 2 + (p - 1) * (lobby[3] - 3) // max(1, a.players)
         cli.place(scmap.START_LOCATION, lobby[0] + lobby[2] // 2, sy, owner=p)
         cli.place("Terran Civilian", lobby[0] + lobby[2] // 2, sy, owner=p)
-    cli.place(scmap.START_LOCATION, lobby[0] + 1, lobby[1] + lobby[3] - 2, owner=8)
     # **발판에 O 와 X 를 지형으로 그린다.**
     #
     # 앞서 파일런을 글자 모양으로 늘어놓았다. 보이기는 했지만 **유닛이라
