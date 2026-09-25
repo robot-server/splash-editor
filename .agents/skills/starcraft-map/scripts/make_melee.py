@@ -321,9 +321,9 @@ def main(argv=None):
     ap.add_argument("--no-center", action="store_true",
                     help="가운데 지형을 얹지 않는다")
     ap.add_argument("--features", type=int, default=4,
-                    help="대칭으로 얹을 지형 덩이 수 (고지대·다른 바닥 지형)")
+                    help="AI가 선택해 대칭으로 얹을 지형 덩이 수 (0~64)")
     ap.add_argument("--feature-area", type=int, default=28,
-                    help="지형 덩이 하나의 목표 타일 면적(8~96)")
+                    help="지형 덩이 하나의 목표 타일 면적(8~384)")
     ap.add_argument("--feature-terrain", action="append", default=[],
                     help="AI가 선택한 장식 지형 종류; 여러 지형을 반복 지정할 수 있음")
     ap.add_argument("--doodads", type=int, default=None,
@@ -397,10 +397,10 @@ def main(argv=None):
         ap.error("--natural-distance 범위는 12~48입니다")
     if not 0 <= args.expansion_minerals <= 12 or not 0 <= args.expansion_gas <= 2:
         ap.error("바깥 멀티 자원 범위는 미네랄 0~12, 가스 0~2입니다")
-    if not 0 <= args.features <= 12:
-        ap.error("--features 범위는 0~12입니다")
-    if not 8 <= args.feature_area <= 96:
-        ap.error("--feature-area 범위는 8~96입니다")
+    if not 0 <= args.features <= 64:
+        ap.error("--features 범위는 0~64입니다")
+    if not 8 <= args.feature_area <= 384:
+        ap.error("--feature-area 범위는 8~384입니다")
 
     # 자원 지렛대. 근거는 references/melee-balance.md 에 적어 두었다.
     #   프로토스: 본진·앞마당 미네랄이 많을수록 유리 (초반 질럿 압박)
@@ -762,6 +762,7 @@ def main(argv=None):
         # 각 본진에서는 앞마당보다 멀어야 그 앞마당으로 집계되지 않는다.
         exp_pts: list[tuple[int, int]] = []
         far = args.natural_distance + 4
+        fallback_rings = []
 
         snap_why = {"edge": 0, "near": 0, "own": 0, "drift": 0,
                     "snapown": 0, "nat": 0, "exp": 0, "ok": 0}
@@ -926,9 +927,10 @@ def main(argv=None):
                     return False
                 return True
 
-            # 첫 스타팅에서 자리를 고르고, 같은 회전으로 나머지에 옮긴다.
-            # 각도만 각자 다시 계산하면 반올림이 어긋나 4인 한쪽만 떨어진다.
-            # 계산상 맞아도 자원이 겹치거나 절벽에 걸리면 다음 각도를 본다.
+            # 첫 스타팅에서 자리를 스냅한 뒤 실제 스냅 좌표를 회전한다.
+            # 각 시작지에서 독립 스냅하면 지형 경계의 한두 타일 차이로
+            # 바깥 멀티가 비대칭이 된다. 변환된 정확 좌표가 모든 시작지에서
+            # 자원 배치에 유효하지 않으면 다음 후보를 본다.
             for extra in (45, 50, -25, -50, -125, 55, -15, -40, 15):
                 if chosen:
                     break
@@ -941,15 +943,35 @@ def main(argv=None):
                     seed_y = sy0 + dist * math.sin(ang)
                     images = scmap.symmetric_points(
                         seed_x, seed_y, symmetry, len(starts), width, height)
-                    spots = []
-                    for (sx, sy), (ix, iy) in zip(starts, images):
-                        hit = snap_expansion(int(round(ix)), int(round(iy)),
-                                             sx, sy)
-                        if hit is None:
+                    first = snap_expansion(int(round(images[0][0])),
+                                           int(round(images[0][1])),
+                                           starts[0][0], starts[0][1])
+                    if first is None:
+                        continue
+                    snapped_images = scmap.symmetric_points(
+                        first[0], first[1], symmetry, len(starts), width, height)
+                    spots = [((starts[0][0], starts[0][1]), first)]
+                    for i in range(1, len(starts)):
+                        sx, sy = starts[i]
+                        ix, iy = (int(round(v)) for v in snapped_images[i])
+                        hit = snap_expansion(ix, iy, sx, sy)
+                        if hit is None or hit[:2] != (ix, iy):
                             spots = []
                             break
                         spots.append(((sx, sy), hit))
                     if len(spots) != len(starts):
+                        # Keep the old per-start fit as a last resort. Some
+                        # ISOM rotations quantize differently, so an exact
+                        # resource ring may not exist on every fair map.
+                        fallback=[]
+                        for (sx,sy),(ix,iy) in zip(starts,images):
+                            hit=snap_expansion(int(round(ix)),int(round(iy)),sx,sy)
+                            if hit is None:
+                                fallback=[]
+                                break
+                            fallback.append(((sx,sy),hit))
+                        if len(fallback)==len(starts):
+                            fallback_rings.append(fallback)
                         continue
                     pts = [(ax, ay) for (_s, (ax, ay, _ox, _oy)) in spots]
                     if any(math.hypot(pts[a][0] - pts[b][0],
@@ -958,9 +980,24 @@ def main(argv=None):
                         snap_why["apart"] = snap_why.get("apart", 0) + 1
                         continue
                     if not commit_ring(spots):
+                        fallback=[]
+                        for (sx,sy),(ix,iy) in zip(starts,images):
+                            hit=snap_expansion(int(round(ix)),int(round(iy)),sx,sy)
+                            if hit is None:
+                                fallback=[]
+                                break
+                            fallback.append(((sx,sy),hit))
+                        if len(fallback)==len(starts):
+                            fallback_rings.append(fallback)
                         continue
                     chosen = spots
                     break
+            if not chosen:
+                for fallback in fallback_rings:
+                    if commit_ring(fallback):
+                        chosen=fallback
+                        print("  정확한 대칭 자원 자리가 없어 각 본진에서 검증한 근접 후보로 대체합니다")
+                        break
             if not chosen:
                 raise CliError(f"요청한 바깥 멀티 {k+1}/{args.expansions} 링을 모든 시작지에 공평하게 놓을 수 없습니다. {fail_why} snap {snap_why}. 맵 크기/멀티 수를 조정하세요.")
             exp_pts.extend((ax, ay) for (_s, (ax, ay, _ox, _oy)) in chosen)
@@ -1473,8 +1510,15 @@ def main(argv=None):
             if len(z) != 4 or z[2] < 1 or z[3] < 1 or z[0] < 0 or z[1] < 0 or z[0]+z[2] > width or z[1]+z[3] > height:
                 raise CliError(f"구역은 맵 안의 x,y,w,h여야 합니다: {spec}")
             zones.append(z)
-        protected = [(u["x"]//32, u["y"]//32, 7) for u in cli.units()
-                     if u["type"] in scmap.MINERALS or u["type"] == scmap.VESPENE_GEYSER or u["type"] == scmap.START_LOCATION]
+        resource_blocks = [(u["x"]//32, u["y"]//32, 7) for u in cli.units()
+                           if u["type"] in scmap.MINERALS or u["type"] == scmap.VESPENE_GEYSER]
+        doodad_meta = {d["id"]: d for d in cli.doodad_catalogue()}
+        doodad_blocks = []
+        for d in cli.doodads():
+            meta = doodad_meta.get(d["id"])
+            if meta:
+                ox, oy = scmap.doodad_topleft(d["x"], d["y"], meta["w"], meta["h"])
+                doodad_blocks.append((ox, oy, meta["w"], meta["h"]))
         terrain_before = cli.tiles(0, 0, width, height)
         tile_props = scmap.tileset_tiles(cli, tileset_id)
         max_bad = int(width * height * args.max_unbuildable_pct / 100)
@@ -1482,13 +1526,23 @@ def main(argv=None):
         if baseline_bad:
             if baseline_bad > max_bad:
                 raise CliError(f"기본 지형부터 건축 불가 {baseline_bad*100/(width*height):.1f}%로 전역 상한을 넘습니다")
-        strokes = []
+        selected_strokes = []
         for x, y, w, h in zones:
+            # Central engagement zones intentionally cross the main routes:
+            # this terrain is walkable. Preserve each base footprint, resource
+            # approach, and entrance object, while allowing the AI-picked
+            # center ground to be rough and non-buildable.
             eligible = [(tx, ty) for ty in range(y, y+h, 2) for tx in range(x, x+w, 2)
-                        if not in_base_or_exit(tx, ty, starts, (width-1)/2, (height-1)/2)
+                        if not any(abs(tx-sx) <= 12 and abs(ty-sy) <= 9
+                                   for sx,sy in starts)
+                        and not any(abs(tx-px) <= radius and abs(ty-py) <= radius
+                                    for px,py,radius in resource_blocks)
                         and not any(rx-4 <= tx <= rx+rw+4 and ry-4 <= ty <= ry+rh+4
                                     for rx, ry, _direction, rw, rh in ramp_at.values())
-                        and not any(abs(tx-px) <= radius and abs(ty-py) <= radius for px,py,radius in protected)]
+                        and not any(ox-2 <= tx <= ox+bw+1 and oy-2 <= ty <= oy+bh+1
+                                    for ox,oy,bw,bh,_did in bridge_at.values())
+                        and not any(ox-3 <= tx <= ox+dw+2 and oy-3 <= ty <= oy+dh+2
+                                    for ox,oy,dw,dh in doodad_blocks)]
             rng = random.Random(args.seed + x * 37 + y * 101)
             rng.shuffle(eligible)
             take = min(len(eligible), int(len(eligible) * args.fight_density / 100))
@@ -1499,9 +1553,40 @@ def main(argv=None):
                     continue
                 if args.fight_pattern == "pockets" and (tx % 12 > 4 or ty % 12 > 4):
                     continue
-                strokes.append((tx, ty, fight_id))
+                selected_strokes.append((tx, ty, fight_id))
+
+        # The AI specifies one fight-region shape; mirror its strokes and
+        # bounds through the map symmetry so the terrain offer remains fair.
+        transformed = set()
+        for tx,ty,terrain in selected_strokes:
+            for px,py in scmap.symmetric_points(tx,ty,symmetry,args.players,width,height):
+                qx,qy=int(round(px)),int(round(py))
+                qx-=qx%2
+                if 0<=qx<width and 0<=qy<height:
+                    transformed.add((qx,qy,terrain))
+        strokes=sorted(transformed)
+
+        # Snapshot every transformed zone before ISOM touches its neighbors;
+        # this also makes the global-cap retry restore the entire symmetric set.
+        zone_boxes=[]
+        for x,y,w,h in zones:
+            corners=((x,y),(x+w-1,y),(x,y+h-1),(x+w-1,y+h-1))
+            transformed_corners=[scmap.symmetric_points(px,py,symmetry,args.players,width,height)
+                                 for px,py in corners]
+            ntrans=min(len(v) for v in transformed_corners)
+            for i in range(ntrans):
+                pts=[v[i] for v in transformed_corners]
+                bx0=max(0,int(math.floor(min(p[0] for p in pts))))
+                by0=max(0,int(math.floor(min(p[1] for p in pts))))
+                bx1=min(width,int(math.ceil(max(p[0] for p in pts)))+1)
+                by1=min(height,int(math.ceil(max(p[1] for p in pts)))+1)
+                if bx1>bx0 and by1>by0:
+                    box=(bx0,by0,bx1-bx0,by1-by0)
+                    if box not in zone_boxes: zone_boxes.append(box)
         accepted = 0
-        zone_base = {(tx,ty): terrain_before[ty][tx] for x,y,w,h in zones for ty in range(y,y+h) for tx in range(x,x+w)}
+        zone_cells={(tx,ty) for x,y,w,h in zone_boxes
+                    for ty in range(y,y+h) for tx in range(x,x+w)}
+        zone_base={(tx,ty):terrain_before[ty][tx] for tx,ty in zone_cells}
         cli.isom_batch(strokes)
         after = cli.tiles(0, 0, width, height)
         bad = sum(1 for row in after for t in row if t in tile_props and tile_props[t][1] and not tile_props[t][2])
@@ -1511,8 +1596,19 @@ def main(argv=None):
         else:
             room = max(0, max_bad - baseline_bad)
             factor = room / max(1, bad-baseline_bad)
-            reduced = strokes[:int(len(strokes)*factor)]
-            for (tx,ty), tile in zone_base.items(): cli.edit("terrain", "set", cli.path, str(tx), str(ty), str(tile))
+            take=int(len(selected_strokes)*factor)
+            reduced_base=selected_strokes[:take]
+            reduced_set=set()
+            for tx,ty,terrain in reduced_base:
+                for px,py in scmap.symmetric_points(tx,ty,symmetry,args.players,width,height):
+                    qx,qy=int(round(px)),int(round(py)); qx-=qx%2
+                    if 0<=qx<width and 0<=qy<height:
+                        reduced_set.add((qx,qy,terrain))
+            reduced=sorted(reduced_set)
+            for bx,by,bw,bh in zone_boxes:
+                rows=[[terrain_before[yy][xx] for xx in range(bx,bx+bw)]
+                      for yy in range(by,by+bh)]
+                cli.paste_tiles(bx,by,rows)
             cli.isom_batch(reduced)
             accepted = len(reduced)
             after = cli.tiles(0, 0, width, height)
@@ -1520,8 +1616,39 @@ def main(argv=None):
             if bad > max_bad:
                 raise CliError(f"교전 지형 적용 후 건축 불가 지형 {bad*100/(width*height):.1f}%가 상한 {args.max_unbuildable_pct}%를 넘습니다")
             print(f"  교전 지형을 {accepted} 도장으로 줄였습니다; 전역 {bad*100/(width*height):.1f}%")
+        before_bad=sum(1 for tx,ty in zone_cells
+                       if tile_props.get(terrain_before[ty][tx],(0,0,0))[1]
+                       and not tile_props.get(terrain_before[ty][tx],(0,0,0))[2])
+        after_bad=sum(1 for tx,ty in zone_cells
+                      if tile_props.get(after[ty][tx],(0,0,0))[1]
+                      and not tile_props.get(after[ty][tx],(0,0,0))[2])
+        added=max(0,after_bad-before_bad)
+        zone_pct=100*added/max(1,len(zone_cells))
+        if args.fight_density and zone_pct < 8:
+            raise CliError(f"교전 구역의 새 걷기 가능·건축 불가 지형이 {zone_pct:.1f}%뿐입니다. 구역/밀도를 늘리세요")
+        print(f"  대칭 교전 구역 새 건축 불가 지형 {zone_pct:.1f}%")
         if not accepted and args.fight_density:
             print("  교전 지형은 전역 상한 때문에 넣지 않았습니다")
+
+    # The fight-zone terrain is applied after entrance and decorative DD2s.
+    # Confirm their rendered cells still match; remove only optional decor.
+    if cli.doodads():
+        proc=subprocess.run([cli.cli,"doodad","check",cli.path,"--install",cli.install],
+                            capture_output=True,text=True)
+        broken=[int(m.group(1)) for line in proc.stdout.splitlines()
+                if (m:=re.match(r"^\s*(\d+)\s+타일",line))]
+        if broken:
+            ramp_ids={e["id"] for direction in ("left","right","up","down")
+                      for e in scmap.ramp_candidates(tileset_id,direction)}
+            by_index={d["index"]:d["id"] for d in cli.doodads()}
+            if any(by_index.get(i) in ramp_ids for i in broken):
+                raise CliError("교전 지형 적용 뒤 입구 램프 두들의 정렬이 깨졌습니다")
+            for idx in sorted(broken,reverse=True):
+                cli.edit("doodad","remove",cli.path,str(idx),"--install",cli.install)
+            checked=subprocess.run([cli.cli,"doodad","check",cli.path,"--install",cli.install],
+                                   capture_output=True,text=True)
+            if checked.returncode:
+                raise CliError("장식 두들을 제거한 뒤에도 doodad check가 통과하지 않았습니다")
 
     # The cap applies to the entire map, including the pre-existing terrain,
     # rather than only to the optional fight-zone strokes.

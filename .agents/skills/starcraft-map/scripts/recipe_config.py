@@ -428,6 +428,10 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
         _need(tech, k, ty, "technologies")
     if not isinstance(tech["researched"], (list, str)):
         raise CliError("technologies.researched must be a player list or all/none")
+    for key in ("available", "researched"):
+        if isinstance(tech[key], list) and any(type(player) is not int or not 1 <= player <= 12
+                                               for player in tech[key]):
+            raise CliError(f"technologies.{key} player IDs must be from 1 to 12")
     if any(type(x) is not int or not 0 <= x < 44 for x in tech["which"]):
         raise CliError("technologies.which contains an invalid technology ID")
     return cfg

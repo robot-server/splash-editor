@@ -1823,6 +1823,10 @@ def setup_usemap_tech(cli: Cli, *, available=(), researched=(),
             args += ["--time", str(time)]
         if energy is not None:
             args += ["--energy", str(energy)]
+        if available or researched:
+            # TECS keeps per-player masks behind its uses-default bits. Writing
+            # the masks alone leaves the game on default availability.
+            args += ["--uses-default", "none"]
         if available:
             args += ["--available",
                      available if isinstance(available, str)
