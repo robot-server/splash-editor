@@ -2519,7 +2519,7 @@ def part_ally_humans(humans: list[str]) -> list[str]:
                    f'\tSet Alliance Status({others}, Allied Victory);\n}}')
     return out
 
-def part_intro(humans: list[str], lines: list[str], ore: int = 0,
+def part_intro(humans: list[str], lines: list[str], ore: int = 0, gas: int = 0,
                objectives: str | None = None, timer: int | None = None,
                counters: dict[str, int] | None = None) -> list[str]:
     """맨 처음 한 번 — 자원·카운터를 놓고 안내를 띄운다.
@@ -2531,6 +2531,8 @@ def part_intro(humans: list[str], lines: list[str], ore: int = 0,
     acts = []
     if ore:
         acts.append(f'\tSet Resources("Current Player", Set To, {ore}, ore);')
+    if gas:
+        acts.append(f'\tSet Resources("Current Player", Set To, {gas}, gas);')
     for unit, val in (counters or {}).items():
         acts.append(f'\tSet Deaths("Current Player", "{unit}", Set To, {val});')
     for l in lines:
@@ -2825,7 +2827,8 @@ def usemap_floor(cli: Cli, humans: int, system_owner: str,
 
 
 def part_infection(humans: list[str], zombie: str, mark: str,
-                   zombie_unit: str, spawn_at: str) -> list[str]:
+                   zombie_unit: str, spawn_at: str,
+                   infected_message: str, spawn_count: int) -> list[str]:
     """감염 — 병력을 다 잃은 사람이 좀비 편으로 넘어간다.
 
     실측 좀비 맵 35장 중 91% 가 `Set Alliance Status` 를 쓴다. 관용구는
@@ -2842,7 +2845,7 @@ def part_infection(humans: list[str], zombie: str, mark: str,
         f'Actions:\n'
         f'\tSet Deaths("Current Player", "{mark}", Set To, 1);\n'
         f'\tDisplay Text Message(Always Display, '
-        f'"\\x06감염되었습니다.\\x02 이제 좀비입니다.");\n'
+        f'"{infected_message}");\n'
         f'\tPlay WAV("sound\\\\Zerg\\\\Advisor\\\\ZAdUpd00.wav", 0);\n'
         f'\tPreserve Trigger();\n}}')
     # 2) 표시가 찍힌 사람을 좀비 편으로 (좀비가 실행)
@@ -2881,7 +2884,7 @@ def part_infection(humans: list[str], zombie: str, mark: str,
         f'\tCommand("Current Player", "Men", At most, 0);\n\n'
         f'Actions:\n'
         f'\tSet Alliance Status("{zombie}", Ally);\n'
-        f'\tCreate Unit("Current Player", "{zombie_unit}", 2, "{spawn_at}");\n'
+        f'\tCreate Unit("Current Player", "{zombie_unit}", {spawn_count}, "{spawn_at}");\n'
         f'\tCenter View("{spawn_at}");\n'
         f'\tPreserve Trigger();\n}}')
     return out

@@ -133,6 +133,11 @@ def check(cli: Cli, info: dict, text: str) -> list[tuple[str, str]]:
     if segs:
         bad = []
         for u in units:
+            # Neutral (P12) attack-capable units are commonly placed as
+            # physical result markers beside buy beacons. They have no player
+            # order in this trigger chain and cannot defend the routed lane.
+            if u.get("owner") == 12:
+                continue
             name = u.get("type_name") or ""
             rng = GROUND_RANGE.get(name)
             if rng is None:

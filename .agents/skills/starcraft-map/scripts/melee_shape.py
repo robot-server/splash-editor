@@ -572,28 +572,45 @@ def design_lanes(width: int, height: int, players: int, symmetry: str,
         ang = math.atan2(cy - sy, cx - sx)
         ox = -1.0 if sx < cx else 1.0
         oy = -1.0 if sy < cy else 1.0
-        f.disk(sx, sy, 16.0)
-        f.disk(sx + ox * 9, sy + oy * 6, 12.0)
+        # A fixed 16-tile plateau shrinks in relative area as a larger map is
+        # chosen for six/eight players. Scale the base footprint once maps are
+        # larger than the common 128-tile board, while preserving the measured
+        # smaller-map geometry.
+        base_radius = 18.0 if players == 3 or (players >= 6 and min(width, height) >= 144) else 16.0
+        f.disk(sx, sy, base_radius)
+        f.disk(sx + ox * 9, sy + oy * 6, 13.0 if base_radius > 16 else 12.0)
         f.disk(sx + 8 * math.cos(ang), sy + 8 * math.sin(ang), 10.0)
 
     # 2) 센터 능선 — 스타팅을 잇는 선의 **수직** 방향으로 가로지른다.
     #    이게 있어야 지상군이 돌아가야 하고 고지 점령 싸움이 생긴다.
-    ax, ay = starts[0]
-    perp = math.atan2(cy - ay, cx - ax) + math.pi / 2
     L = min(width, height) * 0.34
-    f.path([(cx - L * math.cos(perp), cy - L * math.sin(perp)),
-            (cx - L * 0.35 * math.cos(perp) + 6, cy - L * 0.35 * math.sin(perp)),
-            (cx + L * 0.35 * math.cos(perp) - 6, cy + L * 0.35 * math.sin(perp)),
-            (cx + L * math.cos(perp), cy + L * math.sin(perp))], 8.0)
+    if symmetry == "radial":
+        # Radial player counts need terrain repeated around every sector.
+        # A single perpendicular ridge only follows starts[0] and leaves most
+        # of a 3-player map as an open field. Put broad high-ground pockets in
+        # the inter-base sectors; their low gaps remain the routes between them.
+        phase = math.atan2(starts[0][1] - cy, starts[0][0] - cx)
+        for k in range(players):
+            a = phase + math.pi / players + 2 * math.pi * k / players
+            rr = min(width, height) * 0.18
+            lobe_radius = 14.0 if players == 3 else 9.0
+            f.disk(cx + rr * math.cos(a), cy + rr * math.sin(a), lobe_radius)
+    else:
+        ax, ay = starts[0]
+        perp = math.atan2(cy - ay, cx - ax) + math.pi / 2
+        f.path([(cx - L * math.cos(perp), cy - L * math.sin(perp)),
+                (cx - L * 0.35 * math.cos(perp) + 6, cy - L * 0.35 * math.sin(perp)),
+                (cx + L * 0.35 * math.cos(perp) - 6, cy + L * 0.35 * math.sin(perp)),
+                (cx + L * math.cos(perp), cy + L * math.sin(perp))], 8.0)
 
-    # 3) 능선에 목을 둘 낸다 — 통짜 능선은 맵을 두 쪽으로 갈라 버린다.
-    for sign in (-1, 1):
-        gx = cx + sign * L * 0.58 * math.cos(perp)
-        gy = cy + sign * L * 0.58 * math.sin(perp)
-        f.path([(gx - 9 * math.cos(perp + math.pi / 2),
-                 gy - 9 * math.sin(perp + math.pi / 2)),
-                (gx + 9 * math.cos(perp + math.pi / 2),
-                 gy + 9 * math.sin(perp + math.pi / 2))], 4.0, LOW)
+        # Open two chokes in the ridge — a solid wall would divide the map.
+        for sign in (-1, 1):
+            gx = cx + sign * L * 0.58 * math.cos(perp)
+            gy = cy + sign * L * 0.58 * math.sin(perp)
+            f.path([(gx - 9 * math.cos(perp + math.pi / 2),
+                     gy - 9 * math.sin(perp + math.pi / 2)),
+                    (gx + 9 * math.cos(perp + math.pi / 2),
+                     gy + 9 * math.sin(perp + math.pi / 2))], 4.0, LOW)
 
     # 4) 확장 언덕 — 맵 네 변 가운데. 작고 낮은 대. 확장 자리다.
     for (bx, by) in f.symmetric_seeds([(cx, height * 0.13)],

@@ -25,7 +25,7 @@
 **길 양옆 한 칸만** 막는다.
 
 보기:
-    python3 make_wave_defense.py out.scx --players 6 --waves 15
+    python3 make_wave_defense.py out.scx --config recipe_profiles/your_wave_defense_profile.json
 """
 from __future__ import annotations
 
@@ -37,6 +37,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import scmap  # noqa: E402
+import recipe_config as profile
 
 TILESETS = {"badlands": 0, "space": 1, "ashworld": 3, "jungle": 4,
             "desert": 5, "ice": 6, "twilight": 7}
@@ -45,23 +46,6 @@ LANE = 13       # 길 너비 — 길과 길목 방이 맵에서 충분한 걷는
 WALLT = 1       # 길 양옆 벽 두께 — 128x128 Jungle 에서 불가 지형 41% (기존 59%)
 LANE_MARGIN = 12  # 맵 가장자리에서 길까지
 STOP_W, STOP_H = 12, 10   # 길목 방 (두뎃이 들어갈 만큼 넉넉히)
-
-WAVE_TABLE = [
-    ("Zerg Zergling", 6), ("Zerg Hydralisk", 5), ("Terran Marine", 6),
-    ("Zerg Zergling", 9), ("Protoss Zealot", 5), ("Zerg Hydralisk", 7),
-    ("Terran Firebat", 5), ("Zerg Ultralisk", 2), ("Protoss Dragoon", 4),
-    ("Zerg Mutalisk", 5),
-]
-BOSS = ("Torrasque (Ultralisk)", 1)   # **줄여 쓰지 않는다** — 게임이 아는 이름 그대로
-
-# 비콘 셋 — **하는 일이 서로 달라야 한다.** 이름만 다르고 다 체력만
-# 고치던 판이 있었다.
-SHOPS = [
-    ("Terran Beacon",  "머린 4기",     100, "marine"),
-    ("Protoss Beacon", "성큰 1기",     150, "sunken"),
-    ("Zerg Beacon",    "체력 모두 회복", 80, "heal"),
-]
-
 
 def lane_turns(W: int) -> int:
     """굽이 수를 **맵 너비에서 셈한다.**
@@ -168,199 +152,149 @@ def stop_boxes(pts, players, W, H):
 
 # ---------------------------------------------------------------- 트리거
 
-def build_triggers(players, waves, enemy, boss_p, stops, ways, res):
-    """웨이브 디펜스 트리거.
-
-    **사각 디펜스와 다른 곳:** 목숨이 사람마다가 아니라 **하나**다.
-    새면 모두가 잃는다. 그래서 승패도 한꺼번에 난다.
-
-    목숨이 공용이라 깎는 일은 **적(컴퓨터)** 이 한다. 그런데
-    `Display Text Message` 는 그 트리거를 실행하는 플레이어에게만
-    보이므로, 컴퓨터가 깎고 **알림 칸**을 세우면 사람들이 그것을 보고
-    각자 글을 띄운다. 그러지 않으면 아무도 새는 것을 모른다.
-    """
-    HUM = [f"Player {i}" for i in range(1, players + 1)]
-    all_h = ", ".join(f'"{h}"' for h in HUM)
-    WAVE = res.counter("웨이브")
-    LIFE = res.counter("공용 목숨")
-    FLASH = res.counter("샜다는 알림")
-    SEEN = res.counter("본 웨이브")
-    LOCK = res.counter("병력 재지급 잠금")
-    res.claim_countdown(enemy)
-    res.claim_leaderboard("Kills")
-
-    T = []
-    add = T.append
-
-    # 바닥 가운데 **트리거로 되는 부분**만 여기서 쓴다. 종족·시야는
-    # 본체에서 이미 했다 (`setup_usemap_players` · `reveal_for_all`).
-    T += scmap.hyper_triggers(enemy)
-    T += scmap.absent_player_cleanup(players, enemy)
-
-    # 안내 — 비콘이 무엇을 하는지 **미리 적는다**
-    shop_line = " · ".join(f"{lbl} {cost}" for _, lbl, cost, _ in SHOPS)
-    add(f'''Trigger({all_h}){{
+def build_triggers(cfg, enemy, boss_p, stops, ways, res):
+    players=cfg["rules"]["players"]
+    wave_defs=cfg["waves"][:cfg["rules"]["waves"]]
+    shops=cfg["shops"]
+    units,labels,msg=cfg["units"],cfg["labels"],cfg["text"]["messages"]
+    lives=cfg["rules"]["shared_lives"]
+    waves=cfg["rules"]["waves"]
+    HUM=[f"Player {i}" for i in range(1,players+1)]
+    all_h=", ".join(f'"{h}"' for h in HUM)
+    WAVE=res.counter("wave progress")
+    LIFE=res.counter("shared lives")
+    FLASH=res.counter("leak message")
+    SEEN=res.counter("announced wave")
+    LOCK=res.counter("respawn lock")
+    res.claim_countdown(enemy);res.claim_leaderboard("Kills")
+    T=list(scmap.hyper_triggers(enemy))+scmap.absent_player_cleanup(players,enemy)
+    shop_summary=" · ".join(f'{x["label"]} {x["cost"]}' for x in shops)
+    opening=msg["intro"].format(players=players,waves=waves,lives=lives,shops=shop_summary)
+    T.append(f'''Trigger({all_h}){{
 Conditions:
-\tAlways();
+	Always();
 
 Actions:
-\tSet Resources("Current Player", Set To, 300, ore);
-\tDisplay Text Message(Always Display, "\\x04웨이브 디펜스\\x02 — 길을 \\x07같이\\x02 지킵니다. 새면 \\x08모두\\x02의 목숨이 줍니다.");
-\tDisplay Text Message(Always Display, "\\x03길목 비콘: \\x07{shop_line}\\x03. 순위표는 \\x07잡은 수\\x03입니다.");
-\tSet Mission Objectives("\\x04웨이브 디펜스\\x02\\n\\x03- 적은 들머리에서 날머리로 걸어갑니다\\n- 길목 방에 자리를 잡고 막으세요\\n- 비콘: {shop_line}\\n- 공용 목숨 20개를 다 잃으면 함께 집니다\\n- 웨이브 {waves}개를 막고 보스를 잡으면 이깁니다");
+	Set Resources("Current Player", Set To, {cfg["starting_resources"]["minerals"]}, ore);
+	Set Resources("Current Player", Set To, {cfg["starting_resources"]["gas"]}, gas);
+	Display Text Message(Always Display, "{opening}");
+	Set Mission Objectives("{msg["objectives"].format(players=players,waves=waves,lives=lives,shops=shop_summary)}");
 }}''')
-
-    # 공용 목숨·웨이브 칸을 세운다 (컴퓨터가 한 번)
-    add(f'''Trigger("{enemy}"){{
+    T.append(f'''Trigger("{enemy}"){{
 Conditions:
-\tAlways();
+	Always();
 
 Actions:
-\tSet Deaths("{enemy}", "{LIFE}", Set To, 20);
-\tSet Countdown Timer(Set To, 30);
+	Set Deaths("{enemy}", "{LIFE}", Set To, {lives});
+	Set Countdown Timer(Set To, {cfg["rules"]["initial_timer"]});
 }}''')
-
-    add(f'''Trigger("All players"){{
+    T += scmap.part_leaderboard(msg["leaderboard"],kind="Kills")
+    T += scmap.part_wave_clock(enemy,WAVE,waves,seconds=cfg["rules"]["wave_interval_seconds"])
+    for w,wave in enumerate(wave_defs,1):
+        unit=wave["unit"]
+        count=wave["count"]+(w-1)*cfg["rules"]["wave_growth"]
+        sw=res.switch(f"wave {w} spawn")
+        T.append(f'''Trigger("{enemy}"){{
 Conditions:
-\tAlways();
+	Deaths("{enemy}", "{WAVE}", Exactly, {w});
+	Switch("Switch {sw}", not set);
 
 Actions:
-\tLeader Board Kills("\\x07잡은 수", "Any unit");
-\tPreserve Trigger();
+	Set Switch("Switch {sw}", set);
+	Create Unit("{enemy}", "{unit}", {count}, "{labels["entry"]}");
+	Preserve Trigger();
 }}''')
-
-    T += scmap.part_wave_clock(enemy, WAVE, waves, seconds=35)
-
-    # 웨이브 — 들머리에 낸다
-    for w in range(1, waves + 1):
-        unit, n = WAVE_TABLE[(w - 1) % len(WAVE_TABLE)]
-        n += (w - 1) // len(WAVE_TABLE) * 2
-        sw = res.switch(f"웨이브 {w} 스폰")
-        add(f'''Trigger("{enemy}"){{
+        announcement=msg["wave"].format(number=w,total=waves,unit=unit,count=count)
+        T+=scmap.part_announce_once(HUM,f'Deaths("{enemy}", "{WAVE}", Exactly, {w});',
+            SEEN,w,[announcement],wav=cfg["text"].get("wave_wav","sound\\Misc\\Button.wav"))
+    boss_switch=res.switch("boss spawn")
+    boss_msg=msg["boss"].format(unit=units["boss"],name=labels["boss_name"])
+    T.append(f'''Trigger("{boss_p}"){{
 Conditions:
-\tDeaths("{enemy}", "{WAVE}", Exactly, {w});
-\tSwitch("Switch {sw}", not set);
+	Deaths("{enemy}", "{WAVE}", At least, {waves+1});
+	Switch("Switch {boss_switch}", not set);
 
 Actions:
-\tSet Switch("Switch {sw}", set);
-\tCreate Unit("{enemy}", "{unit}", {n}, "Entry");
-\tPreserve Trigger();
+	Set Switch("Switch {boss_switch}", set);
+	Create Unit with Properties("{boss_p}", "{units["boss"]}", {cfg["rules"]["boss_count"]}, "{labels["entry"]}", 1);
+	Preserve Trigger();
 }}''')
-        T += scmap.part_announce_once(
-            HUM, f'Deaths("{enemy}", "{WAVE}", Exactly, {w});', SEEN, w,
-            [f'\\x07웨이브 {w}\\x02 — {unit} x{n}'],
-            wav="sound\\\\Misc\\\\Button.wav")
-
-    # 보스
-    bu, bn = BOSS
-    bsw = res.switch("보스 스폰")
-    add(f'''Trigger("{boss_p}"){{
+    T+=scmap.part_announce_once(HUM,f'Deaths("{enemy}", "{WAVE}", At least, {waves+1});',
+        SEEN,waves+1,[boss_msg],wav=cfg["text"].get("boss_wav","sound\\Misc\\PowerDown.wav"))
+    T+=scmap.part_patrol_path(enemy,ways,cfg["rules"]["enemy_order"])
+    T+=scmap.part_patrol_path(boss_p,ways,cfg["rules"]["enemy_order"])
+    for who in (enemy,boss_p):
+        T.append(f'''Trigger("{enemy}"){{
 Conditions:
-\tDeaths("{enemy}", "{WAVE}", At least, {waves + 1});
-\tSwitch("Switch {bsw}", not set);
+	Bring("{who}", "Any unit", "{labels["exit"]}", At least, 1);
 
 Actions:
-\tSet Switch("Switch {bsw}", set);
-\tCreate Unit with Properties("{boss_p}", "{bu}", {bn}, "Entry", 1);
-\tPreserve Trigger();
+	Remove Unit At Location("{who}", "Any unit", 1, "{labels["exit"]}");
+	Set Deaths("{enemy}", "{LIFE}", Subtract, 1);
+	Set Deaths("{enemy}", "{FLASH}", Set To, 1);
+	Minimap Ping("{labels["exit"]}");
+	Preserve Trigger();
 }}''')
-    T += scmap.part_announce_once(
-        HUM, f'Deaths("{enemy}", "{WAVE}", At least, {waves + 1});',
-        SEEN, waves + 1,
-        [f'\\x06보스\\x02 — {bu}. 이것만 잡으면 끝입니다.'],
-        wav="sound\\\\Misc\\\\PowerDown.wav")
-
-    # 길 안내 — 적과 보스 모두 길을 따라 간다
-    for who in (enemy, boss_p):
-        T += scmap.part_patrol_path(who, ways, "patrol")
-
-    # 누수 — **컴퓨터가 한 기씩** 지우고 공용 목숨을 깎는다.
-    # 통째로 지우면 다섯이 새어도 목숨이 하나만 준다.
-    for who in (enemy, boss_p):
-        add(f'''Trigger("{enemy}"){{
+    T.append(f'''Trigger({all_h}){{
 Conditions:
-\tBring("{who}", "Any unit", "Exit", At least, 1);
+	Deaths("{enemy}", "{FLASH}", At least, 1);
 
 Actions:
-\tRemove Unit At Location("{who}", "Any unit", 1, "Exit");
-\tSet Deaths("{enemy}", "{LIFE}", Subtract, 1);
-\tSet Deaths("{enemy}", "{FLASH}", Set To, 1);
-\tMinimap Ping("Exit");
-\tPreserve Trigger();
+	Display Text Message(Always Display, "{msg["leak"]}");
+	Play WAV("sound\\Misc\\PowerDown.wav", 500);
+	Preserve Trigger();
 }}''')
-
-    # 샌 것을 사람들이 본다. 사람(1~6)이 먼저 돌고 적(7)이 뒤에 꺼서,
-    # 한 번 샐 때마다 각자 한 줄씩 본다.
-    add(f'''Trigger({all_h}){{
+    T.append(f'''Trigger("{enemy}"){{
 Conditions:
-\tDeaths("{enemy}", "{FLASH}", At least, 1);
+	Deaths("{enemy}", "{FLASH}", At least, 1);
 
 Actions:
-\tDisplay Text Message(Always Display, "\\x06샜습니다!\\x02 공용 목숨이 하나 줄었습니다.");
-\tPlay WAV("sound\\\\Misc\\\\PowerDown.wav", 500);
-\tPreserve Trigger();
+	Set Deaths("{enemy}", "{FLASH}", Set To, 0);
+	Preserve Trigger();
 }}''')
-    add(f'''Trigger("{enemy}"){{
+    for i,stop in enumerate(stops):
+        player=f"Player {i+1}";home=f'{labels["stop_prefix"]}{i+1}'
+        for k,shop in enumerate(shops):
+            shoploc=f'{home} {labels["shop_suffix"]}{k+1}'
+            vals={"player":player,"home":home,"shop":shoploc,"count":shop.get("count",1),
+                  "unit":shop.get("unit",""),"cost":shop["cost"]}
+            eff=[f'\t{line.format_map(vals)};' for line in shop["actions"]]
+            T+=scmap.part_beacon_shop(player,shoploc,shop["cost"],eff,shop["receipt"],push_to=home)
+        T.append(scmap.kill_bounty(player,cfg["rules"]["bounty_per_kill"],
+                                   per_score=cfg["rules"]["bounty_score_step"]))
+        T+=scmap.part_respawn(player,units["starting_unit"],home,
+             count=cfg["rules"]["starting_unit_count"],cooldown_counter=LOCK,
+             guard=f'Deaths("{enemy}", "{LIFE}", At least, 1);')
+    T.append(f'''Trigger({all_h}){{
 Conditions:
-\tDeaths("{enemy}", "{FLASH}", At least, 1);
+	Deaths("{enemy}", "{LIFE}", Exactly, 0);
 
 Actions:
-\tSet Deaths("{enemy}", "{FLASH}", Set To, 0);
-\tPreserve Trigger();
+	Display Text Message(Always Display, "{msg["defeat"]}");
+	Defeat();
 }}''')
-
-    # 길목마다 — 비콘 셋, 잡은 값, 병력 재지급
-    for i in range(len(stops)):
-        p = f"Player {i + 1}"
-        home = f"Stop{i + 1}"
-        for k, (_, label, cost, kind) in enumerate(SHOPS):
-            if kind == "marine":
-                eff = [f'\tCreate Unit("{p}", "Terran Marine", 4, "{home}");']
-            elif kind == "sunken":
-                eff = [f'\tCreate Unit("{p}", "Zerg Sunken Colony", 1, "{home}");']
-            else:
-                eff = [f'\tModify Unit Hit Points("{p}", "Men", 100, 0, "{home}");',
-                       f'\tModify Unit Shield Points("{p}", "Men", 100, 0, "{home}");']
-            T += scmap.part_beacon_shop(p, f"{home} Shop{k + 1}", cost,
-                                        eff, label, push_to=home)
-        add(scmap.kill_bounty(p, 25, per_score=50))
-        T += scmap.part_respawn(p, "Terran Marine", home, count=4,
-                                cooldown_counter=LOCK,
-                                guard=f'Deaths("{enemy}", "{LIFE}", At least, 1);')
-
-    # 패배 — 공용 목숨이 0
-    add(f'''Trigger({all_h}){{
-Conditions:
-\tDeaths("{enemy}", "{LIFE}", Exactly, 0);
-
-Actions:
-\tDisplay Text Message(Always Display, "\\x06목숨이 다했습니다.");
-\tDefeat();
-}}''')
-
-    # 승리 — 보스가 사라졌다
-    T += scmap.part_win(HUM, [
-        f'Switch("Switch {bsw}", set);',
+    T+=scmap.part_win(HUM,[f'Switch("Switch {boss_switch}", set);',
         f'Deaths("{enemy}", "{LIFE}", At least, 1);',
-        f'Command("{boss_p}", "Any unit", Exactly, 0);'],
-        msg="\\x07보스를 잡았습니다! 길을 지켰습니다.")
+        f'Command("{boss_p}", "Any unit", Exactly, 0);'],msg=msg["victory"])
     return T
 
 
 # ---------------------------------------------------------------- 본체
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="웨이브 디펜스 유즈맵")
+    ap=argparse.ArgumentParser(description="AI-profiled shared-lane wave defense")
     ap.add_argument("out")
-    ap.add_argument("--players", type=int, default=6)
-    ap.add_argument("--waves", type=int, default=15)
-    ap.add_argument("--size", default="128x128")
-    ap.add_argument("--tileset", default="jungle", choices=sorted(TILESETS))
-    ap.add_argument("--name", default="웨이브 디펜스")
-    ap.add_argument("--seed", type=int, default=1)
-    ap.add_argument("--install", default=None)
-    ap.add_argument("--force", action="store_true")
-    a = ap.parse_args(argv)
+    profile.add_profile_arguments(ap,"wave_defense")
+    ap.add_argument("--install",default=None)
+    ap.add_argument("--force",action="store_true")
+    a=ap.parse_args(argv)
+    cfg=profile.load_profile(a.config,"wave_defense")
+    rules,shops,labels,units=cfg["rules"],cfg["shops"],cfg["labels"],cfg["units"]
+    a.players=rules["players"];a.waves=rules["waves"]
+    W,H=cfg["map"]["size"];a.size=f"{W}x{H}"
+    a.tileset=cfg["map"]["tileset"];a.name=cfg["map"]["name"];a.seed=cfg["map"]["seed"]
+    global LANE,WALLT,LANE_MARGIN,STOP_W,STOP_H
+    LANE,WALLT,LANE_MARGIN,STOP_W,STOP_H=(rules[k] for k in ("lane_width","wall_thickness","lane_margin","stop_width","stop_height"))
 
     if os.path.exists(a.out) and not a.force:
         print(f"이미 있습니다: {a.out}\n  --force 를 주세요.")
@@ -408,40 +342,42 @@ def main(argv=None):
             scmap.pad(cli, pal, sx + 1 + k * 3, sy + 1, 2, 2)
 
     print("플레이어 슬롯을 정합니다...")
-    scmap.setup_usemap_players(cli, a.players, [enemy_no, boss_no])
-    n_up = scmap.setup_usemap_upgrades(cli, a.players, free_levels=0,
-                                       max_level=3, mineral=75, gas=0, time=15)
-    n_tech = scmap.setup_usemap_tech(cli, which=(0, 3, 5, 6), mineral=100,
-                                     gas=0, time=15, available="all")
-    print(f"  업그레이드 {n_up}가지 · 기술 {n_tech}가지")
+    scmap.setup_usemap_players(cli,a.players,[enemy_no,boss_no],race=cfg["players"]["race"])
+    cli.edit("player","set",cli.path,str(enemy_no),"--race",cfg["players"]["enemy_race"],"--slot","computer")
+    cli.edit("player","set",cli.path,str(boss_no),"--race",cfg["players"]["boss_race"],"--slot","computer")
+    n_up,n_tech=profile.configure_progression(cli,cfg,a.players)
+    print(f"  profile upgrades {n_up} · technologies {n_tech}")
 
     print("로케이션을 놓습니다...")
     def loc(name, x, y, w, h):
         cli.edit("location", "add", cli.path, str(max(0, x)), str(max(0, y)),
                  str(min(W, x + w)), str(min(H, y + h)), "--tiles",
                  "--name", name)
-    loc("Entry", pts[0][0] - 4, pts[0][1] - 4, 8, 8)
-    loc("Exit", pts[-1][0] - 4, pts[-1][1] - 4, 8, 8)
+    loc(labels["entry"], pts[0][0] - 4, pts[0][1] - 4, 8, 8)
+    loc(labels["exit"], pts[-1][0] - 4, pts[-1][1] - 4, 8, 8)
     for i, (x, y) in enumerate(pts):
-        loc(f"Way{i + 1}", x - 3, y - 3, 6, 6)
+        loc(f"{labels['way_prefix']}{i + 1}", x - 3, y - 3, 6, 6)
     for i, (sx, sy, sw, sh) in enumerate(stops):
-        loc(f"Stop{i + 1}", sx, sy, sw, sh)
-        for k in range(3):
-            loc(f"Stop{i + 1} Shop{k + 1}", sx + 1 + k * 3, sy + 1, 2, 2)
+        loc(f"{labels['stop_prefix']}{i + 1}", sx, sy, sw, sh)
+        for k in range(len(shops)):
+            loc(f"{labels['stop_prefix']}{i + 1} {labels['shop_suffix']}{k + 1}", sx + 1 + k * 3, sy + 1, 2, 2)
 
     print("스타팅과 시작 유닛을 놓습니다...")
     for i in range(1, a.players + 1):
         sx, sy, sw, sh = stops[(i - 1) % len(stops)]
         cli.place(scmap.START_LOCATION, sx + sw // 2, sy + sh - 2, owner=i)
-        for k in range(4):
-            cli.place("Terran Marine", sx + 2 + k, sy + sh - 3, owner=i)
+        for k in range(rules["starting_unit_count"]):
+            cli.place(units["starting_unit"],sx+2+k,sy+sh-3,owner=i)
     cli.place(scmap.START_LOCATION, pts[0][0], pts[0][1], owner=enemy_no)
     cli.place(scmap.START_LOCATION, pts[0][0] + 2, pts[0][1] + 2, owner=boss_no)
+    cli.place(units["enemy_entry_marker"],pts[0][0],pts[0][1],owner=12)
 
     print("비콘을 놓습니다 (하는 일이 셋 다 다릅니다)...")
-    for i, (sx, sy, sw, sh) in enumerate(stops):
-        for k, (beacon, _, _, _) in enumerate(SHOPS):
-            cli.place(beacon, sx + 1 + k * 3, sy + 1, owner=i + 1)
+    for i,(sx,sy,sw,sh) in enumerate(stops):
+        for k,shop in enumerate(shops):
+            bx,by=sx+1+k*3,sy+1
+            cli.place(shop["beacon"],bx,by,owner=i+1)
+            cli.place(shop["icon"],bx,by+3,owner=12)
 
     print("시야를 엽니다...")
     scmap.reveal_for_all(cli, a.players)
@@ -459,35 +395,17 @@ def main(argv=None):
                             keep_clear=_clear)
     print(f"  두뎃 {nd}개")
 
-    print("브리핑을 짭니다...")
-    cli.apply_briefing(scmap.briefing_text(
-        [f"길 하나를 {a.players}명이 같이 지킵니다.",
-         f"적은 들머리에서 날머리까지 걸어갑니다. 웨이브는 {a.waves}개입니다.",
-         "날머리에 닿으면 공용 목숨이 하나 줍니다. 목숨은 20개입니다.",
-         "길목 방 비콘에서 " + " · ".join(f"{l} {c}" for _, l, c, _ in SHOPS) + " 에 삽니다.",
-         "마지막 웨이브 뒤 보스를 잡으면 함께 이깁니다."],
-        objectives=f"웨이브 {a.waves}개를 막고 보스를 잡는다",
-        portrait="Terran Marine"))
-
-    print("트리거를 짭니다...")
-    res = scmap.MapResources(in_play=scmap.units_in_play(cli))
-    ways = [f"Way{i + 1}" for i in range(len(pts))]
-    T = build_triggers(a.players, a.waves, enemy, boss_p,
-                       stops, ways, res)
-    cli.apply_triggers(scmap.TRIGGER_SEP.join(T))
-    print("  " + res.describe())
-
-    try:
-        used = scmap.units_in_play(cli, cli.trigger_text())
-    except Exception:
-        used = None
-
-    if a.name:
-        cli.set_map_name(a.name,
-            f"{a.players}명이 굽은 길 하나를 같이 지킵니다. 적이 날머리에 닿으면 "
-            f"공용 목숨이 하나 줍니다(20개). 길목 방 비콘에서 "
-            + " · ".join(f"{l} {c}" for _, l, c, _ in SHOPS)
-            + f" 에 삽니다. 웨이브 {a.waves}개를 막고 보스를 잡으면 이깁니다.")
+    names={}
+    for shop in shops:
+        if shop["icon"] in names and names[shop["icon"]] != shop["icon_name"]:
+            raise scmap.CliError(f"unit type {shop['icon']} has conflicting map display names")
+        names[shop["icon"]]=shop["icon_name"]
+    name_cfg=dict(cfg);name_cfg["unit_names"]={**names,**cfg.get("unit_names",{})}
+    profile.apply_unit_names(cli,name_cfg)
+    res=scmap.MapResources(in_play=scmap.units_in_play(cli))
+    ways=[f"{labels['way_prefix']}{i+1}" for i in range(len(pts))]
+    cli.apply_triggers(scmap.TRIGGER_SEP.join(build_triggers(cfg,enemy,boss_p,stops,ways,res)))
+    profile.apply_profile_metadata(cli,cfg,a.players)
 
     info = cli.info()
     print(f"\n만들었습니다: {a.out}")

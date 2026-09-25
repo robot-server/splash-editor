@@ -1,0 +1,186 @@
+{
+  "genre": "square_defense",
+  "map": {
+    "name": "Frostvault Chambers",
+    "description": "Each defender holds a sealed square against waves that circle a central keep.",
+    "tileset": "ice",
+    "size": [
+      128,
+      128
+    ],
+    "seed": 7712
+  },
+  "text": {
+    "objectives": "Stop the waves from reaching the western exit and defeat the final boss. Shared lives are limited.",
+    "briefing": [
+      "Each player defends a separate island chamber. Enemies circle its outer lane; ranged defenses on the island attack through the thin wall.",
+      "An enemy at your Exit removes one shared life. The team loses when no shared lives remain.",
+      "Your Civilian buys the units or support shown beside your beacons. The entrance icon is your mobile recruitment token.",
+      "The final boss spawns in each active chamber. Defeat the boss in your own chamber to win."
+    ],
+    "portrait": "Protoss Dragoon",
+    "briefing_hold_ms": 1800,
+    "messages": {
+      "intro": "Frostvault: stop {waves} waves. The team shares {lives} lives.",
+      "objectives": "Block {waves} waves and kill the final boss before the shared lives reach zero.",
+      "leaderboard": "Shared lives remaining",
+      "wave": "Wave {number}/{total}: {count} {unit} enter your chamber.",
+      "boss": "The end boss appears in active chambers: {unit}.",
+      "leak": "An enemy escaped your chamber; one team life was lost.",
+      "defeat": "The team has no shared lives remaining.",
+      "win": "Your chamber boss is defeated. You hold Frostvault.",
+      "respawn": "A reserve squad has reached the center island.",
+      "wave_clear": "Your chamber is clear. Replenish before the next wave.",
+      "clear_arena": "The chamber is clear. Your team earns ore for the next wave."
+    }
+  },
+  "rules": {
+    "players": 4,
+    "waves": 5,
+    "arena_width": 38,
+    "arena_height": 42,
+    "arena_gap": 3,
+    "ring_width": 5,
+    "wall_width": 2,
+    "shared_lives": 18,
+    "initial_timer": 30,
+    "wave_interval_seconds": 34,
+    "wave_growth": 1,
+    "starting_unit_count": 4,
+    "bounty_per_kill": 18,
+    "bounty_score_step": 45,
+    "boss_count": 1,
+    "wave_clear_ore": 95
+  },
+  "players": {
+    "race": "terran",
+    "enemy_race": "zerg",
+    "boss_race": "protoss"
+  },
+  "units": {
+    "boss": "Torrasque (Ultralisk)",
+    "starting_unit": "Terran Marine",
+    "selection": "Terran Civilian",
+    "wave_counter": "Scanner Sweep",
+    "life_counter": "Dark Swarm",
+    "seen_counter": "Protoss Scarab",
+    "revive_lock": "Protoss Interceptor",
+    "defenses": [
+      "Terran Bunker",
+      "Terran Missile Turret",
+      "Terran Bunker",
+      "Terran Missile Turret"
+    ],
+    "enemy_entry_marker": "Zerg Egg"
+  },
+  "labels": {
+    "arena_prefix": "Frostvault ",
+    "spawn_suffix": "North Gate",
+    "ne_suffix": "Outer East",
+    "se_suffix": "South Turn",
+    "sw_suffix": "Outer West",
+    "exit_suffix": "Western Exit",
+    "center_suffix": "Keep Island",
+    "all_suffix": "Chamber All",
+    "shop_suffix": "Station ",
+    "boss_name": "Frost Colossus"
+  },
+  "shops": [
+    {
+      "beacon": "Terran Beacon",
+      "icon": "Terran Medic",
+      "icon_name": "Medic · restore the squad",
+      "label": "Medical team",
+      "cost": 105,
+      "receipt": "A Medic joins the keep. Cost: 105 ore.",
+      "actions": [
+        "Create Unit(\"{player}\", \"Terran Medic\", 1, \"{center}\")"
+      ]
+    },
+    {
+      "beacon": "Protoss Beacon",
+      "icon": "Protoss Dragoon",
+      "icon_name": "Dragoon · reinforcement",
+      "label": "Dragoon reinforcement",
+      "cost": 145,
+      "receipt": "A Dragoon joins the keep. Cost: 145 ore.",
+      "actions": [
+        "Create Unit(\"{player}\", \"Protoss Dragoon\", 1, \"{center}\")"
+      ]
+    },
+    {
+      "beacon": "Zerg Beacon",
+      "icon": "Protoss Shield Battery",
+      "icon_name": "Shield service · 100 ore",
+      "label": "Shield service",
+      "cost": 100,
+      "receipt": "The island force regains shields. Cost: 100 ore.",
+      "actions": [
+        "Modify Unit Shield Points(\"{player}\", \"Men\", 100, 0, \"{center}\")"
+      ]
+    }
+  ],
+  "waves": [
+    {
+      "unit": "Zerg Zergling",
+      "count": 6
+    },
+    {
+      "unit": "Zerg Hydralisk",
+      "count": 5
+    },
+    {
+      "unit": "Terran Firebat",
+      "count": 7
+    },
+    {
+      "unit": "Protoss Zealot",
+      "count": 6
+    },
+    {
+      "unit": "Zerg Ultralisk",
+      "count": 3
+    }
+  ],
+  "starting_resources": {
+    "minerals": 230,
+    "gas": 45
+  },
+  "upgrades": {
+    "which": [
+      0,
+      1,
+      7,
+      8,
+      13
+    ],
+    "free_levels": 0,
+    "max_level": 2,
+    "minerals": 75,
+    "gas": 55,
+    "time": 65
+  },
+  "technologies": {
+    "which": [
+      0,
+      1,
+      3,
+      5
+    ],
+    "available": "all",
+    "researched": "none",
+    "minerals": 100,
+    "gas": 80,
+    "time": 90,
+    "energy": 65
+  },
+  "unit_names": {
+    "Torrasque (Ultralisk)": "Frost Colossus",
+    "Terran Beacon": "Medical team · 105 ore",
+    "Protoss Beacon": "Dragoon · 145 ore",
+    "Zerg Beacon": "Shield service · 100 ore",
+    "Terran Medic": "Medic · restore the squad",
+    "Protoss Dragoon": "Dragoon · reinforcement",
+    "Protoss Shield Battery": "Shield service · 100 ore"
+  }
+}

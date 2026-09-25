@@ -4,6 +4,7 @@
 
 - [isom.md](isom.md): ISOM 지형 경계와 편집 특성
 - [ramps.md](ramps.md): 타일셋 램프 후보와 배치 확인
+- [bridges.md](bridges.md): 물길 Bridge 두들의 정적 관찰과 배치 검증 한계
 - [doodads.md](doodads.md): 두뎃 배치 제약
 - [terrain-types.md](terrain-types.md): 에디터 지형 타입
 - [colors.md](colors.md): 타일 속성과 화면 대비

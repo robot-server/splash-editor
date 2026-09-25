@@ -15,7 +15,7 @@
 `Kill` 조건). 직접 세려고 `Set Deaths` 를 쓰면 누가 잡았는지 못 가린다.
 
 보기:
-    python3 make_control.py out.scx --players 6 --goal 40
+    python3 make_control.py out.scx --config recipe_profiles/your_control_profile.json
 """
 from __future__ import annotations
 
@@ -28,20 +28,10 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import scmap
 from scmap import Cli, CliError
+import recipe_config as profile
 
 TILESETS = {"badlands": 0, "space": 1, "ashworld": 3, "jungle": 4,
             "desert": 5, "ice": 6, "twilight": 7}
-VOID_TILE = 0
-
-# 고를 수 있는 병력. 값이 비슷해야 싸움이 된다.
-SQUADS = [
-    ("Terran Marine", 6, "머린 6기"),
-    ("Protoss Zealot", 4, "질럿 4기"),
-    ("Zerg Hydralisk", 4, "히드라 4기"),
-    ("Terran Vulture", 3, "벌처 3기"),
-]
-
-
 def pocket_spots(players, W, H, pocket, margin=3):
     """스폰 주머니를 가장자리에 고르게 돌려 놓는다."""
     cx, cy = W / 2.0, H / 2.0
@@ -57,14 +47,25 @@ def pocket_spots(players, W, H, pocket, margin=3):
 
 
 
-def build_triggers(players, goal, respawn_s, arena_names):
+def build_triggers(cfg, arena_names):
+    players=cfg["rules"]["players"]
+    system_player=f"Player {players+1}"
+    goal=cfg["rules"]["goal"]
+    respawn_s=cfg["rules"]["respawn_seconds"]
+    squads=cfg["squads"]
+    starter=squads[cfg["starting_squad"]]
+    money=cfg["rules"]["buy_cost"]
+    bounty=cfg["rules"]["bounty_per_kill"]
+    bounty_score=cfg["rules"]["bounty_score_step"]
+    heal_cost=cfg["rules"]["heal_cost"]
+    msg=cfg["text"]["messages"]
     T = []
     add = T.append
     # **하이퍼 트리거를 맨 앞에.** 없으면 트리거가 1초에 한 번만 돌아
     # 비콘·스폰·판정이 모두 한 박자 늦는다. 유즈맵에 거의 필수다.
-    T.extend(scmap.hyper_triggers("Player 8"))
+    T.extend(scmap.hyper_triggers(system_player))
     # 들어오지 않은 자리를 치운다 (빈 주머니의 유닛이 남지 않게)
-    T.extend(scmap.absent_player_cleanup(players, "Player 8"))
+    T.extend(scmap.absent_player_cleanup(players, system_player))
     HUMANS = ",".join(f'"Player {p}"' for p in range(1, players + 1))
 
     add(f'''Trigger({HUMANS}){{
@@ -72,9 +73,10 @@ Conditions:
 \tAlways();
 
 Actions:
-\tSet Resources("Current Player", Set To, 300, ore);
-\tDisplay Text Message(Always Display, "\\x04컨트롤 대전\\x02 — 먼저 \\x07{goal}킬\\x02 하면 이깁니다.");
-\tDisplay Text Message(Always Display, "\\x03주머니 안 비콘을 밟아 병력을 고르세요. 죽으면 {respawn_s}초 뒤 다시 나옵니다.");
+\tSet Resources("Current Player", Set To, {cfg["starting_resources"]["minerals"]}, ore);
+\tSet Resources("Current Player", Set To, {cfg["starting_resources"]["gas"]}, gas);
+\tDisplay Text Message(Always Display, "{msg["start"]}");
+\tDisplay Text Message(Always Display, "{msg["controls"]}");
 \tSet Countdown Timer(Set To, {respawn_s});
 }}''')
 
@@ -84,7 +86,7 @@ Conditions:
 \tAlways();
 
 Actions:
-\tLeader Board Kills("\\x07잡은 수", "Any unit");
+\tLeader Board Kills("{msg["leaderboard"]}", "Any unit");
 \tPreserve Trigger();
 }}''')
 
@@ -97,24 +99,24 @@ Conditions:
 \tCommand("{p}", "Men", At most, 2);
 
 Actions:
-\tCreate Unit("{p}", "Terran Marine", 6, "{a} Spawn");
-\tDisplay Text Message(Always Display, "\\x03병력이 다시 나왔습니다.");
-\tCenter View("{a} Spawn");
+\tCreate Unit("{p}", "{starter["unit"]}", {starter["count"]}, "{a} {cfg["labels"]["spawn_suffix"]}");
+\tDisplay Text Message(Always Display, "{msg["respawn"]}");
+\tCenter View("{a} {cfg["labels"]["spawn_suffix"]}");
 \tPreserve Trigger();
 }}''')
         # 병력 고르기 — 비콘마다 다른 부대.
         # **산 뒤에 비콘 밖으로 밀어낸다** (하이퍼와 맞물린 연사 방지).
-        for k, (unit, n, label) in enumerate(SQUADS):
+        for k, squad in enumerate(squads):
             add(f'''Trigger("{p}"){{
 Conditions:
-\tBring("{p}", "Any unit", "{a} Buy{k + 1}", At least, 1);
-\tAccumulate("{p}", At least, 100, ore);
+\tBring("{p}", "Any unit", "{a} {cfg["labels"]["buy_prefix"]}{k + 1}", At least, 1);
+\tAccumulate("{p}", At least, {money}, ore);
 
 Actions:
-\tSet Resources("{p}", Subtract, 100, ore);
-\tCreate Unit("{p}", "{unit}", {n}, "{a} Gate");
-\tMove Unit("{p}", "Men", All, "{a} Buy{k + 1}", "{a} Spawn");
-\tDisplay Text Message(Always Display, "\\x03{label} 구입! \\x02-100");
+\tSet Resources("{p}", Subtract, {money}, ore);
+\tCreate Unit("{p}", "{squad["unit"]}", {squad["count"]}, "{a} {cfg["labels"]["gate_suffix"]}");
+\tMove Unit("{p}", "Men", All, "{a} {cfg["labels"]["buy_prefix"]}{k + 1}", "{a} {cfg["labels"]["spawn_suffix"]}");
+\tDisplay Text Message(Always Display, "{squad["receipt"]}");
 \tPlay WAV("sound\\\\Misc\\\\Button.wav", 300);
 \tPreserve Trigger();
 }}''')
@@ -124,19 +126,19 @@ Actions:
         # 여기서는 시간 수입으로 준다. 누가 잘하는지는 순위표가 보여 준다.
         # 잡은 만큼만 준다 — **킬 스코어를 깎는 관용구.** 죽은 수를
         # 소비하는 방법과 달리 누가 잡았는지 가려진다.
-        add(scmap.kill_bounty(p, 30, per_score=100))
+        add(scmap.kill_bounty(p, bounty, per_score=bounty_score))
         # **제 주머니로 물러나면 공짜로 낫는다.** 안 그러면 한 번 깎인
         # 체력이 끝까지 그대로라 초반에 진 사람은 구경만 하게 된다
         # (실측 유즈맵 89%가 체력·에너지를 고쳐 준다). 값이 0이라
         # 밀어내기가 필요 없다 — 서 있어도 잃을 것이 없다.
-        T.extend(scmap.part_heal_zone(p, f"{a} Spawn", cost=0))
+        T.extend(scmap.part_heal_zone(p, f"{a} {cfg['labels']['spawn_suffix']}", cost=heal_cost))
         # 이김
         add(f'''Trigger("{p}"){{
 Conditions:
 \tKill("{p}", "Any unit", At least, {goal});
 
 Actions:
-\tDisplay Text Message(Always Display, "\\x07{goal}킬 달성!");
+\tDisplay Text Message(Always Display, "{msg["victory"]}");
 \tVictory();
 }}''')
 
@@ -155,16 +157,19 @@ Actions:
 def main(argv=None):
     ap = argparse.ArgumentParser(description="컨트롤(전투) 유즈맵")
     ap.add_argument("out")
-    ap.add_argument("--players", type=int, default=6)
-    ap.add_argument("--goal", type=int, default=40, help="이기는 데 필요한 킬")
-    ap.add_argument("--respawn", type=int, default=20)
-    ap.add_argument("--size", default="128x128")
-    ap.add_argument("--tileset", default="badlands", choices=sorted(TILESETS))
-    ap.add_argument("--name", default="컨트롤 대전")
-    ap.add_argument("--seed", type=int, default=1)
+    profile.add_profile_arguments(ap,"control")
+    ap.add_argument("--players", type=int)
     ap.add_argument("--install", default=None)
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args(argv)
+    cfg=profile.load_profile(a.config,"control")
+    a.players=cfg["rules"]["players"]
+    a.goal=cfg["rules"]["goal"]
+    a.respawn=cfg["rules"]["respawn_seconds"]
+    width,height=cfg["map"]["size"]
+    a.size=f"{width}x{height}"
+    a.tileset=cfg["map"]["tileset"]
+    a.seed=cfg["map"]["seed"]
 
     if os.path.exists(a.out) and not a.force:
         print(f"이미 있습니다: {a.out} (--force)", file=sys.stderr)
@@ -175,7 +180,7 @@ def main(argv=None):
     rng = random.Random(a.seed)
     W, H = (int(v) for v in a.size.lower().split("x"))
     ts = TILESETS[a.tileset]
-    POCKET = 22
+    POCKET = cfg["rules"]["pocket_size"]
 
     print(f"컨트롤 {W}x{H} {a.tileset}, {a.players}명, {a.goal}킬")
     cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False,
@@ -241,58 +246,62 @@ def main(argv=None):
     scmap.scatter_tile_variants(cli, ts, rng, chance=0.5)
 
     print("플레이어 슬롯을 정합니다...")
-    scmap.setup_usemap_players(cli, a.players, [8])   # P8 = 하이퍼용 시스템 컴퓨터
+    system_player=a.players+1
+    scmap.setup_usemap_players(cli, a.players, [system_player], race=cfg["players"]["race"])
+    if system_player > 8:
+        cli.edit("player", "set", cli.path, str(system_player),
+                 "--race", cfg["players"]["race"], "--slot", "computer")
 
     # 컨트롤 맵은 업그레이드를 **미리 다 해 둔다.** 파는 맵이 아니라
     # 순수하게 조작을 겨루는 맵이라, 업그레이드 차이가 나면 안 된다
     # (docs/chk/anatomy.md — 유즈맵은 업그레이드를 고친다).
-    n_up = scmap.setup_usemap_upgrades(
-        cli, a.players, free_levels=3, max_level=3,
-        mineral=0, gas=0, time=1)
-    n_tech = scmap.setup_usemap_tech(
-        cli, which=(0, 1, 2, 3, 5, 6, 7),
-        mineral=0, gas=0, time=1, available="all", researched="all")
-    print(f"  업그레이드 {n_up}가지를 3단계로 미리 올리고 "
-          f"기술 {n_tech}가지를 열었습니다")
-
+    names={}
+    for squad in cfg["squads"]:
+        for unit,name in ((squad["unit"],squad["unit_name"]),
+                          (squad["marker"],squad["marker_name"])):
+            if unit in names and names[unit] != name:
+                raise CliError(f"유닛 타입 {unit} 에 서로 다른 맵 이름이 지정됐습니다")
+            names[unit]=name
+    name_cfg=dict(cfg)
+    name_cfg["unit_names"]=names
+    profile.apply_unit_names(cli,name_cfg)
     print("로케이션을 놓습니다...")
     loc = lambda n, x0, y0, x1, y1: cli.edit(
         "location", "add", cli.path, str(x0), str(y0), str(x1), str(y1),
         "--tiles", "--name", n)
     names = []
     for i, (px, py) in enumerate(spots):
-        A = f"P{i + 1}"
+        A = f"{cfg['labels']['player_prefix']}{i + 1}"
         names.append(A)
-        loc(f"{A} Spawn", px + 2, py + 2, px + 8, py + 8)
-        loc(f"{A} Gate", px + POCKET // 2 - 3, py + POCKET - 6,
+        loc(f"{A} {cfg['labels']['spawn_suffix']}", px + 2, py + 2, px + 8, py + 8)
+        loc(f"{A} {cfg['labels']['gate_suffix']}", px + POCKET // 2 - 3, py + POCKET - 6,
             px + POCKET // 2 + 3, py + POCKET - 1)
-        for k in range(len(SQUADS)):
+        for k in range(len(cfg["squads"])):
             bx = px + 2 + (k % 2) * 9
             by = py + 11 + (k // 2) * 5
-            loc(f"{A} Buy{k + 1}", bx, by, bx + 4, by + 3)
-        loc(f"{A} All", px, py, px + POCKET, py + POCKET)
-    loc("Arena", cx - AR, cy - AR, cx + AR, cy + AR)
+            loc(f"{A} {cfg['labels']['buy_prefix']}{k + 1}", bx, by, bx + 4, by + 3)
+        loc(f"{A} {cfg['labels']['all_suffix']}", px, py, px + POCKET, py + POCKET)
+    loc(cfg["labels"]["arena"], cx - AR, cy - AR, cx + AR, cy + AR)
 
     print("유닛을 놓습니다...")
     for i, (px, py) in enumerate(spots):
         p = i + 1
         cli.place(scmap.START_LOCATION, px + 5, py + 5, owner=p)
-        for k in range(6):
-            cli.place("Terran Marine", px + 3 + k, py + 8, owner=p)
-        for k in range(len(SQUADS)):
+        squad=cfg["squads"][cfg["starting_squad"]]
+        for k in range(squad["count"]):
+            cli.place(squad["unit"],px+3+k,py+8,owner=p)
+        for k,squad in enumerate(cfg["squads"]):
             bx = px + 4 + (k % 2) * 9
             by = py + 12 + (k // 2) * 5
             scmap.pad(cli, pal, bx, by, 3, 3)
-            cli.place("Terran Beacon", bx, by, owner=p)
-        # 업그레이드 건물 — 실측상 유즈맵 절반 이상이 둔다
-        cli.place("Terran Engineering Bay", px + POCKET - 5, py + 3, owner=p)
-        cli.place("Terran Armory", px + POCKET - 5, py + 7, owner=p)
+            cli.place(cfg["units"]["purchase_beacon"],bx,by,owner=p)
+            cli.place(squad["marker"],bx,by-3,owner=12)
     # 싸움터 가운데 장애물 — 트인 벌판이면 컨트롤이 안 나온다
-    for k in range(10):
-        ang = 2 * math.pi * k / 10
+    for k in range(cfg["rules"]["obstacle_count"]):
+        ang = 2 * math.pi * k / max(1,cfg["rules"]["obstacle_count"])
         ox = int(cx + AR * 0.45 * math.cos(ang))
         oy = int(cy + AR * 0.45 * math.sin(ang))
-        cli.place("Protoss Pylon", ox, oy, owner=12)
+        cli.place(cfg["units"]["arena_obstacle"], ox, oy, owner=12)
 
     print("시야를 엽니다...")
     scmap.reveal_for_all(cli, a.players)
@@ -307,24 +316,9 @@ def main(argv=None):
     _nd = scmap.decorate_rim(cli, ts, [(px, py, POCKET, POCKET) for (px, py) in spots], rng, keep_clear=_clear)
     print(f"  두뎃 {_nd}개")
 
-    print("브리핑을 짭니다...")
-    cli.apply_briefing(scmap.briefing_text(
-        ["가운데 싸움터에서 겨룹니다.",
-         "주머니 안 비콘을 밟아 부대를 삽니다. 한 번에 100원입니다.",
-         "죽으면 잠시 뒤 주머니에서 다시 나옵니다.",
-         f"먼저 {a.goal}킬 하면 이깁니다."],
-        objectives=f"{a.goal}킬을 먼저 채운다",
-        portrait="Terran Marine"))
-
     print("트리거를 짭니다...")
-    cli.apply_triggers(build_triggers(a.players, a.goal, a.respawn, names))
-
-
-    if a.name:
-        cli.set_map_name(a.name,
-            f"가운데 싸움터에서 {a.players}명이 겨룹니다. 먼저 {a.goal}킬 하면 이깁니다. "
-            f"주머니 안 비콘에서 부대를 100원에 삽니다. 죽으면 {a.respawn}초 뒤 다시 나옵니다. "
-            f"잡으면 돈이 들어옵니다.")
+    cli.apply_triggers(build_triggers(cfg,names))
+    profile.apply_profile_metadata(cli,cfg,a.players)
 
     info = cli.info()
     print(f"\n만들었습니다: {a.out}")

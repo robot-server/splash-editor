@@ -33,11 +33,16 @@
   },
   "units": {
     "player": "Protoss Dark Templar",
-    "state_token": "Protoss Beacon",
+    "state_token": "Protoss Scarab",
     "seals": [
       "Terran Beacon",
       "Protoss Beacon",
       "Zerg Beacon"
+    ],
+    "seal_names": [
+      "North archive seal · first key",
+      "East archive seal · second key",
+      "South archive seal · third key"
     ]
   },
   "starting_resources": {

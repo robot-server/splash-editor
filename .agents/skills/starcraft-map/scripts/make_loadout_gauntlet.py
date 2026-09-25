@@ -57,21 +57,29 @@ def main(argv=None):
         ap.error("이미 존재합니다 (--force로 덮어쓰기)")
     state = cfg["units"]["choice_state"]
     stage_state = cfg["units"]["wave_state"]
+    notice_state = cfg["units"]["notice_state"]
+    presence_counter = cfg["units"]["presence_counter"]
     recruit = cfg["units"]["recruit"]
     fallback = cfg["units"]["fallback"]
-    reserved = {state, stage_state, recruit, fallback, cfg["units"]["home_marker"]}
+    reserved = {state, stage_state, notice_state, presence_counter, recruit, fallback, cfg["units"]["home_marker"]}
     if state == stage_state:
         raise CliError("choice_state and wave_state must be different death-counter unit types")
+    custom_names={}
     for item in offers:
         for key in ("unit", "marker"):
             if item[key] in reserved:
                 raise CliError(f"units.{key} must not reuse reserved counter/recruit unit {item[key]}")
+        for unit,name in ((item["unit"],item["unit_name"]),
+                          (item["marker"],item["marker_name"])):
+            if unit in custom_names and custom_names[unit] != name:
+                raise CliError(f"unit type {unit} is assigned conflicting map-wide display names")
+            custom_names[unit]=name
     for wave in waves:
         if wave["unit"] in reserved:
             raise CliError("wave unit conflicts with reserved counter/recruit unit")
     safe_texts = [cfg["text"]["objectives"], *cfg["text"]["briefing"],
                   cfg["text"]["portrait"], *cfg["text"]["messages"].values(),
-                  *(x[k] for x in offers for k in ("location","label","receipt")),
+                  *(x[k] for x in offers for k in ("location","label","receipt","unit_name","marker_name")),
                   *(x["clear_message"] for x in waves)]
     if any('"' in x or "\n" in x or "\r" in x for x in safe_texts):
         raise CliError("trigger/briefing text may not contain a quote or line break")
@@ -89,6 +97,8 @@ def main(argv=None):
     ts = TILESETS[cfg["map"]["tileset"]]
     cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False, install=a.install)
     cli.edit("switch", "name", cli.path, "1", cfg["launch_switch"])
+    # UNIS/UNIx names are type-wide; config validation forbids conflicting labels.
+    profile.apply_unit_names(cli, {**cfg, "unit_names": custom_names})
     pal = scmap.Palette(cli, ts, random.Random(cfg["map"]["seed"]), "usemap")
     scmap.cover_map(cli, pal, W, H, margin=2)
     scmap.room(cli, pal, *DRAFT, rim=2, wall=True)
@@ -150,6 +160,9 @@ def main(argv=None):
                                keep_clear=keep_clear)
     print(f"  방 경계 장식 {dressed}개 (유닛/상점/웨이브 발판 제외)")
     blocks = scmap.hyper_triggers(f"Player {system_player}")
+    blocks.extend(scmap.absent_player_cleanup(
+        humans, f"Player {system_player}",
+        count_slot=presence_counter))
     blocks.append(trig('"All players"',["Always()"],[
         f'Set Mission Objectives("{cfg["text"]["objectives"]}")']))
     start_actions = [f'Set Countdown Timer(Set To, {cfg["rules"]["draft_seconds"]})']
@@ -200,21 +213,34 @@ def main(argv=None):
         f'Set Countdown Timer(Set To, {cfg["rules"]["battle_seconds"]})',
         f'Remove Unit At Location("Player 12", "{waves[0]["unit"]}", All, "{labels["enemy_spawn"]}")',
         f'Create Unit("Player {enemy_player}", "{waves[0]["unit"]}", {waves[0]["count"]}, "{labels["enemy_spawn"]}")',
-        f'Order("Player {enemy_player}", "{waves[0]["unit"]}", "{labels["enemy_spawn"]}", "{labels["arena"]}", attack)',
-        f'Display Text Message(Always Display, "{cfg["text"]["messages"]["battle_start"]}")']))
+        f'Order("Player {enemy_player}", "{waves[0]["unit"]}", "{labels["enemy_spawn"]}", "{labels["arena"]}", attack)']))
+    for p in range(1,humans+1):
+        blocks.append(trig(f'"Player {p}"',[
+            f'Switch("{cfg["launch_switch"]}", set)',
+            f'Deaths("Player {system_player}", "{stage_state}", Exactly, 0)',
+            f'Deaths("Player {p}", "{notice_state}", Exactly, 0)'],[
+            f'Set Deaths("Player {p}", "{notice_state}", Set To, 1)',
+            f'Display Text Message(Always Display, "{cfg["text"]["messages"]["battle_start"]}")']))
     for i,wave in enumerate(waves):
         conds=[f'Switch("{cfg["launch_switch"]}", set)',f'Deaths("Player {system_player}", "{stage_state}", Exactly, {i})',
                f'Command("Player {enemy_player}", "{wave["unit"]}", At most, 0)']
         if i+1<len(waves):
             nxt=waves[i+1]
             actions=[f'Set Deaths("Player {system_player}", "{stage_state}", Set To, {i+1})',
-                     f'Display Text Message(Always Display, "{wave["clear_message"]}")',
                      f'Create Unit("Player {enemy_player}", "{nxt["unit"]}", {nxt["count"]}, "{labels["enemy_spawn"]}")',
                      f'Order("Player {enemy_player}", "{nxt["unit"]}", "{labels["enemy_spawn"]}", "{labels["arena"]}", attack)']
             blocks.append(trig(f'"Player {system_player}"',conds,actions))
+            for p in range(1,humans+1):
+                blocks.append(trig(f'"Player {p}"',[
+                    f'Switch("{cfg["launch_switch"]}", set)',
+                    f'Deaths("Player {system_player}", "{stage_state}", Exactly, {i+1})',
+                    f'Deaths("Player {p}", "{notice_state}", Exactly, {i+1})'],[
+                    f'Set Deaths("Player {p}", "{notice_state}", Set To, {i+2})',
+                    f'Display Text Message(Always Display, "{wave["clear_message"]}")']))
         else:
             for p in range(1,humans+1):
                 blocks.append(trig(f'"Player {p}"',conds,[
+                    f'Display Text Message(Always Display, "{wave["clear_message"]}")',
                     f'Display Text Message(Always Display, "{cfg["text"]["messages"]["victory"]}")','Victory()']))
     for p in range(1,humans+1):
         blocks.append(trig(f'"Player {p}"',[
@@ -222,6 +248,7 @@ def main(argv=None):
             f'Deaths("Player {system_player}", "{stage_state}", At most, {len(waves)-1})'],[
             f'Display Text Message(Always Display, "{cfg["text"]["messages"]["timeout"]}")','Defeat()']))
 
+    scmap.reveal_for_all(cli, humans)
     cli.apply_triggers(scmap.TRIGGER_SEP.join(blocks))
     profile.apply_profile_metadata(cli,cfg,humans)
     print(f"\nCreated {a.out}: {humans} players, {len(offers)} draft offers, {len(waves)} waves, {len(blocks)} triggers")

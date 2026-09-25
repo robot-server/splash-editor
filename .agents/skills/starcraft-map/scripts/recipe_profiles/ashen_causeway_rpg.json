@@ -1,0 +1,191 @@
+{
+  "genre": "rpg",
+  "map": {
+    "name": "Ashen Causeway",
+    "description": "A three-member expedition advances from a refuge through escalating monster enclaves.",
+    "tileset": "ashworld",
+    "size": [
+      128,
+      128
+    ],
+    "seed": 7511
+  },
+  "text": {
+    "objectives": "Clear the monster zones and defeat the guardian. Fallen heroes return to the refuge.",
+    "briefing": [
+      "The refuge is safe. Move east through each monster zone; every slain enemy pays its configured ore bounty.",
+      "The marked shop stations show their result and price. Leave a station after buying to avoid repeat charges.",
+      "Refuge contact restores the hero. Zone pads spend 55 ore to restore 70 percent health and energy.",
+      "Defeat the guardian in the final chamber to win."
+    ],
+    "portrait": "Jim Raynor (Vulture)",
+    "briefing_hold_ms": 1900,
+    "messages": {
+      "intro": [
+        "Ashen Causeway expedition begins.",
+        "Monster kills pay ore; shop signs show the purchase effect and cost."
+      ],
+      "leaderboard": "Expedition bounty score",
+      "zone_enter": "{label}: each {unit} pays {reward} ore.",
+      "boss_win": "The Ashen Guardian is defeated. The causeway is secure.",
+      "town_heal": "Refuge restored your hero.",
+      "zone_heal": "Treatment complete: {label}; spent {cost} ore.",
+      "revive": "Hero lost. A replacement returns to the refuge."
+    }
+  },
+  "rules": {
+    "players": 3,
+    "zones": 4,
+    "heal_cost": 55,
+    "bounty_per_kill": 15,
+    "bounty_score_step": 60,
+    "boss_count": 1,
+    "boss_switch_id": 20,
+    "room_width": 25,
+    "room_height": 22,
+    "room_gap": 4,
+    "town_heal_percent": 100,
+    "zone_heal_percent": 70,
+    "companion_count": 1,
+    "field_obstacles": 0,
+    "terrain_mode": "isom"
+  },
+  "players": {
+    "race": "terran",
+    "enemy_race": "zerg",
+    "boss_race": "zerg"
+  },
+  "units": {
+    "hero": "Jim Raynor (Vulture)",
+    "companion": "Terran Medic",
+    "boss": "Torrasque (Ultralisk)",
+    "revive_lock": "Protoss Interceptor",
+    "shop_beacon": "Terran Beacon",
+    "heal_marker": "Protoss Beacon",
+    "heal_building": "Zerg Creep Colony",
+    "field_obstacle": "Protoss Pylon"
+  },
+  "labels": {
+    "town": "Ember Refuge",
+    "home_prefix": "Expedition",
+    "home_suffix": "Home",
+    "zone_prefix": "Enclave ",
+    "zone_spawn_suffix": "Breach",
+    "heal_prefix": "Treatment ",
+    "boss": "Ashen Guardian Hall",
+    "boss_spawn": "Guardian Rift",
+    "boss_switch": "Ashen Guardian Called",
+    "shop_prefix": "Forge "
+  },
+  "zones": [
+    {
+      "unit": "Zerg Zergling",
+      "count": 8,
+      "reward": 16,
+      "label": "Cinder Pack",
+      "marker": "Zerg Spawning Pool",
+      "marker_name": "Cinder Pack · Zerglings"
+    },
+    {
+      "unit": "Zerg Hydralisk",
+      "count": 7,
+      "reward": 38,
+      "label": "Ash Vats",
+      "marker": "Zerg Hydralisk Den",
+      "marker_name": "Ash Vats · Hydralisks"
+    },
+    {
+      "unit": "Terran Firebat",
+      "count": 5,
+      "reward": 73,
+      "label": "Magma Keep",
+      "marker": "Terran Firebat",
+      "marker_name": "Magma Keep · Firebats"
+    },
+    {
+      "unit": "Protoss Dragoon",
+      "count": 4,
+      "reward": 125,
+      "label": "Obsidian Guard",
+      "marker": "Protoss Dragoon",
+      "marker_name": "Obsidian Guard · Dragoons"
+    }
+  ],
+  "shops": [
+    {
+      "marker": "Terran Engineering Bay",
+      "marker_name": "Reforge · restore health",
+      "label": "Reforge",
+      "cost": 150,
+      "receipt": "Reforge complete: hero health restored. Spent 150 ore.",
+      "actions": [
+        "Modify Unit Hit Points(\"{player}\", \"{hero}\", 100, 0, \"{shop}\")",
+        "Set Score(\"{player}\", Add, 50, Custom)"
+      ]
+    },
+    {
+      "marker": "Protoss Shield Battery",
+      "marker_name": "Shield battery · protection",
+      "label": "Shield battery",
+      "cost": 180,
+      "receipt": "Shield charge complete. Spent 180 ore.",
+      "actions": [
+        "Modify Unit Shield Points(\"{player}\", \"{hero}\", 100, 0, \"{shop}\")"
+      ]
+    },
+    {
+      "marker": "Terran Academy",
+      "marker_name": "Medic · field support",
+      "label": "Field support",
+      "cost": 210,
+      "receipt": "Field medic joins the refuge. Spent 210 ore.",
+      "actions": [
+        "Create Unit(\"{player}\", \"Terran Medic\", 1, \"{home}\")"
+      ]
+    }
+  ],
+  "starting_resources": {
+    "minerals": 125,
+    "gas": 50
+  },
+  "upgrades": {
+    "which": [
+      7,
+      8,
+      9,
+      10
+    ],
+    "free_levels": 0,
+    "max_level": 3,
+    "minerals": 95,
+    "gas": 65,
+    "time": 70
+  },
+  "technologies": {
+    "which": [
+      0,
+      1,
+      3,
+      5,
+      6
+    ],
+    "available": "all",
+    "researched": "none",
+    "minerals": 80,
+    "gas": 90,
+    "time": 95,
+    "energy": 55
+  },
+  "unit_names": {
+    "Jim Raynor (Vulture)": "Ashen Pathfinder",
+    "Torrasque (Ultralisk)": "Ashen Guardian",
+    "Terran Medic": "Field Medic",
+    "Zerg Spawning Pool": "Cinder Pack · Zerglings",
+    "Zerg Hydralisk Den": "Ash Vats · Hydralisks",
+    "Terran Firebat": "Magma Keep · Firebats",
+    "Protoss Dragoon": "Obsidian Guard · Dragoons",
+    "Protoss Beacon": "Reforge · restore health",
+    "Protoss Shield Battery": "Shield battery · protection",
+    "Terran Academy": "Medic · field support"
+  }
+}

@@ -618,7 +618,10 @@ int unitdefGet(Args & args)
             std::cerr << "유닛 설정을 읽지 못했습니다.\n";
             return 1;
         }
+        const auto customName = archive.unitName(type);
         std::cout << "  유닛      : " << io::unitTypeName(type) << " (" << type << ")\n"
+                  << "  표시 이름: " << customName.value_or(io::unitTypeName(type))
+                  << (customName ? " [맵 이름]" : " [기본]") << "\n"
                   << "  기본값    : " << (stats->useDefault ? "예" : "아니오") << "\n"
                   << "  체력      : " << (stats->hitpoints / 256) << " ("
                   << stats->hitpoints << " 내부 단위)\n"
@@ -646,6 +649,10 @@ int unitdefSet(Args & args)
     const auto gas = args.number("--gas");
     const auto buildable = args.option("--buildable");
     const auto usesDefault = args.option("--uses-default");
+    const auto name = args.option("--name");
+    const bool clearName = args.flag("--clear-name");
+    if (name && clearName)
+        throw CliError("--name 과 --clear-name 은 함께 쓸 수 없습니다.");
 
     const std::string mapPath = args.at(0);
     const std::uint16_t type = parseUnitType(args.at(1));
@@ -690,10 +697,22 @@ int unitdefSet(Args & args)
         }
 
         if (!(useDefault || hitpoints || shields || armor || buildTime || minerals || gas ||
-            buildable || usesDefault))
+              buildable || usesDefault || name || clearName))
             throw CliError("고칠 값을 옵션으로 주세요. 쓸 수 있는 옵션은 도움말에 있습니다.");
+
+        if (name || clearName)
+        {
+            if (auto r = archive.setUnitName(type, clearName ? std::nullopt : name); !r)
+            {
+                std::cerr << "유닛 표시 이름 바꾸기 실패: " << r.message << "\n";
+                return false;
+            }
+            std::cout << "  표시 이름 " << (clearName ? "기본값으로 복원" : *name) << "\n";
+        }
         if (!changed)
         {
+            if (name || clearName)
+                return true;
             // 옵션은 줬는데 이미 그 값이다. 스크립트가 여러 번 돌아도
             // 같은 결과가 되도록, 오류로 끊지 않고 그대로 저장한다.
             std::cout << "  바뀐 것 없음 (이미 그 값입니다)\n";
@@ -986,8 +1005,8 @@ std::vector<Group> settingsGroups()
             {"get", "<맵> <유닛>", "유닛 설정을 보여 준다.", unitdefGet},
             {"set", "<맵> <유닛> [--default on|off] [--hp N] [--shields N] [--armor N] "
                     "[--build-time N] [--minerals N] [--gas N] [--buildable 1,2|all|none] "
-                    "[--uses-default 1,2|all|none] -o <출력맵>",
-                    "유닛 설정을 바꾼다. 체력은 표시값으로 적는다.", unitdefSet},
+                    "[--uses-default 1,2|all|none] [--name 표시이름|--clear-name] -o <출력맵>",
+                    "유닛 설정/타입 전체 표시 이름을 바꾼다. 체력은 표시값으로 적는다.", unitdefSet},
         }},
         Group{"upgrade", "업그레이드 설정 (UPGS·UPGx)", {
             {"list", "", "업그레이드 번호와 이름을 나열한다.", upgradeList},

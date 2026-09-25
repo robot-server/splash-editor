@@ -11,14 +11,10 @@
     │      O       │       X       │   제한 시간이 끝나면 판정한다
     └──────────────┴───────────────┘   틀린 쪽은 목숨이 하나 준다
 
-**문제는 생성기에 박지 않는다.** `--questions` 로 파일을 받는다.
-한 줄에 하나, `문제|O` 또는 `문제|X` 꼴이다.
-
-    스타크래프트는 1998년에 나왔다|O
-    저글링은 공중 유닛을 때릴 수 있다|X
+질문·답, 문구, 플레이 수, 목숨, 제한 시간은 AI가 프로필 JSON에 쓴다.
 
 보기:
-    python3 make_quiz.py out.scx --players 6 --questions q.txt
+    python3 make_quiz.py out.scx --config recipe_profiles/your_quiz_profile.json
 """
 from __future__ import annotations
 
@@ -30,38 +26,11 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import scmap
 from scmap import Cli, CliError
+import recipe_config as profile
 
 TILESETS = {"badlands": 0, "space": 1, "ashworld": 3, "jungle": 4,
             "desert": 5, "ice": 6, "twilight": 7}
-VOID_TILE = 0
-LIFE = "Dark Swarm"          # 맵에 한 번도 놓지 않는다 — 순수한 변수
-QNUM = "Scanner Sweep"       # 문제 번호 (P8)
-# 사람마다 따로 잠가야 해서 스위치가 아니라 플레이어별 죽음 수를 쓴다.
-# 스위치는 맵 전체에 하나뿐이라 첫 사람만 걸리고 나머지는 지나간다.
-SHOWN = "Protoss Scarab"     # 이 사람에게 몇 번까지 문제를 보여 줬나
-JUDGED = "Protoss Interceptor"  # 이 사람의 몇 번까지 채점했나
-
-
-def read_questions(path: str) -> list[tuple[str, str]]:
-    out = []
-    with open(path, encoding="utf-8") as f:
-        for n, line in enumerate(f, 1):
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if "|" not in line:
-                raise CliError(f"{path}:{n} — '문제|O' 꼴이어야 합니다: {line}")
-            q, a = line.rsplit("|", 1)
-            a = a.strip().upper()
-            if a not in ("O", "X"):
-                raise CliError(f"{path}:{n} — 답은 O 나 X 여야 합니다: {a}")
-            out.append((q.strip().replace('"', "'"), a))
-    if not out:
-        raise CliError(f"{path} 에 문제가 하나도 없습니다.")
-    return out
-
-
-def build_triggers(players, questions, lives, secs):
+def build_triggers(cfg, questions, labels):
     """퀴즈 트리거.
 
     **두 가지를 지킨다.**
@@ -76,6 +45,12 @@ def build_triggers(players, questions, lives, secs):
     잠금은 사람마다 따로여야 하므로 스위치가 아니라 **플레이어별 죽음 수
     카운터**로 만든다 (스위치는 맵 전체에 하나뿐이다).
     """
+    players=cfg["rules"]["players"]
+    lives=cfg["rules"]["lives"]
+    secs=cfg["rules"]["seconds"]
+    units=cfg["units"]
+    msg=cfg["text"]["messages"]
+    LIFE,QNUM,SHOWN,JUDGED=(units[k] for k in ("life_counter","question_counter","shown_counter","judged_counter"))
     T = []
     add = T.append
     HUMANS = ",".join(f'"Player {p}"' for p in range(1, players + 1))
@@ -97,20 +72,22 @@ Actions:
 \tSet Deaths("Current Player", "{SHOWN}", Set To, 0);
 \tSet Deaths("Current Player", "{JUDGED}", Set To, 0);
 \tSet Score("Current Player", Set To, 0, Custom);
-\tDisplay Text Message(Always Display, "\\x04OX 퀴즈\\x02 — 문제 {nq}개. 목숨 \\x07{lives}개\\x02.");
-\tDisplay Text Message(Always Display, "\\x03문제가 뜨면 {secs}초 안에 \\x04왼쪽 O\\x03 나 \\x06오른쪽 X\\x03 발판으로 옮기세요.");
-\tSet Mission Objectives("\\x04OX 퀴즈\\x02\\n\\x03- 문제 {nq}개, 한 문제에 {secs}초\\n- 왼쪽이 O, 오른쪽이 X 입니다\\n- 틀리면 목숨이 하나 줍니다 (목숨 {lives}개)\\n- 끝까지 살아남으면 이깁니다");
+\tSet Resources("Current Player", Set To, {cfg["starting_resources"]["minerals"]}, ore);
+\tSet Resources("Current Player", Set To, {cfg["starting_resources"]["gas"]}, gas);
+\tDisplay Text Message(Always Display, "{msg["start"].format(questions=nq,lives=lives,seconds=secs)}");
+\tDisplay Text Message(Always Display, "{msg["directions"].format(questions=nq,lives=lives,seconds=secs)}");
+\tSet Mission Objectives("{cfg["text"]["objectives"]}");
 \tSet Countdown Timer(Set To, {timer_ticks});
 }}''')
 
-    add('''Trigger("All players"){
+    add(f'''Trigger("All players"){{
 Conditions:
 \tAlways();
 
 Actions:
-\tLeader Board Points("\\x07맞힌 수", Custom);
+\tLeader Board Points("{msg["leaderboard"]}", Custom);
 \tPreserve Trigger();
-}''')
+}}''')
 
     # 문제 번호를 올리는 시계 — 컴퓨터가 돌린다 (안내는 하지 않는다)
     add(f'''Trigger("Player 8"){{
@@ -134,7 +111,7 @@ Conditions:
 
 Actions:
 \tSet Deaths("Current Player", "{SHOWN}", Set To, {i});
-\tDisplay Text Message(Always Display, "\\x07{i}번.\\x02 {q}");
+\tDisplay Text Message(Always Display, "{msg["question"].format(number=i,prompt=q,answer=ans)}");
 \tPlay WAV("sound\\\\Misc\\\\Button.wav", 300);
 \tPreserve Trigger();
 }}''')
@@ -143,27 +120,27 @@ Actions:
 Conditions:
 \tDeaths("Player 8", "{QNUM}", At least, {i + 1});
 \tDeaths("Current Player", "{JUDGED}", At most, {i - 1});
-\tBring("Current Player", "Any unit", "Pad {ans}", At least, 1);
+\tBring("Current Player", "{units["selection"]}", "{labels["pad_o"] if ans == "O" else labels["pad_x"]}", At least, 1);
 
 Actions:
 \tSet Deaths("Current Player", "{JUDGED}", Set To, {i});
 \tSet Score("Current Player", Add, 1, Custom);
-\tDisplay Text Message(Always Display, "\\x07{i}번 정답!");
-\tMove Unit("Current Player", "Men", All, "Pad {ans}", "Lobby");
+\tDisplay Text Message(Always Display, "{msg["correct"].format(number=i,answer=ans)}");
+\tMove Unit("Current Player", "{units["selection"]}", All, "{labels["pad_o"] if ans == "O" else labels["pad_x"]}", "{labels["lobby"]}");
 \tPreserve Trigger();
 }}''')
         add(f'''Trigger({HUMANS}){{
 Conditions:
 \tDeaths("Player 8", "{QNUM}", At least, {i + 1});
 \tDeaths("Current Player", "{JUDGED}", At most, {i - 1});
-\tBring("Current Player", "Any unit", "Pad {wrong}", At least, 1);
+\tBring("Current Player", "{units["selection"]}", "{labels["pad_o"] if wrong == "O" else labels["pad_x"]}", At least, 1);
 
 Actions:
 \tSet Deaths("Current Player", "{JUDGED}", Set To, {i});
 \tSet Deaths("Current Player", "{LIFE}", Subtract, 1);
-\tDisplay Text Message(Always Display, "\\x06{i}번 틀렸습니다.\\x02 답은 {ans} 입니다.");
+\tDisplay Text Message(Always Display, "{msg["wrong"].format(number=i,answer=ans)}");
 \tPlay WAV("sound\\\\Misc\\\\PowerDown.wav", 500);
-\tMove Unit("Current Player", "Men", All, "Pad {wrong}", "Lobby");
+\tMove Unit("Current Player", "{units["selection"]}", All, "{labels["pad_o"] if wrong == "O" else labels["pad_x"]}", "{labels["lobby"]}");
 \tPreserve Trigger();
 }}''')
         # 어느 발판에도 없으면 안 고른 것 — 목숨을 깎고 넘어간다
@@ -175,7 +152,7 @@ Conditions:
 Actions:
 \tSet Deaths("Current Player", "{JUDGED}", Set To, {i});
 \tSet Deaths("Current Player", "{LIFE}", Subtract, 1);
-\tDisplay Text Message(Always Display, "\\x06{i}번 — 고르지 않았습니다.\\x02 답은 {ans} 입니다.");
+\tDisplay Text Message(Always Display, "{msg["no_answer"].format(number=i,answer=ans)}");
 \tPreserve Trigger();
 }}''')
 
@@ -184,7 +161,7 @@ Conditions:
 \tDeaths("Current Player", "{LIFE}", At most, 0);
 
 Actions:
-\tDisplay Text Message(Always Display, "\\x06목숨이 다했습니다.");
+\tDisplay Text Message(Always Display, "{msg["out_of_lives"]}");
 \tDefeat();
 }}''')
     add(f'''Trigger({HUMANS}){{
@@ -194,27 +171,36 @@ Conditions:
 \tDeaths("Current Player", "{LIFE}", At least, 1);
 
 Actions:
-\tDisplay Text Message(Always Display, "\\x07끝까지 살아남았습니다!");
+\tDisplay Text Message(Always Display, "{msg["survived"]}");
 \tVictory();
 }}''')
     return scmap.TRIGGER_SEP.join(T)
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="OX 퀴즈 유즈맵")
+    ap = argparse.ArgumentParser(description="AI profile-driven answer-platform quiz")
     ap.add_argument("out")
-    ap.add_argument("--questions", required=True,
-                    help="'문제|O' 꼴로 한 줄에 하나씩 적은 파일")
-    ap.add_argument("--players", type=int, default=6)
-    ap.add_argument("--lives", type=int, default=3)
-    ap.add_argument("--seconds", type=int, default=12)
-    ap.add_argument("--size", default="64x64")   # 대기 구역 + 발판 둘이면 충분하다
-    ap.add_argument("--tileset", default="space", choices=sorted(TILESETS))
-    ap.add_argument("--name", default="OX 퀴즈")
-    ap.add_argument("--seed", type=int, default=1)
-    ap.add_argument("--install", default=None)
-    ap.add_argument("--force", action="store_true")
-    a = ap.parse_args(argv)
+    profile.add_profile_arguments(ap,"quiz")
+    ap.add_argument("--players",type=int)
+    ap.add_argument("--lives",type=int)
+    ap.add_argument("--seconds",type=int)
+    ap.add_argument("--install",default=None)
+    ap.add_argument("--force",action="store_true")
+    a=ap.parse_args(argv)
+    cfg=profile.load_profile(a.config,"quiz")
+    for arg,key in (("players","players"),("lives","lives"),("seconds","seconds")):
+        if getattr(a,arg) is None: setattr(a,arg,cfg["rules"][key])
+        cfg["rules"][key]=getattr(a,arg)
+    if not 1 <= a.players <= 7:
+        ap.error("1~7명입니다 (진행용으로 슬롯 하나를 더 씁니다).")
+    questions=[(q["prompt"].replace('"',"'").replace("\n"," "),q["answer"]) for q in cfg["questions"]]
+    W,H=cfg["map"]["size"]
+    a.seed=cfg["map"]["seed"]
+    a.tileset=cfg["map"]["tileset"]
+    labels=cfg["labels"]
+    units=cfg["units"]
+    rng=random.Random(a.seed)
+    ts=TILESETS[a.tileset]
 
     if os.path.exists(a.out) and not a.force:
         print(f"이미 있습니다: {a.out} (--force)", file=sys.stderr)
@@ -222,14 +208,9 @@ def main(argv=None):
     if not (1 <= a.players <= 7):
         ap.error("1~7명입니다 (진행용으로 슬롯 하나를 더 씁니다).")
 
-    questions = read_questions(a.questions)
-    rng = random.Random(a.seed)
-    W, H = (int(v) for v in a.size.lower().split("x"))
-    ts = TILESETS[a.tileset]
-
     print(f"OX 퀴즈 {W}x{H} {a.tileset}, {a.players}명, 문제 {len(questions)}개")
-    cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False,
-                        install=a.install)
+    cli = scmap.new_map(a.out,W,H,ts,terrain=None,melee=False,install=a.install)
+    profile.apply_unit_names(cli,cfg)
 
     # **대기 구역을 따로 두지 않는다. O 와 X 사이가 대기 구역이다.**
     # 앞서는 위쪽에 넓은 대기 구역을 두고 발판마다 통로를 냈는데,
@@ -278,35 +259,26 @@ def main(argv=None):
     scmap.scatter_tile_variants(cli, ts, rng, chance=0.5)
 
     print("플레이어 슬롯을 정합니다...")
-    scmap.setup_usemap_players(cli, a.players, [8])
-
-    # 유즈맵은 업그레이드를 고친다 — 실측 중앙 7가지, 90%가 전부
-    # (docs/chk/anatomy.md). 밀리맵 비용·시간을 그대로 두면
-    # 유즈맵 흐름에 안 맞는다.
-    n_up = scmap.setup_usemap_upgrades(
-        cli, a.players if hasattr(a, "players") else args.players,
-        free_levels=0, max_level=1,
-        mineral=0, gas=0, time=1)
-    print(f"  업그레이드 {n_up}가지를 유즈맵 값으로 정했습니다")
+    scmap.setup_usemap_players(cli, a.players, [8], race=cfg["players"]["race"])
 
     print("로케이션을 놓습니다...")
     loc = lambda n, r: cli.edit("location", "add", cli.path, str(r[0]), str(r[1]),
                                 str(r[0] + r[2]), str(r[1] + r[3]),
                                 "--tiles", "--name", n)
-    loc("Lobby", lobby)
-    loc("Pad O", pad_o)
-    loc("Pad X", pad_x)
+    loc(labels["lobby"], lobby)
+    loc(labels["pad_o"], pad_o)
+    loc(labels["pad_x"], pad_x)
     for p in range(1, a.players + 1):
         sy = lobby[1] + 1 + (p - 1) * (lobby[3] - 3) // max(1, a.players)
         cli.edit("location", "add", cli.path, str(lobby[0] + 1), str(sy),
                  str(lobby[0] + lobby[2] - 1), str(sy + 2),
-                 "--tiles", "--name", f"P{p} Start")
+                 "--tiles", "--name", f"{labels["start_prefix"]} {p}")
 
     print("유닛을 놓습니다...")
     for p in range(1, a.players + 1):
         sy = lobby[1] + 2 + (p - 1) * (lobby[3] - 3) // max(1, a.players)
         cli.place(scmap.START_LOCATION, lobby[0] + lobby[2] // 2, sy, owner=p)
-        cli.place("Terran Civilian", lobby[0] + lobby[2] // 2, sy, owner=p)
+        cli.place(units["selection"], lobby[0] + lobby[2] // 2, sy, owner=p)
     # **발판에 O 와 X 를 지형으로 그린다.**
     #
     # 앞서 파일런을 글자 모양으로 늘어놓았다. 보이기는 했지만 **유닛이라
@@ -321,7 +293,7 @@ def main(argv=None):
     for (r, mark) in ((pad_o, "O"), (pad_x, "X")):
         cx = r[0] + r[2] // 2
         scmap.pad(cli, pal, cx, r[1] + 1, 3, 2)
-        cli.place("Terran Beacon", cx, r[1] + 1, owner=12)
+        cli.place(units["o_marker"] if mark == "O" else units["x_marker"], cx, r[1] + 1, owner=12)
 
     print("시야를 엽니다...")
     scmap.reveal_for_all(cli, a.players)
@@ -336,24 +308,9 @@ def main(argv=None):
     _nd = scmap.decorate_rim(cli, ts, [pad_o, pad_x], rng, keep_clear=_clear)
     print(f"  두뎃 {_nd}개")
 
-    print("브리핑을 짭니다...")
-    cli.apply_briefing(scmap.briefing_text(
-        [f"OX 문제가 {len(questions)}개 나옵니다.",
-         f"문제가 뜨면 {a.seconds}초 안에 발판으로 옮기세요.",
-         "왼쪽이 O, 오른쪽이 X 입니다.",
-         f"틀리거나 고르지 않으면 목숨이 하나 줍니다. 목숨은 {a.lives}개입니다."],
-        objectives=f"{len(questions)}문제를 목숨 {a.lives}개로 버틴다",
-        portrait="Terran Civilian"))
-
     print("트리거를 짭니다...")
-    cli.apply_triggers(build_triggers(a.players, questions, a.lives, a.seconds))
-
-
-    if a.name:
-        cli.set_map_name(a.name,
-            f"OX 문제 {len(questions)}개. 문제가 뜨면 {a.seconds}초 안에 "
-            f"왼쪽 O 나 오른쪽 X 발판으로 옮기세요. 틀리면 목숨이 하나 줍니다"
-            f"({a.lives}개). 끝까지 살아남으면 이깁니다.")
+    cli.apply_triggers(build_triggers(cfg,questions,labels))
+    profile.apply_profile_metadata(cli,cfg,a.players)
 
     info = cli.info()
     print(f"\n만들었습니다: {a.out}")

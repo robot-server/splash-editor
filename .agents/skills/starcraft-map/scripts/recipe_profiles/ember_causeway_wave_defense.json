@@ -1,0 +1,170 @@
+{
+  "genre": "wave_defense",
+  "map": {
+    "name": "Ember Causeway",
+    "description": "A cooperative squad holds one winding route against escalating alien attacks.",
+    "tileset": "jungle",
+    "size": [
+      128,
+      128
+    ],
+    "seed": 3071
+  },
+  "text": {
+    "objectives": "Survive six waves and defeat the boss before the shared lives run out.",
+    "briefing": [
+      "All players defend one winding lane. Enemy groups walk from Entry to Exit; any unit reaching the exit costs the team one life.",
+      "Each stop room has profiled beacon purchases. The unit or structure named beside each beacon previews its effect and price.",
+      "Buy a squad or support effect with ore. Defeated players respawn at their assigned stop while the team still has lives.",
+      "Clear every wave and defeat the final boss to win."
+    ],
+    "portrait": "Terran Goliath",
+    "briefing_hold_ms": 1700,
+    "messages": {
+      "intro": "{players} defenders share one lane and {lives} lives. Draft a stop position, then protect the exit.",
+      "objectives": "Block Entry to Exit through {waves} waves. Shared lives: {lives}. Shops: {shops}.",
+      "wave": "Wave {number}/{total}: {count} {unit} approach.",
+      "leak": "An enemy leaked through; the team lost one shared life.",
+      "defeat": "The shared life reserve is empty. The lane is overrun.",
+      "victory": "The final boss fell. The causeway holds.",
+      "boss": "Final boss incoming: {unit}.",
+      "leaderboard": "Enemy kills"
+    }
+  },
+  "rules": {
+    "players": 4,
+    "waves": 6,
+    "lane_width": 13,
+    "wall_thickness": 1,
+    "lane_margin": 12,
+    "stop_width": 14,
+    "stop_height": 13,
+    "shared_lives": 20,
+    "initial_timer": 30,
+    "wave_interval_seconds": 32,
+    "wave_growth": 1,
+    "starting_unit_count": 4,
+    "bounty_per_kill": 25,
+    "bounty_score_step": 50,
+    "boss_count": 1,
+    "enemy_order": "patrol"
+  },
+  "players": {
+    "race": "terran",
+    "enemy_race": "zerg",
+    "boss_race": "zerg"
+  },
+  "units": {
+    "boss": "Torrasque (Ultralisk)",
+    "starting_unit": "Terran Goliath",
+    "enemy_entry_marker": "Zerg Egg"
+  },
+  "labels": {
+    "entry": "Ashen Entry",
+    "exit": "Ember Exit",
+    "way_prefix": "Lane Marker ",
+    "stop_prefix": "Gatehouse ",
+    "shop_suffix": "Vendor ",
+    "boss_name": "Flame Tyrant"
+  },
+  "shops": [
+    {
+      "beacon": "Terran Beacon",
+      "icon": "Terran Goliath",
+      "icon_name": "Gatehouse Goliath · 100 ore",
+      "label": "Goliath squad",
+      "cost": 100,
+      "receipt": "The Goliath squad has joined the gatehouse.",
+      "actions": [
+        "Create Unit(\"{player}\", \"Terran Goliath\", 4, \"{home}\")"
+      ]
+    },
+    {
+      "beacon": "Protoss Beacon",
+      "icon": "Zerg Sunken Colony",
+      "icon_name": "Sunken Colony · 150 ore",
+      "label": "Sunken emplacement",
+      "cost": 150,
+      "receipt": "A Sunken Colony is deployed in the gatehouse.",
+      "actions": [
+        "Create Unit(\"{player}\", \"Zerg Sunken Colony\", 1, \"{home}\")"
+      ]
+    },
+    {
+      "beacon": "Zerg Beacon",
+      "icon": "Protoss Shield Battery",
+      "icon_name": "Shield support · 80 ore",
+      "label": "Shield support",
+      "cost": 80,
+      "receipt": "The gatehouse force is fully shielded.",
+      "actions": [
+        "Modify Unit Shield Points(\"{player}\", \"Men\", 100, 0, \"{home}\")"
+      ]
+    }
+  ],
+  "waves": [
+    {
+      "unit": "Zerg Zergling",
+      "count": 7
+    },
+    {
+      "unit": "Zerg Hydralisk",
+      "count": 5
+    },
+    {
+      "unit": "Terran Firebat",
+      "count": 6
+    },
+    {
+      "unit": "Zerg Ultralisk",
+      "count": 2
+    },
+    {
+      "unit": "Protoss Dragoon",
+      "count": 4
+    },
+    {
+      "unit": "Zerg Mutalisk",
+      "count": 5
+    }
+  ],
+  "starting_resources": {
+    "minerals": 300,
+    "gas": 25
+  },
+  "upgrades": {
+    "which": [
+      0,
+      1,
+      7,
+      8
+    ],
+    "free_levels": 0,
+    "max_level": 2,
+    "minerals": 75,
+    "gas": 55,
+    "time": 65
+  },
+  "technologies": {
+    "which": [
+      0,
+      1,
+      3,
+      5
+    ],
+    "available": "all",
+    "researched": "none",
+    "minerals": 100,
+    "gas": 70,
+    "time": 80,
+    "energy": 50
+  },
+  "unit_names": {
+    "Terran Beacon": "Goliath Squad · 100 ore",
+    "Protoss Beacon": "Sunken Colony · 150 ore",
+    "Zerg Beacon": "Shield support · 80 ore",
+    "Terran Goliath": "Gatehouse Goliath · 100 ore",
+    "Zerg Sunken Colony": "Sunken Colony · 150 ore",
+    "Protoss Shield Battery": "Shield support · 80 ore"
+  }
+}

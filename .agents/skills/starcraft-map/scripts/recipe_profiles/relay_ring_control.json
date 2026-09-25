@@ -1,0 +1,115 @@
+{
+  "genre": "control",
+  "map": {
+    "name": "Relay Ring: Three Fronts",
+    "description": "A rotating arena where teams draft an army between lives.",
+    "tileset": "twilight",
+    "size": [
+      128,
+      128
+    ],
+    "seed": 4471
+  },
+  "text": {
+    "objectives": "Reach the kill quota before the other contenders.",
+    "briefing": [
+      "Fight in the central ring; your kill total is the score.",
+      "Each pocket beacon buys its displayed unit squad for 85 ore. The marker beside it shows the squad type.",
+      "When only a few men remain, your starting squad respawns in your pocket. Retreat there to heal.",
+      "The first player to 32 kills wins; kills also award ore."
+    ],
+    "portrait": "Protoss Dark Templar",
+    "briefing_hold_ms": 1800,
+    "messages": {
+      "start": "Relay Ring is live. First to 32 kills takes the station.",
+      "controls": "Pocket beacons recruit the adjacent unit type for 85 ore. Fall back to your pocket to recover.",
+      "respawn": "Reinforcements have reached your pocket.",
+      "victory": "Quota reached. You control the Relay Ring.",
+      "leaderboard": "\u0007Relay Kills"
+    }
+  },
+  "rules": {
+    "players": 4,
+    "goal": 32,
+    "respawn_seconds": 17,
+    "pocket_size": 22,
+    "buy_cost": 85,
+    "bounty_per_kill": 24,
+    "bounty_score_step": 75,
+    "obstacle_count": 8,
+    "heal_cost": 0
+  },
+  "players": {
+    "race": "protoss"
+  },
+  "units": {
+    "arena_obstacle": "Protoss Pylon",
+    "purchase_beacon": "Protoss Beacon"
+  },
+  "labels": {
+    "arena": "Relay Ring",
+    "player_prefix": "Contender ",
+    "spawn_suffix": "Recovery",
+    "gate_suffix": "Deployment Gate",
+    "all_suffix": "Pocket",
+    "buy_prefix": "Roster "
+  },
+  "squads": [
+    {
+      "unit": "Protoss Dragoon",
+      "count": 4,
+      "marker": "Protoss Dragoon",
+      "unit_name": "Dragoon · 85 ore",
+      "marker_name": "Dragoon · 85 ore",
+      "receipt": "Dragoon squad purchased. Keep the formation together."
+    },
+    {
+      "unit": "Terran Vulture",
+      "count": 3,
+      "marker": "Terran Vulture",
+      "unit_name": "Vulture · 85 ore",
+      "marker_name": "Vulture · 85 ore",
+      "receipt": "Vulture squad purchased. Use its speed to flank."
+    },
+    {
+      "unit": "Zerg Hydralisk",
+      "count": 4,
+      "marker": "Zerg Hydralisk",
+      "unit_name": "Hydralisk · 85 ore",
+      "marker_name": "Hydralisk · 85 ore",
+      "receipt": "Hydralisk squad purchased. Hold the long approach."
+    }
+  ],
+  "starting_squad": 0,
+  "starting_resources": {
+    "minerals": 170,
+    "gas": 35
+  },
+  "upgrades": {
+    "which": [
+      0,
+      1,
+      5,
+      13
+    ],
+    "free_levels": 1,
+    "max_level": 3,
+    "minerals": 90,
+    "gas": 40,
+    "time": 65
+  },
+  "technologies": {
+    "which": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "available": "all",
+    "researched": "none",
+    "minerals": 100,
+    "gas": 70,
+    "time": 90,
+    "energy": 60
+  }
+}

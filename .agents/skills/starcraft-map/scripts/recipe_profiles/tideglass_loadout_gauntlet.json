@@ -42,6 +42,8 @@
     "fallback": "Terran Firebat",
     "choice_state": "Protoss Beacon",
     "wave_state": "Zerg Beacon",
+    "notice_state": "Protoss Scarab",
+    "presence_counter": "Protoss Arbiter",
     "home_marker": "Terran Supply Depot"
   },
   "labels": {
@@ -66,29 +68,35 @@
     {
       "unit": "Protoss Dragoon",
       "marker": "Protoss Dragoon",
-      "location": "Siege Platform \u00b7 Dragoon \u00b7 90 ore",
+      "location": "Siege Platform · Dragoon · 90 ore",
       "label": "Siege Platform",
       "cost": 90,
       "count": 1,
-      "receipt": "Dragoon recruited. Long range covers the breach approach."
+      "receipt": "Dragoon recruited. Long range covers the breach approach.",
+      "unit_name": "Dragoon · 90 ore",
+      "marker_name": "Dragoon · 90 ore"
     },
     {
       "unit": "Terran Medic",
       "marker": "Terran Medic",
-      "location": "Field Clinic \u00b7 Medic \u00b7 65 ore",
+      "location": "Field Clinic · Medic · 65 ore",
       "label": "Field Clinic",
       "cost": 65,
       "count": 1,
-      "receipt": "Medic recruited. Keep the specialist behind the front line."
+      "receipt": "Medic recruited. Keep the specialist behind the front line.",
+      "unit_name": "Medic · 65 ore",
+      "marker_name": "Medic · 65 ore"
     },
     {
       "unit": "Zerg Hydralisk",
       "marker": "Zerg Hydralisk",
-      "location": "Spine Nest \u00b7 Hydralisk \u00b7 75 ore",
+      "location": "Spine Nest · Hydralisk · 75 ore",
       "label": "Spine Nest",
       "cost": 75,
       "count": 1,
-      "receipt": "Hydralisk recruited. Its ranged fire supports the center."
+      "receipt": "Hydralisk recruited. Its ranged fire supports the center.",
+      "unit_name": "Hydralisk · 75 ore",
+      "marker_name": "Hydralisk · 75 ore"
     }
   ],
   "waves": [

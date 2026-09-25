@@ -1,0 +1,162 @@
+{
+  "genre": "zombie",
+  "map": {
+    "name": "Last Bell at Ember Shelter",
+    "description": "A shelter team holds the field as fallen survivors join the infected.",
+    "tileset": "badlands",
+    "size": [
+      128,
+      128
+    ],
+    "seed": 9382
+  },
+  "text": {
+    "objectives": "Survive until extraction. Survivors who lose their squad become infected; the infected hunt the remaining team.",
+    "briefing": [
+      "The shelter is safe. Zombies emerge from the graveyard, cross the field, and attack survivors.",
+      "If a survivor loses every squad member, that player becomes infected and receives a zombie unit.",
+      "Shelter beacons recruit the marked squad shown beside them. The receipt and briefing state the price.",
+      "Survive to the configured extraction time. The siege boss arrives at the time named in Mission Objectives."
+    ],
+    "portrait": "Terran Medic",
+    "briefing_hold_ms": 1750,
+    "messages": {
+      "intro": [
+        "Last Bell: hold until {minutes} minutes.",
+        "A wiped survivor joins the infected team. Shelter vendors recruit the marked squads."
+      ],
+      "objectives": "Survive {minutes} minutes; the shelter falls if the timer expires before extraction.",
+      "infected": "Your squad was lost; you are now infected.",
+      "wave": "Infected pressure rises ({number}/{total}); keep the field clear.",
+      "boss": "The siege boss enters at {minutes} minutes.",
+      "survived": "Extraction is here. The surviving team wins.",
+      "leaderboard": "Infected eliminated",
+      "healed": "Shelter recovery complete.",
+      "revived": "You are back at the shelter."
+    }
+  },
+  "rules": {
+    "players": 4,
+    "survive_seconds": 360,
+    "wave_count": 6,
+    "zombie_population": 28,
+    "starting_survivors": 6,
+    "boss_seconds": 180,
+    "boss_count": 1,
+    "heal_cost": 45,
+    "field_obstacles": 12,
+    "infection_spawn_count": 3,
+    "margin": 4,
+    "gap": 7,
+    "min_shelter_width": 29,
+    "min_graveyard_width": 24,
+    "home_spacing": 12,
+    "shop_spacing": 8,
+    "shelter_ratio_pct": 36,
+    "graveyard_ratio_pct": 28,
+    "bounty_per_kill": 22,
+    "bounty_score_step": 60
+  },
+  "players": {
+    "race": "terran",
+    "enemy_race": "zerg",
+    "boss_race": "protoss"
+  },
+  "units": {
+    "survivor": "Terran Goliath",
+    "zombie": "Zerg Zergling",
+    "boss": "Protoss Archon",
+    "infection_counter": "Dark Swarm",
+    "wave_counter": "Protoss Scarab",
+    "shop_selection": "Terran Civilian",
+    "shop_beacon": "Protoss Beacon",
+    "heal_marker": "Terran Beacon",
+    "heal_building": "Terran Academy",
+    "field_obstacle": "Protoss Pylon"
+  },
+  "labels": {
+    "shelter": "Ember Shelter",
+    "field": "Bell Field",
+    "graveyard": "Old Graveyard",
+    "home_prefix": "Refugee",
+    "home_suffix": "Home",
+    "shop_prefix": "Quartermaster",
+    "wave_spawn": "Old Graveyard"
+  },
+  "shops": [
+    {
+      "marker": "Terran Engineering Bay",
+      "marker_name": "Goliath Squad · 100 ore",
+      "unit": "Terran Goliath",
+      "count": 3,
+      "cost": 100,
+      "receipt": "Three Goliaths join your shelter squad.",
+      "actions": [
+        "Create Unit(\"{player}\", \"Terran Goliath\", 3, \"{home}\")"
+      ]
+    },
+    {
+      "marker": "Terran Academy",
+      "marker_name": "Medic Pair · 85 ore",
+      "unit": "Terran Medic",
+      "count": 2,
+      "cost": 85,
+      "receipt": "Two Medics join your shelter squad.",
+      "actions": [
+        "Create Unit(\"{player}\", \"Terran Medic\", 2, \"{home}\")"
+      ]
+    },
+    {
+      "marker": "Terran Armory",
+      "marker_name": "Firebat Squad · 95 ore",
+      "unit": "Terran Firebat",
+      "count": 3,
+      "cost": 95,
+      "receipt": "Three Firebats join your shelter squad.",
+      "actions": [
+        "Create Unit(\"{player}\", \"Terran Firebat\", 3, \"{home}\")"
+      ]
+    }
+  ],
+  "starting_resources": {
+    "minerals": 120,
+    "gas": 30
+  },
+  "upgrades": {
+    "which": [
+      0,
+      1,
+      7,
+      8
+    ],
+    "free_levels": 1,
+    "max_level": 3,
+    "minerals": 55,
+    "gas": 40,
+    "time": 35
+  },
+  "technologies": {
+    "which": [
+      0,
+      1,
+      3,
+      5
+    ],
+    "available": "all",
+    "researched": "none",
+    "minerals": 80,
+    "gas": 75,
+    "time": 55,
+    "energy": 50
+  },
+  "unit_names": {
+    "Terran Goliath": "Goliath Squad · attack",
+    "Terran Engineering Bay": "Goliath Squad · 100 ore",
+    "Terran Academy": "Medic Pair · 85 ore",
+    "Terran Armory": "Firebat Squad · 95 ore",
+    "Zerg Zergling": "Infected Zergling",
+    "Protoss Archon": "Siege Boss",
+    "Terran Medic": "Field Medic",
+    "Terran Firebat": "Shelter Firebat"
+  }
+}

@@ -1,0 +1,107 @@
+{
+  "genre": "quiz",
+  "map": {
+    "name": "Signal Garden: O/X",
+    "description": "A fast true-or-false survival quiz on two opposing platforms.",
+    "tileset": "space",
+    "size": [
+      64,
+      64
+    ],
+    "seed": 818
+  },
+  "text": {
+    "objectives": "Judge each statement before the timer expires; keep at least one life through the final question.",
+    "briefing": [
+      "Questions appear in sequence with a short answer timer.",
+      "Stand on the left O platform for true or the right X platform for false.",
+      "A wrong answer or no answer costs one life. Survive every question to win."
+    ],
+    "portrait": "Terran Civilian",
+    "briefing_hold_ms": 1500,
+    "messages": {
+      "start": "Signal Garden has {questions} statements and {lives} lives.",
+      "directions": "Move to O for true or X for false before {seconds} seconds run out.",
+      "correct": "Statement {number}: correct.",
+      "wrong": "Statement {number}: wrong. The answer was {answer}.",
+      "no_answer": "Statement {number}: no platform chosen. The answer was {answer}.",
+      "out_of_lives": "No lives remain. The signal ends here.",
+      "survived": "Every statement judged. You kept your signal alive.",
+      "leaderboard": "Statements judged correctly",
+      "question": "Question {number}: {prompt}"
+    }
+  },
+  "rules": {
+    "players": 6,
+    "lives": 3,
+    "seconds": 11
+  },
+  "players": {
+    "race": "protoss"
+  },
+  "units": {
+    "life_counter": "Dark Swarm",
+    "question_counter": "Scanner Sweep",
+    "shown_counter": "Protoss Scarab",
+    "judged_counter": "Protoss Interceptor",
+    "selection": "Terran Civilian",
+    "o_marker": "Terran Beacon",
+    "x_marker": "Protoss Beacon"
+  },
+  "unit_names": {
+    "Terran Beacon": "O · TRUE",
+    "Protoss Beacon": "X · FALSE"
+  },
+  "labels": {
+    "lobby": "Signal Lobby",
+    "pad_o": "O Platform · TRUE",
+    "pad_x": "X Platform · FALSE",
+    "start_prefix": "Signal Slot"
+  },
+  "questions": [
+    {
+      "prompt": "A Vespene geyser emits gas that workers can harvest.",
+      "answer": "O"
+    },
+    {
+      "prompt": "A Dragoon is a Terran infantry unit.",
+      "answer": "X"
+    },
+    {
+      "prompt": "A player can control units from more than one race in a Use Map.",
+      "answer": "O"
+    },
+    {
+      "prompt": "A Zergling attacks air units by default.",
+      "answer": "X"
+    },
+    {
+      "prompt": "A Protoss Photon Cannon can attack both ground and air units.",
+      "answer": "O"
+    }
+  ],
+  "starting_resources": {
+    "minerals": 0,
+    "gas": 0
+  },
+  "upgrades": {
+    "which": [
+      0,
+      1
+    ],
+    "free_levels": 0,
+    "max_level": 1,
+    "minerals": 0,
+    "gas": 0,
+    "time": 1
+  },
+  "technologies": {
+    "which": [],
+    "available": "none",
+    "researched": "none",
+    "minerals": 0,
+    "gas": 0,
+    "time": 1,
+    "energy": 0
+  }
+}

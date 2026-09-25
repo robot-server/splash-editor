@@ -936,6 +936,13 @@ public:
     /// 유닛 하나의 능력치.
     std::optional<UnitStats> unitStats(std::uint16_t unitType) const;
 
+    /// 유닛 타입 전체에 적용되는 게임 표시 이름(UNIS·UNIx). 기본 이름이면 nullopt.
+    std::optional<std::string> unitName(std::uint16_t unitType) const;
+
+    /// 유닛 타입 전체의 게임 표시 이름을 덮어쓴다. nullopt면 오버라이드를 지운다.
+    Result setUnitName(std::uint16_t unitType,
+                       const std::optional<std::string> & name);
+
     /// 유닛 능력치를 바꾼다.
     Result setUnitStats(std::uint16_t unitType, const UnitStats & stats);
 

@@ -144,6 +144,7 @@ def main(argv=None):
         f'Deaths("Player 1", "{state_token}", At most, {a.stages - 1})'], [
         f'Display Text Message(Always Display, "{cfg["text"]["messages"]["unit_lost"]}")',
         'Defeat()']))
+    scmap.reveal_for_all(cli, 1)
     cli.apply_triggers(scmap.TRIGGER_SEP.join(blocks))
     profile.apply_profile_metadata(cli, cfg, 1)
     print(f"\nCreated {a.out}: {a.stages} enemy waves, connected walk graph, "

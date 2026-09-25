@@ -3718,6 +3718,64 @@ std::optional<UnitStats> MapArchive::unitStats(std::uint16_t unitType) const
     }
 }
 
+std::optional<std::string> MapArchive::unitName(std::uint16_t unitType) const
+{
+    if (!impl_->isOpen())
+        return std::nullopt;
+    try
+    {
+        const MapFile & map = *impl_->mapFile;
+        const auto type = Sc::Unit::Type(unitType);
+        const std::size_t id = map.getUnitNameStringId(
+            type, Chk::UseExpSection::Auto, Chk::Scope::Game);
+        if (id == Chk::StringId::NoString)
+            return std::nullopt;
+        const auto stored = map.getString<RawString>(id, Chk::Scope::Game);
+        if (!stored)
+            return std::nullopt;
+        const std::string decoded = impl_->decode(*stored);
+        return decoded.empty() ? std::nullopt
+                               : std::optional<std::string>(decoded);
+    }
+    catch (const std::exception &)
+    {
+        return std::nullopt;
+    }
+}
+
+Result MapArchive::setUnitName(std::uint16_t unitType,
+                               const std::optional<std::string> & name)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+    try
+    {
+        MapFile & map = *impl_->mapFile;
+        const auto type = Sc::Unit::Type(unitType);
+        if (name)
+        {
+            // 게임 STR에만 기록하고 자동 문자열 재배치는 하지 않는다.
+            map.setUnitName<RawString>(type, RawString(impl_->encode(*name)),
+                                       Chk::UseExpSection::Both,
+                                       Chk::Scope::Game, /*autoDefragment*/ false);
+        }
+        else
+        {
+            map.setUnitNameStringId(type, Chk::StringId::NoString,
+                                    Chk::UseExpSection::Both, Chk::Scope::Game);
+        }
+
+        // UNIS/UNIx와 STR은 여러 바이트를 함께 바꾸므로 반쪽 undo를 허용하지 않는다.
+        impl_->undoSteps.clear();
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("유닛 표시 이름을 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
 Result MapArchive::setUnitStats(std::uint16_t unitType, const UnitStats & stats)
 {
     if (!impl_->isOpen())

@@ -37,8 +37,9 @@
   "units": {
     "hunter": "Sarah Kerrigan (Ghost)",
     "hider": "Terran Civilian",
-    "state_token": "Terran Beacon",
-    "room_marker": "Terran Beacon"
+    "state_token": "Protoss Scarab",
+    "room_marker": "Terran Beacon",
+    "room_marker_name": "Sanctuary chamber · hiding zone"
   },
   "starting_resources": {
     "minerals": 75,

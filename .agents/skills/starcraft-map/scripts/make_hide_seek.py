@@ -76,6 +76,8 @@ def main(argv=None):
     ts = TILESETS[a.tileset]
     cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False,
                         install=a.install)
+    cli.edit("unitdef", "set", cli.path, cfg["units"]["room_marker"],
+             "--name", cfg["units"]["room_marker_name"])
     pal = scmap.Palette(cli, ts, random.Random(a.seed), "usemap")
     scmap.cover_map(cli, pal, W, H, margin=2)
     for x, y, w, h in ROOMS:
@@ -170,6 +172,7 @@ def main(argv=None):
         f'Command("Player 1", "{hunter_unit}", At most, 0)'], [
         f'Display Text Message(Always Display, "{messages["hunter_eliminated"]}")',
         'Defeat()']))
+    scmap.reveal_for_all(cli, humans)
     cli.apply_triggers(scmap.TRIGGER_SEP.join(blocks))
     profile.apply_profile_metadata(cli, cfg, humans)
     print(f"\nCreated {a.out}: {humans} humans, 4 rooms, "

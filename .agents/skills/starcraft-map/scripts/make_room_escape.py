@@ -65,6 +65,13 @@ def main(argv=None):
     ts = TILESETS[a.tileset]
     cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False,
                         install=a.install)
+    named_seals={}
+    for unit,name in zip(cfg["units"]["seals"],cfg["units"]["seal_names"]):
+        if unit in named_seals and named_seals[unit] != name:
+            raise CliError(f"seal type {unit} has conflicting map-wide display names")
+        named_seals[unit]=name
+    for unit,name in named_seals.items():
+        cli.edit("unitdef","set",cli.path,unit,"--name",name)
     pal = scmap.Palette(cli, ts, random.Random(a.seed), "usemap")
     # Wall substrate first; finite room and corridor footprints stay walkable.
     pal.fill(cli, "wall", 0, 0, W, H)
@@ -122,6 +129,7 @@ def main(argv=None):
         f'Deaths("Player 11", "{token_unit}", At most, 2)'], [
         f'Display Text Message(Always Display, "{cfg["text"]["messages"]["timeout"]}")',
         'Defeat()']))
+    scmap.reveal_for_all(cli, 1)
     cli.apply_triggers(scmap.TRIGGER_SEP.join(blocks))
     profile.apply_profile_metadata(cli, cfg, 1)
     print(f"\nCreated {a.out}: 3 ordered room states, connected room graph, "
