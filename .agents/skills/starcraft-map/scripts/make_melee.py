@@ -35,17 +35,17 @@ from scmap import TILE, Cli, CliError
 # 지형을 각각 생성해 MTXM walk/build 속성을 읽었을 때 buildable 타일이 없었다.
 # 본진과 자원 포켓을 놓을 수 없어 시작 가능한 밀리맵이 되지 않는다.
 TILESETS = {
-    "badlands": (0, "Dirt", "High Dirt"),
-    "space":    (1, "Platform", "High Platform"),
+    "badlands": (0, "Dirt", "Structure"),
+    "space":    (1, "Platform", "Elevated Catwalk"),
     # Magma is a low ISOM class but does not provide ordinary resource/depot
     # placement in the generated start pockets. Use the buildable low dirt.
     "ashworld": (3, "Dirt", "High Dirt"),
-    "jungle":   (4, "Jungle", "High Dirt"),
+    "jungle":   (4, "Jungle", "High Jungle"),
     # Tar and Ice are thematic ground classes, but the start-resource solver
     # requires a buildable floor across the full depot footprint.
-    "desert":   (5, "Dirt", "High Dirt"),
-    "ice":      (6, "Snow", "High Snow"),
-    "twilight": (7, "Dirt", "High Dirt"),
+    "desert":   (5, "Dirt", "High Sand Dunes"),
+    "ice":      (6, "Snow", "High Dirt"),
+    "twilight": (7, "Dirt", "High Crushed Rock"),
 }
 
 # 스타팅 수마다 어떤 대칭을 쓰는지. 공식 리그 맵 56개를 재어 보니 2인용은
@@ -314,10 +314,23 @@ def main(argv=None):
                     help="대칭으로 얹을 지형 덩이 수 (고지대·다른 바닥 지형)")
     ap.add_argument("--doodads", type=int, default=None,
                     help="배치할 두뎃 수. 지형·진입로·자원 접근을 확인하고 명시한다")
+    ap.add_argument("--critters", type=int, default=0,
+                    help="중립 크리쳐 수 (0~스타팅 수)")
+    ap.add_argument("--critter-unit", default=None,
+                    help="AI가 고른 중립 크리쳐 유닛명; --critters가 0보다 클 때 필요")
+    ap.add_argument("--fight-terrain", default=None,
+                    help="교전 구역용 걷기 가능·건축 불가 ISOM 지형 이름")
+    ap.add_argument("--fight-zone", action="append", default=[],
+                    help="AI가 고른 교전 구역 x,y,w,h (반복 가능)")
+    ap.add_argument("--fight-pattern", choices=["pockets", "flanks", "ridge"],
+                    default=None, help="교전 지형 배치 모양")
+    ap.add_argument("--fight-density", type=int, default=0,
+                    help="구역 내 목표 비율(%%)")
+    ap.add_argument("--max-unbuildable-pct", type=int, default=30,
+                    help="맵 전체 걷기 가능·건축 불가 지형 비율 상한 (0~45%%)")
     ap.add_argument("--seed", type=int, default=1, help="두뎃 자리 난수 씨앗")
-    ap.add_argument("--plateau", action="store_true",
-                    help="본진을 고지대에 올리고 램프를 낸다. 걸어서 통하는 "
-                         "램프를 못 찾으면 그 본진은 평지로 되돌린다")
+    ap.add_argument("--plateau", action="store_true", default=True,
+                    help="(기본) 본진을 고지대에 두고 넓은 저지대 출입 통로를 낸다")
     ap.add_argument("--no-plateau", action="store_true",
                     help="(옛 이름) 기본이 평지라 아무 일도 하지 않는다")
     ap.add_argument("--install", default=None)
@@ -325,6 +338,16 @@ def main(argv=None):
                     help="이미 있는 맵을 덮어쓴다. 기본은 거절한다 — 뼈대를 "
                          "다시 만들면 그 위에 쓴 트리거·유닛이 모두 사라진다")
     args = ap.parse_args(argv)
+    if not 0 <= args.critters <= args.players:
+        ap.error("--critters 는 0부터 --players 까지입니다")
+    if args.critters and not args.critter_unit:
+        ap.error("--critters를 쓰면 AI가 고른 --critter-unit을 지정하세요")
+    if not 0 <= args.max_unbuildable_pct <= 45:
+        ap.error("--max-unbuildable-pct 범위는 0~45입니다")
+    if not 0 <= args.fight_density <= 70:
+        ap.error("--fight-density 범위는 0~70%입니다")
+    if args.fight_density and (not args.fight_terrain or not args.fight_zone or not args.fight_pattern):
+        ap.error("교전 지형은 --fight-terrain, --fight-zone, --fight-pattern을 함께 지정하세요")
 
     # 뼈대 생성은 맵을 처음부터 다시 만든다. 작성해 둔 내용이 있으면
     # 통째로 날아간다. 실제로 그렇게 트리거를 날린 적이 있다.
@@ -393,7 +416,7 @@ def main(argv=None):
     # 1) 고도. --plateau 일 때만. 고른 각도의 고리(design)는 지표는
     #    맞는데 그림이 눈송이라 쓰지 않는다. 본진·센터 능선·변 확장만
     #    있는 design_lanes 를 칠한다.
-    args.no_plateau = not args.plateau
+    args.no_plateau = bool(args.no_plateau)
     shape = None
     if not args.no_plateau:
         print("본진·능선·확장 고도를 칠합니다...")
@@ -407,6 +430,7 @@ def main(argv=None):
             width, height, low_terrain, alts, random.Random(args.seed + 3),
             starts, symmetry, args.players)
         cli.isom_batch(strokes)
+
 
     # 3) 스타팅 표시와 본진 자원
     print("본진 자원을 놓습니다...")
@@ -428,6 +452,7 @@ def main(argv=None):
 
     # 4) 앞마당 — 본진에서 가운데 쪽으로 한 걸음.
     nat_placed = []
+    natural_sites_coords = []
     if args.natural_minerals > 0:
         print("앞마당을 놓습니다...")
         cx, cy = (width - 1) / 2.0, (height - 1) / 2.0
@@ -478,6 +503,39 @@ def main(argv=None):
                 tx = max(10, min(width - 11, tx))
                 ty = max(10, min(height - 11, ty))
                 sites.append((tx, ty, 1 if tx >= sx else -1, 1 if ty >= sy else -1))
+        natural_sites_coords = [(nx,ny) for nx,ny,_ox,_oy in sites]
+
+        # Keep natural resource footprints on the low center. A broad raised
+        # rim makes the expansion read as a terrain pocket; leave the arc that
+        # faces its nearest main open as a low, walkable entrance.
+        if not args.no_plateau:
+            rim=[]
+            for nx,ny,_ox,_oy in sites:
+                sx,sy=min(starts,key=lambda p: math.dist(p,(nx,ny)))
+                vx,vy=sx-nx,sy-ny
+                length=math.hypot(vx,vy) or 1.0
+                gate=math.atan2(vy,vx)
+                for ty in range(max(4,ny-23),min(height-4,ny+24)):
+                    for tx in range(max(4,nx-23),min(width-4,nx+24),2):
+                        dx,dy=tx-nx,ty-ny
+                        d=math.hypot(dx,dy)
+                        da=abs((math.atan2(dy,dx)-gate+math.pi)%(2*math.pi)-math.pi)
+                        if 18 <= d <= 21 and da > 0.42:
+                            rim.append((tx,ty,high_terrain))
+            cli.isom_batch(rim)
+            gates=[]
+            for nx,ny,_ox,_oy in sites:
+                sx,sy=min(starts,key=lambda p: math.dist(p,(nx,ny)))
+                vx,vy=sx-nx,sy-ny
+                length=math.hypot(vx,vy) or 1.0
+                ux,uy=vx/length,vy/length
+                for d in range(16,24):
+                    px,py=int(round(nx+ux*d)),int(round(ny+uy*d))
+                    for off in range(-5,6,2):
+                        tx,ty=(px,py+off) if abs(ux)>abs(uy) else (px+off,py)
+                        if 2<=tx<width-2 and 2<=ty<height-2:
+                            gates.append((tx-tx%2,ty,low_terrain))
+            cli.isom_batch(gates)
 
         for i, (nx, ny, ox, oy) in enumerate(sites):
             _placed, _skip = scmap.place_base(cli, nx, ny, owner=12,
@@ -970,84 +1028,57 @@ def main(argv=None):
     # 절벽 줄은 **높이**로 찾고, 찍은 뒤에는 **미니타일 길찾기**로 실제로
     # 통하는지 확인한다. 눈으로만 보고 판단하면 막힌 램프를 놓게 된다.
     ramp_at = {}
+
+    # Current verified main entrance: a broad low-ground causeway through each
+    # rounded base hill. Doodad ramps are not accepted without fit/path checks.
     if not args.no_plateau:
-        print("램프를 놓습니다...")
-        cx_mid, cy_mid = (width - 1) / 2.0, (height - 1) / 2.0
-        for (sx, sy) in starts:
-            # **좌우를 먼저 본다.** 공식 맵에서 램프가 붙은 본진 57곳 중
-            # 왼쪽 26·오른쪽 23 이고 위아래는 8곳뿐이다. 위아래만 시도하면
-            # 대개 자리를 못 찾는다.
-            order = []
-            order.append("right" if sx < cx_mid else "left")
-            order.append("down" if sy < cy_mid else "up")
-            order += [d for d in ("left", "right", "up", "down")
-                      if d not in order]
+        cx0,cy0=(width-1)/2,(height-1)/2
+        cuts=[]
+        for sx,sy in starts:
+            vx,vy=cx0-sx,cy0-sy
+            length=math.hypot(vx,vy) or 1
+            ux,uy=vx/length,vy/length
+            mouth=[]
+            for d in range(5,22):
+                px,py=int(round(sx+ux*d)),int(round(sy+uy*d))
+                for o in range(-9,10,2):
+                    if abs(ux)>abs(uy): tx,ty=px,py+o
+                    else: tx,ty=px+o,py
+                    if 2<=tx<width-2 and 2<=ty<height-2:
+                        mouth.append((tx-tx%2,ty,low_terrain))
+            for d in range(0,5):
+                px,py=int(round(sx+ux*d)),int(round(sy+uy*d))
+                for o in range(-9,10,2):
+                    tx,ty=(px,py+o) if abs(ux)>abs(uy) else (px+o,py)
+                    if 2<=tx<width-2 and 2<=ty<height-2:
+                        mouth.append((tx-tx%2,ty,low_terrain))
+            cuts.extend(mouth)
+        cli.isom_batch(cuts)
 
-            placed = None
-            for direction in order:
-                horizontal = direction in ("left", "right")
-                step = 1 if direction in ("right", "down") else -1
-                span = scmap.MAIN_RAMP_DISTANCE + 8
-                if horizontal:
-                    end = max(2, min(width - 8, sx + step * span))
-                    edge = scmap.find_elevation_edge(cli, tileset_id, sy, sx,
-                                                     end, vertical=False)
-                else:
-                    end = max(2, min(height - 8, sy + step * span))
-                    edge = scmap.find_elevation_edge(cli, tileset_id, sx, sy,
-                                                     end, vertical=True)
-                if edge is None:
-                    continue
-                # 목표는 언덕 바깥 열네 칸. 맵 한가운데까지 요구하면 램프는
-                # 멀쩡한데 먼 지형이 막았다는 이유로 퇴짜를 맞는다.
-                if horizontal:
-                    low = (max(2, min(width - 3, edge + step * 14)), sy)
-                    fixed = sy - 3
-                    fixed = max(0, min(height - 6, fixed))
-                else:
-                    low = (sx, max(2, min(height - 3, edge + step * 14)))
-                    fixed = sx - 3
-                    fixed -= fixed % 2          # 마름모 격자에 맞춘다
-                    fixed = max(0, min(width - 6, fixed))
-                cands = scmap.ramp_candidates(tileset_id, direction)
-                # 둥근 고지 가장자리는 램프 앞에서 절벽이 끊긴다.
-                # 입구 너비만 비우고, 그 양옆은 직선 고지로 이어 붙인다.
-                mouth = 3
-                if horizontal:
-                    hx = max(2, min(width - 4, edge - step))
-                    hx -= hx % 2
-                    for dy in range(-10, 11):
-                        if abs(dy) <= mouth:
-                            continue
-                        yy = sy + dy
-                        if 2 <= yy < height - 2:
-                            cli.isom(hx, yy, high_terrain)
-                else:
-                    hy = max(2, min(height - 4, edge - step))
-                    for dx in range(-10, 11):
-                        if abs(dx) <= mouth:
-                            continue
-                        xx = sx + dx
-                        if 2 <= xx < width - 2:
-                            cli.isom(xx - (xx % 2), hy, high_terrain)
-                got = scmap.place_ramp_checked(
-                    cli, tileset_id, edge, fixed,
-                    high_point=(sx, sy), low_point=low, direction=direction,
-                    candidates=cands)
-                if got:
-                    did, rx, ry = got
-                    wh = next(((e["w"], e["h"]) for e in cands if e["id"] == did), (6, 4))
-                    ramp_at[(sx, sy)] = (rx, ry, direction, wh[0], wh[1])
-                    print(f"  ({sx},{sy}) → {direction} 램프 ({rx},{ry}) "
-                          f"두뎃 {did} [길찾기 통과]")
-                    placed = got
-                    break
-            if placed is None:
-                print(f"  ({sx},{sy}) 네 방향 모두 통하는 램프를 못 찾았습니다")
-
-        if len(ramp_at) < len(starts):
-            print(f"  램프 {len(ramp_at)}/{len(starts)}곳. "
-                  f"못 낸 본진 언덕은 그대로 둔다.")
+    # Reopen each natural-pocket gate after center features, water, and doodad
+    # decoration have been laid. Its endpoint is the nearest main ramp/causeway;
+    # verify the tile-level walk graph instead of assuming the painted line works.
+    if natural_sites_coords and not args.no_plateau:
+        pocket_cuts=[]
+        for nx,ny in natural_sites_coords:
+            sx,sy=min(starts,key=lambda p: math.dist(p,(nx,ny)))
+            vx,vy=sx-nx,sy-ny
+            length=math.hypot(vx,vy) or 1.0
+            ux,uy=vx/length,vy/length
+            for d in range(9,int(length)+4):
+                px,py=int(round(nx+ux*d)),int(round(ny+uy*d))
+                for off in range(-7,8,2):
+                    tx,ty=(px,py+off) if abs(ux)>abs(uy) else (px+off,py)
+                    if 2<=tx<width-2 and 2<=ty<height-2:
+                        pocket_cuts.append((tx-tx%2,ty,low_terrain))
+        cli.isom_batch(pocket_cuts)
+        pocket_grid=scmap.walk_grid(cli,tileset_id,0,0,width,height)
+        for nx,ny in natural_sites_coords:
+            sx,sy=min(starts,key=lambda p: math.dist(p,(nx,ny)))
+            p0=scmap.nearest_walkable(pocket_grid,nx*4+2,ny*4+2,24)
+            p1=scmap.nearest_walkable(pocket_grid,sx*4+2,sy*4+2,48)
+            if p0 is None or p1 is None or not scmap.walk_reachable(pocket_grid,p0,p1):
+                raise CliError(f"앞마당 ({nx},{ny})의 평지 입구가 본진과 연결되지 않았습니다")
 
     # 8) 연결성 복구 — 갇힌 본진이 있으면 길을 낸다.
     #
@@ -1195,6 +1226,94 @@ def main(argv=None):
                     scmap.place_doodad(cli, cid, px, py, cw, ch)
                 except CliError:
                     pass
+
+    # 교전지에만 AI가 고른 비건축 지형을 섞는다. 전역 상한을 넘으면
+    # 추가 도장을 줄여 다시 적용해 기지·멀티의 건축 여지를 보전한다.
+    if args.fight_density > 0:
+        types_by_name = cli.terrain_types()
+        if args.fight_terrain not in types_by_name:
+            raise CliError(f"알 수 없는 ISOM 지형명: {args.fight_terrain}")
+        fight_id = types_by_name[args.fight_terrain]
+        props = scmap.tileset_tiles(cli, tileset_id)
+        groups = {t >> 4 for t, p in props.items() if p[1] and not p[2]}
+        terrain_info = scmap.terrain_types_table(tileset_id).get(args.fight_terrain, {})
+        valid_groups = groups.intersection(int(g) for g in terrain_info.get("groups", []))
+        if not valid_groups:
+            raise CliError("선택 지형에 걷기 가능·건축 불가 타일이 없습니다")
+        zones = []
+        for spec in args.fight_zone:
+            try:
+                z = tuple(int(v) for v in spec.split(","))
+            except ValueError as e:
+                raise CliError(f"잘못된 --fight-zone: {spec}") from e
+            if len(z) != 4 or z[2] < 1 or z[3] < 1 or z[0] < 0 or z[1] < 0 or z[0]+z[2] > width or z[1]+z[3] > height:
+                raise CliError(f"구역은 맵 안의 x,y,w,h여야 합니다: {spec}")
+            zones.append(z)
+        protected = [(u["x"]//32, u["y"]//32, 7) for u in cli.units()
+                     if u["type"] in scmap.MINERALS or u["type"] == scmap.VESPENE_GEYSER or u["type"] == scmap.START_LOCATION]
+        terrain_before = cli.tiles(0, 0, width, height)
+        tile_props = scmap.tileset_tiles(cli, tileset_id)
+        max_bad = int(width * height * args.max_unbuildable_pct / 100)
+        baseline_bad = sum(1 for row in terrain_before for t in row if t in tile_props and tile_props[t][1] and not tile_props[t][2])
+        if baseline_bad:
+            if baseline_bad > max_bad:
+                raise CliError(f"기본 지형부터 건축 불가 {baseline_bad*100/(width*height):.1f}%로 전역 상한을 넘습니다")
+        strokes = []
+        for x, y, w, h in zones:
+            eligible = [(tx, ty) for ty in range(y, y+h, 2) for tx in range(x, x+w, 2)
+                        if not in_base_or_exit(tx, ty, starts, (width-1)/2, (height-1)/2)
+                        and not any(rx-4 <= tx <= rx+rw+4 and ry-4 <= ty <= ry+rh+4
+                                    for rx, ry, _direction, rw, rh in ramp_at.values())
+                        and not any(abs(tx-px) <= radius and abs(ty-py) <= radius for px,py,radius in protected)]
+            rng = random.Random(args.seed + x * 37 + y * 101)
+            rng.shuffle(eligible)
+            take = min(len(eligible), int(len(eligible) * args.fight_density / 100))
+            for tx, ty in eligible[:take]:
+                if args.fight_pattern == "ridge" and (ty-y) % 8:
+                    continue
+                if args.fight_pattern == "flanks" and tx not in (x, x+w-2):
+                    continue
+                if args.fight_pattern == "pockets" and (tx % 12 > 4 or ty % 12 > 4):
+                    continue
+                strokes.append((tx, ty, fight_id))
+        accepted = 0
+        zone_base = {(tx,ty): terrain_before[ty][tx] for x,y,w,h in zones for ty in range(y,y+h) for tx in range(x,x+w)}
+        cli.isom_batch(strokes)
+        after = cli.tiles(0, 0, width, height)
+        bad = sum(1 for row in after for t in row if t in tile_props and tile_props[t][1] and not tile_props[t][2])
+        if bad <= max_bad:
+            accepted = len(strokes)
+            print(f"  교전 지형 {accepted} 도장; 전역 걷기·건축불가 {bad*100/(width*height):.1f}% / 상한 {args.max_unbuildable_pct}%")
+        else:
+            room = max(0, max_bad - baseline_bad)
+            factor = room / max(1, bad-baseline_bad)
+            reduced = strokes[:int(len(strokes)*factor)]
+            for (tx,ty), tile in zone_base.items(): cli.edit("terrain", "set", cli.path, str(tx), str(ty), str(tile))
+            cli.isom_batch(reduced)
+            accepted = len(reduced)
+            after = cli.tiles(0, 0, width, height)
+            bad = sum(1 for row in after for t in row if t in tile_props and tile_props[t][1] and not tile_props[t][2])
+            if bad > max_bad:
+                raise CliError(f"교전 지형 적용 후 건축 불가 지형 {bad*100/(width*height):.1f}%가 상한 {args.max_unbuildable_pct}%를 넘습니다")
+            print(f"  교전 지형을 {accepted} 도장으로 줄였습니다; 전역 {bad*100/(width*height):.1f}%")
+        if not accepted and args.fight_density:
+            print("  교전 지형은 전역 상한 때문에 넣지 않았습니다")
+
+    # 지정 수 안에서 중립 크리쳐를 교전 공간 가장자리에 둔다.
+    if args.critters:
+        rng = random.Random(args.seed ^ 0xC17)
+        blocked = [(u["x"]//32, u["y"]//32, 6) for u in cli.units()]
+        placed = 0
+        for _ in range(args.critters * 80):
+            if placed >= args.critters:
+                break
+            tx, ty = rng.randrange(8, width-8), rng.randrange(8, height-8)
+            if any(abs(tx-x) <= r and abs(ty-y) <= r for x,y,r in blocked):
+                continue
+            cli.place(args.critter_unit, tx, ty, owner=12)
+            blocked.append((tx,ty,6))
+            placed += 1
+        print(f"  중립 크리쳐 {placed}/{args.critters}개 배치: {args.critter_unit}")
 
     # 자원량은 다 놓은 뒤 한 번에 맞춘다.
     scmap.set_all_resources(cli)

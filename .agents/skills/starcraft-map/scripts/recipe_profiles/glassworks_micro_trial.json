@@ -1,0 +1,107 @@
+{
+  "genre": "micro_trial",
+  "map": {
+    "name": "Glassworks Relay",
+    "description": "A precision trial through four enemy formations in a derelict factory.",
+    "tileset": "space",
+    "size": [
+      128,
+      128
+    ],
+    "seed": 9124
+  },
+  "text": {
+    "objectives": "Clear four escalating bays while preserving your interceptor.",
+    "briefing": [
+      "Control the starting combat unit and travel through the four linked bays.",
+      "Each enemy formation must be eliminated before the next bay activates.",
+      "Every clear awards its listed ore reward; losing your unit or running out of time ends the trial."
+    ],
+    "portrait": "Protoss Scout",
+    "briefing_hold_ms": 1900,
+    "messages": {
+      "start": "The first formation is active. Keep your interceptor moving.",
+      "complete": "All formations cleared. Relay certified.",
+      "timeout": "The relay timed out before the final bay.",
+      "unit_lost": "Interceptor destroyed. Trial failed."
+    }
+  },
+  "rules": {
+    "stages": 4,
+    "time_limit": 510
+  },
+  "units": {
+    "player": "Protoss Scout",
+    "state_token": "Protoss Beacon"
+  },
+  "waves": [
+    {
+      "unit": "Terran Goliath",
+      "count": 4,
+      "reward": 18,
+      "clear_message": "Bay 1 clear. +18 ore; the missile screen advances."
+    },
+    {
+      "unit": "Zerg Hydralisk",
+      "count": 5,
+      "reward": 24,
+      "clear_message": "Bay 2 clear. +24 ore; the ranged pack advances."
+    },
+    {
+      "unit": "Protoss Dragoon",
+      "count": 3,
+      "reward": 32,
+      "clear_message": "Bay 3 clear. +32 ore; the heavy line advances."
+    },
+    {
+      "unit": "Terran Siege Tank (Tank Mode)",
+      "count": 2,
+      "reward": 45,
+      "clear_message": "Final bay clear. +45 ore; certification complete."
+    }
+  ],
+  "starting_resources": {
+    "minerals": 40,
+    "gas": 90
+  },
+  "upgrades": {
+    "which": [
+      6,
+      7,
+      8,
+      9
+    ],
+    "free_levels": 1,
+    "max_level": 2,
+    "minerals": 120,
+    "gas": 100,
+    "time": 80
+  },
+  "technologies": {
+    "which": [
+      3,
+      4,
+      5
+    ],
+    "available": "all",
+    "researched": [
+      0
+    ],
+    "minerals": 100,
+    "gas": 75,
+    "time": 110,
+    "energy": 60
+  },
+  "players": {
+    "enemy_race": "terran",
+    "system_race": "protoss"
+  },
+  "labels": {
+    "bays": [
+      "Orbital Dock",
+      "Cooling Gallery",
+      "Reactor Hall",
+      "Core Chamber"
+    ]
+  }
+}

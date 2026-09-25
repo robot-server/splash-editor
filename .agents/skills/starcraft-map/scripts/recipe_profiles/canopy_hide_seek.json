@@ -1,0 +1,81 @@
+{
+  "genre": "hide_seek",
+  "map": {
+    "name": "Copper Canopy: The Long Pursuit",
+    "description": "Asymmetric pursuit across a flooded jungle outpost.",
+    "tileset": "jungle",
+    "size": [
+      128,
+      128
+    ],
+    "seed": 739
+  },
+  "text": {
+    "objectives": "Hunter captures every scout; a scout who outlasts the clock escapes.",
+    "briefing": [
+      "P1 controls the hunter; P2 and P3 control scouts.",
+      "Scouts may hide in any marked chamber. Capture requires both sides to enter the same chamber.",
+      "P1 receives 18 seconds to prepare; scouts win if any remains at 210 seconds."
+    ],
+    "portrait": "Terran Ghost",
+    "briefing_hold_ms": 1700,
+    "messages": {
+      "hunter_start": "You are the hunter. Scouts have 18 seconds to hide.",
+      "hider_start": "Move to a chamber before the pursuit begins.",
+      "hunt_started": "Pursuit begins. Enter a chamber containing a scout to capture it.",
+      "caught": "Your signal is lost; the hunter found you.",
+      "hunter_win": "All scouts captured. Hunter wins.",
+      "hider_win": "The clock expired. You escaped.",
+      "hunter_eliminated": "Hunter eliminated; the scouts win."
+    }
+  },
+  "rules": {
+    "hiders": 2,
+    "prep": 18,
+    "survive": 210
+  },
+  "units": {
+    "hunter": "Sarah Kerrigan (Ghost)",
+    "hider": "Terran Civilian",
+    "state_token": "Terran Beacon",
+    "room_marker": "Terran Beacon"
+  },
+  "starting_resources": {
+    "minerals": 75,
+    "gas": 25
+  },
+  "upgrades": {
+    "which": [
+      0,
+      1,
+      2
+    ],
+    "free_levels": 0,
+    "max_level": 1,
+    "minerals": 80,
+    "gas": 50,
+    "time": 45
+  },
+  "technologies": {
+    "which": [
+      0,
+      1,
+      2
+    ],
+    "available": "all",
+    "researched": "none",
+    "minerals": 80,
+    "gas": 60,
+    "time": 90,
+    "energy": 75
+  },
+  "labels": {
+    "hall": "Floodgate Court",
+    "rooms": [
+      "Old Fern Vault",
+      "Sunken Relay",
+      "Moss Archive",
+      "Canopy Kiln"
+    ]
+  }
+}

@@ -963,13 +963,13 @@ def place_ramp_checked(cli: Cli, tileset_id: int, edge: int, fixed: int,
                 continue
             seen.add((x, y, did))
 
-            before = cli.tiles(x, y, w, h)
-            n_before = len(cli.doodads())
             try:
                 # 두뎃은 가운데 기준이다. 왼위를 가운데로 옮겨 넘긴다.
                 cx, cy = doodad_anchor(x, y, w, h)
                 if not cli.doodad_fits(did, cx, cy):
                     continue
+                before = cli.tiles(x, y, w, h)
+                n_before = len(cli.doodads())
                 place_doodad(cli, did, x, y, w, h)
             except CliError:
                 continue

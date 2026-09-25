@@ -1,0 +1,82 @@
+{
+  "genre": "room_escape",
+  "map": {
+    "name": "The Verdigris Archive",
+    "description": "A quiet chamber puzzle about restoring a sealed archive.",
+    "tileset": "twilight",
+    "size": [
+      128,
+      128
+    ],
+    "seed": 3317
+  },
+  "text": {
+    "objectives": "Find three archive keys in order, then reach the observatory exit.",
+    "briefing": [
+      "Guide the selected scholar through the hub and three marked chambers.",
+      "Each chamber records one key only when entered in order.",
+      "The observatory door opens after all three keys; reach it before the clock expires."
+    ],
+    "portrait": "Protoss Dark Templar",
+    "briefing_hold_ms": 1600,
+    "messages": {
+      "start": "Three archive chambers are sealed. Follow their symbols in order.",
+      "seal_1": "First glyph restored. The eastern archive is next.",
+      "seal_2": "Second glyph restored. Descend to the southern archive.",
+      "seal_3": "Final glyph restored. The observatory exit is open.",
+      "complete": "The archive opens. You escaped.",
+      "timeout": "The archive seals before the observatory is reached."
+    }
+  },
+  "rules": {
+    "time_limit": 1080
+  },
+  "units": {
+    "player": "Protoss Dark Templar",
+    "state_token": "Protoss Beacon",
+    "seals": [
+      "Terran Beacon",
+      "Protoss Beacon",
+      "Zerg Beacon"
+    ]
+  },
+  "starting_resources": {
+    "minerals": 0,
+    "gas": 0
+  },
+  "upgrades": {
+    "which": [
+      20,
+      21
+    ],
+    "free_levels": 0,
+    "max_level": 1,
+    "minerals": 90,
+    "gas": 120,
+    "time": 60
+  },
+  "technologies": {
+    "which": [
+      7,
+      8
+    ],
+    "available": [
+      0
+    ],
+    "researched": "none",
+    "minerals": 70,
+    "gas": 100,
+    "time": 100,
+    "energy": 50
+  },
+  "labels": {
+    "areas": [
+      "Arrival Nook",
+      "Conservatory Hub",
+      "North Glyph",
+      "East Glyph",
+      "South Glyph",
+      "Star Chamber"
+    ]
+  }
+}
