@@ -2,7 +2,7 @@
 
 | 글 | 무엇 |
 | --- | --- |
-| **[limits.md](limits.md)** | **먼저 읽는다.** 안전 규칙과, 허락을 받아야 하는 것들 |
+| **[limits.md](limits.md)** | **먼저 읽는다.** EUD 안전 규칙과 EUD 사용 승인 |
 | [how-it-works.md](how-it-works.md) | 원리. 주소 계산, EPD, 한 주소에 두 정보, CP 트릭 |
 | [unit-struct.md](unit-struct.md) | 유닛 한 마리의 구조 오프셋. 0번 다음이 1699번이다 |
 | [epscript.md](epscript.md) | EUD 를 글로 쓰기. 변수·반복·진짜 난수 |

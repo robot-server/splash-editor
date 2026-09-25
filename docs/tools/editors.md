@@ -100,10 +100,11 @@
 | P8 에 뜬금없는 EUD 트리거 | TEP 컴파일 흔적 |
 | 트리거 한글이 깨짐 | 최신 SCMD2 로 저장 |
 | `STRx` 를 씀 | 스트링 확장이 되는 버전 |
-| 비표준 섹션·부풀린 STR | 일부러 만든 보호 맵 — **다시 저장하면 깨진다** |
+| 비표준 섹션·부풀린 STR | 일부러 만든 보호 맵 — 다시 저장하면 깨질 수 있다 ([일반 승인 규칙](../limits.md)) |
 
 ## 관련
 
 - [cli-cookbook.md](cli-cookbook.md) — 우리 CLI 로 하는 법
 - [../eud/limits.md](../eud/limits.md) — EUD 안전 규칙
+- [../limits.md](../limits.md) — 비표준 맵 크기와 보호 데이터 등 일반 맵 편집 승인 규칙
 - [../unit/settings.md](../unit/settings.md) — 맵이 고칠 수 있는 것
