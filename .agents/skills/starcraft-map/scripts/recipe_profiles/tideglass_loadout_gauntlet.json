@@ -146,5 +146,12 @@
     "time": 80,
     "energy": 65
   },
-  "launch_switch": "BreachOpen"
+  "launch_switch": "BreachOpen",
+  "unit_settings": {
+    "Protoss Dragoon": {"hp": 180, "shields": 130, "armor": 2},
+    "Terran Medic": {"hp": 90, "armor": 1},
+    "Zerg Hydralisk": {"hp": 125, "armor": 1},
+    "Zerg Zergling": {"hp": 45},
+    "Zerg Ultralisk": {"hp": 550, "armor": 3}
+  }
 }

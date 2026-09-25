@@ -187,5 +187,14 @@
     "Protoss Beacon": "Reforge · restore health",
     "Protoss Shield Battery": "Shield battery · protection",
     "Terran Academy": "Medic · field support"
+  },
+  "unit_settings": {
+    "Jim Raynor (Vulture)": {"hp": 360},
+    "Terran Medic": {"hp": 90},
+    "Torrasque (Ultralisk)": {"hp": 1200, "armor": 6},
+    "Zerg Zergling": {"hp": 45},
+    "Zerg Hydralisk": {"hp": 100},
+    "Terran Firebat": {"hp": 70},
+    "Protoss Dragoon": {"hp": 130, "shields": 100, "armor": 2}
   }
 }

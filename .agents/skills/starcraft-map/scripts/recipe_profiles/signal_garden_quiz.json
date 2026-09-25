@@ -103,5 +103,6 @@
     "gas": 0,
     "time": 1,
     "energy": 0
-  }
+  },
+  "unit_settings": {}
 }

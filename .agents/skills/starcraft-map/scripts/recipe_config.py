@@ -434,6 +434,26 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
             raise CliError(f"technologies.{key} player IDs must be from 1 to 12")
     if any(type(x) is not int or not 0 <= x < 44 for x in tech["which"]):
         raise CliError("technologies.which contains an invalid technology ID")
+
+    unit_settings = _need(cfg, "unit_settings", dict, "root")
+    unit_setting_fields = {"hp", "shields", "armor", "build_time", "minerals", "gas", "buildable"}
+    limits = {"hp": (1, 65535), "shields": (0, 65535), "armor": (0, 255),
+              "build_time": (0, 65535), "minerals": (0, 65535), "gas": (0, 65535)}
+    for unit, settings in unit_settings.items():
+        if not isinstance(unit, str) or not unit or not isinstance(settings, dict) or not settings:
+            raise CliError("unit_settings must map unit names to non-empty settings")
+        unknown = set(settings) - unit_setting_fields
+        if unknown:
+            raise CliError(f"unit_settings[{unit!r}] has unsupported fields: {sorted(unknown)}")
+        for key, (lo, hi) in limits.items():
+            if key in settings and (type(settings[key]) is not int or not lo <= settings[key] <= hi):
+                raise CliError(f"unit_settings[{unit!r}].{key} must be {lo}..{hi}")
+        if "buildable" in settings:
+            value = settings["buildable"]
+            if value not in ("all", "none") and (
+                    not isinstance(value, list) or any(type(player) is not int or not 1 <= player <= 12
+                                                       for player in value)):
+                raise CliError(f"unit_settings[{unit!r}].buildable must be all, none, or player IDs 1..12")
     return cfg
 
 
@@ -449,6 +469,76 @@ def configure_progression(cli, cfg: dict, humans: int) -> tuple[int, int]:
         researched=te["researched"], mineral=te["minerals"],
         gas=te["gas"], time=te["time"], energy=te["energy"])
     return nu, nt
+
+
+def apply_unit_settings(cli, cfg: dict) -> int:
+    """Apply AI-authored UNIS overrides while retaining installed unit defaults.
+
+    Changing one UNIS field disables the global default for that unit type.
+    Fill every other stat from this installation's units.dat before writing so
+    omitted fields do not become zero-valued map overrides.
+    """
+    overrides = cfg["unit_settings"]
+    if not overrides:
+        return 0
+    try:
+        rows = json.loads(cli.run("unit-stats", cli.install, "--json"))
+    except (ValueError, CliError) as e:
+        raise CliError(f"설치본 유닛 기본 능력치를 읽지 못했습니다: {e}") from e
+    by_name = {row.get("name"): row for row in rows.values()}
+    fields = (("hp", "hp"), ("shields", "shields"), ("armor", "armor"),
+              ("build_time", "build_time"), ("minerals", "minerals"), ("gas", "gas"))
+    for unit, selected in overrides.items():
+        base = by_name.get(unit)
+        if base is None:
+            raise CliError(f"unit_settings에 알 수 없는 유닛명이 있습니다: {unit}")
+        merged = {key: selected.get(key, base[source]) for key, source in fields}
+        args = ["unitdef", "set", cli.path, unit, "--default", "off"]
+        for key, _source in fields:
+            option = "--" + key.replace("_", "-")
+            args.extend((option, str(merged[key])))
+        if "buildable" in selected:
+            table = selected["buildable"]
+            args.extend(("--buildable", table if isinstance(table, str)
+                         else ",".join(str(player) for player in table)))
+            args.extend(("--uses-default", "none"))
+        cli.edit(*args)
+    return len(overrides)
+
+
+def apply_unit_settings(cli, cfg: dict) -> int:
+    """Apply AI-authored UNIS values, using the installed units.dat as base.
+
+    UNIS overrides replace the full stat record, so omitted fields are copied
+    from the target installation rather than left at empty map-table values.
+    """
+    overrides = cfg["unit_settings"]
+    if not overrides:
+        return 0
+    try:
+        defaults = json.loads(cli.run("unit-stats", cli.install, "--json"))
+    except (ValueError, CliError) as e:
+        raise CliError(f"설치본 유닛 기본 능력치를 읽지 못했습니다: {e}") from e
+    by_name = {row.get("name"): row for row in defaults.values()}
+    fields = (("hp", "hp"), ("shields", "shields"), ("armor", "armor"),
+              ("build_time", "build_time"), ("minerals", "minerals"), ("gas", "gas"))
+    applied = 0
+    for unit, selected in overrides.items():
+        base = by_name.get(unit)
+        if base is None:
+            raise CliError(f"unit_settings에 알 수 없는 유닛명이 있습니다: {unit}")
+        merged = {key: selected.get(key, base[source]) for key, source in fields}
+        args = ["unitdef", "set", cli.path, unit, "--default", "off"]
+        for key, _source in fields:
+            args.extend(("--hp" if key == "hp" else f"--{key.replace('_', '-')}", str(merged[key])))
+        if "buildable" in selected:
+            table = selected["buildable"]
+            args.extend(("--buildable", table if isinstance(table, str)
+                         else ",".join(str(player) for player in table)))
+            args.extend(("--uses-default", "none"))
+        cli.edit(*args)
+        applied += 1
+    return applied
 
 
 def resource_actions(cfg: dict, players: list[str]) -> list[str]:
@@ -467,6 +557,8 @@ def apply_profile_metadata(cli, cfg: dict, humans: int):
     from scmap import briefing_text
     cfg["text"]["briefing_hold_ms"] = cfg["text"].get("briefing_hold_ms", 1800)
     configure_progression(cli, cfg, humans)
+    apply_unit_settings(cli, cfg)
+    apply_unit_settings(cli, cfg)
     cli.apply_briefing(briefing_text(
         cfg["text"]["briefing"], objectives=cfg["text"]["objectives"],
         portrait=cfg["text"]["portrait"],

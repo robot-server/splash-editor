@@ -111,5 +111,10 @@
     "gas": 70,
     "time": 90,
     "energy": 60
+  },
+  "unit_settings": {
+    "Protoss Dragoon": {"hp": 170, "shields": 120, "armor": 2},
+    "Terran Vulture": {"hp": 115, "armor": 1},
+    "Zerg Hydralisk": {"hp": 125, "armor": 1}
   }
 }

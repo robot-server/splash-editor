@@ -103,5 +103,12 @@
       "Reactor Hall",
       "Core Chamber"
     ]
+  },
+  "unit_settings": {
+    "Protoss Scout": {"hp": 240, "shields": 160, "armor": 2},
+    "Terran Goliath": {"hp": 145, "armor": 2},
+    "Zerg Hydralisk": {"hp": 95, "armor": 1},
+    "Protoss Dragoon": {"hp": 150, "shields": 110, "armor": 2},
+    "Terran Siege Tank (Tank Mode)": {"hp": 180, "armor": 2}
   }
 }

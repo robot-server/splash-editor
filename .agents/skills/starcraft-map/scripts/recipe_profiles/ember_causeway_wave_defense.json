@@ -166,5 +166,15 @@
     "Terran Goliath": "Gatehouse Goliath · 100 ore",
     "Zerg Sunken Colony": "Sunken Colony · 150 ore",
     "Protoss Shield Battery": "Shield support · 80 ore"
+  },
+  "unit_settings": {
+    "Terran Goliath": {"hp": 190, "armor": 2},
+    "Torrasque (Ultralisk)": {"hp": 1400, "armor": 6},
+    "Zerg Zergling": {"hp": 45},
+    "Zerg Hydralisk": {"hp": 100},
+    "Terran Firebat": {"hp": 65},
+    "Zerg Ultralisk": {"hp": 500, "armor": 3},
+    "Protoss Dragoon": {"hp": 130, "shields": 100, "armor": 2},
+    "Zerg Mutalisk": {"hp": 140, "armor": 1}
   }
 }

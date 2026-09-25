@@ -158,5 +158,12 @@
     "Protoss Archon": "Siege Boss",
     "Terran Medic": "Field Medic",
     "Terran Firebat": "Shelter Firebat"
+  },
+  "unit_settings": {
+    "Terran Goliath": {"hp": 190, "armor": 2},
+    "Zerg Zergling": {"hp": 65, "armor": 1},
+    "Protoss Archon": {"hp": 200, "shields": 500, "armor": 2},
+    "Terran Medic": {"hp": 85},
+    "Terran Firebat": {"hp": 65}
   }
 }

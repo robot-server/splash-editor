@@ -78,5 +78,9 @@
       "Moss Archive",
       "Canopy Kiln"
     ]
+  },
+  "unit_settings": {
+    "Sarah Kerrigan (Ghost)": {"hp": 300, "armor": 4},
+    "Terran Civilian": {"hp": 70}
   }
 }

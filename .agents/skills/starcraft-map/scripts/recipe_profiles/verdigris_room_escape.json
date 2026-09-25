@@ -83,5 +83,8 @@
       "South Glyph",
       "Star Chamber"
     ]
+  },
+  "unit_settings": {
+    "Protoss Dark Templar": {"hp": 110, "shields": 100, "armor": 2}
   }
 }

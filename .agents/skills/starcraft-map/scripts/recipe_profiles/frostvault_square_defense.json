@@ -182,5 +182,13 @@
     "Terran Medic": "Medic · restore the squad",
     "Protoss Dragoon": "Dragoon · reinforcement",
     "Protoss Shield Battery": "Shield service · 100 ore"
+  },
+  "unit_settings": {
+    "Terran Marine": {"hp": 100, "armor": 1},
+    "Torrasque (Ultralisk)": {"hp": 1200, "armor": 5},
+    "Zerg Zergling": {"hp": 45},
+    "Zerg Hydralisk": {"hp": 100},
+    "Terran Firebat": {"hp": 65},
+    "Protoss Zealot": {"hp": 140, "shields": 90, "armor": 2}
   }
 }
