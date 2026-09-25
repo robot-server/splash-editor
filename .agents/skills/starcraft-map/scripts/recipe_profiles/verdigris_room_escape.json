@@ -1,8 +1,8 @@
 {
   "genre": "room_escape",
   "map": {
-    "name": "The Verdigris Archive",
-    "description": "A quiet chamber puzzle about restoring a sealed archive.",
+    "name": "녹청의 서고",
+    "description": "봉인된 서고의 세 인장을 순서대로 복구하는 방 퍼즐.",
     "tileset": "twilight",
     "size": [
       128,
@@ -11,21 +11,21 @@
     "seed": 3317
   },
   "text": {
-    "objectives": "Find three archive keys in order, then reach the observatory exit.",
+    "objectives": "서고 열쇠 세 개를 순서대로 찾고 천문대 출구에 도달하세요.",
     "briefing": [
-      "Guide the selected scholar through the hub and three marked chambers.",
-      "Each chamber records one key only when entered in order.",
-      "The observatory door opens after all three keys; reach it before the clock expires."
+      "선택한 학자를 중심실과 표시된 세 방으로 이끄세요.",
+      "방은 정해진 순서대로 들어가야 열쇠를 기록합니다.",
+      "열쇠 세 개를 모두 찾으면 천문대 문이 열립니다. 시간이 끝나기 전에 도착하세요."
     ],
     "portrait": "Protoss Dark Templar",
     "briefing_hold_ms": 1600,
     "messages": {
-      "start": "Three archive chambers are sealed. Follow their symbols in order.",
-      "seal_1": "First glyph restored. The eastern archive is next.",
-      "seal_2": "Second glyph restored. Descend to the southern archive.",
-      "seal_3": "Final glyph restored. The observatory exit is open.",
-      "complete": "The archive opens. You escaped.",
-      "timeout": "The archive seals before the observatory is reached."
+      "start": "서고 방 세 곳이 봉인되어 있습니다. 문양 순서대로 방문하세요.",
+      "seal_1": "첫 문양을 복구했습니다. 다음은 동쪽 서고입니다.",
+      "seal_2": "두 번째 문양을 복구했습니다. 남쪽 서고로 내려가세요.",
+      "seal_3": "마지막 문양을 복구했습니다. 천문대 출구가 열렸습니다.",
+      "complete": "서고가 열렸습니다. 탈출에 성공했습니다.",
+      "timeout": "천문대에 도달하기 전에 서고가 다시 봉인됐습니다."
     }
   },
   "rules": {
@@ -40,9 +40,9 @@
       "Zerg Beacon"
     ],
     "seal_names": [
-      "North archive seal · first key",
-      "East archive seal · second key",
-      "South archive seal · third key"
+      "북쪽 서고 인장 · 첫 번째 열쇠",
+      "동쪽 서고 인장 · 두 번째 열쇠",
+      "남쪽 서고 인장 · 세 번째 열쇠"
     ]
   },
   "starting_resources": {
@@ -76,15 +76,26 @@
   },
   "labels": {
     "areas": [
-      "Arrival Nook",
-      "Conservatory Hub",
-      "North Glyph",
-      "East Glyph",
-      "South Glyph",
-      "Star Chamber"
+      "도착 쉼터",
+      "온실 중심실",
+      "북쪽 문양",
+      "동쪽 문양",
+      "남쪽 문양",
+      "별의 방"
     ]
   },
   "unit_settings": {
-    "Protoss Dark Templar": {"hp": 110, "shields": 100, "armor": 2}
-  }
+    "Protoss Dark Templar": {
+      "hp": 110,
+      "shields": 100,
+      "armor": 2
+    }
+  },
+  "language": "ko",
+  "force_names": [
+    "탐사자",
+    "서고 장치",
+    "미사용 세력 3",
+    "미사용 세력 4"
+  ]
 }

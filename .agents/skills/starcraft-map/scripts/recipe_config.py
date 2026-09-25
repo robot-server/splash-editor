@@ -30,6 +30,9 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
         raise CliError(f"cannot read JSON profile {path}: {e}") from e
     if not isinstance(cfg, dict) or cfg.get("genre") != genre:
         raise CliError(f"profile genre must be {genre!r}")
+    language = cfg.setdefault("language", "ko")
+    if not isinstance(language, str) or not language.strip():
+        raise CliError("profile language must be a non-empty language tag")
 
     m = _need(cfg, "map", dict, "root")
     for k in ("name", "description", "tileset"):
@@ -40,6 +43,10 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
         raise CliError("map.size must be [width,height], each between 48 and 128 tiles")
     if m["tileset"] not in TILESETS:
         raise CliError(f"unsupported Use Map tileset: {m['tileset']}")
+
+    force_names = _need(cfg, "force_names", list, "root")
+    if len(force_names) != 4 or any(not isinstance(x, str) or not x for x in force_names):
+        raise CliError("force_names must contain four non-empty force labels")
 
     t = _need(cfg, "text", dict, "root")
     _need(t, "objectives", str, "text")
@@ -83,8 +90,10 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
         players = _need(cfg, "players", dict, "root")
         _need(players, "enemy_race", str, "players")
         _need(players, "system_race", str, "players")
-        if len(_need(_need(cfg, "labels", dict, "root"), "bays", list, "labels")) < rules["stages"]:
+        labels = _need(cfg, "labels", dict, "root")
+        if len(_need(labels, "bays", list, "labels")) < rules["stages"]:
             raise CliError("labels.bays must name each active bay")
+        _need(labels, "player_start", str, "labels")
     elif genre == "hide_seek":
         for k in ("hiders", "prep", "survive"):
             _need(rules, k, int, "rules")
@@ -506,6 +515,12 @@ def apply_unit_settings(cli, cfg: dict) -> int:
     return len(overrides)
 
 
+def apply_force_names(cli, cfg: dict) -> int:
+    for index, name in enumerate(cfg["force_names"], start=1):
+        cli.edit("force", "set", cli.path, str(index), "--name", name)
+    return 4
+
+
 def apply_unit_settings(cli, cfg: dict) -> int:
     """Apply AI-authored UNIS values, using the installed units.dat as base.
 
@@ -558,6 +573,7 @@ def apply_profile_metadata(cli, cfg: dict, humans: int):
     cfg["text"]["briefing_hold_ms"] = cfg["text"].get("briefing_hold_ms", 1800)
     configure_progression(cli, cfg, humans)
     apply_unit_settings(cli, cfg)
+    apply_force_names(cli, cfg)
     apply_unit_settings(cli, cfg)
     cli.apply_briefing(briefing_text(
         cfg["text"]["briefing"], objectives=cfg["text"]["objectives"],

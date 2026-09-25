@@ -86,7 +86,7 @@ def main(argv=None):
     cli.edit("player", "set", cli.path, "2", "--race", cfg["players"]["enemy_race"], "--slot", "computer")
     cli.edit("player", "set", cli.path, "8", "--race", cfg["players"]["system_race"], "--slot", "computer")
     cli.edit("location", "add", cli.path, "5", "45", "32", "83",
-             "--tiles", "--name", "Player Start")
+             "--tiles", "--name", cfg["labels"]["player_start"])
     for i, (_, x, y, w, h) in enumerate(BAYS[:a.stages]):
         bay_name = cfg["labels"]["bays"][i]
         cli.edit("location", "add", cli.path, str(x + 2), str(y + 2),
@@ -113,7 +113,7 @@ def main(argv=None):
         *profile.resource_actions(cfg, ["Player 1"]),
         f'Set Countdown Timer(Set To, {a.time_limit})',
         f'Create Unit("Player 2", "{first_unit}", {first_count}, "{cfg["labels"]["bays"][0]}")',
-        f'Order("Player 2", "{first_unit}", "{cfg["labels"]["bays"][0]}", "Player Start", attack)',
+        f'Order("Player 2", "{first_unit}", "{cfg["labels"]["bays"][0]}", "{cfg["labels"]["player_start"]}", attack)',
         f'Display Text Message(Always Display, "{cfg["text"]["messages"]["start"]}")']))
 
     for i in range(a.stages):
@@ -127,7 +127,7 @@ def main(argv=None):
                     f'Set Resources("Player 1", Add, {wave["reward"]}, ore)',
                     f'Display Text Message(Always Display, "{message}")',
                     f'Create Unit("Player 2", "{next_enemy}", {next_count}, "{cfg["labels"]["bays"][i+1]}")',
-                    f'Order("Player 2", "{next_enemy}", "{cfg["labels"]["bays"][i+1]}", "Player Start", attack)']
+                    f'Order("Player 2", "{next_enemy}", "{cfg["labels"]["bays"][i+1]}", "{cfg["labels"]["player_start"]}", attack)']
         else:
             acts = [f'Set Deaths("Player 1", "{state_token}", Set To, {i + 1})',
                     f'Set Resources("Player 1", Add, {wave["reward"]}, ore)',

@@ -1,8 +1,8 @@
 {
   "genre": "hide_seek",
   "map": {
-    "name": "Copper Canopy: The Long Pursuit",
-    "description": "Asymmetric pursuit across a flooded jungle outpost.",
+    "name": "침수 수림 추격전",
+    "description": "침수된 정글 시설에서 사냥꾼과 정찰대가 맞붙는 비대칭 추격전.",
     "tileset": "jungle",
     "size": [
       128,
@@ -11,22 +11,22 @@
     "seed": 739
   },
   "text": {
-    "objectives": "Hunter captures every scout; a scout who outlasts the clock escapes.",
+    "objectives": "사냥꾼은 정찰대를 모두 붙잡아야 합니다. 정찰대는 제한 시간이 끝날 때까지 한 명이라도 버티면 탈출합니다.",
     "briefing": [
-      "P1 controls the hunter; P2 and P3 control scouts.",
-      "Scouts may hide in any marked chamber. Capture requires both sides to enter the same chamber.",
-      "P1 receives 18 seconds to prepare; scouts win if any remains at 210 seconds."
+      "1번 플레이어는 사냥꾼을, 2·3번 플레이어는 정찰대를 맡습니다.",
+      "정찰대는 표시된 방 어디든 숨을 수 있습니다. 사냥꾼이 같은 방에 들어오면 붙잡힙니다.",
+      "사냥꾼에게 18초의 준비 시간이 주어집니다. 210초가 될 때 정찰대가 한 명이라도 남아 있으면 정찰대가 승리합니다."
     ],
     "portrait": "Terran Ghost",
     "briefing_hold_ms": 1700,
     "messages": {
-      "hunter_start": "You are the hunter. Scouts have 18 seconds to hide.",
-      "hider_start": "Move to a chamber before the pursuit begins.",
-      "hunt_started": "Pursuit begins. Enter a chamber containing a scout to capture it.",
-      "caught": "Your signal is lost; the hunter found you.",
-      "hunter_win": "All scouts captured. Hunter wins.",
-      "hider_win": "The clock expired. You escaped.",
-      "hunter_eliminated": "Hunter eliminated; the scouts win."
+      "hunter_start": "당신은 사냥꾼입니다. 정찰대가 숨을 때까지 18초가 주어집니다.",
+      "hider_start": "추격이 시작되기 전에 방으로 이동해 숨으세요.",
+      "hunt_started": "추격이 시작됐습니다. 정찰대가 있는 방에 들어가 붙잡으세요.",
+      "caught": "신호가 끊겼습니다. 사냥꾼에게 붙잡혔습니다.",
+      "hunter_win": "정찰대를 모두 붙잡았습니다. 사냥꾼이 승리했습니다.",
+      "hider_win": "시간이 끝날 때까지 버텼습니다. 정찰대가 탈출했습니다.",
+      "hunter_eliminated": "사냥꾼이 탈락했습니다. 정찰대가 승리했습니다."
     }
   },
   "rules": {
@@ -39,7 +39,7 @@
     "hider": "Terran Civilian",
     "state_token": "Protoss Scarab",
     "room_marker": "Terran Beacon",
-    "room_marker_name": "Sanctuary chamber · hiding zone"
+    "room_marker_name": "은신처 · 숨는 방"
   },
   "starting_resources": {
     "minerals": 75,
@@ -71,16 +71,28 @@
     "energy": 75
   },
   "labels": {
-    "hall": "Floodgate Court",
+    "hall": "수문 광장",
     "rooms": [
-      "Old Fern Vault",
-      "Sunken Relay",
-      "Moss Archive",
-      "Canopy Kiln"
+      "고사리 지하실",
+      "잠긴 중계소",
+      "이끼 서고",
+      "수관 소성로"
     ]
   },
   "unit_settings": {
-    "Sarah Kerrigan (Ghost)": {"hp": 300, "armor": 4},
-    "Terran Civilian": {"hp": 70}
-  }
+    "Sarah Kerrigan (Ghost)": {
+      "hp": 300,
+      "armor": 4
+    },
+    "Terran Civilian": {
+      "hp": 70
+    }
+  },
+  "language": "ko",
+  "force_names": [
+    "사냥꾼",
+    "정찰대",
+    "미사용 세력 3",
+    "미사용 세력 4"
+  ]
 }

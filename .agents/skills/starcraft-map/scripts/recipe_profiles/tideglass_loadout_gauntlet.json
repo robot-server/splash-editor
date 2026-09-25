@@ -1,8 +1,8 @@
 {
   "genre": "loadout_gauntlet",
   "map": {
-    "name": "Tideglass Muster",
-    "description": "Recruit a specialist, then hold the breach against three alien waves.",
+    "name": "유리물결 집결전",
+    "description": "전문가 한 명을 모집한 뒤 세 차례 적 공세를 막는 협동전.",
     "tileset": "jungle",
     "size": [
       128,
@@ -11,20 +11,20 @@
     "seed": 6012
   },
   "text": {
-    "objectives": "Recruit one specialist before the muster ends; the squad wins by clearing all three waves.",
+    "objectives": "모집 시간이 끝나기 전에 전문가를 고르세요. 세 웨이브를 모두 막으면 분대가 승리합니다.",
     "briefing": [
-      "Move the civilian to one of the marked vendors and spend ore to recruit its displayed unit.",
-      "Siege Platform recruits a Dragoon for 90 ore; Field Clinic recruits a Medic for 65 ore; Spine Nest recruits a Hydralisk for 75 ore.",
-      "Each player may recruit once. Anyone who has not chosen when the draft timer expires receives the profile fallback unit.",
-      "The breach opens after every player has chosen. Defend the north edge and clear each wave before the battle timer expires."
+      "민간인을 표시된 상점으로 이동해 미네랄을 내고 옆에 적힌 유닛을 모집하세요.",
+      "공성 진지는 미네랄 90에 드라군, 야전 진료소는 65에 의무병, 가시 둥지는 75에 히드라리스크를 모집합니다.",
+      "플레이어마다 한 번 모집할 수 있습니다. 시간이 끝날 때까지 고르지 않으면 예비 유닛이 자동 배정됩니다.",
+      "모두 선택하면 균열이 열립니다. 전투 시간이 끝나기 전에 북쪽 방어선을 지키고 각 웨이브를 막으세요."
     ],
     "portrait": "Terran Medic",
     "briefing_hold_ms": 1800,
     "messages": {
-      "fallback": "Muster closed. Your reserve specialist joins the squad.",
-      "battle_start": "The breach is open. Hold the upper edge and clear each wave.",
-      "victory": "The final wave is broken. The squad holds the breach.",
-      "timeout": "The defense timer expired before the breach was secured."
+      "fallback": "모집이 끝났습니다. 예비 전문가가 분대에 합류했습니다.",
+      "battle_start": "균열이 열렸습니다. 북쪽 방어선을 지키며 웨이브를 막으세요.",
+      "victory": "마지막 웨이브를 막았습니다. 분대가 균열을 지켜냈습니다.",
+      "timeout": "균열을 지키기 전에 방어 시간이 끝났습니다."
     }
   },
   "rules": {
@@ -47,73 +47,73 @@
     "home_marker": "Terran Supply Depot"
   },
   "labels": {
-    "draft": "Muster Hall",
-    "arena": "Tideglass Breach",
-    "enemy_spawn": "South Rift",
+    "draft": "집결 홀",
+    "arena": "유리물결 균열",
+    "enemy_spawn": "남쪽 균열",
     "homes": [
-      "North Battery A",
-      "North Battery B",
-      "North Battery C",
-      "North Battery D"
+      "북부 포대 A",
+      "북부 포대 B",
+      "북부 포대 C",
+      "북부 포대 D"
     ],
     "recruit_pads": [
-      "Muster Pad A",
-      "Muster Pad B",
-      "Muster Pad C",
-      "Muster Pad D"
+      "모집 발판 A",
+      "모집 발판 B",
+      "모집 발판 C",
+      "모집 발판 D"
     ],
-    "draft_unused": "unused"
+    "draft_unused": "미사용"
   },
   "offers": [
     {
       "unit": "Protoss Dragoon",
       "marker": "Protoss Dragoon",
-      "location": "Siege Platform · Dragoon · 90 ore",
-      "label": "Siege Platform",
+      "location": "공성 진지 · 드라군 · 미네랄 90",
+      "label": "공성 진지",
       "cost": 90,
       "count": 1,
-      "receipt": "Dragoon recruited. Long range covers the breach approach.",
-      "unit_name": "Dragoon · 90 ore",
-      "marker_name": "Dragoon · 90 ore"
+      "receipt": "드라군이 합류했습니다. 긴 사거리로 균열 진입로를 방어하세요.",
+      "unit_name": "드라군 · 미네랄 90",
+      "marker_name": "드라군 · 미네랄 90"
     },
     {
       "unit": "Terran Medic",
       "marker": "Terran Medic",
-      "location": "Field Clinic · Medic · 65 ore",
-      "label": "Field Clinic",
+      "location": "야전 진료소 · 의무병 · 미네랄 65",
+      "label": "야전 진료소",
       "cost": 65,
       "count": 1,
-      "receipt": "Medic recruited. Keep the specialist behind the front line.",
-      "unit_name": "Medic · 65 ore",
-      "marker_name": "Medic · 65 ore"
+      "receipt": "의무병이 합류했습니다. 전선 뒤에서 지원하게 하세요.",
+      "unit_name": "의무병 · 미네랄 65",
+      "marker_name": "의무병 · 미네랄 65"
     },
     {
       "unit": "Zerg Hydralisk",
       "marker": "Zerg Hydralisk",
-      "location": "Spine Nest · Hydralisk · 75 ore",
-      "label": "Spine Nest",
+      "location": "가시 둥지 · 히드라리스크 · 미네랄 75",
+      "label": "가시 둥지",
       "cost": 75,
       "count": 1,
-      "receipt": "Hydralisk recruited. Its ranged fire supports the center.",
-      "unit_name": "Hydralisk · 75 ore",
-      "marker_name": "Hydralisk · 75 ore"
+      "receipt": "히드라리스크가 합류했습니다. 원거리 공격으로 중앙을 지원하세요.",
+      "unit_name": "히드라리스크 · 미네랄 75",
+      "marker_name": "히드라리스크 · 미네랄 75"
     }
   ],
   "waves": [
     {
       "unit": "Zerg Zergling",
       "count": 16,
-      "clear_message": "The first rush is broken. Heavier attackers are approaching."
+      "clear_message": "첫 공세를 막았습니다. 더 강한 적이 접근합니다."
     },
     {
       "unit": "Zerg Hydralisk",
       "count": 9,
-      "clear_message": "The ranged wave is clear. A final armored group is inbound."
+      "clear_message": "원거리 웨이브를 막았습니다. 마지막 중장갑 부대가 다가옵니다."
     },
     {
       "unit": "Zerg Ultralisk",
       "count": 3,
-      "clear_message": "The armored wave is clear."
+      "clear_message": "중장갑 웨이브를 막았습니다."
     }
   ],
   "starting_resources": {
@@ -148,10 +148,32 @@
   },
   "launch_switch": "BreachOpen",
   "unit_settings": {
-    "Protoss Dragoon": {"hp": 180, "shields": 130, "armor": 2},
-    "Terran Medic": {"hp": 90, "armor": 1},
-    "Zerg Hydralisk": {"hp": 125, "armor": 1},
-    "Zerg Zergling": {"hp": 45},
-    "Zerg Ultralisk": {"hp": 550, "armor": 3}
-  }
+    "Protoss Dragoon": {
+      "hp": 180,
+      "shields": 130,
+      "armor": 2
+    },
+    "Terran Medic": {
+      "hp": 90,
+      "armor": 1
+    },
+    "Zerg Hydralisk": {
+      "hp": 125,
+      "armor": 1
+    },
+    "Zerg Zergling": {
+      "hp": 45
+    },
+    "Zerg Ultralisk": {
+      "hp": 550,
+      "armor": 3
+    }
+  },
+  "language": "ko",
+  "force_names": [
+    "수비 분대",
+    "침입 부대",
+    "중계 장치",
+    "미사용 세력 4"
+  ]
 }

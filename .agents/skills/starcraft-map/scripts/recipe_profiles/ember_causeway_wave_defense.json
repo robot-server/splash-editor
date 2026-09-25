@@ -1,8 +1,8 @@
 {
   "genre": "wave_defense",
   "map": {
-    "name": "Ember Causeway",
-    "description": "A cooperative squad holds one winding route against escalating alien attacks.",
+    "name": "잿불 협로 방어전",
+    "description": "한 갈래 협로를 함께 지키며 점점 거세지는 적의 공격을 막는 협동 방어전.",
     "tileset": "jungle",
     "size": [
       128,
@@ -11,24 +11,24 @@
     "seed": 3071
   },
   "text": {
-    "objectives": "Survive six waves and defeat the boss before the shared lives run out.",
+    "objectives": "공유 생명이 바닥나기 전에 여섯 웨이브를 버티고 최종 보스를 쓰러뜨리세요.",
     "briefing": [
-      "All players defend one winding lane. Enemy groups walk from Entry to Exit; any unit reaching the exit costs the team one life.",
-      "Each stop room has profiled beacon purchases. The unit or structure named beside each beacon previews its effect and price.",
-      "Buy a squad or support effect with ore. Defeated players respawn at their assigned stop while the team still has lives.",
-      "Clear every wave and defeat the final boss to win."
+      "모든 플레이어가 굽은 통로 하나를 지킵니다. 적은 시작 지점에서 출구로 이동하며, 출구에 도달한 적 하나마다 팀 생명이 하나 줄어듭니다.",
+      "각 관문 방에는 구매 비콘이 있습니다. 비콘 옆 유닛·건물 이름에서 효과와 가격을 확인하세요.",
+      "미네랄로 분대나 지원 효과를 구매하세요. 팀 생명이 남아 있으면 쓰러진 플레이어는 배정된 관문에서 부활합니다.",
+      "모든 웨이브를 막고 최종 보스를 쓰러뜨리면 승리합니다."
     ],
     "portrait": "Terran Goliath",
     "briefing_hold_ms": 1700,
     "messages": {
-      "intro": "{players} defenders share one lane and {lives} lives. Draft a stop position, then protect the exit.",
-      "objectives": "Block Entry to Exit through {waves} waves. Shared lives: {lives}. Shops: {shops}.",
-      "wave": "Wave {number}/{total}: {count} {unit} approach.",
-      "leak": "An enemy leaked through; the team lost one shared life.",
-      "defeat": "The shared life reserve is empty. The lane is overrun.",
-      "victory": "The final boss fell. The causeway holds.",
-      "boss": "Final boss incoming: {unit}.",
-      "leaderboard": "Enemy kills"
+      "intro": "수비수 {players}명이 통로 하나와 공유 생명 {lives}개를 지킵니다. 관문 위치를 정하고 출구를 방어하세요.",
+      "objectives": "{waves}개 웨이브 동안 시작 지점부터 출구까지 막으세요. 공유 생명: {lives}. 상점: {shops}.",
+      "wave": "웨이브 {number}/{total}: 적 {count}기가 접근합니다.",
+      "leak": "적이 빠져나갔습니다. 팀의 공유 생명이 하나 줄었습니다.",
+      "defeat": "공유 생명이 모두 소진됐습니다. 통로가 함락됐습니다.",
+      "victory": "최종 보스를 쓰러뜨렸습니다. 협로를 지켜냈습니다.",
+      "boss": "최종 보스가 접근합니다.",
+      "leaderboard": "적 처치 수"
     }
   },
   "rules": {
@@ -60,21 +60,21 @@
     "enemy_entry_marker": "Zerg Egg"
   },
   "labels": {
-    "entry": "Ashen Entry",
-    "exit": "Ember Exit",
-    "way_prefix": "Lane Marker ",
-    "stop_prefix": "Gatehouse ",
-    "shop_suffix": "Vendor ",
-    "boss_name": "Flame Tyrant"
+    "entry": "잿빛 시작 지점",
+    "exit": "잿불 출구",
+    "way_prefix": "통로 표식 ",
+    "stop_prefix": "관문 ",
+    "shop_suffix": "상점 ",
+    "boss_name": "화염 군주"
   },
   "shops": [
     {
       "beacon": "Terran Beacon",
       "icon": "Terran Goliath",
-      "icon_name": "Gatehouse Goliath · 100 ore",
-      "label": "Goliath squad",
+      "icon_name": "관문 수호 골리앗 · 미네랄 100",
+      "label": "골리앗 분대",
       "cost": 100,
-      "receipt": "The Goliath squad has joined the gatehouse.",
+      "receipt": "골리앗 분대가 관문에 합류했습니다.",
       "actions": [
         "Create Unit(\"{player}\", \"Terran Goliath\", 4, \"{home}\")"
       ]
@@ -82,10 +82,10 @@
     {
       "beacon": "Protoss Beacon",
       "icon": "Zerg Sunken Colony",
-      "icon_name": "Sunken Colony · 150 ore",
-      "label": "Sunken emplacement",
+      "icon_name": "성큰 콜로니 · 미네랄 150",
+      "label": "성큰 포탑",
       "cost": 150,
-      "receipt": "A Sunken Colony is deployed in the gatehouse.",
+      "receipt": "성큰 콜로니를 관문에 배치했습니다.",
       "actions": [
         "Create Unit(\"{player}\", \"Zerg Sunken Colony\", 1, \"{home}\")"
       ]
@@ -93,10 +93,10 @@
     {
       "beacon": "Zerg Beacon",
       "icon": "Protoss Shield Battery",
-      "icon_name": "Shield support · 80 ore",
-      "label": "Shield support",
+      "icon_name": "보호막 지원 · 미네랄 80",
+      "label": "보호막 지원",
       "cost": 80,
-      "receipt": "The gatehouse force is fully shielded.",
+      "receipt": "관문 병력의 보호막을 모두 회복했습니다.",
       "actions": [
         "Modify Unit Shield Points(\"{player}\", \"Men\", 100, 0, \"{home}\")"
       ]
@@ -160,21 +160,50 @@
     "energy": 50
   },
   "unit_names": {
-    "Terran Beacon": "Goliath Squad · 100 ore",
-    "Protoss Beacon": "Sunken Colony · 150 ore",
-    "Zerg Beacon": "Shield support · 80 ore",
-    "Terran Goliath": "Gatehouse Goliath · 100 ore",
-    "Zerg Sunken Colony": "Sunken Colony · 150 ore",
-    "Protoss Shield Battery": "Shield support · 80 ore"
+    "Terran Beacon": "골리앗 분대 · 미네랄 100",
+    "Protoss Beacon": "성큰 콜로니 · 미네랄 150",
+    "Zerg Beacon": "보호막 지원 · 미네랄 80",
+    "Terran Goliath": "관문 수호 골리앗 · 미네랄 100",
+    "Zerg Sunken Colony": "성큰 콜로니 · 미네랄 150",
+    "Protoss Shield Battery": "보호막 지원 · 미네랄 80"
   },
   "unit_settings": {
-    "Terran Goliath": {"hp": 190, "armor": 2},
-    "Torrasque (Ultralisk)": {"hp": 1400, "armor": 6},
-    "Zerg Zergling": {"hp": 45},
-    "Zerg Hydralisk": {"hp": 100},
-    "Terran Firebat": {"hp": 65},
-    "Zerg Ultralisk": {"hp": 500, "armor": 3},
-    "Protoss Dragoon": {"hp": 130, "shields": 100, "armor": 2},
-    "Zerg Mutalisk": {"hp": 140, "armor": 1}
-  }
+    "Terran Goliath": {
+      "hp": 190,
+      "armor": 2
+    },
+    "Torrasque (Ultralisk)": {
+      "hp": 1400,
+      "armor": 6
+    },
+    "Zerg Zergling": {
+      "hp": 45
+    },
+    "Zerg Hydralisk": {
+      "hp": 100
+    },
+    "Terran Firebat": {
+      "hp": 65
+    },
+    "Zerg Ultralisk": {
+      "hp": 500,
+      "armor": 3
+    },
+    "Protoss Dragoon": {
+      "hp": 130,
+      "shields": 100,
+      "armor": 2
+    },
+    "Zerg Mutalisk": {
+      "hp": 140,
+      "armor": 1
+    }
+  },
+  "language": "ko",
+  "force_names": [
+    "협로 수비대",
+    "침입 무리",
+    "미사용 세력 3",
+    "미사용 세력 4"
+  ]
 }

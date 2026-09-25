@@ -1,8 +1,8 @@
 {
   "genre": "rpg",
   "map": {
-    "name": "Ashen Causeway",
-    "description": "A three-member expedition advances from a refuge through escalating monster enclaves.",
+    "name": "잿빛 협로",
+    "description": "세 명의 원정대가 괴물 구역을 돌파하며 성장하는 협동 모험.",
     "tileset": "ashworld",
     "size": [
       128,
@@ -11,26 +11,26 @@
     "seed": 7511
   },
   "text": {
-    "objectives": "Clear the monster zones and defeat the guardian. Fallen heroes return to the refuge.",
+    "objectives": "괴물 구역을 정리하고 수호자를 쓰러뜨리세요. 쓰러진 영웅은 피난처에서 다시 합류합니다.",
     "briefing": [
-      "The refuge is safe. Move east through each monster zone; every slain enemy pays its configured ore bounty.",
-      "The marked shop stations show their result and price. Leave a station after buying to avoid repeat charges.",
-      "Refuge contact restores the hero. Zone pads spend 55 ore to restore 70 percent health and energy.",
-      "Defeat the guardian in the final chamber to win."
+      "피난처에서는 안전합니다. 동쪽으로 이동해 괴물 구역을 돌파하세요. 적을 처치하면 정해진 미네랄 보상을 얻습니다.",
+      "상점 표식 옆에서 구매 결과와 가격을 확인하세요. 구매한 뒤에는 비콘에서 벗어나 중복 결제를 막으세요.",
+      "피난처 연락 지점에서 영웅을 회복할 수 있습니다. 구역 치료 표식은 미네랄 55로 체력과 에너지를 70% 회복합니다.",
+      "마지막 방에서 수호자를 쓰러뜨리면 승리합니다."
     ],
     "portrait": "Jim Raynor (Vulture)",
     "briefing_hold_ms": 1900,
     "messages": {
       "intro": [
-        "Ashen Causeway expedition begins.",
-        "Monster kills pay ore; shop signs show the purchase effect and cost."
+        "잿빛 협로 원정이 시작됩니다.",
+        "괴물을 처치하면 미네랄을 얻습니다. 상점 표식에서 효과와 가격을 확인하세요."
       ],
-      "leaderboard": "Expedition bounty score",
-      "zone_enter": "{label}: each {unit} pays {reward} ore.",
-      "boss_win": "The Ashen Guardian is defeated. The causeway is secure.",
-      "town_heal": "Refuge restored your hero.",
-      "zone_heal": "Treatment complete: {label}; spent {cost} ore.",
-      "revive": "Hero lost. A replacement returns to the refuge."
+      "leaderboard": "원정 보상 점수",
+      "zone_enter": "{label}: 적을 처치하면 미네랄 {reward}을 얻습니다.",
+      "boss_win": "잿빛 수호자를 쓰러뜨렸습니다. 협로가 안전해졌습니다.",
+      "town_heal": "피난처에서 영웅을 회복했습니다.",
+      "zone_heal": "치료 완료: {label}. 미네랄 {cost}을 사용했습니다.",
+      "revive": "영웅이 쓰러졌습니다. 새 영웅이 피난처로 돌아왔습니다."
     }
   },
   "rules": {
@@ -66,58 +66,58 @@
     "field_obstacle": "Protoss Pylon"
   },
   "labels": {
-    "town": "Ember Refuge",
-    "home_prefix": "Expedition",
-    "home_suffix": "Home",
-    "zone_prefix": "Enclave ",
-    "zone_spawn_suffix": "Breach",
-    "heal_prefix": "Treatment ",
-    "boss": "Ashen Guardian Hall",
-    "boss_spawn": "Guardian Rift",
-    "boss_switch": "Ashen Guardian Called",
-    "shop_prefix": "Forge "
+    "town": "불씨 피난처",
+    "home_prefix": "원정대 ",
+    "home_suffix": "본부",
+    "zone_prefix": "괴물 구역 ",
+    "zone_spawn_suffix": "침입로",
+    "heal_prefix": "치료 ",
+    "boss": "잿빛 수호자의 전당",
+    "boss_spawn": "수호자 균열",
+    "boss_switch": "수호자 소환",
+    "shop_prefix": "대장간 "
   },
   "zones": [
     {
       "unit": "Zerg Zergling",
       "count": 8,
       "reward": 16,
-      "label": "Cinder Pack",
+      "label": "잿불 무리",
       "marker": "Zerg Spawning Pool",
-      "marker_name": "Cinder Pack · Zerglings"
+      "marker_name": "잿불 무리 · 저글링"
     },
     {
       "unit": "Zerg Hydralisk",
       "count": 7,
       "reward": 38,
-      "label": "Ash Vats",
+      "label": "재의 배양장",
       "marker": "Zerg Hydralisk Den",
-      "marker_name": "Ash Vats · Hydralisks"
+      "marker_name": "재의 배양장 · 히드라리스크"
     },
     {
       "unit": "Terran Firebat",
       "count": 5,
       "reward": 73,
-      "label": "Magma Keep",
+      "label": "마그마 요새",
       "marker": "Terran Firebat",
-      "marker_name": "Magma Keep · Firebats"
+      "marker_name": "마그마 요새 · 파이어뱃"
     },
     {
       "unit": "Protoss Dragoon",
       "count": 4,
       "reward": 125,
-      "label": "Obsidian Guard",
+      "label": "흑요석 수비대",
       "marker": "Protoss Dragoon",
-      "marker_name": "Obsidian Guard · Dragoons"
+      "marker_name": "흑요석 수비대 · 드라군"
     }
   ],
   "shops": [
     {
       "marker": "Terran Engineering Bay",
-      "marker_name": "Reforge · restore health",
-      "label": "Reforge",
+      "marker_name": "재련 · 체력 회복",
+      "label": "재련",
       "cost": 150,
-      "receipt": "Reforge complete: hero health restored. Spent 150 ore.",
+      "receipt": "재련 완료. 영웅의 체력을 회복했습니다. 미네랄 150 소모.",
       "actions": [
         "Modify Unit Hit Points(\"{player}\", \"{hero}\", 100, 0, \"{shop}\")",
         "Set Score(\"{player}\", Add, 50, Custom)"
@@ -125,20 +125,20 @@
     },
     {
       "marker": "Protoss Shield Battery",
-      "marker_name": "Shield battery · protection",
-      "label": "Shield battery",
+      "marker_name": "보호막 충전 · 방어",
+      "label": "보호막 충전",
       "cost": 180,
-      "receipt": "Shield charge complete. Spent 180 ore.",
+      "receipt": "보호막 충전 완료. 미네랄 180 소모.",
       "actions": [
         "Modify Unit Shield Points(\"{player}\", \"{hero}\", 100, 0, \"{shop}\")"
       ]
     },
     {
       "marker": "Terran Academy",
-      "marker_name": "Medic · field support",
-      "label": "Field support",
+      "marker_name": "의무병 · 야전 지원",
+      "label": "야전 지원",
       "cost": 210,
-      "receipt": "Field medic joins the refuge. Spent 210 ore.",
+      "receipt": "야전 의무병이 피난처에 합류했습니다. 미네랄 210 소모.",
       "actions": [
         "Create Unit(\"{player}\", \"Terran Medic\", 1, \"{home}\")"
       ]
@@ -177,24 +177,48 @@
     "energy": 55
   },
   "unit_names": {
-    "Jim Raynor (Vulture)": "Ashen Pathfinder",
-    "Torrasque (Ultralisk)": "Ashen Guardian",
-    "Terran Medic": "Field Medic",
-    "Zerg Spawning Pool": "Cinder Pack · Zerglings",
-    "Zerg Hydralisk Den": "Ash Vats · Hydralisks",
-    "Terran Firebat": "Magma Keep · Firebats",
-    "Protoss Dragoon": "Obsidian Guard · Dragoons",
-    "Protoss Beacon": "Reforge · restore health",
-    "Protoss Shield Battery": "Shield battery · protection",
-    "Terran Academy": "Medic · field support"
+    "Jim Raynor (Vulture)": "잿빛 길잡이",
+    "Torrasque (Ultralisk)": "잿빛 수호자",
+    "Terran Medic": "야전 의무병",
+    "Zerg Spawning Pool": "잿불 무리 · 저글링",
+    "Zerg Hydralisk Den": "재의 배양장 · 히드라리스크",
+    "Terran Firebat": "마그마 요새 · 파이어뱃",
+    "Protoss Dragoon": "흑요석 수비대 · 드라군",
+    "Protoss Beacon": "재련 · 체력 회복",
+    "Protoss Shield Battery": "보호막 충전 · 방어",
+    "Terran Academy": "의무병 · 야전 지원"
   },
   "unit_settings": {
-    "Jim Raynor (Vulture)": {"hp": 360},
-    "Terran Medic": {"hp": 90},
-    "Torrasque (Ultralisk)": {"hp": 1200, "armor": 6},
-    "Zerg Zergling": {"hp": 45},
-    "Zerg Hydralisk": {"hp": 100},
-    "Terran Firebat": {"hp": 70},
-    "Protoss Dragoon": {"hp": 130, "shields": 100, "armor": 2}
-  }
+    "Jim Raynor (Vulture)": {
+      "hp": 360
+    },
+    "Terran Medic": {
+      "hp": 90
+    },
+    "Torrasque (Ultralisk)": {
+      "hp": 1200,
+      "armor": 6
+    },
+    "Zerg Zergling": {
+      "hp": 45
+    },
+    "Zerg Hydralisk": {
+      "hp": 100
+    },
+    "Terran Firebat": {
+      "hp": 70
+    },
+    "Protoss Dragoon": {
+      "hp": 130,
+      "shields": 100,
+      "armor": 2
+    }
+  },
+  "language": "ko",
+  "force_names": [
+    "원정대",
+    "괴물 무리",
+    "미사용 세력 3",
+    "미사용 세력 4"
+  ]
 }

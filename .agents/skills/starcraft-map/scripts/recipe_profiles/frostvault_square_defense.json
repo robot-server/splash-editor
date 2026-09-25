@@ -1,8 +1,8 @@
 {
   "genre": "square_defense",
   "map": {
-    "name": "Frostvault Chambers",
-    "description": "Each defender holds a sealed square against waves that circle a central keep.",
+    "name": "서리 저장고 방어전",
+    "description": "각 수비수가 봉인된 방을 지키고, 적 웨이브는 중앙 성채를 향해 진격합니다.",
     "tileset": "ice",
     "size": [
       128,
@@ -11,27 +11,27 @@
     "seed": 7712
   },
   "text": {
-    "objectives": "Stop the waves from reaching the western exit and defeat the final boss. Shared lives are limited.",
+    "objectives": "적이 서쪽 출구에 도달하지 못하게 막고 최종 보스를 쓰러뜨리세요. 공유 생명은 제한되어 있습니다.",
     "briefing": [
-      "Each player defends a separate island chamber. Enemies circle its outer lane; ranged defenses on the island attack through the thin wall.",
-      "An enemy at your Exit removes one shared life. The team loses when no shared lives remain.",
-      "Your Civilian buys the units or support shown beside your beacons. The entrance icon is your mobile recruitment token.",
-      "The final boss spawns in each active chamber. Defeat the boss in your own chamber to win."
+      "각 플레이어는 섬 방 하나를 지킵니다. 적은 바깥 통로를 돌며, 섬의 원거리 방어 병력은 얇은 벽 너머를 공격합니다.",
+      "적이 출구에 도달할 때마다 공유 생명이 하나 줄어듭니다. 생명이 모두 떨어지면 팀이 패배합니다.",
+      "민간인을 비콘으로 보내 옆에 표시된 병력이나 지원 효과를 구매하세요. 입구의 아이콘은 이동식 모집 표식입니다.",
+      "각 활성 방에 최종 보스가 나타납니다. 자기 방의 보스를 쓰러뜨리면 승리합니다."
     ],
     "portrait": "Protoss Dragoon",
     "briefing_hold_ms": 1800,
     "messages": {
-      "intro": "Frostvault: stop {waves} waves. The team shares {lives} lives.",
-      "objectives": "Block {waves} waves and kill the final boss before the shared lives reach zero.",
-      "leaderboard": "Shared lives remaining",
-      "wave": "Wave {number}/{total}: {count} {unit} enter your chamber.",
-      "boss": "The end boss appears in active chambers: {unit}.",
-      "leak": "An enemy escaped your chamber; one team life was lost.",
-      "defeat": "The team has no shared lives remaining.",
-      "win": "Your chamber boss is defeated. You hold Frostvault.",
-      "respawn": "A reserve squad has reached the center island.",
-      "wave_clear": "Your chamber is clear. Replenish before the next wave.",
-      "clear_arena": "The chamber is clear. Your team earns ore for the next wave."
+      "intro": "서리 저장고에서 {waves}개 웨이브를 막으세요. 팀 공유 생명: {lives}.",
+      "objectives": "공유 생명이 바닥나기 전에 {waves}개 웨이브와 최종 보스를 막으세요.",
+      "leaderboard": "남은 공유 생명",
+      "wave": "웨이브 {number}/{total}: 적 {count}기가 방에 진입합니다.",
+      "boss": "활성화된 방마다 최종 보스가 나타납니다.",
+      "leak": "적이 방을 빠져나갔습니다. 팀 생명이 하나 줄었습니다.",
+      "defeat": "팀 공유 생명이 모두 소진됐습니다.",
+      "win": "방의 보스를 쓰러뜨렸습니다. 서리 저장고를 지켜냈습니다.",
+      "respawn": "예비 분대가 중앙 섬에 도착했습니다.",
+      "wave_clear": "방을 지켜냈습니다. 다음 웨이브 전에 병력을 보충하세요.",
+      "clear_arena": "방을 지켜냈습니다. 팀이 다음 웨이브에 쓸 미네랄을 얻었습니다."
     }
   },
   "rules": {
@@ -74,25 +74,25 @@
     "enemy_entry_marker": "Zerg Egg"
   },
   "labels": {
-    "arena_prefix": "Frostvault ",
-    "spawn_suffix": "North Gate",
-    "ne_suffix": "Outer East",
-    "se_suffix": "South Turn",
-    "sw_suffix": "Outer West",
-    "exit_suffix": "Western Exit",
-    "center_suffix": "Keep Island",
-    "all_suffix": "Chamber All",
-    "shop_suffix": "Station ",
-    "boss_name": "Frost Colossus"
+    "arena_prefix": "서리 저장고 ",
+    "spawn_suffix": "북문",
+    "ne_suffix": "동쪽 바깥 통로",
+    "se_suffix": "남쪽 회전로",
+    "sw_suffix": "서쪽 바깥 통로",
+    "exit_suffix": "서쪽 출구",
+    "center_suffix": "성채 섬",
+    "all_suffix": "방 전체",
+    "shop_suffix": "보급소 ",
+    "boss_name": "서리 거신"
   },
   "shops": [
     {
       "beacon": "Terran Beacon",
       "icon": "Terran Medic",
-      "icon_name": "Medic · restore the squad",
-      "label": "Medical team",
+      "icon_name": "의무병 · 분대 회복",
+      "label": "의무병 지원",
       "cost": 105,
-      "receipt": "A Medic joins the keep. Cost: 105 ore.",
+      "receipt": "의무병이 성채에 합류했습니다. 미네랄 105 소모.",
       "actions": [
         "Create Unit(\"{player}\", \"Terran Medic\", 1, \"{center}\")"
       ]
@@ -100,10 +100,10 @@
     {
       "beacon": "Protoss Beacon",
       "icon": "Protoss Dragoon",
-      "icon_name": "Dragoon · reinforcement",
-      "label": "Dragoon reinforcement",
+      "icon_name": "드라군 · 증원",
+      "label": "드라군 증원",
       "cost": 145,
-      "receipt": "A Dragoon joins the keep. Cost: 145 ore.",
+      "receipt": "드라군이 성채에 합류했습니다. 미네랄 145 소모.",
       "actions": [
         "Create Unit(\"{player}\", \"Protoss Dragoon\", 1, \"{center}\")"
       ]
@@ -111,10 +111,10 @@
     {
       "beacon": "Zerg Beacon",
       "icon": "Protoss Shield Battery",
-      "icon_name": "Shield service · 100 ore",
-      "label": "Shield service",
+      "icon_name": "보호막 회복 · 미네랄 100",
+      "label": "보호막 회복",
       "cost": 100,
-      "receipt": "The island force regains shields. Cost: 100 ore.",
+      "receipt": "섬 병력의 보호막을 회복했습니다. 미네랄 100 소모.",
       "actions": [
         "Modify Unit Shield Points(\"{player}\", \"Men\", 100, 0, \"{center}\")"
       ]
@@ -175,20 +175,43 @@
     "energy": 65
   },
   "unit_names": {
-    "Torrasque (Ultralisk)": "Frost Colossus",
-    "Terran Beacon": "Medical team · 105 ore",
-    "Protoss Beacon": "Dragoon · 145 ore",
-    "Zerg Beacon": "Shield service · 100 ore",
-    "Terran Medic": "Medic · restore the squad",
-    "Protoss Dragoon": "Dragoon · reinforcement",
-    "Protoss Shield Battery": "Shield service · 100 ore"
+    "Torrasque (Ultralisk)": "서리 거신",
+    "Terran Beacon": "의무병 · 미네랄 105",
+    "Protoss Beacon": "드라군 · 미네랄 145",
+    "Zerg Beacon": "보호막 회복 · 미네랄 100",
+    "Terran Medic": "의무병 · 분대 회복",
+    "Protoss Dragoon": "드라군 · 증원",
+    "Protoss Shield Battery": "보호막 회복 · 미네랄 100"
   },
   "unit_settings": {
-    "Terran Marine": {"hp": 100, "armor": 1},
-    "Torrasque (Ultralisk)": {"hp": 1200, "armor": 5},
-    "Zerg Zergling": {"hp": 45},
-    "Zerg Hydralisk": {"hp": 100},
-    "Terran Firebat": {"hp": 65},
-    "Protoss Zealot": {"hp": 140, "shields": 90, "armor": 2}
-  }
+    "Terran Marine": {
+      "hp": 100,
+      "armor": 1
+    },
+    "Torrasque (Ultralisk)": {
+      "hp": 1200,
+      "armor": 5
+    },
+    "Zerg Zergling": {
+      "hp": 45
+    },
+    "Zerg Hydralisk": {
+      "hp": 100
+    },
+    "Terran Firebat": {
+      "hp": 65
+    },
+    "Protoss Zealot": {
+      "hp": 140,
+      "shields": 90,
+      "armor": 2
+    }
+  },
+  "language": "ko",
+  "force_names": [
+    "저장고 수비대",
+    "침입 무리",
+    "미사용 세력 3",
+    "미사용 세력 4"
+  ]
 }

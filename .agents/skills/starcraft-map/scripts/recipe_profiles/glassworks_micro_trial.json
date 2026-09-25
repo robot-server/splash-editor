@@ -1,8 +1,8 @@
 {
   "genre": "micro_trial",
   "map": {
-    "name": "Glassworks Relay",
-    "description": "A precision trial through four enemy formations in a derelict factory.",
+    "name": "유리 공장 돌파 시험",
+    "description": "버려진 공장에서 네 개의 적 진형을 차례로 돌파하는 전투 조작 시험.",
     "tileset": "space",
     "size": [
       128,
@@ -11,19 +11,19 @@
     "seed": 9124
   },
   "text": {
-    "objectives": "Clear four escalating bays while preserving your interceptor.",
+    "objectives": "요격기를 지키며 점점 어려워지는 네 구역을 모두 돌파하세요.",
     "briefing": [
-      "Control the starting combat unit and travel through the four linked bays.",
-      "Each enemy formation must be eliminated before the next bay activates.",
-      "Every clear awards its listed ore reward; losing your unit or running out of time ends the trial."
+      "시작 병력을 조종해 연결된 네 구역을 차례로 통과하세요.",
+      "다음 구역이 열리기 전에 현재 적 진형을 모두 처치해야 합니다.",
+      "구역을 돌파하면 표시된 미네랄을 얻습니다. 병력을 잃거나 시간이 끝나면 실패합니다."
     ],
     "portrait": "Protoss Scout",
     "briefing_hold_ms": 1900,
     "messages": {
-      "start": "The first formation is active. Keep your interceptor moving.",
-      "complete": "All formations cleared. Relay certified.",
-      "timeout": "The relay timed out before the final bay.",
-      "unit_lost": "Interceptor destroyed. Trial failed."
+      "start": "첫 적 진형이 나타났습니다. 요격기를 계속 움직이세요.",
+      "complete": "모든 진형을 돌파했습니다. 시험을 통과했습니다.",
+      "timeout": "마지막 구역에 도달하기 전에 시간이 끝났습니다.",
+      "unit_lost": "요격기가 파괴됐습니다. 시험에 실패했습니다."
     }
   },
   "rules": {
@@ -39,25 +39,25 @@
       "unit": "Terran Goliath",
       "count": 4,
       "reward": 18,
-      "clear_message": "Bay 1 clear. +18 ore; the missile screen advances."
+      "clear_message": "첫 구역 돌파. 미네랄 18 획득. 미사일 방어선으로 이동하세요."
     },
     {
       "unit": "Zerg Hydralisk",
       "count": 5,
       "reward": 24,
-      "clear_message": "Bay 2 clear. +24 ore; the ranged pack advances."
+      "clear_message": "두 번째 구역 돌파. 미네랄 24 획득. 원거리 부대로 이동하세요."
     },
     {
       "unit": "Protoss Dragoon",
       "count": 3,
       "reward": 32,
-      "clear_message": "Bay 3 clear. +32 ore; the heavy line advances."
+      "clear_message": "세 번째 구역 돌파. 미네랄 32 획득. 중장갑 부대로 이동하세요."
     },
     {
       "unit": "Terran Siege Tank (Tank Mode)",
       "count": 2,
       "reward": 45,
-      "clear_message": "Final bay clear. +45 ore; certification complete."
+      "clear_message": "마지막 구역 돌파. 미네랄 45 획득. 모든 시험을 마쳤습니다."
     }
   ],
   "starting_resources": {
@@ -98,17 +98,42 @@
   },
   "labels": {
     "bays": [
-      "Orbital Dock",
-      "Cooling Gallery",
-      "Reactor Hall",
-      "Core Chamber"
-    ]
+      "궤도 정박장",
+      "냉각 회랑",
+      "원자로 홀",
+      "핵심실"
+    ],
+    "player_start": "시험 시작점"
   },
   "unit_settings": {
-    "Protoss Scout": {"hp": 240, "shields": 160, "armor": 2},
-    "Terran Goliath": {"hp": 145, "armor": 2},
-    "Zerg Hydralisk": {"hp": 95, "armor": 1},
-    "Protoss Dragoon": {"hp": 150, "shields": 110, "armor": 2},
-    "Terran Siege Tank (Tank Mode)": {"hp": 180, "armor": 2}
-  }
+    "Protoss Scout": {
+      "hp": 240,
+      "shields": 160,
+      "armor": 2
+    },
+    "Terran Goliath": {
+      "hp": 145,
+      "armor": 2
+    },
+    "Zerg Hydralisk": {
+      "hp": 95,
+      "armor": 1
+    },
+    "Protoss Dragoon": {
+      "hp": 150,
+      "shields": 110,
+      "armor": 2
+    },
+    "Terran Siege Tank (Tank Mode)": {
+      "hp": 180,
+      "armor": 2
+    }
+  },
+  "language": "ko",
+  "force_names": [
+    "시험자",
+    "적 진형",
+    "미사용 세력 3",
+    "미사용 세력 4"
+  ]
 }

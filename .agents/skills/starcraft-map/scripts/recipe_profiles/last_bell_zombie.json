@@ -1,8 +1,8 @@
 {
   "genre": "zombie",
   "map": {
-    "name": "Last Bell at Ember Shelter",
-    "description": "A shelter team holds the field as fallen survivors join the infected.",
+    "name": "피난처의 마지막 종",
+    "description": "전투에서 탈락한 생존자가 감염팀에 합류하는 협동 생존전.",
     "tileset": "badlands",
     "size": [
       128,
@@ -11,28 +11,28 @@
     "seed": 9382
   },
   "text": {
-    "objectives": "Survive until extraction. Survivors who lose their squad become infected; the infected hunt the remaining team.",
+    "objectives": "구조대가 올 때까지 버티세요. 분대를 잃은 생존자는 감염자가 되어 남은 팀을 추격합니다.",
     "briefing": [
-      "The shelter is safe. Zombies emerge from the graveyard, cross the field, and attack survivors.",
-      "If a survivor loses every squad member, that player becomes infected and receives a zombie unit.",
-      "Shelter beacons recruit the marked squad shown beside them. The receipt and briefing state the price.",
-      "Survive to the configured extraction time. The siege boss arrives at the time named in Mission Objectives."
+      "피난처는 안전합니다. 좀비는 묘지에서 들판을 가로질러 생존자를 공격합니다.",
+      "분대가 전멸한 생존자는 감염자가 되어 좀비 유닛으로 합류합니다.",
+      "피난처 비콘은 옆에 표시된 분대를 모집합니다. 가격은 비콘 이름과 브리핑에서 확인하세요.",
+      "설정된 구조 시각까지 버티세요. 공성 보스는 임무 목표에 표시된 시각에 나타납니다."
     ],
     "portrait": "Terran Medic",
     "briefing_hold_ms": 1750,
     "messages": {
       "intro": [
-        "Last Bell: hold until {minutes} minutes.",
-        "A wiped survivor joins the infected team. Shelter vendors recruit the marked squads."
+        "마지막 종이 울릴 때까지 {minutes}분 버티세요.",
+        "분대가 전멸한 생존자는 감염팀에 합류합니다. 피난처 상점에서 표시된 분대를 모집하세요."
       ],
-      "objectives": "Survive {minutes} minutes; the shelter falls if the timer expires before extraction.",
-      "infected": "Your squad was lost; you are now infected.",
-      "wave": "Infected pressure rises ({number}/{total}); keep the field clear.",
-      "boss": "The siege boss enters at {minutes} minutes.",
-      "survived": "Extraction is here. The surviving team wins.",
-      "leaderboard": "Infected eliminated",
-      "healed": "Shelter recovery complete.",
-      "revived": "You are back at the shelter."
+      "objectives": "구조까지 {minutes}분 생존하세요. 시간이 먼저 끝나면 피난처가 함락됩니다.",
+      "infected": "분대를 잃었습니다. 이제 감염팀입니다.",
+      "wave": "감염자 공세 {number}/{total}단계. 들판을 지키세요.",
+      "boss": "{minutes}분이 되면 공성 보스가 나타납니다.",
+      "survived": "구조대가 도착했습니다. 생존팀이 승리합니다.",
+      "leaderboard": "감염자 처치 수",
+      "healed": "피난처에서 회복했습니다.",
+      "revived": "피난처에서 다시 합류했습니다."
     }
   },
   "rules": {
@@ -75,44 +75,44 @@
     "field_obstacle": "Protoss Pylon"
   },
   "labels": {
-    "shelter": "Ember Shelter",
-    "field": "Bell Field",
-    "graveyard": "Old Graveyard",
-    "home_prefix": "Refugee",
-    "home_suffix": "Home",
-    "shop_prefix": "Quartermaster",
-    "wave_spawn": "Old Graveyard"
+    "shelter": "불씨 피난처",
+    "field": "종의 들판",
+    "graveyard": "옛 묘지",
+    "home_prefix": "생존자 ",
+    "home_suffix": "거점",
+    "shop_prefix": "보급관 ",
+    "wave_spawn": "옛 묘지"
   },
   "shops": [
     {
       "marker": "Terran Engineering Bay",
-      "marker_name": "Goliath Squad · 100 ore",
+      "marker_name": "골리앗 분대 · 미네랄 100",
       "unit": "Terran Goliath",
       "count": 3,
       "cost": 100,
-      "receipt": "Three Goliaths join your shelter squad.",
+      "receipt": "골리앗 3기가 피난처 분대에 합류했습니다.",
       "actions": [
         "Create Unit(\"{player}\", \"Terran Goliath\", 3, \"{home}\")"
       ]
     },
     {
       "marker": "Terran Academy",
-      "marker_name": "Medic Pair · 85 ore",
+      "marker_name": "의무병 2기 · 미네랄 85",
       "unit": "Terran Medic",
       "count": 2,
       "cost": 85,
-      "receipt": "Two Medics join your shelter squad.",
+      "receipt": "의무병 2명이 피난처 분대에 합류했습니다.",
       "actions": [
         "Create Unit(\"{player}\", \"Terran Medic\", 2, \"{home}\")"
       ]
     },
     {
       "marker": "Terran Armory",
-      "marker_name": "Firebat Squad · 95 ore",
+      "marker_name": "파이어뱃 분대 · 미네랄 95",
       "unit": "Terran Firebat",
       "count": 3,
       "cost": 95,
-      "receipt": "Three Firebats join your shelter squad.",
+      "receipt": "파이어뱃 3기가 피난처 분대에 합류했습니다.",
       "actions": [
         "Create Unit(\"{player}\", \"Terran Firebat\", 3, \"{home}\")"
       ]
@@ -150,20 +150,41 @@
     "energy": 50
   },
   "unit_names": {
-    "Terran Goliath": "Goliath Squad · attack",
-    "Terran Engineering Bay": "Goliath Squad · 100 ore",
-    "Terran Academy": "Medic Pair · 85 ore",
-    "Terran Armory": "Firebat Squad · 95 ore",
-    "Zerg Zergling": "Infected Zergling",
-    "Protoss Archon": "Siege Boss",
-    "Terran Medic": "Field Medic",
-    "Terran Firebat": "Shelter Firebat"
+    "Terran Goliath": "골리앗 분대 · 공격",
+    "Terran Engineering Bay": "골리앗 분대 · 미네랄 100",
+    "Terran Academy": "의무병 2기 · 미네랄 85",
+    "Terran Armory": "파이어뱃 분대 · 미네랄 95",
+    "Zerg Zergling": "감염 저글링",
+    "Protoss Archon": "공성 보스",
+    "Terran Medic": "야전 의무병",
+    "Terran Firebat": "피난처 파이어뱃"
   },
   "unit_settings": {
-    "Terran Goliath": {"hp": 190, "armor": 2},
-    "Zerg Zergling": {"hp": 65, "armor": 1},
-    "Protoss Archon": {"hp": 200, "shields": 500, "armor": 2},
-    "Terran Medic": {"hp": 85},
-    "Terran Firebat": {"hp": 65}
-  }
+    "Terran Goliath": {
+      "hp": 190,
+      "armor": 2
+    },
+    "Zerg Zergling": {
+      "hp": 65,
+      "armor": 1
+    },
+    "Protoss Archon": {
+      "hp": 200,
+      "shields": 500,
+      "armor": 2
+    },
+    "Terran Medic": {
+      "hp": 85
+    },
+    "Terran Firebat": {
+      "hp": 65
+    }
+  },
+  "language": "ko",
+  "force_names": [
+    "생존자",
+    "감염자",
+    "미사용 세력 3",
+    "미사용 세력 4"
+  ]
 }

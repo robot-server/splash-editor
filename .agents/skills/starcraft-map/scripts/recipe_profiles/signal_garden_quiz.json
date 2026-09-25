@@ -1,8 +1,8 @@
 {
   "genre": "quiz",
   "map": {
-    "name": "Signal Garden: O/X",
-    "description": "A fast true-or-false survival quiz on two opposing platforms.",
+    "name": "신호 정원 참거짓",
+    "description": "마주 보는 두 발판에서 참과 거짓을 판단하며 버티는 퀴즈.",
     "tileset": "space",
     "size": [
       64,
@@ -11,24 +11,24 @@
     "seed": 818
   },
   "text": {
-    "objectives": "Judge each statement before the timer expires; keep at least one life through the final question.",
+    "objectives": "제한 시간 안에 문장을 판단하고 마지막 문제까지 생명을 하나 이상 남기세요.",
     "briefing": [
-      "Questions appear in sequence with a short answer timer.",
-      "Stand on the left O platform for true or the right X platform for false.",
-      "A wrong answer or no answer costs one life. Survive every question to win."
+      "문제가 차례로 나오며 답할 시간이 주어집니다.",
+      "참이면 왼쪽 참 발판, 거짓이면 오른쪽 거짓 발판에 서세요.",
+      "오답이나 무응답은 생명을 하나 잃습니다. 모든 문제를 버티면 승리합니다."
     ],
     "portrait": "Terran Civilian",
     "briefing_hold_ms": 1500,
     "messages": {
-      "start": "Signal Garden has {questions} statements and {lives} lives.",
-      "directions": "Move to O for true or X for false before {seconds} seconds run out.",
-      "correct": "Statement {number}: correct.",
-      "wrong": "Statement {number}: wrong. The answer was {answer}.",
-      "no_answer": "Statement {number}: no platform chosen. The answer was {answer}.",
-      "out_of_lives": "No lives remain. The signal ends here.",
-      "survived": "Every statement judged. You kept your signal alive.",
-      "leaderboard": "Statements judged correctly",
-      "question": "Question {number}: {prompt}"
+      "start": "문제 {questions}개가 준비되어 있습니다. 생명은 {lives}개입니다.",
+      "directions": "{seconds}초 안에 참 또는 거짓 발판으로 이동하세요.",
+      "correct": "{number}번 정답입니다.",
+      "wrong": "{number}번 오답입니다. 정답은 {answer}입니다.",
+      "no_answer": "{number}번 무응답입니다. 정답은 {answer}입니다.",
+      "out_of_lives": "생명이 없습니다. 신호가 끊겼습니다.",
+      "survived": "모든 문제를 풀고 끝까지 살아남았습니다.",
+      "leaderboard": "정답 수",
+      "question": "{number}번 문제: {prompt}"
     }
   },
   "rules": {
@@ -49,34 +49,34 @@
     "x_marker": "Protoss Beacon"
   },
   "unit_names": {
-    "Terran Beacon": "O · TRUE",
-    "Protoss Beacon": "X · FALSE"
+    "Terran Beacon": "O · 참",
+    "Protoss Beacon": "X · 거짓"
   },
   "labels": {
-    "lobby": "Signal Lobby",
-    "pad_o": "O Platform · TRUE",
-    "pad_x": "X Platform · FALSE",
-    "start_prefix": "Signal Slot"
+    "lobby": "신호 대기실",
+    "pad_o": "참 발판 · 참",
+    "pad_x": "거짓 발판 · 거짓",
+    "start_prefix": "신호 자리 "
   },
   "questions": [
     {
-      "prompt": "A Vespene geyser emits gas that workers can harvest.",
+      "prompt": "베스핀 간헐천에서는 일꾼이 가스를 채취할 수 있다.",
       "answer": "O"
     },
     {
-      "prompt": "A Dragoon is a Terran infantry unit.",
+      "prompt": "드라군은 테란 보병 유닛이다.",
       "answer": "X"
     },
     {
-      "prompt": "A player can control units from more than one race in a Use Map.",
+      "prompt": "유즈맵에서는 한 플레이어가 여러 종족의 유닛을 조종할 수 있다.",
       "answer": "O"
     },
     {
-      "prompt": "A Zergling attacks air units by default.",
+      "prompt": "저글링은 기본 공격으로 공중 유닛을 공격한다.",
       "answer": "X"
     },
     {
-      "prompt": "A Protoss Photon Cannon can attack both ground and air units.",
+      "prompt": "프로토스 포톤 캐논은 지상과 공중 유닛을 모두 공격할 수 있다.",
       "answer": "O"
     }
   ],
@@ -104,5 +104,12 @@
     "time": 1,
     "energy": 0
   },
-  "unit_settings": {}
+  "unit_settings": {},
+  "language": "ko",
+  "force_names": [
+    "응답자",
+    "문제 진행",
+    "미사용 세력 3",
+    "미사용 세력 4"
+  ]
 }

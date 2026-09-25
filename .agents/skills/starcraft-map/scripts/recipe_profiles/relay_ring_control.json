@@ -1,8 +1,8 @@
 {
   "genre": "control",
   "map": {
-    "name": "Relay Ring: Three Fronts",
-    "description": "A rotating arena where teams draft an army between lives.",
+    "name": "세 전선 중계 고리",
+    "description": "분대를 모집해 세 전선에서 처치 점수를 겨루는 회전형 경기장.",
     "tileset": "twilight",
     "size": [
       128,
@@ -11,21 +11,21 @@
     "seed": 4471
   },
   "text": {
-    "objectives": "Reach the kill quota before the other contenders.",
+    "objectives": "다른 도전자보다 먼저 처치 목표를 달성하세요.",
     "briefing": [
-      "Fight in the central ring; your kill total is the score.",
-      "Each pocket beacon buys its displayed unit squad for 85 ore. The marker beside it shows the squad type.",
-      "When only a few men remain, your starting squad respawns in your pocket. Retreat there to heal.",
-      "The first player to 32 kills wins; kills also award ore."
+      "중앙 고리에서 싸우세요. 처치 수가 점수입니다.",
+      "진영 비콘은 옆에 표시된 분대를 미네랄 85에 모집합니다.",
+      "분대가 거의 전멸하면 시작 분대가 진영에서 부활합니다. 회복이 필요하면 진영으로 후퇴하세요.",
+      "먼저 32 처치를 달성한 플레이어가 승리합니다. 처치하면 미네랄도 얻습니다."
     ],
     "portrait": "Protoss Dark Templar",
     "briefing_hold_ms": 1800,
     "messages": {
-      "start": "Relay Ring is live. First to 32 kills takes the station.",
-      "controls": "Pocket beacons recruit the adjacent unit type for 85 ore. Fall back to your pocket to recover.",
-      "respawn": "Reinforcements have reached your pocket.",
-      "victory": "Quota reached. You control the Relay Ring.",
-      "leaderboard": "\u0007Relay Kills"
+      "start": "경기가 시작됐습니다. 먼저 32 처치를 달성해 중계 고리를 차지하세요.",
+      "controls": "진영 비콘은 옆에 표시된 분대를 미네랄 85에 모집합니다. 회복이 필요하면 진영으로 후퇴하세요.",
+      "respawn": "증원군이 진영에 도착했습니다.",
+      "victory": "처치 목표를 달성했습니다. 중계 고리를 장악했습니다.",
+      "leaderboard": "\u0007처치 점수"
     }
   },
   "rules": {
@@ -47,37 +47,37 @@
     "purchase_beacon": "Protoss Beacon"
   },
   "labels": {
-    "arena": "Relay Ring",
-    "player_prefix": "Contender ",
-    "spawn_suffix": "Recovery",
-    "gate_suffix": "Deployment Gate",
-    "all_suffix": "Pocket",
-    "buy_prefix": "Roster "
+    "arena": "중계 고리",
+    "player_prefix": "도전자 ",
+    "spawn_suffix": "회복 지점",
+    "gate_suffix": "배치 관문",
+    "all_suffix": "진영",
+    "buy_prefix": "분대 "
   },
   "squads": [
     {
       "unit": "Protoss Dragoon",
       "count": 4,
       "marker": "Protoss Dragoon",
-      "unit_name": "Dragoon · 85 ore",
-      "marker_name": "Dragoon · 85 ore",
-      "receipt": "Dragoon squad purchased. Keep the formation together."
+      "unit_name": "드라군 · 미네랄 85",
+      "marker_name": "드라군 · 미네랄 85",
+      "receipt": "드라군 분대를 모집했습니다. 대형을 유지하세요."
     },
     {
       "unit": "Terran Vulture",
       "count": 3,
       "marker": "Terran Vulture",
-      "unit_name": "Vulture · 85 ore",
-      "marker_name": "Vulture · 85 ore",
-      "receipt": "Vulture squad purchased. Use its speed to flank."
+      "unit_name": "벌처 · 미네랄 85",
+      "marker_name": "벌처 · 미네랄 85",
+      "receipt": "벌처 분대를 모집했습니다. 빠른 기동으로 측면을 노리세요."
     },
     {
       "unit": "Zerg Hydralisk",
       "count": 4,
       "marker": "Zerg Hydralisk",
-      "unit_name": "Hydralisk · 85 ore",
-      "marker_name": "Hydralisk · 85 ore",
-      "receipt": "Hydralisk squad purchased. Hold the long approach."
+      "unit_name": "히드라리스크 · 미네랄 85",
+      "marker_name": "히드라리스크 · 미네랄 85",
+      "receipt": "히드라리스크 분대를 모집했습니다. 긴 진입로를 지키세요."
     }
   ],
   "starting_squad": 0,
@@ -113,8 +113,25 @@
     "energy": 60
   },
   "unit_settings": {
-    "Protoss Dragoon": {"hp": 170, "shields": 120, "armor": 2},
-    "Terran Vulture": {"hp": 115, "armor": 1},
-    "Zerg Hydralisk": {"hp": 125, "armor": 1}
-  }
+    "Protoss Dragoon": {
+      "hp": 170,
+      "shields": 120,
+      "armor": 2
+    },
+    "Terran Vulture": {
+      "hp": 115,
+      "armor": 1
+    },
+    "Zerg Hydralisk": {
+      "hp": 125,
+      "armor": 1
+    }
+  },
+  "language": "ko",
+  "force_names": [
+    "도전자 연합",
+    "경쟁 세력",
+    "미사용 세력 3",
+    "미사용 세력 4"
+  ]
 }
