@@ -481,6 +481,10 @@ class RecipeSplitTest(unittest.TestCase):
         lock = bundled["zombie"]["units"]["spawn_lock"]
         self.assertIn(f'Bring("Player 8", "{zunit}", "{grave}", At most, 3)', za)
         self.assertIn(f'Bring("Player 8", "{zunit}", "{grave}", At most, 9)', zb)
+        self.assertIn(f'Set Deaths("Player 8", "{lock}", Set To, 2)', za)
+        self.assertIn(f'Set Deaths("Player 8", "{lock}", Set To, 5)', zb)
+        self.assertEqual(make_zombie.placed_zombies({"rules": {"zombie_population": 4}}), 2)
+        self.assertEqual(make_zombie.placed_zombies({"rules": {"zombie_population": 10}}), 5)
         self.assertNotIn(
             f'Bring("Player 8", "{zunit}", "{bundled["zombie"]["labels"]["field"]}", At most,',
             za)

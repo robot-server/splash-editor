@@ -31,6 +31,11 @@ import recipe_config as profile
 
 TILESETS = {"badlands": 0, "space": 1, "ashworld": 3, "jungle": 4,
             "desert": 5, "ice": 6, "twilight": 7}
+def placed_zombies(cfg) -> int:
+    """게임 시작 때 묘지에 깔아 두는 수. 보충 트리거의 초기 발급 횟수와 같다."""
+    return cfg["rules"]["zombie_population"] // 2
+
+
 def build(cfg, enemy, boss_p, humans):
     rules,units,labels,msg=cfg["rules"],cfg["units"],cfg["labels"],cfg["text"]["messages"]
     players=rules["players"]
@@ -52,11 +57,20 @@ def build(cfg, enemy, boss_p, humans):
     cap = rules["zombie_population"]
     lock = units["spawn_lock"]
     graveyard = labels["graveyard"]
-    # 생성은 묘지에서 일어나고, 발급 횟수와 묘지 수가 상한에 닿으면 멈춘다.
-    # 들판만 보면 하이퍼 트리거가 상한 전에 무리를 계속 더한다.
+    seeded = placed_zombies(cfg)
+    # 이미 깔아 둔 수를 발급 횟수로 찍은 뒤에만 1기씩 보충한다.
+    # 묘지 유닛이 들판으로 나가도 발급은 cap을 넘지 않는다.
+    T.append(f'''Trigger("{enemy}"){{
+Conditions:
+\tDeaths("{enemy}", "{lock}", Exactly, 0);
+
+Actions:
+\tSet Deaths("{enemy}", "{lock}", Set To, {seeded});
+}}''')
     T.append(f'''Trigger("{enemy}"){{
 Conditions:
 \tBring("{enemy}", "{zombie}", "{graveyard}", At most, {cap - 1});
+\tDeaths("{enemy}", "{lock}", At least, 1);
 \tDeaths("{enemy}", "{lock}", At most, {cap - 1});
 
 Actions:
@@ -176,7 +190,7 @@ def main(argv=None):
         cli.place(shop["marker"],sx,shelter[1]+room_h-10,owner=12)
     cli.place(scmap.START_LOCATION,grave[0]+3,grave[1]+3,owner=enemy_no)
     cli.place(scmap.START_LOCATION,grave[0]+3,grave[1]+room_h-4,owner=boss_no)
-    for k in range(rules["zombie_population"]//2):
+    for k in range(placed_zombies(cfg)):
         cli.place(units["zombie"],grave[0]+2+k%8,grave[1]+8+(k//8)*3,owner=enemy_no)
     for k in range(rules["field_obstacles"]):
         cli.place(units["field_obstacle"],field[0]+6+(k%5)*8,field[1]+8+(k//5)*18,owner=12)
