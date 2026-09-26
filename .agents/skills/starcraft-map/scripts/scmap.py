@@ -2772,8 +2772,7 @@ def part_heal_zone(player: str, where: str, cost: int = 0,
             f'Actions:\n' + "\n".join(acts) + '\n}']
 
 
-def part_wave_clock(owner: str, counter: str, waves: int,
-                    seconds: int = 35) -> list[str]:
+def part_wave_clock(owner: str, counter: str, waves: int, seconds: int) -> list[str]:
     """웨이브 번호를 올리는 시계. 컴퓨터가 돌린다."""
     return [f'Trigger("{owner}"){{\nConditions:\n'
             f'\tCountdown Timer(At most, 0);\n'

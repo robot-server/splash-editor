@@ -270,6 +270,12 @@ class RecipeSplitTest(unittest.TestCase):
             path.write_text(json.dumps(broken), encoding="utf-8")
             with self.assertRaises(CliError):
                 profile.load_profile(str(path), "square_defense")
+            for key in ("defenses", "selection"):
+                missing = json.loads(json.dumps(bundled["square_defense"]))
+                del missing["units"][key]
+                path.write_text(json.dumps(missing), encoding="utf-8")
+                with self.assertRaises(CliError):
+                    profile.load_profile(str(path), "square_defense")
             hid = json.loads(json.dumps(bundled["hide_seek"]))
             del hid["players"]
             path.write_text(json.dumps(hid), encoding="utf-8")
