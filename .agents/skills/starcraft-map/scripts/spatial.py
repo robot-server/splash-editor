@@ -150,7 +150,7 @@ def check(cli: Cli, info: dict, text: str) -> list[tuple[str, str]]:
         if bad:
             worst = collections.Counter(b[0] for b in bad).most_common(3)
             far = max(bad, key=lambda b: b[1])
-            out.append(("!!", f"지킬 유닛 {len(bad)}기가 적이 지나는 길에서 "
+            out.append(("?", f"지킬 유닛 {len(bad)}기가 적이 지나는 길에서 "
                               f"사거리 밖입니다. 가장 먼 것: {far[0]} — "
                               f"{far[1]}타일 떨어졌는데 사거리는 {far[2]}입니다. "
                               f"({', '.join(f'{n} {c}기' for n, c in worst)})"))
@@ -164,7 +164,7 @@ def check(cli: Cli, info: dict, text: str) -> list[tuple[str, str]]:
         if not placed.get(name):
             continue
         if name == "Protoss Photon Cannon" and not placed.get("Protoss Pylon"):
-            out.append(("!!", f"{name} 을 {placed[name]}기 놓았는데 파일런이 "
+            out.append(("?", f"{name} 을 {placed[name]}기 놓았는데 파일런이 "
                               f"하나도 없습니다 — {why}. 전력이 없으면 안 쏩니다."))
         elif name == "Terran Bunker":
             out.append(("?", f"{name} 을 {placed[name]}기 놓았습니다 — {why}. "
@@ -206,7 +206,7 @@ def check(cli: Cli, info: dict, text: str) -> list[tuple[str, str]]:
                             worst = (d, nm)
                 # 일꾼·시민 걸음으로 대략 초당 세 칸 남짓
                 if worst and worst[0] > limit * 3:
-                    out.append(("!!", f"제한 시간이 {limit}초인데 시작 자리에서 "
+                    out.append(("?", f"제한 시간이 {limit}초인데 시작 자리에서 "
                                       f"'{worst[1]}' 까지 걸어서 {worst[0]}타일 "
                                       f"입니다. 시간 안에 못 갑니다 — 초당 세 칸 "
                                       f"남짓으로 잡으면 {worst[0] // 3}초가 듭니다."))

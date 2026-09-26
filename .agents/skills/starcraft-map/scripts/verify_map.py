@@ -364,7 +364,7 @@ def check_shape(cli: Cli, m: dict) -> list[tuple[str, str]]:
     out = []
     u = sm["uniform_pct"]
     if u >= 60:
-        out.append(("!!", f"4x4 창의 {u:.0f}%가 지형 한두 가지뿐입니다 "
+        out.append(("?", f"4x4 창의 {u:.0f}%가 지형 한두 가지뿐입니다 "
                           f"(공식 맵 3~18%). 절벽·수풀 없는 벌판입니다 — "
                           f"절차 생성 슬롭이 늘 여기 걸립니다."))
     elif u >= 30:
@@ -376,7 +376,7 @@ def check_shape(cli: Cli, m: dict) -> list[tuple[str, str]]:
     if f:
         worst = max(f)
         if worst >= 0.88:
-            out.append(("!!", f"고지 덩이가 직사각형입니다 (채움 {worst:.2f}, "
+            out.append(("?", f"고지 덩이가 직사각형입니다 (채움 {worst:.2f}, "
                               f"공식 맵 0.40~0.75). 네모난 언덕은 사람이 "
                               f"그린 것으로 보이지 않습니다."))
         else:
@@ -448,7 +448,7 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
             if u["owner"] in nums and u["type"] != scmap.START_LOCATION:
                 placed[u["owner"]] += 1
         if placed:
-            out.append(("!!", f"사람 슬롯 {sorted(placed)} 의 종족이 '선택 가능' "
+            out.append(("?", f"사람 슬롯 {sorted(placed)} 의 종족이 '선택 가능' "
                               f"인데 그 슬롯에 유닛을 {sum(placed.values())}기 "
                               f"깔아 두었습니다. 그 유닛은 **통째로 무시되고** "
                               f"본진 + 일꾼으로 시작합니다."))
@@ -471,7 +471,7 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
     shares_vision = bool(re.search(r'Run AI Script\w*\(\s*"[+-]Vi', text))
     missing = [p for p in humans if p not in revealer_owners]
     if missing and not shares_vision:
-        out.append(("!!", f"{missing} 번 플레이어에게 Map Revealer 도 없고 "
+        out.append(("?", f"{missing} 번 플레이어에게 Map Revealer 도 없고 "
                           f"시야를 나누는 AI 스크립트도 없습니다. 그 사람 화면은 "
                           f"깜깜합니다 — 세력 시야 공유만으로는 맵이 안 밝아집니다."))
     elif missing:
@@ -486,7 +486,7 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
             ow = owners(blk)
             nums = [int(x) for x in re.findall(r'"Player (\d+)"', ow)]
             if "All players" in ow or any(p in humans for p in nums):
-                out.append(("!!", f"하이퍼 트리거의 주인이 {ow} 입니다. 사람에게 "
+                out.append(("?", f"하이퍼 트리거의 주인이 {ow} 입니다. 사람에게 "
                                   f"걸면 그 사람의 다른 웨이트 트리거가 전부 "
                                   f"먹통이 됩니다 — 컴퓨터에게 거세요."))
                 break
@@ -523,7 +523,7 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
                 and "Set Switch" not in b):
             n += 1
     if n:
-        out.append(("!!", f"비콘 상점 {n}개에 밀어내기도 잠금도 없습니다. "
+        out.append(("?", f"비콘 상점 {n}개에 밀어내기도 잠금도 없습니다. "
                           f"비콘 위에 서 있는 동안 매 프레임 결제됩니다."))
 
     # 7) 누적 조건으로 보상을 주면 첫 성공 뒤 계속 들어온다
@@ -557,7 +557,7 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
         if nums and all(p not in humans for p in nums):
             n += 1
     if n:
-        out.append(("!!", f"안내 트리거 {n}개를 컴퓨터만 실행합니다. "
+        out.append(("?", f"안내 트리거 {n}개를 컴퓨터만 실행합니다. "
                           f"Display Text Message 는 그 트리거를 실행하는 "
                           f"플레이어에게만 보입니다 — 아무도 못 봅니다."))
 
@@ -575,7 +575,7 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
             counter = mm.group(2)
             if not re.search(r'Set Deaths\([^)]*"' + re.escape(counter) +
                              r'"[^)]*Set To,\s*[1-9]', text):
-                out.append(("!!", f'"{counter}" 죽음 수가 0이면 지는데, 그 값을 '
+                out.append(("?", f'"{counter}" 죽음 수가 0이면 지는데, 그 값을 '
                                   f'어디서도 Set To 로 찍지 않습니다. 죽음 수는 '
                                   f'처음에 0이므로 **시작하자마자 집니다.**'))
                 break
@@ -638,7 +638,7 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
         body = blk.split("Actions:")[-1]
         if (re.search(r'Remove Unit At Location\([^)]*,\s*All\s*,', body)
                 and re.search(r'Set Deaths\([^)]*Subtract,\s*1\s*\)', body)):
-            out.append(("!!", "새어 나간 유닛을 All 로 통째 지우면서 목숨은 "
+            out.append(("?", "새어 나간 유닛을 All 로 통째 지우면서 목숨은 "
                               "하나만 깎습니다. 다섯이 새어도 목숨 하나입니다 — "
                               "한 기씩 지우세요."))
             break
@@ -685,7 +685,7 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
         void = 100.0 * cnt.get(0, 0) / (W * H)
         big = [k for k, n in cnt.items() if k and n >= W * H * 0.01]
         if void > 20:
-            out.append(("!!", f"맵의 {void:.0f}% 가 **검은 칸**입니다. 실측 "
+            out.append(("?", f"맵의 {void:.0f}% 가 **검은 칸**입니다. 실측 "
                               f"유즈맵 485장의 중앙값은 0.0% 이고 84% 가 "
                               f"1% 미만입니다. 못 걷게 막으려면 검게 뚫지 "
                               f"말고 **못 걷는 지형**(물·용암)을 까세요 — "
@@ -694,7 +694,7 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
             out.append(("?", f"검은 칸이 {void:.0f}% 입니다 (실측 중앙 0.0%). "
                              f"게임에서 맵에 구멍이 난 것처럼 보입니다."))
         if len(big) <= 2:
-            out.append(("!!", f"1% 넘게 쓰는 타일 그룹이 {len(big)}개뿐입니다 "
+            out.append(("?", f"1% 넘게 쓰는 타일 그룹이 {len(big)}개뿐입니다 "
                               f"(실측 중앙 10개, 아래 사분위 6개). 바닥을 한 "
                               f"가지로 깔면 어디가 길이고 어디가 발판인지 "
                               f"화면에서 안 읽힙니다."))
@@ -923,7 +923,7 @@ def check_basics(cli: Cli, m: dict) -> list[tuple[str, str]]:
     n_starts = m["n_start_units"]
     # 컴퓨터는 스타팅 없이도 트리거로 유닛을 받을 수 있다. 사람 수만 맞으면 된다.
     if n_starts and len(human) != n_starts and classify(m) == "melee":
-        out.append(("!!", f"사람이 앉을 슬롯 {len(human)}개와 스타팅 {n_starts}개가 "
+        out.append(("?", f"사람이 앉을 슬롯 {len(human)}개와 스타팅 {n_starts}개가 "
                           f"다릅니다. 스타팅 없는 자리를 받는 사람이 생깁니다."))
     else:
         out.append(("ok", f"사람 슬롯 {len(human)}개 = 스타팅 {n_starts}개"
@@ -1000,7 +1000,7 @@ def check_basics(cli: Cli, m: dict) -> list[tuple[str, str]]:
                                      f"있습니다 — 반섬맵입니다. 같은 덩이끼리는 지상으로 "
                                      f"싸우고 건너편은 공중·수송으로 갑니다."))
                 else:
-                    out.append(("!!", f"땅덩이마다 스타팅 수가 다릅니다 {sizes}. "
+                    out.append(("?", f"땅덩이마다 스타팅 수가 다릅니다 {sizes}. "
                                       f"같은 덩이에 여럿이 있는 쪽은 지상 러시를 "
                                       f"당하고 혼자 있는 쪽은 안 당합니다 — 자리에 "
                                       f"따라 게임이 달라집니다."))
@@ -1047,21 +1047,21 @@ def check_fairness(m: dict) -> list[tuple[str, str]]:
         return out
     ps = m["per_start"]
     if m["n_starts"] < 2:
-        out.append(("!!", f"스타팅이 {m['n_starts']}개입니다. 밀리맵은 2개 이상이어야 합니다."))
+        out.append(("?", f"스타팅이 {m['n_starts']}개입니다. 밀리맵은 보통 2개 이상입니다."))
         return out
 
     for field, label in [("main_minerals", "본진 미네랄"), ("main_gas", "본진 가스"),
                          ("natural_minerals", "앞마당 미네랄"), ("natural_gas", "앞마당 가스")]:
         values = {p[field] for p in ps}
         if len(values) > 1:
-            out.append(("!!", f"{label}이 스타팅마다 다릅니다: "
+            out.append(("?", f"{label}이 스타팅마다 다릅니다: "
                               f"{[p[field] for p in ps]} — 자리에 따라 손해를 봅니다."))
         else:
             out.append(("ok", f"{label} {ps[0][field]}개로 모든 스타팅이 같습니다."))
 
     dists = [p["natural_distance"] for p in ps if p["natural_distance"] is not None]
     if dists and max(dists) - min(dists) > 4:
-        out.append(("!!", f"본진→앞마당 거리가 고르지 않습니다: "
+        out.append(("?", f"본진→앞마당 거리가 고르지 않습니다: "
                           f"{min(dists):.0f}~{max(dists):.0f}타일."))
     elif dists:
         out.append(("ok", f"본진→앞마당 {statistics.median(dists):.0f}타일 "
@@ -1072,7 +1072,7 @@ def check_fairness(m: dict) -> list[tuple[str, str]]:
     if best and sym[best] >= 99.9:
         out.append(("ok", f"스타팅이 {best} 대칭입니다."))
     else:
-        out.append(("!!", f"완전 대칭인 축이 없습니다: {sym}. "
+        out.append(("?", f"완전 대칭인 축이 없습니다: {sym}. "
                           f"밀리맵은 대칭이 밸런스의 뿌리입니다."))
 
     rs = m["resource_symmetry"]
@@ -1178,6 +1178,146 @@ def check_race_balance(m: dict) -> list[tuple[str, str, str]]:
 _CLI = [None]
 
 
+def assess(snapshot: dict) -> list[tuple[str, str]]:
+    """CLI 없이 구조 결함과 컨셉 보고를 가른다.
+
+    구조 결함만 `!!` 다. 대칭·브리핑 유무·타이머 숫자·UNIS 전 필드 0은
+    보여도 실패가 아니다. 타일 0을 Null로, 타이머 숫자를 초로 단정하지 않는다.
+    """
+    out: list[tuple[str, str]] = []
+    if snapshot.get("outside_units"):
+        out.append(("!!", f"맵 밖 유닛 {snapshot['outside_units']}기. 게임이 튕깁니다."))
+    blocked = snapshot.get("blocked_pct")
+    if blocked is not None and blocked > 66:
+        out.append(("!!", f"못 걷는 지형이 **{blocked:.0f}%** 입니다."))
+    if snapshot.get("burn_hp_zero"):
+        out.append(("!!", "불 효과가 있는 건물의 체력이 0입니다: "
+                          f"{snapshot['burn_hp_zero']}."))
+    if snapshot.get("inactive_progress"):
+        out.append(("!!", "사용 안 함·닫힘 슬롯만의 진행 트리거: "
+                          f"{snapshot['inactive_progress']}."))
+    if snapshot.get("bad_resource_bits"):
+        out.append(("!!", f"자원 유효 비트가 꺼진 자원 {snapshot['bad_resource_bits']}개."))
+    if snapshot.get("starts") == 0:
+        out.append(("!!", "스타팅 포인트가 없습니다."))
+    if snapshot.get("starts_unwalkable"):
+        out.append(("!!", "스타팅 자리에 걸을 수 있는 땅이 없습니다."))
+    version = snapshot.get("version") or ""
+    if (snapshot.get("extension") == ".scx" and version
+            and "Brood War" not in version and "Remastered" not in version):
+        out.append(("!!", f"확장자는 .scx 인데 버전이 {version} 입니다."))
+    if snapshot.get("deaths_var_placed"):
+        out.append(("!!", "죽음 수를 변수로 쓰는 유닛이 배치되어 있습니다: "
+                          f"{snapshot['deaths_var_placed']}."))
+    if snapshot.get("modify_unit_reversed"):
+        out.append(("!!", "Modify Unit 인자 순서가 거꾸로입니다: "
+                          f"{snapshot['modify_unit_reversed']}."))
+
+    if snapshot.get("symmetric") is False:
+        out.append(("?", "완전 대칭인 축이 없습니다."))
+    briefing = snapshot.get("briefing")
+    if briefing is not None:
+        text = str(briefing).strip()
+        if text:
+            out.append(("?", f"브리핑이 있습니다 ({len(text)}자)."))
+        else:
+            out.append(("?", "브리핑이 없습니다."))
+    if snapshot.get("forces") is not None:
+        out.append(("?", f"이름 있는 포스 {snapshot['forces']}개."))
+    if snapshot.get("switches") is not None:
+        out.append(("?", f"이름 있는 스위치 {snapshot['switches']}개."))
+    if snapshot.get("sounds") is not None:
+        out.append(("?", f"소리 {snapshot['sounds']}개."))
+    timers = snapshot.get("timers") or []
+    if timers:
+        shown = ", ".join(f"{kind} {num}" for kind, num in timers[:8])
+        out.append(("?", f"타이머 숫자: {shown}. "
+                         "초인지 화면 숫자인지는 맵만으로 가르지 않습니다."))
+    if snapshot.get("unis_all_zero"):
+        out.append(("?", "기본값을 끈 유닛의 체력 외 필드가 통째로 0입니다: "
+                         f"{snapshot['unis_all_zero']}."))
+    return out
+
+
+def failure_count(findings: list[tuple[str, str]]) -> int:
+    return sum(1 for mark, _ in findings if mark == "!!")
+
+
+def _timers_in(text: str) -> list[tuple[str, int]]:
+    found = []
+    for kind in ("Countdown Timer", "Elapsed Time"):
+        for num in re.findall(rf"{kind}\([^)]*?(\d+)", text):
+            found.append((kind, int(num)))
+    return found
+
+
+def _unis_all_zero(text: str) -> bool:
+    """기본값을 끈 설정에서 체력 외 수치 필드가 모두 0인지."""
+    default = re.search(r"기본값\s*:\s*(\S+)", text)
+    if not default or default.group(1) != "아니오":
+        return False
+    fields = {}
+    for label in ("방패", "방어력", "생산 시간", "미네랄", "가스"):
+        match = re.search(rf"{label}\s*:\s*(\d+)", text)
+        if not match:
+            return False
+        fields[label] = int(match.group(1))
+    return all(value == 0 for value in fields.values())
+
+
+def collect_file_facts(cli: Cli) -> list[tuple[str, str]]:
+    """브리핑·포스·스위치·소리·타이머 숫자·UNIS 전 필드 0을 실패 없이 남긴다."""
+    snapshot: dict = {}
+    try:
+        forces = cli.run("force", "list", cli.path)
+        snapshot["forces"] = sum(
+            1 for line in forces.splitlines()
+            if line.strip().startswith("세력") and "(이름 없음)" not in line)
+    except Exception as e:
+        snapshot["forces"] = None
+        forces_error = str(e)
+    else:
+        forces_error = ""
+    try:
+        switches = cli.run("switch", "list", cli.path)
+        match = re.search(r"이름 붙은 것\s*(\d+)", switches)
+        snapshot["switches"] = int(match.group(1)) if match else 0
+    except Exception:
+        snapshot["switches"] = None
+    try:
+        sounds = cli.run("sound", "list", cli.path, "--fast")
+        match = re.search(r"소리\s*(\d+)개", sounds)
+        snapshot["sounds"] = int(match.group(1)) if match else 0
+    except Exception:
+        snapshot["sounds"] = None
+    try:
+        briefing = cli.run("briefing", "show", cli.path, "--install", cli.install)
+        snapshot["briefing"] = briefing
+    except Exception:
+        snapshot["briefing"] = ""
+    try:
+        snapshot["timers"] = _timers_in(cli.trigger_text())
+    except Exception:
+        snapshot["timers"] = []
+    zero = []
+    try:
+        names = {unit["type_name"] for unit in cli.units()}
+    except Exception:
+        names = set()
+    for name in sorted(names):
+        try:
+            text = cli.run("unitdef", "get", cli.path, name)
+        except Exception:
+            continue
+        if _unis_all_zero(text):
+            zero.append(name)
+    snapshot["unis_all_zero"] = zero
+    findings = assess(snapshot)
+    if forces_error:
+        findings.append(("?", f"포스를 못 읽었습니다: {forces_error}"))
+    return findings
+
+
 def report(m: dict) -> int:
     print(f"== {m['name'] or m['file']} ==")
     print(f"  {m['width']}x{m['height']} {m['tileset']}  {m['version']}")
@@ -1190,7 +1330,7 @@ def report(m: dict) -> int:
 
     print("\n-- 기본 (열리는 맵인가) --")
     problems = 0
-    for mark, text in check_basics(_CLI[0], m):
+    for mark, text in check_basics(_CLI[0], m) + collect_file_facts(_CLI[0]):
         if mark == "!!":
             problems += 1
         print(f"  [{mark:2}] {text}")
