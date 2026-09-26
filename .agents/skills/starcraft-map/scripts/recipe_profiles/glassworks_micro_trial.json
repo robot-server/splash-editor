@@ -93,8 +93,9 @@
     "energy": 60
   },
   "players": {
+    "race": "protoss",
     "enemy_race": "terran",
-    "system_race": "protoss"
+    "system_race": "zerg"
   },
   "labels": {
     "bays": [

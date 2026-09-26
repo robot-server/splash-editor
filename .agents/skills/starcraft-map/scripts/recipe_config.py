@@ -88,12 +88,17 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
                 if k not in wave:
                     raise CliError(f"waves[{i}].{k} is required")
         players = _need(cfg, "players", dict, "root")
+        _need(players, "race", str, "players")
         _need(players, "enemy_race", str, "players")
         _need(players, "system_race", str, "players")
         labels = _need(cfg, "labels", dict, "root")
         if len(_need(labels, "bays", list, "labels")) < rules["stages"]:
             raise CliError("labels.bays must name each active bay")
         _need(labels, "player_start", str, "labels")
+        msg = _need(t, "messages", dict, "text")
+        for k in ("start", "complete", "timeout", "unit_lost"):
+            if not isinstance(msg.get(k), str) or not msg[k]:
+                raise CliError(f"micro_trial text.messages.{k} is required")
     elif genre == "hide_seek":
         for k in ("hiders", "prep", "survive"):
             _need(rules, k, int, "rules")
@@ -102,10 +107,16 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
         _need(units, "state_token", str, "units")
         if units["state_token"] == units["room_marker"]:
             raise CliError("hide_seek state_token must be an unplaced unit distinct from room_marker")
+        msg = _need(t, "messages", dict, "text")
+        for k in ("hunter_start", "hider_start", "hunt_started", "caught",
+                  "hunter_win", "hider_win", "hunter_eliminated"):
+            if not isinstance(msg.get(k), str) or not msg[k]:
+                raise CliError(f"hide_seek text.messages.{k} is required")
         labels = _need(cfg, "labels", dict, "root")
         if len(_need(labels, "rooms", list, "labels")) < rules["hiders"]:
             raise CliError("labels.rooms must have one configured label per hider room")
         _need(labels, "hall", str, "labels")
+        _need(_need(cfg, "players", dict, "root"), "race", str, "players")
     elif genre == "room_escape":
         _need(rules, "time_limit", int, "rules")
         seals = _need(units, "seals", list, "units")
@@ -115,8 +126,13 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
             raise CliError("units.seals and units.seal_names must each contain three non-empty strings")
         if state_token in seals:
             raise CliError("room_escape state_token must be unplaced and distinct from seal units")
+        msg = _need(t, "messages", dict, "text")
+        for k in ("start", "seal_1", "seal_2", "seal_3", "complete", "timeout"):
+            if not isinstance(msg.get(k), str) or not msg[k]:
+                raise CliError(f"room_escape text.messages.{k} is required")
         if len(_need(_need(cfg, "labels", dict, "root"), "areas", list, "labels")) != 6:
             raise CliError("labels.areas must name the six room locations")
+        _need(_need(cfg, "players", dict, "root"), "race", str, "players")
     elif genre == "loadout_gauntlet":
         for k in ("players", "draft_seconds", "battle_seconds"):
             _need(rules, k, int, "rules")
@@ -127,10 +143,11 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
         if not 1 <= rules["players"] <= 4 or not 2 <= len(offers) <= 4 or not 2 <= len(waves) <= 4:
             raise CliError("loadout_gauntlet requires 1..4 players, 2..4 offers, and 2..4 waves")
         units = _need(cfg, "units", dict, "root")
-        for k in ("recruit", "fallback", "choice_state", "wave_state", "notice_state", "presence_counter", "home_marker"):
+        for k in ("recruit", "fallback", "choice_state", "wave_state", "notice_state", "presence_counter", "home_marker", "draft_beacon"):
             _need(units, k, str, "units")
-        if len({units[k] for k in ("recruit", "fallback", "choice_state", "wave_state", "notice_state", "presence_counter", "home_marker")}) != 7:
-            raise CliError("loadout state counters, recruit, fallback and home marker units must be distinct")
+        distinct_keys = ("recruit", "fallback", "choice_state", "wave_state", "notice_state", "presence_counter", "home_marker", "draft_beacon")
+        if len({units[k] for k in distinct_keys}) != len(distinct_keys):
+            raise CliError("loadout state counters, recruit, fallback, home marker and draft beacon must be distinct")
         for i, offer in enumerate(offers):
             for k in ("unit", "marker", "unit_name", "marker_name", "location", "label", "receipt", "cost", "count"):
                 if k not in offer:
@@ -147,6 +164,10 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
                 raise CliError(f"waves[{i}] unit and clear_message must be strings")
             if type(wave["count"]) is not int or not 1 <= wave["count"] <= 24:
                 raise CliError(f"waves[{i}].count must be 1..24 for the reserved spawn footprint")
+        offer_types = {o[k] for o in offers for k in ("unit", "marker")}
+        offer_types.update(w["unit"] for w in waves)
+        if units["draft_beacon"] in offer_types:
+            raise CliError("draft_beacon must be a different unit type from offer, marker, and wave units")
         labels = _need(cfg, "labels", dict, "root")
         for k in ("draft", "arena", "enemy_spawn"):
             _need(labels, k, str, "labels")
@@ -354,7 +375,7 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
         labels=_need(cfg,"labels",dict,"root")
         for k in ("entry","exit","way_prefix","stop_prefix","shop_suffix","boss_name"):_need(labels,k,str,"labels")
         msg=_need(t,"messages",dict,"text")
-        for k in ("intro","objectives","wave","leak","defeat","victory","leaderboard","boss"):
+        for k in ("intro","objectives","wave","leak","defeat","victory","leaderboard","boss","respawn"):
             if not isinstance(msg.get(k),str) or not msg[k]:raise CliError(f"wave_defense text.messages.{k} required")
     elif genre == "square_defense":
         for k in ("players","waves","arena_width","arena_height","arena_gap","ring_width","wall_width",
@@ -369,6 +390,8 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
             raise CliError("square_defense ring/wall thickness outside supported range")
         if not 1 <= rules["shared_lives"] <= 1000 or not 1 <= rules["initial_timer"] <= 3600 or not 5 <= rules["wave_interval_seconds"] <= 3600:
             raise CliError("square_defense lives/timers outside supported range")
+        if type(_need(rules, "wave_clear_ore", int, "rules")) is not int or not 0 <= rules["wave_clear_ore"] <= 100000:
+            raise CliError("square_defense wave_clear_ore must be 0..100000")
         waves=_need(cfg,"waves",list,"root")
         if len(waves)<rules["waves"]:raise CliError("waves list must cover rules.waves")
         for i,w in enumerate(waves):
@@ -384,12 +407,34 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
         players=_need(cfg,"players",dict,"root")
         for k in ("race","enemy_race","boss_race"):_need(players,k,str,"players")
         units=_need(cfg,"units",dict,"root")
-        for k in ("boss","starting_unit","enemy_entry_marker","wave_counter","life_counter","seen_counter","revive_lock"):_need(units,k,str,"units")
+        for k in ("boss","starting_unit","enemy_entry_marker","wave_counter","life_counter","seen_counter","revive_lock","selection"):_need(units,k,str,"units")
+        defenses = _need(units, "defenses", list, "units")
+        if not defenses or any(not isinstance(x, str) or not x for x in defenses):
+            raise CliError("square_defense units.defenses must be a non-empty list of unit names")
         labels=_need(cfg,"labels",dict,"root")
         for k in ("arena_prefix","spawn_suffix","ne_suffix","se_suffix","sw_suffix","exit_suffix","center_suffix","all_suffix","shop_suffix","boss_name"):_need(labels,k,str,"labels")
         messages=_need(t,"messages",dict,"text")
         for k in ("intro","objectives","leaderboard","wave","boss","leak","defeat","win","respawn","clear_arena"):
             if not isinstance(messages.get(k),str) or not messages[k]:raise CliError(f"square_defense text.messages.{k} required")
+    elif genre == "chase":
+        for k in ("players", "pursuer_count", "timer_seconds"):
+            _need(rules, k, int, "rules")
+        if not 1 <= rules["players"] <= 6 or not 1 <= rules["pursuer_count"] <= 24:
+            raise CliError("chase players must be 1..6 and pursuer_count 1..24")
+        if not 5 <= rules["timer_seconds"] <= 86400:
+            raise CliError("chase timer_seconds must be 5..86400")
+        for k in ("runner", "pursuer"):
+            _need(units, k, str, "units")
+        labels = _need(cfg, "labels", dict, "root")
+        for k in ("start", "checkpoint", "goal"):
+            _need(labels, k, str, "labels")
+        players = _need(cfg, "players", dict, "root")
+        for k in ("race", "enemy_race"):
+            _need(players, k, str, "players")
+        msg = _need(t, "messages", dict, "text")
+        for k in ("intro", "checkpoint", "pursuit", "victory", "defeat"):
+            if not isinstance(msg.get(k), str) or not msg[k]:
+                raise CliError(f"chase text.messages.{k} is required")
 
     # Beacon/result labels are type-wide UNIS names. The visible name beside a
     # beacon must agree with the name that the profile asks us to store.
@@ -480,41 +525,6 @@ def configure_progression(cli, cfg: dict, humans: int) -> tuple[int, int]:
     return nu, nt
 
 
-def apply_unit_settings(cli, cfg: dict) -> int:
-    """Apply AI-authored UNIS overrides while retaining installed unit defaults.
-
-    Changing one UNIS field disables the global default for that unit type.
-    Fill every other stat from this installation's units.dat before writing so
-    omitted fields do not become zero-valued map overrides.
-    """
-    overrides = cfg["unit_settings"]
-    if not overrides:
-        return 0
-    try:
-        rows = json.loads(cli.run("unit-stats", cli.install, "--json"))
-    except (ValueError, CliError) as e:
-        raise CliError(f"설치본 유닛 기본 능력치를 읽지 못했습니다: {e}") from e
-    by_name = {row.get("name"): row for row in rows.values()}
-    fields = (("hp", "hp"), ("shields", "shields"), ("armor", "armor"),
-              ("build_time", "build_time"), ("minerals", "minerals"), ("gas", "gas"))
-    for unit, selected in overrides.items():
-        base = by_name.get(unit)
-        if base is None:
-            raise CliError(f"unit_settings에 알 수 없는 유닛명이 있습니다: {unit}")
-        merged = {key: selected.get(key, base[source]) for key, source in fields}
-        args = ["unitdef", "set", cli.path, unit, "--default", "off"]
-        for key, _source in fields:
-            option = "--" + key.replace("_", "-")
-            args.extend((option, str(merged[key])))
-        if "buildable" in selected:
-            table = selected["buildable"]
-            args.extend(("--buildable", table if isinstance(table, str)
-                         else ",".join(str(player) for player in table)))
-            args.extend(("--uses-default", "none"))
-        cli.edit(*args)
-    return len(overrides)
-
-
 def apply_force_names(cli, cfg: dict) -> int:
     for index, name in enumerate(cfg["force_names"], start=1):
         cli.edit("force", "set", cli.path, str(index), "--name", name)
@@ -556,6 +566,14 @@ def apply_unit_settings(cli, cfg: dict) -> int:
     return applied
 
 
+def human_race(cfg: dict) -> str:
+    """그 실행의 사람 슬롯 종족. 생성기는 이 값만 슬롯에 쓴다."""
+    race = _need(cfg["players"], "race", str, "players")
+    if race not in ("terran", "zerg", "protoss"):
+        raise CliError("players.race must be terran, zerg, or protoss")
+    return race
+
+
 def resource_actions(cfg: dict, players: list[str]) -> list[str]:
     values = cfg["starting_resources"]
     return [f'Set Resources("{p}", Set To, {values[key]}, {res})'
@@ -572,7 +590,6 @@ def apply_profile_metadata(cli, cfg: dict, humans: int):
     from scmap import briefing_text
     cfg["text"]["briefing_hold_ms"] = cfg["text"].get("briefing_hold_ms", 1800)
     configure_progression(cli, cfg, humans)
-    apply_unit_settings(cli, cfg)
     apply_force_names(cli, cfg)
     apply_unit_settings(cli, cfg)
     cli.apply_briefing(briefing_text(

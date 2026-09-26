@@ -763,7 +763,7 @@ def setup_melee_players(cli: Cli, players: int):
 
 
 def setup_usemap_players(cli: Cli, humans: int, computers: list[int],
-                         race: str = "terran"):
+                         race: str, computer_race: str):
     """유즈맵 플레이어 슬롯을 정한다.
 
     **종족을 반드시 못 박는다.** "선택 가능"(userselect) 으로 두면 그
@@ -784,7 +784,7 @@ def setup_usemap_players(cli: Cli, humans: int, computers: list[int],
                      "--race", race, "--slot", "open", "--force", "1")
         elif p in computers:
             cli.edit("player", "set", cli.path, str(p),
-                     "--race", "zerg", "--slot", "computer", "--force", "2")
+                     "--race", computer_race, "--slot", "computer", "--force", "2")
         else:
             cli.edit("player", "set", cli.path, str(p),
                      "--race", "inactive", "--slot", "inactive")
@@ -2669,8 +2669,7 @@ def part_patrol_path(owner: str, stops: list[str], mode: str) -> list[str]:
 
 
 def part_lives(player: str, counter: str, start: int, lose_when: str,
-               where: str, leaker: str,
-               msg: str = "\\x06새어 나갔습니다!") -> list[str]:
+               where: str, leaker: str, msg: str, defeat_msg: str) -> list[str]:
     """목숨 — 조건이 참이면 하나 깎고, 0 이 되면 진다.
 
     `leaker` 는 **새어 나간 유닛의 주인**이다. 앞서 이 자리에 로케이션
@@ -2680,7 +2679,10 @@ def part_lives(player: str, counter: str, start: int, lose_when: str,
     **한 기씩 지운다.** 통째로 지우면 다섯이 새어도 목숨이 하나만 준다.
 
     `start` 로 초기값도 여기서 찍는다 — 호출자가 따로 기억하지 않게.
+    새는 안내와 패배 문구는 호출자가 그 맵의 프로필에서 넘긴다.
     """
+    if not msg or not defeat_msg:
+        raise CliError("part_lives 의 누수·패배 문구는 비울 수 없습니다")
     return [
         'Trigger("%s"){\nConditions:\n\tAlways();\n'
         '\tDeaths("%s", "%s", Exactly, 0);\n\n'
@@ -2702,13 +2704,13 @@ def part_lives(player: str, counter: str, start: int, lose_when: str,
         'Trigger("%s"){\nConditions:\n'
         '\tDeaths("%s", "%s", Exactly, 0);\n\n'
         'Actions:\n'
-        '\tDisplay Text Message(Always Display, "\\x06목숨이 다했습니다.");\n'
+        '\tDisplay Text Message(Always Display, "%s");\n'
         '\tDefeat();\n}'
-        % (player, player, counter)]
+        % (player, player, counter, defeat_msg)]
 
 
-def part_respawn(player: str, unit: str, where: str, count: int = 4,
-                 cooldown_counter: str = "Protoss Interceptor",
+def part_respawn(player: str, unit: str, where: str, message: str,
+                 count: int, cooldown_counter: str,
                  guard: str | None = None) -> list[str]:
     """병력이 다 죽으면 다시 준다 — 구경만 하다 지지 않게.
 
@@ -2718,8 +2720,10 @@ def part_respawn(player: str, unit: str, where: str, count: int = 4,
     생기면 잠금을 푼다.
 
     `Command(..., "Men", At most, 0)` 을 쓴다: 생산 중인 유닛까지 세므로
-    헛발동이 없다.
+    헛발동이 없다. 부활 안내는 그 맵 프로필의 문장만 쓴다.
     """
+    if not message:
+        raise CliError("part_respawn 문구는 프로필에서 넘겨야 합니다")
     cond = [f'\tCommand("{player}", "Men", At most, 0);',
             f'\tDeaths("{player}", "{cooldown_counter}", Exactly, 0);']
     if guard:
@@ -2729,7 +2733,7 @@ def part_respawn(player: str, unit: str, where: str, count: int = 4,
         f'Actions:\n'
         f'\tSet Deaths("{player}", "{cooldown_counter}", Set To, 1);\n'
         f'\tCreate Unit("{player}", "{unit}", {count}, "{where}");\n'
-        f'\tDisplay Text Message(Always Display, "\\x03병력을 다시 받았습니다.");\n'
+        f'\tDisplay Text Message(Always Display, "{message}");\n'
         f'\tCenter View("{where}");\n'
         f'\tPreserve Trigger();\n}}',
         # 병력이 생기면 잠금을 푼다
@@ -2800,9 +2804,13 @@ def part_announce_once(humans: list[str], when: str, seen_counter: str,
             f'Actions:\n' + "\n".join(acts) + '\n}']
 
 
-def part_win(players: list[str], conds: list[str],
-             msg: str = "\\x07이겼습니다!") -> list[str]:
-    """승리. **`Preserve Trigger` 를 붙이지 않는다** — 붙이면 매 틱 재발동한다."""
+def part_win(players: list[str], conds: list[str], msg: str) -> list[str]:
+    """승리. **`Preserve Trigger` 를 붙이지 않는다** — 붙이면 매 틱 재발동한다.
+
+    승리 문구는 호출자가 그 맵 프로필에서 넘긴다.
+    """
+    if not msg:
+        raise CliError("part_win 문구는 프로필에서 넘겨야 합니다")
     who = ",".join(f'"{p}"' for p in players)
     return [f'Trigger({who}){{\nConditions:\n' +
             "\n".join(f'\t{c}' for c in conds) + '\n\n'
@@ -2820,7 +2828,7 @@ def floor_triggers(humans: int, system_owner: str,
 
 def usemap_floor(cli: Cli, humans: int, system_owner: str,
                  computers: "list[int] | None" = None,
-                 min_players: int = 1, race: str = "terran") -> list[str]:
+                 min_players: int = 1, *, race: str) -> list[str]:
     """**품질 바닥.** 어떤 유즈맵이든 이것부터 깔고 시작한다.
 
     바닥은 트리거만이 아니다. 앞서 이 함수가 트리거만 돌려주는 바람에
@@ -2839,7 +2847,7 @@ def usemap_floor(cli: Cli, humans: int, system_owner: str,
     if computers is None:
         m = re.search(r"(\d+)", system_owner)
         computers = [int(m.group(1))] if m else []
-    setup_usemap_players(cli, humans, computers, race=race)
+    setup_usemap_players(cli, humans, computers, race=race, computer_race=race)
     reveal_for_all(cli, humans)
     return floor_triggers(humans, system_owner, min_players)
 

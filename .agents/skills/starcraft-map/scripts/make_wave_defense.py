@@ -25,7 +25,7 @@
 **길 양옆 한 칸만** 막는다.
 
 보기:
-    python3 make_wave_defense.py out.scx --config recipe_profiles/your_wave_defense_profile.json
+    python3 make_wave_defense.py out.scx --config profile.json
 """
 from __future__ import annotations
 
@@ -262,7 +262,7 @@ Actions:
             T+=scmap.part_beacon_shop(player,shoploc,shop["cost"],eff,shop["receipt"],push_to=home)
         T.append(scmap.kill_bounty(player,cfg["rules"]["bounty_per_kill"],
                                    per_score=cfg["rules"]["bounty_score_step"]))
-        T+=scmap.part_respawn(player,units["starting_unit"],home,
+        T+=scmap.part_respawn(player,units["starting_unit"],home,msg["respawn"],
              count=cfg["rules"]["starting_unit_count"],cooldown_counter=LOCK,
              guard=f'Deaths("{enemy}", "{LIFE}", At least, 1);')
     T.append(f'''Trigger({all_h}){{
@@ -342,7 +342,8 @@ def main(argv=None):
             scmap.pad(cli, pal, sx + 1 + k * 3, sy + 1, 2, 2)
 
     print("플레이어 슬롯을 정합니다...")
-    scmap.setup_usemap_players(cli,a.players,[enemy_no,boss_no],race=cfg["players"]["race"])
+    scmap.setup_usemap_players(cli,a.players,[enemy_no,boss_no],race=cfg["players"]["race"],
+                               computer_race=cfg["players"]["enemy_race"])
     cli.edit("player","set",cli.path,str(enemy_no),"--race",cfg["players"]["enemy_race"],"--slot","computer")
     cli.edit("player","set",cli.path,str(boss_no),"--race",cfg["players"]["boss_race"],"--slot","computer")
     n_up,n_tech=profile.configure_progression(cli,cfg,a.players)

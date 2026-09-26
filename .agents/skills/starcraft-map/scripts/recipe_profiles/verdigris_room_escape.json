@@ -31,6 +31,9 @@
   "rules": {
     "time_limit": 1080
   },
+  "players": {
+    "race": "protoss"
+  },
   "units": {
     "player": "Protoss Dark Templar",
     "state_token": "Protoss Scarab",

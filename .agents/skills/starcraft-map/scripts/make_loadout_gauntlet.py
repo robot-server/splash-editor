@@ -38,127 +38,7 @@ def trig(owner: str, conditions: list[str], actions: list[str]) -> str:
             "".join(f"\t{x};\n" for x in actions) + "}")
 
 
-def main(argv=None):
-    ap = argparse.ArgumentParser(description="AI 프로필 기반 선택형 협동 웨이브 방어")
-    ap.add_argument("out")
-    profile.add_profile_arguments(ap, "loadout_gauntlet")
-    ap.add_argument("--install")
-    ap.add_argument("--force", action="store_true")
-    a = ap.parse_args(argv)
-    cfg = profile.load_profile(a.config, "loadout_gauntlet")
-    humans = cfg["rules"]["players"]
-    offers, waves = cfg["offers"], cfg["waves"]
-    labels = cfg["labels"]
-    if not 1 <= humans <= 4 or not 2 <= len(offers) <= 4 or not 2 <= len(waves) <= 4:
-        ap.error("players=1..4, offers=2..4, waves=2..4 이어야 합니다")
-    if tuple(cfg["map"]["size"]) != (W,H):
-        raise CliError("현재 draft/arena 공간 템플릿은 128x128 프로필만 받습니다")
-    if os.path.exists(a.out) and not a.force:
-        ap.error("이미 존재합니다 (--force로 덮어쓰기)")
-    state = cfg["units"]["choice_state"]
-    stage_state = cfg["units"]["wave_state"]
-    notice_state = cfg["units"]["notice_state"]
-    presence_counter = cfg["units"]["presence_counter"]
-    recruit = cfg["units"]["recruit"]
-    fallback = cfg["units"]["fallback"]
-    reserved = {state, stage_state, notice_state, presence_counter, recruit, fallback, cfg["units"]["home_marker"]}
-    if state == stage_state:
-        raise CliError("choice_state and wave_state must be different death-counter unit types")
-    custom_names={}
-    for item in offers:
-        for key in ("unit", "marker"):
-            if item[key] in reserved:
-                raise CliError(f"units.{key} must not reuse reserved counter/recruit unit {item[key]}")
-        for unit,name in ((item["unit"],item["unit_name"]),
-                          (item["marker"],item["marker_name"])):
-            if unit in custom_names and custom_names[unit] != name:
-                raise CliError(f"unit type {unit} is assigned conflicting map-wide display names")
-            custom_names[unit]=name
-    for wave in waves:
-        if wave["unit"] in reserved:
-            raise CliError("wave unit conflicts with reserved counter/recruit unit")
-    safe_texts = [cfg["text"]["objectives"], *cfg["text"]["briefing"],
-                  cfg["text"]["portrait"], *cfg["text"]["messages"].values(),
-                  *(x[k] for x in offers for k in ("location","label","receipt","unit_name","marker_name")),
-                  *(x["clear_message"] for x in waves)]
-    if any('"' in x or "\n" in x or "\r" in x for x in safe_texts):
-        raise CliError("trigger/briefing text may not contain a quote or line break")
-    safe_names = [*cfg["units"].values(), labels["draft"], labels["arena"], labels["enemy_spawn"],
-                  *labels["homes"], *labels["recruit_pads"],
-                  *(x[k] for x in offers for k in ("unit","marker")),
-                  *(x["unit"] for x in waves)]
-    if any(not isinstance(x,str) or not x or '"' in x or "\n" in x or "\r" in x for x in safe_names):
-        raise CliError("unit/location names must be non-empty trigger-safe strings")
-    if len(cfg["launch_switch"]) > 31 or '"' in cfg["launch_switch"]:
-        raise CliError("launch_switch must be an unquoted name of at most 31 characters")
-    if not 5 <= cfg["rules"]["draft_seconds"] <= 86400 or not 30 <= cfg["rules"]["battle_seconds"] <= 86400:
-        raise CliError("draft_seconds must be 5..86400 and battle_seconds 30..86400")
-
-    ts = TILESETS[cfg["map"]["tileset"]]
-    cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False, install=a.install)
-    cli.edit("switch", "name", cli.path, "1", cfg["launch_switch"])
-    # UNIS/UNIx names are type-wide; config validation forbids conflicting labels.
-    profile.apply_unit_names(cli, {**cfg, "unit_names": custom_names})
-    pal = scmap.Palette(cli, ts, random.Random(cfg["map"]["seed"]), "usemap")
-    scmap.cover_map(cli, pal, W, H, margin=2)
-    scmap.room(cli, pal, *DRAFT, rim=2, wall=True)
-    scmap.room(cli, pal, *ARENA, rim=2, wall=True)
-    # Broad gate between recruitment hall and the shared arena.
-    pal.fill(cli, "path", 59, 50, 10, 16)
-    # The battlefield has clear walkable lanes and a spacious enemy approach.
-    for i in range(humans):
-        x = HERO_XS[i]
-        pal.fill(cli, "path", x-4, 64, 9, 38)
-    pal.fill(cli, "path", 38, 91, 52, 9)
-
-    grid = scmap.walk_grid(cli, ts, 0, 0, W, H)
-    targets = [SHOP_CENTERS[i] for i in range(len(offers))] + [(x,HERO_Y) for x in HERO_XS[:humans]] + [(64,105)]
-    walk = [scmap.nearest_walkable(grid,x*4+2,y*4+2,24) for x,y in targets]
-    if any(p is None for p in walk) or any(not scmap.walk_reachable(grid,walk[0],p) for p in walk[1:]):
-        raise CliError("shop, home, and arena are not connected by actual walkable tiles")
-
-    enemy_player, system_player = humans+1, humans+2
-    scmap.setup_usemap_players(cli, humans, [enemy_player,system_player], race=cfg["players"]["race"])
-    cli.edit("player","set",cli.path,str(enemy_player),"--race",cfg["players"]["enemy_race"],"--slot","computer")
-    cli.edit("player","set",cli.path,str(system_player),"--race",cfg["players"]["system_race"],"--slot","computer")
-
-    def loc(name,x,y,w,h):
-        cli.edit("location","add",cli.path,str(x),str(y),str(x+w),str(y+h),"--tiles","--name",name)
-    loc(labels["draft"],*DRAFT)
-    loc(labels["arena"],*ARENA)
-    loc(labels["enemy_spawn"],52,99,24,12)
-    for p in range(humans):
-        loc(labels["homes"][p], HERO_XS[p]-5, HERO_Y-4, 10, 10)
-        loc(labels["recruit_pads"][p], RECRUIT_XS[p]-2, 43, 4, 4)
-    for i, offer in enumerate(offers):
-        cx,cy=SHOP_CENTERS[i]
-        loc(offer["location"],cx-4,cy-4,8,8)
-
-    # Each player starts with the same mobile recruit token and an empty slot.
-    for p in range(1,humans+1):
-        x=RECRUIT_XS[p-1]
-        cli.place(scmap.START_LOCATION,x,46,owner=p)
-        cli.place(recruit,x,46,owner=p)
-    for i, offer in enumerate(offers):
-        cx,cy=SHOP_CENTERS[i]
-        scmap.pad(cli,pal,cx,cy,7,7)
-        cli.place("Terran Beacon",cx,cy,owner=12)
-        cli.place(offer["marker"],cx,cy-4,owner=12)
-    for p in range(humans):
-        cli.place(cfg["units"]["home_marker"],HERO_XS[p],HERO_Y-2,owner=12)
-    cli.place(scmap.START_LOCATION,64,103,owner=enemy_player)
-    # Keep the first enemy formation visibly staged but neutral until drafting
-    # closes. At launch the neutral preview is removed and a fresh P7 wave is
-    # created into the reserved, open spawn footprint.
-    for j in range(waves[0]["count"]):
-        cli.place(waves[0]["unit"], 54+(j%8)*2, 101+(j//8)*2, owner=12)
-
-    # Dress only room edges; keep units, purchase pads, and the center gate clear.
-    keep_clear=[(u["x"]//32-2,u["y"]//32-2,5,5) for u in cli.units()]
-    dressed=scmap.decorate_rim(cli,ts,[DRAFT,ARENA],
-                               random.Random(cfg["map"]["seed"]^0x71DE),
-                               keep_clear=keep_clear)
-    print(f"  방 경계 장식 {dressed}개 (유닛/상점/웨이브 발판 제외)")
+def build_triggers(cfg, humans, offers, waves, labels, enemy_player, system_player, state, stage_state, notice_state, presence_counter, recruit, fallback):
     blocks = scmap.hyper_triggers(f"Player {system_player}")
     blocks.extend(scmap.absent_player_cleanup(
         humans, f"Player {system_player}",
@@ -248,6 +128,140 @@ def main(argv=None):
             f'Deaths("Player {system_player}", "{stage_state}", At most, {len(waves)-1})'],[
             f'Display Text Message(Always Display, "{cfg["text"]["messages"]["timeout"]}")','Defeat()']))
 
+    return blocks
+
+
+def draft_beacon_unit(cfg) -> str:
+    """모집 발판에 놓는 비콘. main의 place가 이 값을 쓴다."""
+    beacon = cfg["units"]["draft_beacon"]
+    if not isinstance(beacon, str) or not beacon:
+        raise CliError("units.draft_beacon must name the draft pad beacon")
+    return beacon
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="AI 프로필 기반 선택형 협동 웨이브 방어")
+    ap.add_argument("out")
+    profile.add_profile_arguments(ap, "loadout_gauntlet")
+    ap.add_argument("--install")
+    ap.add_argument("--force", action="store_true")
+    a = ap.parse_args(argv)
+    cfg = profile.load_profile(a.config, "loadout_gauntlet")
+    humans = cfg["rules"]["players"]
+    offers, waves = cfg["offers"], cfg["waves"]
+    labels = cfg["labels"]
+    if not 1 <= humans <= 4 or not 2 <= len(offers) <= 4 or not 2 <= len(waves) <= 4:
+        ap.error("players=1..4, offers=2..4, waves=2..4 이어야 합니다")
+    if tuple(cfg["map"]["size"]) != (W,H):
+        raise CliError("현재 draft/arena 공간 템플릿은 128x128 프로필만 받습니다")
+    if os.path.exists(a.out) and not a.force:
+        ap.error("이미 존재합니다 (--force로 덮어쓰기)")
+    state = cfg["units"]["choice_state"]
+    stage_state = cfg["units"]["wave_state"]
+    notice_state = cfg["units"]["notice_state"]
+    presence_counter = cfg["units"]["presence_counter"]
+    recruit = cfg["units"]["recruit"]
+    fallback = cfg["units"]["fallback"]
+    reserved = {state, stage_state, notice_state, presence_counter, recruit, fallback, cfg["units"]["home_marker"], cfg["units"]["draft_beacon"]}
+    if state == stage_state:
+        raise CliError("choice_state and wave_state must be different death-counter unit types")
+    custom_names={}
+    for item in offers:
+        for key in ("unit", "marker"):
+            if item[key] in reserved:
+                raise CliError(f"units.{key} must not reuse reserved counter/recruit unit {item[key]}")
+        for unit,name in ((item["unit"],item["unit_name"]),
+                          (item["marker"],item["marker_name"])):
+            if unit in custom_names and custom_names[unit] != name:
+                raise CliError(f"unit type {unit} is assigned conflicting map-wide display names")
+            custom_names[unit]=name
+    for wave in waves:
+        if wave["unit"] in reserved:
+            raise CliError("wave unit conflicts with reserved counter/recruit unit")
+    safe_texts = [cfg["text"]["objectives"], *cfg["text"]["briefing"],
+                  cfg["text"]["portrait"], *cfg["text"]["messages"].values(),
+                  *(x[k] for x in offers for k in ("location","label","receipt","unit_name","marker_name")),
+                  *(x["clear_message"] for x in waves)]
+    if any('"' in x or "\n" in x or "\r" in x for x in safe_texts):
+        raise CliError("trigger/briefing text may not contain a quote or line break")
+    safe_names = [*cfg["units"].values(), labels["draft"], labels["arena"], labels["enemy_spawn"],
+                  *labels["homes"], *labels["recruit_pads"],
+                  *(x[k] for x in offers for k in ("unit","marker")),
+                  *(x["unit"] for x in waves)]
+    if any(not isinstance(x,str) or not x or '"' in x or "\n" in x or "\r" in x for x in safe_names):
+        raise CliError("unit/location names must be non-empty trigger-safe strings")
+    if len(cfg["launch_switch"]) > 31 or '"' in cfg["launch_switch"]:
+        raise CliError("launch_switch must be an unquoted name of at most 31 characters")
+    if not 5 <= cfg["rules"]["draft_seconds"] <= 86400 or not 30 <= cfg["rules"]["battle_seconds"] <= 86400:
+        raise CliError("draft_seconds must be 5..86400 and battle_seconds 30..86400")
+
+    ts = TILESETS[cfg["map"]["tileset"]]
+    cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False, install=a.install)
+    cli.edit("switch", "name", cli.path, "1", cfg["launch_switch"])
+    # UNIS/UNIx names are type-wide; config validation forbids conflicting labels.
+    profile.apply_unit_names(cli, {**cfg, "unit_names": custom_names})
+    pal = scmap.Palette(cli, ts, random.Random(cfg["map"]["seed"]), "usemap")
+    scmap.cover_map(cli, pal, W, H, margin=2)
+    scmap.room(cli, pal, *DRAFT, rim=2, wall=True)
+    scmap.room(cli, pal, *ARENA, rim=2, wall=True)
+    # Broad gate between recruitment hall and the shared arena.
+    pal.fill(cli, "path", 59, 50, 10, 16)
+    # The battlefield has clear walkable lanes and a spacious enemy approach.
+    for i in range(humans):
+        x = HERO_XS[i]
+        pal.fill(cli, "path", x-4, 64, 9, 38)
+    pal.fill(cli, "path", 38, 91, 52, 9)
+
+    grid = scmap.walk_grid(cli, ts, 0, 0, W, H)
+    targets = [SHOP_CENTERS[i] for i in range(len(offers))] + [(x,HERO_Y) for x in HERO_XS[:humans]] + [(64,105)]
+    walk = [scmap.nearest_walkable(grid,x*4+2,y*4+2,24) for x,y in targets]
+    if any(p is None for p in walk) or any(not scmap.walk_reachable(grid,walk[0],p) for p in walk[1:]):
+        raise CliError("shop, home, and arena are not connected by actual walkable tiles")
+
+    enemy_player, system_player = humans+1, humans+2
+    scmap.setup_usemap_players(cli, humans, [enemy_player,system_player], race=cfg["players"]["race"],
+                               computer_race=cfg["players"]["enemy_race"])
+    cli.edit("player","set",cli.path,str(enemy_player),"--race",cfg["players"]["enemy_race"],"--slot","computer")
+    cli.edit("player","set",cli.path,str(system_player),"--race",cfg["players"]["system_race"],"--slot","computer")
+
+    def loc(name,x,y,w,h):
+        cli.edit("location","add",cli.path,str(x),str(y),str(x+w),str(y+h),"--tiles","--name",name)
+    loc(labels["draft"],*DRAFT)
+    loc(labels["arena"],*ARENA)
+    loc(labels["enemy_spawn"],52,99,24,12)
+    for p in range(humans):
+        loc(labels["homes"][p], HERO_XS[p]-5, HERO_Y-4, 10, 10)
+        loc(labels["recruit_pads"][p], RECRUIT_XS[p]-2, 43, 4, 4)
+    for i, offer in enumerate(offers):
+        cx,cy=SHOP_CENTERS[i]
+        loc(offer["location"],cx-4,cy-4,8,8)
+
+    # Each player starts with the same mobile recruit token and an empty slot.
+    for p in range(1,humans+1):
+        x=RECRUIT_XS[p-1]
+        cli.place(scmap.START_LOCATION,x,46,owner=p)
+        cli.place(recruit,x,46,owner=p)
+    for i, offer in enumerate(offers):
+        cx,cy=SHOP_CENTERS[i]
+        scmap.pad(cli,pal,cx,cy,7,7)
+        cli.place(draft_beacon_unit(cfg),cx,cy,owner=12)
+        cli.place(offer["marker"],cx,cy-4,owner=12)
+    for p in range(humans):
+        cli.place(cfg["units"]["home_marker"],HERO_XS[p],HERO_Y-2,owner=12)
+    cli.place(scmap.START_LOCATION,64,103,owner=enemy_player)
+    # Keep the first enemy formation visibly staged but neutral until drafting
+    # closes. At launch the neutral preview is removed and a fresh P7 wave is
+    # created into the reserved, open spawn footprint.
+    for j in range(waves[0]["count"]):
+        cli.place(waves[0]["unit"], 54+(j%8)*2, 101+(j//8)*2, owner=12)
+
+    # Dress only room edges; keep units, purchase pads, and the center gate clear.
+    keep_clear=[(u["x"]//32-2,u["y"]//32-2,5,5) for u in cli.units()]
+    dressed=scmap.decorate_rim(cli,ts,[DRAFT,ARENA],
+                               random.Random(cfg["map"]["seed"]^0x71DE),
+                               keep_clear=keep_clear)
+    print(f"  방 경계 장식 {dressed}개 (유닛/상점/웨이브 발판 제외)")
+    blocks = build_triggers(cfg, humans, offers, waves, labels, enemy_player, system_player, state, stage_state, notice_state, presence_counter, recruit, fallback)
     scmap.reveal_for_all(cli, humans)
     cli.apply_triggers(scmap.TRIGGER_SEP.join(blocks))
     profile.apply_profile_metadata(cli,cfg,humans)

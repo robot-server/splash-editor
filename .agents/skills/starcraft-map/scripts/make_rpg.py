@@ -14,7 +14,7 @@
 구역은 통로로 이어져 있어 언제든 물러설 수 있다.
 
 보기:
-    python3 make_rpg.py out.scx --config recipe_profiles/your_rpg_profile.json
+    python3 make_rpg.py out.scx --config profile.json
 """
 from __future__ import annotations
 
@@ -315,7 +315,8 @@ def main(argv=None):
         scmap.scatter_tile_variants(cli, ts, rng, chance=0.5)
 
     print("플레이어 슬롯을 정합니다...")
-    scmap.setup_usemap_players(cli,a.players,[enemy_no,boss_no],race=cfg["players"]["race"])
+    scmap.setup_usemap_players(cli,a.players,[enemy_no,boss_no],race=cfg["players"]["race"],
+                               computer_race=cfg["players"]["enemy_race"])
     cli.edit("player","set",cli.path,str(enemy_no),"--race",cfg["players"]["enemy_race"],"--slot","computer")
     cli.edit("player","set",cli.path,str(boss_no),"--race",cfg["players"]["boss_race"],"--slot","computer")
 

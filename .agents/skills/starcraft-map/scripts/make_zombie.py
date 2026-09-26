@@ -15,7 +15,7 @@ Status` 를 쓴다). 병력을 다 잃은 사람이 좀비 편으로 넘어가�
       생존자 시작    싸움터    좀비가 나오는 곳
 
 보기:
-    python3 make_zombie.py out.scx --config recipe_profiles/your_zombie_profile.json
+    python3 make_zombie.py out.scx --config profile.json
 """
 from __future__ import annotations
 
@@ -137,7 +137,8 @@ def main(argv=None):
         pal.fill(cli,"path",left[0]+left[2],oy+room_h//2-3,gap,6)
     scmap.scatter_tile_variants(cli,ts,rng,chance=0.5)
 
-    scmap.setup_usemap_players(cli,players,[enemy_no,boss_no],race=cfg["players"]["race"])
+    scmap.setup_usemap_players(cli,players,[enemy_no,boss_no],race=cfg["players"]["race"],
+                               computer_race=cfg["players"]["enemy_race"])
     cli.edit("player","set",cli.path,str(enemy_no),"--race",cfg["players"]["enemy_race"],"--slot","computer")
     cli.edit("player","set",cli.path,str(boss_no),"--race",cfg["players"]["boss_race"],"--slot","computer")
     n_up,n_tech=profile.configure_progression(cli,cfg,players)

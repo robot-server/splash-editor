@@ -44,7 +44,8 @@
     "wave_state": "Zerg Beacon",
     "notice_state": "Protoss Scarab",
     "presence_counter": "Protoss Arbiter",
-    "home_marker": "Terran Supply Depot"
+    "home_marker": "Terran Supply Depot",
+    "draft_beacon": "Terran Beacon"
   },
   "labels": {
     "draft": "집결 홀",

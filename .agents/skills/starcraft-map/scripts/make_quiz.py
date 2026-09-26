@@ -14,7 +14,7 @@
 질문·답, 문구, 플레이 수, 목숨, 제한 시간은 AI가 프로필 JSON에 쓴다.
 
 보기:
-    python3 make_quiz.py out.scx --config recipe_profiles/your_quiz_profile.json
+    python3 make_quiz.py out.scx --config profile.json
 """
 from __future__ import annotations
 
@@ -257,7 +257,8 @@ def main(argv=None):
     scmap.scatter_tile_variants(cli, ts, rng, chance=0.5)
 
     print("플레이어 슬롯을 정합니다...")
-    scmap.setup_usemap_players(cli, a.players, [8], race=cfg["players"]["race"])
+    scmap.setup_usemap_players(cli, a.players, [8], race=cfg["players"]["race"],
+                               computer_race=cfg["players"]["race"])
 
     print("로케이션을 놓습니다...")
     loc = lambda n, r: cli.edit("location", "add", cli.path, str(r[0]), str(r[1]),

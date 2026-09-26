@@ -38,6 +38,52 @@ def trig(owner: str, conditions: list[str], actions: list[str]) -> str:
             ''.join(f'\t{a};\n' for a in actions) + '}')
 
 
+def build_triggers(cfg, stages, time_limit, player_unit, state_token):
+    blocks = scmap.hyper_triggers("Player 8")
+    blocks.append(trig('"All players"', ["Always()"], [
+        f'Set Mission Objectives("{cfg["text"]["objectives"]}")']))
+    waves = cfg["waves"][:stages]
+    if len(waves) < stages:
+        raise CliError("프로필 waves 항목이 stages보다 적습니다")
+    first_unit, first_count = waves[0]["unit"], waves[0]["count"]
+    blocks.append(trig('"Player 1"', ["Always()"], [
+        f'Set Deaths("Player 1", "{state_token}", Set To, 0)',
+        *profile.resource_actions(cfg, ["Player 1"]),
+        f'Set Countdown Timer(Set To, {time_limit})',
+        f'Create Unit("Player 2", "{first_unit}", {first_count}, "{cfg["labels"]["bays"][0]}")',
+        f'Order("Player 2", "{first_unit}", "{cfg["labels"]["bays"][0]}", "{cfg["labels"]["player_start"]}", attack)',
+        f'Display Text Message(Always Display, "{cfg["text"]["messages"]["start"]}")']))
+    for i in range(stages):
+        wave = waves[i]
+        enemy, count, message = wave["unit"], wave["count"], wave["clear_message"]
+        conds = [f'Deaths("Player 1", "{state_token}", Exactly, {i})',
+                 f'Command("Player 2", "{enemy}", At most, 0)']
+        if i < stages - 1:
+            next_enemy, next_count = waves[i + 1]["unit"], waves[i + 1]["count"]
+            acts = [f'Set Deaths("Player 1", "{state_token}", Set To, {i + 1})',
+                    f'Set Resources("Player 1", Add, {wave["reward"]}, ore)',
+                    f'Display Text Message(Always Display, "{message}")',
+                    f'Create Unit("Player 2", "{next_enemy}", {next_count}, "{cfg["labels"]["bays"][i+1]}")',
+                    f'Order("Player 2", "{next_enemy}", "{cfg["labels"]["bays"][i+1]}", "{cfg["labels"]["player_start"]}", attack)']
+        else:
+            acts = [f'Set Deaths("Player 1", "{state_token}", Set To, {i + 1})',
+                    f'Set Resources("Player 1", Add, {wave["reward"]}, ore)',
+                    f'Display Text Message(Always Display, "{cfg["text"]["messages"]["complete"]}")',
+                    'Victory()']
+        blocks.append(trig('"Player 1"', conds, acts))
+    blocks.append(trig('"Player 1"', [
+        f'Countdown Timer(At most, 0)',
+        f'Deaths("Player 1", "{state_token}", At most, {stages - 1})'], [
+        f'Display Text Message(Always Display, "{cfg["text"]["messages"]["timeout"]}")',
+        'Defeat()']))
+    blocks.append(trig('"Player 1"', [
+        f'Command("Player 1", "{player_unit}", At most, 0)',
+        f'Deaths("Player 1", "{state_token}", At most, {stages - 1})'], [
+        f'Display Text Message(Always Display, "{cfg["text"]["messages"]["unit_lost"]}")',
+        'Defeat()']))
+    return blocks
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="AI 프로필 기반 단계형 마이크로 유즈맵")
     ap.add_argument("out")
@@ -82,7 +128,8 @@ def main(argv=None):
             for p in walk_points[1:]):
         raise CliError("훈련실이 입구와 연결되지 않았습니다")
 
-    scmap.setup_usemap_players(cli, 1, [2, 8], race="terran")
+    scmap.setup_usemap_players(cli, 1, [2, 8], race=profile.human_race(cfg),
+                               computer_race=cfg["players"]["enemy_race"])
     cli.edit("player", "set", cli.path, "2", "--race", cfg["players"]["enemy_race"], "--slot", "computer")
     cli.edit("player", "set", cli.path, "8", "--race", cfg["players"]["system_race"], "--slot", "computer")
     cli.edit("location", "add", cli.path, "5", "45", "32", "83",
@@ -101,49 +148,7 @@ def main(argv=None):
     ex, ey = targets[0]
     cli.place(scmap.START_LOCATION, ex, ey, owner=2)
 
-    blocks = scmap.hyper_triggers("Player 8")
-    blocks.append(trig('"All players"', ["Always()"], [
-        f'Set Mission Objectives("{cfg["text"]["objectives"]}")']))
-    waves = cfg["waves"][:a.stages]
-    if len(waves) < a.stages:
-        raise CliError("프로필 waves 항목이 stages보다 적습니다")
-    first_unit, first_count = waves[0]["unit"], waves[0]["count"]
-    blocks.append(trig('"Player 1"', ["Always()"], [
-        f'Set Deaths("Player 1", "{state_token}", Set To, 0)',
-        *profile.resource_actions(cfg, ["Player 1"]),
-        f'Set Countdown Timer(Set To, {a.time_limit})',
-        f'Create Unit("Player 2", "{first_unit}", {first_count}, "{cfg["labels"]["bays"][0]}")',
-        f'Order("Player 2", "{first_unit}", "{cfg["labels"]["bays"][0]}", "{cfg["labels"]["player_start"]}", attack)',
-        f'Display Text Message(Always Display, "{cfg["text"]["messages"]["start"]}")']))
-
-    for i in range(a.stages):
-        wave = waves[i]
-        enemy, count, message = wave["unit"], wave["count"], wave["clear_message"]
-        conds = [f'Deaths("Player 1", "{state_token}", Exactly, {i})',
-                 f'Command("Player 2", "{enemy}", At most, 0)']
-        if i < a.stages - 1:
-            next_enemy, next_count = waves[i + 1]["unit"], waves[i + 1]["count"]
-            acts = [f'Set Deaths("Player 1", "{state_token}", Set To, {i + 1})',
-                    f'Set Resources("Player 1", Add, {wave["reward"]}, ore)',
-                    f'Display Text Message(Always Display, "{message}")',
-                    f'Create Unit("Player 2", "{next_enemy}", {next_count}, "{cfg["labels"]["bays"][i+1]}")',
-                    f'Order("Player 2", "{next_enemy}", "{cfg["labels"]["bays"][i+1]}", "{cfg["labels"]["player_start"]}", attack)']
-        else:
-            acts = [f'Set Deaths("Player 1", "{state_token}", Set To, {i + 1})',
-                    f'Set Resources("Player 1", Add, {wave["reward"]}, ore)',
-                    f'Display Text Message(Always Display, "{cfg["text"]["messages"]["complete"]}")',
-                    'Victory()']
-        blocks.append(trig('"Player 1"', conds, acts))
-    blocks.append(trig('"Player 1"', [
-        f'Countdown Timer(At most, 0)',
-        f'Deaths("Player 1", "{state_token}", At most, {a.stages - 1})'], [
-        f'Display Text Message(Always Display, "{cfg["text"]["messages"]["timeout"]}")',
-        'Defeat()']))
-    blocks.append(trig('"Player 1"', [
-        f'Command("Player 1", "{player_unit}", At most, 0)',
-        f'Deaths("Player 1", "{state_token}", At most, {a.stages - 1})'], [
-        f'Display Text Message(Always Display, "{cfg["text"]["messages"]["unit_lost"]}")',
-        'Defeat()']))
+    blocks = build_triggers(cfg, a.stages, a.time_limit, player_unit, state_token)
     scmap.reveal_for_all(cli, 1)
     cli.apply_triggers(scmap.TRIGGER_SEP.join(blocks))
     profile.apply_profile_metadata(cli, cfg, 1)

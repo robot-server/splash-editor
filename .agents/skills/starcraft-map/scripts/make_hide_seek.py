@@ -48,72 +48,8 @@ def connect_rooms(cli, palette):
     palette.fill(cli, "path", 64, 58, 16, 8)
 
 
-def main(argv=None):
-    ap = argparse.ArgumentParser(description="AI 프로필 기반 비대칭 숨바꼭질 유즈맵")
-    ap.add_argument("out")
-    ap.add_argument("--hiders", type=int, default=None,
-                    help="숨는 사람 수 (2~4); P1은 술래")
-    profile.add_profile_arguments(ap, "hide_seek")
-    ap.add_argument("--prep", type=int, default=None, help="프로필 준비 시간 대체")
-    ap.add_argument("--survive", type=int, default=None,
-                    help="생존 팀이 버틸 시간(초)")
-    ap.add_argument("--install", default=None)
-    ap.add_argument("--force", action="store_true")
-    a = ap.parse_args(argv)
-    cfg = profile.load_profile(a.config, "hide_seek")
-    for key in ("hiders", "prep", "survive"):
-        if getattr(a, key) is None: setattr(a, key, cfg["rules"][key])
-    a.tileset, a.seed = cfg["map"]["tileset"], cfg["map"]["seed"]
-    if tuple(cfg["map"]["size"]) != (W, H): raise CliError("hide seek profile requires 128x128")
-    if os.path.exists(a.out) and not a.force:
-        ap.error(f"이미 있습니다: {a.out} (--force 로 덮어쓰기)")
-    if not 2 <= a.hiders <= 4:
-        ap.error("숨는 사람은 2~4명입니다 (술래 한 명 포함 3~5명)")
-    if a.prep < 5 or a.survive < 30:
-        ap.error("준비 시간은 5초 이상, 생존 시간은 30초 이상이어야 합니다")
-
-    humans = a.hiders + 1
-    ts = TILESETS[a.tileset]
-    cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False,
-                        install=a.install)
-    cli.edit("unitdef", "set", cli.path, cfg["units"]["room_marker"],
-             "--name", cfg["units"]["room_marker_name"])
-    pal = scmap.Palette(cli, ts, random.Random(a.seed), "usemap")
-    scmap.cover_map(cli, pal, W, H, margin=2)
-    for x, y, w, h in ROOMS:
-        scmap.room(cli, pal, x, y, w, h, rim=2, wall=True)
-    scmap.room(cli, pal, *HALL, rim=2, wall=True)
-    connect_rooms(cli, pal)
-
-    # Reject a visually connected layout if the actual tile walk mask disagrees.
-    grid = scmap.walk_grid(cli, ts, 0, 0, W, H)
-    points = [(64, 64)] + [(x + w // 2, y + h // 2)
-                           for x, y, w, h in ROOMS[:a.hiders]]
-    walk = [scmap.nearest_walkable(grid, x * 4 + 2, y * 4 + 2, 24)
-            for x, y in points]
-    if any(p is None for p in walk) or any(
-            not scmap.walk_reachable(grid, walk[0], p) for p in walk[1:]):
-        raise CliError("술래 홀과 숨는 방 사이의 보행 경로가 연결되지 않았습니다")
-
-    # Keep a free system-computer slot for hypers. Role diplomacy is set in
-    # triggers because Force flags alone are not a runtime alliance guarantee.
-    scmap.setup_usemap_players(cli, humans, [8], race="terran")
-    location_specs = [(cfg["labels"]["hall"], *HALL)] + [
-        (cfg["labels"]["rooms"][i], *r) for i, r in enumerate(ROOMS[:a.hiders])]
-    for name, x, y, w, h in location_specs:
-        cli.edit("location", "add", cli.path, str(x), str(y),
-                 str(x + w), str(y + h), "--tiles", "--name", name)
-
-    cli.place(scmap.START_LOCATION, 64, 64, owner=1)
-    hunter_unit, hider_unit, token_unit = (cfg["units"][k] for k in ("hunter", "hider", "state_token"))
-    cli.place(hunter_unit, 64, 64, owner=1)
-    for p, (x, y, w, h) in enumerate(ROOMS[:a.hiders], start=2):
-        px, py = x + w // 2, y + h // 2
-        cli.place(scmap.START_LOCATION, px, py, owner=p)
-        cli.place(hider_unit, px, py, owner=p)
-        cli.place(cfg["units"]["room_marker"], x + w - 4, y + 3, owner=12)
-
-    room_names = cfg["labels"]["rooms"][:a.hiders]
+def build_triggers(cfg, humans, prep, survive, hunter_unit, hider_unit, token_unit):
+    room_names = cfg["labels"]["rooms"][:humans - 1]
     hiders = [f"Player {p}" for p in range(2, humans + 1)]
     blocks = scmap.hyper_triggers("Player 8")
     messages = cfg["text"]["messages"]
@@ -122,7 +58,7 @@ def main(argv=None):
     hunter_actions = [
         'Set Switch("Switch 1", clear)',
         *profile.resource_actions(cfg, ["Player 1"]),
-        f'Set Countdown Timer(Set To, {a.prep})',
+        f'Set Countdown Timer(Set To, {prep})',
         f'Display Text Message(Always Display, "{messages["hunter_start"]}")',
         *[f'Set Alliance Status("{p}", Enemy)' for p in hiders]]
     blocks.append(trig('"Player 1"', ["Always()"], hunter_actions))
@@ -139,11 +75,9 @@ def main(argv=None):
     blocks.append(trig('"Player 1"', [
         'Countdown Timer(At most, 0)', 'Switch("Switch 1", not set)'], [
         'Set Switch("Switch 1", set)',
-        f'Set Countdown Timer(Set To, {a.survive})',
+        f'Set Countdown Timer(Set To, {survive})',
         f'Display Text Message(Always Display, "{messages["hunt_started"]}")']))
 
-    # Room-level overlap is the capture rule. The human-owned death counter
-    # consumes the interaction so simultaneous scans cannot capture twice.
     for p in hiders:
         for room in room_names:
             blocks.append(trig(f'"{p}"', [
@@ -172,6 +106,75 @@ def main(argv=None):
         f'Command("Player 1", "{hunter_unit}", At most, 0)'], [
         f'Display Text Message(Always Display, "{messages["hunter_eliminated"]}")',
         'Defeat()']))
+    return blocks
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description="AI 프로필 기반 비대칭 숨바꼭질 유즈맵")
+    ap.add_argument("out")
+    ap.add_argument("--hiders", type=int, default=None,
+                    help="숨는 사람 수 (2~4); P1은 술래")
+    profile.add_profile_arguments(ap, "hide_seek")
+    ap.add_argument("--prep", type=int, default=None, help="프로필 준비 시간 대체")
+    ap.add_argument("--survive", type=int, default=None,
+                    help="생존 팀이 버틸 시간(초)")
+    ap.add_argument("--install", default=None)
+    ap.add_argument("--force", action="store_true")
+    a = ap.parse_args(argv)
+    cfg = profile.load_profile(a.config, "hide_seek")
+    for key in ("hiders", "prep", "survive"):
+        if getattr(a, key) is None:
+            setattr(a, key, cfg["rules"][key])
+    a.tileset, a.seed = cfg["map"]["tileset"], cfg["map"]["seed"]
+    if tuple(cfg["map"]["size"]) != (W, H):
+        raise CliError("hide seek profile requires 128x128")
+    if os.path.exists(a.out) and not a.force:
+        ap.error(f"이미 있습니다: {a.out} (--force 로 덮어쓰기)")
+    if not 2 <= a.hiders <= 4:
+        ap.error("숨는 사람은 2~4명입니다 (술래 한 명 포함 3~5명)")
+    if a.prep < 5 or a.survive < 30:
+        ap.error("준비 시간은 5초 이상, 생존 시간은 30초 이상이어야 합니다")
+
+    humans = a.hiders + 1
+    ts = TILESETS[a.tileset]
+    cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False,
+                        install=a.install)
+    cli.edit("unitdef", "set", cli.path, cfg["units"]["room_marker"],
+             "--name", cfg["units"]["room_marker_name"])
+    pal = scmap.Palette(cli, ts, random.Random(a.seed), "usemap")
+    scmap.cover_map(cli, pal, W, H, margin=2)
+    for x, y, w, h in ROOMS:
+        scmap.room(cli, pal, x, y, w, h, rim=2, wall=True)
+    scmap.room(cli, pal, *HALL, rim=2, wall=True)
+    connect_rooms(cli, pal)
+
+    grid = scmap.walk_grid(cli, ts, 0, 0, W, H)
+    points = [(64, 64)] + [(x + w // 2, y + h // 2)
+                           for x, y, w, h in ROOMS[:a.hiders]]
+    walk = [scmap.nearest_walkable(grid, x * 4 + 2, y * 4 + 2, 24)
+            for x, y in points]
+    if any(p is None for p in walk) or any(
+            not scmap.walk_reachable(grid, walk[0], p) for p in walk[1:]):
+        raise CliError("술래 홀과 숨는 방 사이의 보행 경로가 연결되지 않았습니다")
+
+    scmap.setup_usemap_players(cli, humans, [8], race=profile.human_race(cfg),
+                               computer_race=profile.human_race(cfg))
+    location_specs = [(cfg["labels"]["hall"], *HALL)] + [
+        (cfg["labels"]["rooms"][i], *r) for i, r in enumerate(ROOMS[:a.hiders])]
+    for name, x, y, w, h in location_specs:
+        cli.edit("location", "add", cli.path, str(x), str(y),
+                 str(x + w), str(y + h), "--tiles", "--name", name)
+
+    cli.place(scmap.START_LOCATION, 64, 64, owner=1)
+    hunter_unit, hider_unit, token_unit = (cfg["units"][k] for k in ("hunter", "hider", "state_token"))
+    cli.place(hunter_unit, 64, 64, owner=1)
+    for p, (x, y, w, h) in enumerate(ROOMS[:a.hiders], start=2):
+        px, py = x + w // 2, y + h // 2
+        cli.place(scmap.START_LOCATION, px, py, owner=p)
+        cli.place(hider_unit, px, py, owner=p)
+        cli.place(cfg["units"]["room_marker"], x + w - 4, y + 3, owner=12)
+
+    blocks = build_triggers(cfg, humans, a.prep, a.survive, hunter_unit, hider_unit, token_unit)
     scmap.reveal_for_all(cli, humans)
     cli.apply_triggers(scmap.TRIGGER_SEP.join(blocks))
     profile.apply_profile_metadata(cli, cfg, humans)

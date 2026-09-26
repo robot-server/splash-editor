@@ -44,6 +44,37 @@ def carve_routes(cli, palette):
     palette.fill(cli, "path", 32, 101, 20, 10)
 
 
+def build_triggers(cfg, time_limit, player_unit, token_unit, labels):
+    blocks = scmap.hyper_triggers("Player 8")
+    blocks.append(trig('"All players"', ["Always()"], [
+        f'Set Mission Objectives("{cfg["text"]["objectives"]}")']))
+    blocks.append(trig('"Player 8"', ["Always()"], [
+        f'Set Deaths("Player 11", "{token_unit}", Set To, 0)']))
+    steps = len(cfg["units"]["seals"])
+    blocks.append(trig('"Player 1"', ["Always()"], [
+        *profile.resource_actions(cfg, ["Player 1"]),
+        f'Set Countdown Timer(Set To, {time_limit})',
+        f'Display Text Message(Always Display, "{cfg["text"]["messages"]["start"]}")']))
+    for i in range(steps):
+        blocks.append(trig('"Player 1"', [
+            f'Bring("Player 1", "{player_unit}", "{labels[i+2]}", At least, 1)',
+            f'Deaths("Player 11", "{token_unit}", Exactly, {i})'], [
+            f'Set Deaths("Player 11", "{token_unit}", Set To, {i+1})',
+            f'Display Text Message(Always Display, "{cfg["text"]["messages"][f"seal_{i+1}"]}")',
+            'Play WAV("sound\\Misc\\Button.wav", 300)']))
+    blocks.append(trig('"Player 1"', [
+        f'Bring("Player 1", "{player_unit}", "{labels[steps + 2]}", At least, 1)',
+        f'Deaths("Player 11", "{token_unit}", Exactly, {steps})'], [
+        f'Display Text Message(Always Display, "{cfg["text"]["messages"]["complete"]}")',
+        'Victory()']))
+    blocks.append(trig('"Player 1"', [
+        'Countdown Timer(At most, 0)',
+        f'Deaths("Player 11", "{token_unit}", At most, {steps - 1})'], [
+        f'Display Text Message(Always Display, "{cfg["text"]["messages"]["timeout"]}")',
+        'Defeat()']))
+    return blocks
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="AI 프로필 기반 방 순서 퍼즐 유즈맵")
     ap.add_argument("out")
@@ -65,21 +96,19 @@ def main(argv=None):
     ts = TILESETS[a.tileset]
     cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False,
                         install=a.install)
-    named_seals={}
-    for unit,name in zip(cfg["units"]["seals"],cfg["units"]["seal_names"]):
+    named_seals = {}
+    for unit, name in zip(cfg["units"]["seals"], cfg["units"]["seal_names"]):
         if unit in named_seals and named_seals[unit] != name:
             raise CliError(f"seal type {unit} has conflicting map-wide display names")
-        named_seals[unit]=name
-    for unit,name in named_seals.items():
-        cli.edit("unitdef","set",cli.path,unit,"--name",name)
+        named_seals[unit] = name
+    for unit, name in named_seals.items():
+        cli.edit("unitdef", "set", cli.path, unit, "--name", name)
     pal = scmap.Palette(cli, ts, random.Random(a.seed), "usemap")
-    # Wall substrate first; finite room and corridor footprints stay walkable.
     pal.fill(cli, "wall", 0, 0, W, H)
     for x, y, w, h in AREA_RECTS:
         scmap.room(cli, pal, x, y, w, h, rim=1, wall=False)
     carve_routes(cli, pal)
 
-    # Make the intended route graph an actual tile-walk path.
     grid = scmap.walk_grid(cli, ts, 0, 0, W, H)
     points = [(18, 64), (64, 64), (64, 22), (108, 64), (64, 106), (18, 106)]
     walk = [scmap.nearest_walkable(grid, x * 4 + 2, y * 4 + 2, 24)
@@ -88,7 +117,8 @@ def main(argv=None):
             not scmap.walk_reachable(grid, walk[0], p) for p in walk[1:]):
         raise CliError("방과 출구 사이의 보행 경로가 끊겼습니다")
 
-    scmap.setup_usemap_players(cli, 1, [8], race="terran")
+    scmap.setup_usemap_players(cli, 1, [8], race=profile.human_race(cfg),
+                               computer_race=profile.human_race(cfg))
     labels = cfg["labels"]["areas"]
     for i, (x, y, w, h) in enumerate(AREA_RECTS):
         cli.edit("location", "add", cli.path, str(x + 2), str(y + 2),
@@ -98,37 +128,11 @@ def main(argv=None):
     token_unit = cfg["units"]["state_token"]
     cli.place(player_unit, 18, 64, owner=1)
     for i, (x, y, w, h) in enumerate(AREA_RECTS[2:5]):
-        # The profile supplies visibly different beacon types and display labels.
         cli.place(cfg["units"]["seals"][i], x + w - 7, y + 6, owner=12)
     for x, y, w, h in (AREA_RECTS[2], AREA_RECTS[3], AREA_RECTS[4], AREA_RECTS[5]):
         scmap.pad(cli, pal, x + w // 2, y + h // 2, 5, 5)
 
-    blocks = scmap.hyper_triggers("Player 8")
-    blocks.append(trig('"All players"', ["Always()"], [
-        f'Set Mission Objectives("{cfg["text"]["objectives"]}")']))
-    blocks.append(trig('"Player 8"', ["Always()"], [
-        f'Set Deaths("Player 11", "{token_unit}", Set To, 0)']))
-    blocks.append(trig('"Player 1"', ["Always()"], [
-        *profile.resource_actions(cfg, ["Player 1"]),
-        f'Set Countdown Timer(Set To, {a.time_limit})',
-        f'Display Text Message(Always Display, "{cfg["text"]["messages"]["start"]}")']))
-    for i in range(3):
-        blocks.append(trig('"Player 1"', [
-            f'Bring("Player 1", "{player_unit}", "{labels[i+2]}", At least, 1)',
-            f'Deaths("Player 11", "{token_unit}", Exactly, {i})'], [
-            f'Set Deaths("Player 11", "{token_unit}", Set To, {i+1})',
-            f'Display Text Message(Always Display, "{cfg["text"]["messages"][f"seal_{i+1}"]}")',
-            'Play WAV("sound\\Misc\\Button.wav", 300)']))
-    blocks.append(trig('"Player 1"', [
-        f'Bring("Player 1", "{player_unit}", "{labels[5]}", At least, 1)',
-        f'Deaths("Player 11", "{token_unit}", Exactly, 3)'], [
-        f'Display Text Message(Always Display, "{cfg["text"]["messages"]["complete"]}")',
-        'Victory()']))
-    blocks.append(trig('"Player 1"', [
-        'Countdown Timer(At most, 0)',
-        f'Deaths("Player 11", "{token_unit}", At most, 2)'], [
-        f'Display Text Message(Always Display, "{cfg["text"]["messages"]["timeout"]}")',
-        'Defeat()']))
+    blocks = build_triggers(cfg, a.time_limit, player_unit, token_unit, labels)
     scmap.reveal_for_all(cli, 1)
     cli.apply_triggers(scmap.TRIGGER_SEP.join(blocks))
     profile.apply_profile_metadata(cli, cfg, 1)

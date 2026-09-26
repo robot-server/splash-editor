@@ -34,6 +34,9 @@
     "prep": 18,
     "survive": 210
   },
+  "players": {
+    "race": "zerg"
+  },
   "units": {
     "hunter": "Sarah Kerrigan (Ghost)",
     "hider": "Terran Civilian",

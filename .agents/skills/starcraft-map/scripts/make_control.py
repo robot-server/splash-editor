@@ -15,7 +15,7 @@
 `Kill` 조건). 직접 세려고 `Set Deaths` 를 쓰면 누가 잡았는지 못 가린다.
 
 보기:
-    python3 make_control.py out.scx --config recipe_profiles/your_control_profile.json
+    python3 make_control.py out.scx --config profile.json
 """
 from __future__ import annotations
 
@@ -96,7 +96,7 @@ Actions:
         add(f'''Trigger("{p}"){{
 Conditions:
 \tCountdown Timer(At most, 0);
-\tCommand("{p}", "Men", At most, 2);
+\tCommand("{p}", "Men", At most, 0);
 
 Actions:
 \tCreate Unit("{p}", "{starter["unit"]}", {starter["count"]}, "{a} {cfg["labels"]["spawn_suffix"]}");
@@ -247,7 +247,8 @@ def main(argv=None):
 
     print("플레이어 슬롯을 정합니다...")
     system_player=a.players+1
-    scmap.setup_usemap_players(cli, a.players, [system_player], race=cfg["players"]["race"])
+    scmap.setup_usemap_players(cli, a.players, [system_player], race=cfg["players"]["race"],
+                               computer_race=cfg["players"]["race"])
     if system_player > 8:
         cli.edit("player", "set", cli.path, str(system_player),
                  "--race", cfg["players"]["race"], "--slot", "computer")
