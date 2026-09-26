@@ -496,23 +496,7 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
     #    player" 라 그 플레이어의 시나리오가 끝나고 트리거가 다시 돌지
     #    않는다. 실제 인기 맵 30장 중 7장이 그렇게 쓴다. 거짓 양성이었다.
 
-    # 5) Modify Unit ... 의 인자 차례 — **퍼센트가 먼저**다.
-    #    실측에서 개수 자리는 거의 언제나 0(=전부)이다:
-    #      (s,s,100,0,s) 634회 · (s,s,0,0,s) 223회 · (s,s,10,0,s) 88회
-    #    개수가 큰 수면 퍼센트와 자리를 바꿔 쓴 것이다. 그렇게 쓰면
-    #    회복이 아니라 체력을 그 퍼센트로 **깎는** 동작이 된다.
-    suspect = []
-    for kind, pct, cnt in re.findall(
-            r'Modify Unit (Hit Points|Energy|Shield Points)'
-            r'\([^)]*?,\s*(\d+)\s*,\s*(\d+)\s*,', text):
-        if int(cnt) > 12 or int(pct) > 100:
-            suspect.append(f"{kind}({pct}, {cnt})")
-    if suspect:
-        out.append(("!!", f"Modify Unit 의 인자 차례가 거꾸로인 것 같습니다: "
-                          f"{', '.join(sorted(set(suspect))[:3])}. "
-                          f"**퍼센트가 먼저**이고 개수 0 이 전부입니다 — "
-                          f"실측에서 개수 자리는 거의 언제나 0 입니다. "
-                          f"거꾸로 쓰면 회복이 아니라 체력을 깎습니다."))
+    # 5) Modify Unit 과 죽음 수 변수는 check_basics 가 갈래와 상관없이 본다.
 
     # 6) 비콘 상점에 밀어내기가 없으면 서 있는 동안 매 프레임 결제된다
     n = 0
@@ -580,31 +564,7 @@ def check_usemap(cli: Cli, m: dict) -> list[tuple[str, str]]:
                                   f'처음에 0이므로 **시작하자마자 집니다.**'))
                 break
 
-    # 10) **카운터로 쓰는 유닛이 맵에 실제로 있는가.**
-    #     죽음 수를 변수로 쓰려면 그 유닛이 실제로 죽는 일이 없어야 한다.
-    #     플레이어가 쓰는 유닛을 카운터로 삼으면 그게 죽을 때마다 값이
-    #     틀어진다 — 목숨 카운터를 마린으로 잡아 마린이 죽으면 목숨이
-    #     늘어나는 맵을 실제로 받았다.
-    placed = collections.Counter()
-    for u in cli.units():
-        placed[u.get("type_name") or str(u["type"])] += 1
-    #
-    #     **`Subtract` 는 여기에 걸지 않는다.** 죽은 수를 하나씩 빼면서
-    #     그만큼 보상하는 것은 오히려 권장하는 관용구다 (누적 조건으로
-    #     무한 보상이 되는 것을 막는 방법이다). 변수로 쓰는 것은
-    #     `Set To` 와 `Add` 다 — 그때만 실제 죽음이 값을 망친다.
-    #     앞서 이 구분 없이 잡아 성한 키우기 맵을 틀렸다고 했다.
-    used_as_var = set(re.findall(
-        r'Set Deaths\(\s*"[^"]+"\s*,\s*"([^"]+)"\s*,\s*(?:Set To|Add)\b',
-        text))
-    dirty = sorted(c for c in used_as_var if placed.get(c))
-    if dirty:
-        out.append(("!!", f"죽음 수를 **변수로** 쓰는 유닛이 맵에 배치되어 "
-                          f"있습니다: {dirty[:3]}. 그 유닛이 죽을 때마다 값이 "
-                          f"틀어집니다. 놓을 수 없는 스펠류(Dark Swarm · "
-                          f"Disruption Web · Scanner Sweep)를 쓰거나, "
-                          f"scmap.MapResources.counter() 로 안전한 칸을 "
-                          f"받아 쓰세요."))
+    # 10) 죽음 수 변수는 check_basics 가 본다.
 
     # 11) **잠금이 글자만 있고 실제로 안 읽히는가.**
     #     동작이 스위치나 죽음 수를 찍어도, 같은 트리거의 조건이 그것을
@@ -778,8 +738,16 @@ def count_walk_islands(cli: Cli, m: dict, sample: int = 96) -> int:
     return islands
 
 
-# 체력이 0이어도 불 효과가 없어 문서가 예외로 둔 건물.
-_ZERO_HP_OK = ("temple", "power generator", "템플", "파워")
+# 체력이 0이면 불·피 효과로 튕기는 건물. 사원(174)·발전소(200)와
+# 건물 아닌 유닛은 여기 없다.
+_BURN_BUILDING_IDS = frozenset({
+    106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118,
+    120, 122, 123, 124, 125,
+    130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142,
+    143, 144, 146, 149,
+    154, 155, 156, 157, 159, 160, 162, 163, 164, 165, 166, 167,
+    169, 170, 171, 172,
+})
 
 # 비어 있는 슬롯이 주인이면 진행이 돌지 않는 동작.
 _PROGRESS_ACTIONS = (
@@ -788,11 +756,11 @@ _PROGRESS_ACTIONS = (
 )
 
 
-def _player_rows(cli: Cli) -> list[dict]:
-    """player list 의 고정 폭 칸을 읽는다. 슬롯 이름에 공백이 있다."""
+def parse_player_rows(text: str) -> list[dict]:
+    """player list 를 읽는다. 칸 폭은 바이트라 한글 이름은 폭을 넘는다."""
     rows = []
-    for line in cli.run("player", "list", cli.path).splitlines():
-        m = re.match(r"^  P(.{2})  (.{10})  (.{12})", line)
+    for line in text.splitlines():
+        m = re.match(r"^  P\s*(\d+)\s{2,}(.+?)\s{2,}(.+?)\s{2,}세력", line)
         if not m:
             continue
         rows.append({
@@ -803,6 +771,33 @@ def _player_rows(cli: Cli) -> list[dict]:
     return rows
 
 
+def _player_rows(cli: Cli) -> list[dict]:
+    return parse_player_rows(cli.run("player", "list", cli.path))
+
+
+def trigger_structure_findings(text: str, placed: dict) -> list[tuple[str, str]]:
+    """갈래와 상관없이 트리거 구조 결함만 돌려준다."""
+    out = []
+    suspect = []
+    for kind, pct, cnt in re.findall(
+            r'Modify Unit (Hit Points|Energy|Shield Points)'
+            r'\([^)]*?,\s*(\d+)\s*,\s*(\d+)\s*,', text):
+        if int(cnt) > 12 or int(pct) > 100:
+            suspect.append(f"{kind}({pct}, {cnt})")
+    if suspect:
+        out.append(("!!", f"Modify Unit 의 인자 차례가 거꾸로인 것 같습니다: "
+                          f"{', '.join(sorted(set(suspect))[:3])}. "
+                          f"**퍼센트가 먼저**이고 개수 0 이 전부입니다."))
+    used_as_var = set(re.findall(
+        r'Set Deaths\(\s*"[^"]+"\s*,\s*"([^"]+)"\s*,\s*(?:Set To|Add)\b',
+        text))
+    dirty = sorted(name for name in used_as_var if placed.get(name))
+    if dirty:
+        out.append(("!!", f"죽음 수를 **변수로** 쓰는 유닛이 맵에 배치되어 "
+                          f"있습니다: {dirty[:3]}."))
+    return out
+
+
 def check_basics(cli: Cli, m: dict) -> list[tuple[str, str]]:
     """맵이 **열리기는 하는지**. 여기서 걸리면 밸런스는 따질 것도 없다."""
     out = []
@@ -811,9 +806,12 @@ def check_basics(cli: Cli, m: dict) -> list[tuple[str, str]]:
     height_px = m["height"] * 32
     outside = []
     placed_names = set()
+    burn_ids = set()
     try:
         for unit in cli.units():
             placed_names.add(unit["type_name"])
+            if unit["type"] in _BURN_BUILDING_IDS:
+                burn_ids.add(unit["type"])
             if (unit["x"] < 0 or unit["y"] < 0
                     or unit["x"] >= width_px or unit["y"] >= height_px):
                 outside.append(f"{unit['type_name']}({unit['x']},{unit['y']})")
@@ -824,20 +822,26 @@ def check_basics(cli: Cli, m: dict) -> list[tuple[str, str]]:
                           f"{', '.join(outside[:3])}. 게임이 튕깁니다."))
 
     zero_hp = []
-    for name in sorted(placed_names):
-        if any(token in name.lower() for token in _ZERO_HP_OK):
+    seen_types = set()
+    try:
+        listed = cli.units()
+    except Exception:
+        listed = []
+    for unit in listed:
+        if unit["type"] not in burn_ids or unit["type"] in seen_types:
             continue
+        seen_types.add(unit["type"])
         try:
-            text = cli.run("unitdef", "get", cli.path, name)
+            text = cli.run("unitdef", "get", cli.path, unit["type_name"])
         except Exception:
             continue
         default = re.search(r"기본값\s*:\s*(\S+)", text)
         hp = re.search(r"체력\s*:\s*(\d+)", text)
         if default and default.group(1) == "아니오" and hp and int(hp.group(1)) == 0:
-            zero_hp.append(name)
+            zero_hp.append(unit["type_name"])
     if zero_hp:
-        out.append(("!!", f"기본값을 끈 배치 유닛의 체력이 0입니다: "
-                          f"{zero_hp[:3]}. 불 효과가 있는 건물은 튕깁니다."))
+        out.append(("!!", f"불 효과가 있는 건물의 체력이 0입니다: "
+                          f"{zero_hp[:3]}."))
 
     try:
         inactive = {row["player"] for row in _player_rows(cli)
@@ -847,6 +851,14 @@ def check_basics(cli: Cli, m: dict) -> list[tuple[str, str]]:
         inactive = set()
         text = ""
         out.append(("?", f"슬롯·트리거 주인을 못 읽었습니다: {e}"))
+    if text:
+        placed = collections.Counter()
+        try:
+            for unit in cli.units():
+                placed[unit.get("type_name") or str(unit["type"])] += 1
+        except Exception:
+            placed = collections.Counter()
+        out.extend(trigger_structure_findings(text, placed))
     if inactive and text:
         owned = []
         for block in text.split(TRIGGER_SEP_RE):

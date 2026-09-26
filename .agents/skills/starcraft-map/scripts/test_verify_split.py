@@ -1,5 +1,6 @@
 """verify_map.assess 가 구조 결함만 실패로 세는지 확인한다."""
 
+import inspect
 import unittest
 
 import verify_map
@@ -42,6 +43,33 @@ def _concept():
         "timers": [("Countdown Timer", 30), ("Elapsed Time", 45)],
         "unis_all_zero": ["Marine"],
     }
+
+
+class ParserAndStructure(unittest.TestCase):
+    def test_inactive_slot_survives_wide_korean(self):
+        text = "\n".join([
+            "  P 1  저그        열림          세력 1",
+            "  P 2  프로토스  사용 안 함  세력 1",
+            "  P 3  선택 가능  닫힘      세력 2",
+        ])
+        rows = verify_map.parse_player_rows(text)
+        self.assertEqual(
+            [(row["player"], row["slot"]) for row in rows],
+            [(1, "열림"), (2, "사용 안 함"), (3, "닫힘")])
+
+    def test_zero_hp_only_burn_buildings(self):
+        self.assertIn(106, verify_map._BURN_BUILDING_IDS)
+        self.assertNotIn(0, verify_map._BURN_BUILDING_IDS)
+        self.assertNotIn(174, verify_map._BURN_BUILDING_IDS)
+        self.assertNotIn(200, verify_map._BURN_BUILDING_IDS)
+
+    def test_trigger_structure_is_not_gated_on_classify(self):
+        text = 'Set Deaths("Player 1", "Marine", Set To, 1);\n'
+        findings = verify_map.trigger_structure_findings(
+            text, {"Marine": 1})
+        self.assertEqual(verify_map.failure_count(findings), 1)
+        self.assertIn("trigger_structure_findings",
+                      inspect.getsource(verify_map.check_basics))
 
 
 class AssessSplit(unittest.TestCase):
