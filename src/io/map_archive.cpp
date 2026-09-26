@@ -2114,9 +2114,9 @@ Result MapArchive::createNew(MapFormat format,
         return Result::failure("새 맵을 만드는 중 알 수 없는 예외가 발생했습니다.");
     }
 
-    // MappingCore derives the editor TILE layer from ISOM during new-map
-    // construction, while its game MTXM layer remains zeroed. Mirror the
-    // generated terrain into MTXM so the game and renderer see that ground.
+    // MappingCore 는 새 맵을 만들 때 ISOM 에서 에디터용 TILE 층을 뽑지만,
+    // 게임이 쓰는 MTXM 층은 0 으로 남긴다. 만든 지형을 MTXM 에도 옮겨
+    // 게임과 렌더러가 같은 바닥을 보게 한다.
     if (graphics != nullptr)
     {
         const auto editorTiles = fresh->mapFile->read.editorTiles;

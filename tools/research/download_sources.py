@@ -184,7 +184,7 @@ def page_read_url(article: str) -> str:
     text = raw.decode(charset, errors="replace")
     match = re.search(r'<iframe[^>]+id=["\']cafe_main["\'][^>]+src=["\']([^"\']+)', text, re.I)
     if not match:
-        # Attribute order differs in some page variants.
+        # 페이지에 따라 속성 순서가 다르다.
         match = re.search(r'<iframe(?=[^>]*id=["\']cafe_main["\'])(?=[^>]*src=["\']([^"\']+))[^>]*>', text, re.I)
         if match:
             src = match.group(1)
