@@ -2916,9 +2916,10 @@ def part_infection(humans: list[str], zombie: str, mark: str,
     return out
 
 
-def part_survive_timer(humans: list[str], seconds: int,
-                       msg: str = "\\x07끝까지 버텼습니다!") -> list[str]:
-    """정해진 시간을 버티면 이긴다. 블러드·좀비·술래잡기의 끝맺음."""
+def part_survive_timer(humans: list[str], seconds: int, msg: str) -> list[str]:
+    """정해진 시간을 버티면 이긴다. 생존 문구는 호출자가 프로필에서 넘긴다."""
+    if not msg:
+        raise CliError("part_survive_timer 문구는 프로필에서 넘겨야 합니다")
     who = ",".join(f'"{h}"' for h in humans)
     return [f'Trigger({who}){{\nConditions:\n'
             f'\tElapsed Time(At least, {seconds});\n'
