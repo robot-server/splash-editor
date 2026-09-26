@@ -212,6 +212,8 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
         for k in ("arena", "player_prefix", "spawn_suffix", "gate_suffix",
                   "all_suffix", "buy_prefix"):
             _need(labels,k,str,"labels")
+        if rules["heal_cost"] and labels["gate_suffix"] == labels["spawn_suffix"]:
+            raise CliError("control heal_cost requires gate_suffix to differ from spawn_suffix")
         players=_need(cfg,"players",dict,"root")
         _need(players,"race",str,"players")
         msg = _need(t,"messages",dict,"text")
@@ -321,10 +323,13 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
         players=_need(cfg,"players",dict,"root")
         for k in ("race","enemy_race","boss_race"):_need(players,k,str,"players")
         units=_need(cfg,"units",dict,"root")
-        for k in ("survivor","zombie","boss","infection_counter","wave_counter","spawn_lock","shop_selection","shop_beacon","heal_marker","heal_building","field_obstacle"):_need(units,k,str,"units")
-        locks = [units[k] for k in ("infection_counter", "wave_counter", "spawn_lock")]
-        if len(set(locks)) != 3 or units["spawn_lock"] in {units["survivor"], units["zombie"], units["boss"]}:
-            raise CliError("zombie spawn_lock must be an unplaced counter distinct from infection and wave counters")
+        for k in ("survivor","zombie","boss","infection_counter","wave_counter","spawn_lock","boss_seen","shop_selection","shop_beacon","heal_marker","heal_building","field_obstacle"):_need(units,k,str,"units")
+        locks = [units[k] for k in ("infection_counter", "wave_counter", "spawn_lock", "boss_seen")]
+        placed = {units["survivor"], units["zombie"], units["boss"]}
+        if len(set(locks)) != 4 or units["spawn_lock"] in placed or units["boss_seen"] in placed:
+            raise CliError("zombie boss_seen and spawn_lock must be unplaced counters distinct from the infection and wave counters")
+        if scmap.PRESENCE_UNIT in locks:
+            raise CliError("zombie death counters must not reuse the presence unit; floor triggers set it to 1")
         shops=_need(cfg,"shops",list,"root")
         if not shops or len(shops)>4:raise CliError("zombie requires 1..4 profiled shops")
         for i,shop in enumerate(shops):
@@ -340,7 +345,9 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
         if not isinstance(msg["intro"],list) or any(not isinstance(x,str) for x in msg["intro"]):
             raise CliError("zombie text.messages.intro must be a string list")
         labels=_need(cfg,"labels",dict,"root")
-        for k in ("shelter","field","graveyard","home_prefix","home_suffix","shop_prefix","wave_spawn"):_need(labels,k,str,"labels")
+        for k in ("shelter","field","graveyard","home_prefix","home_suffix","shop_prefix","wave_spawn","heal_pad"):_need(labels,k,str,"labels")
+        if labels["heal_pad"] in {labels["shelter"], labels["field"], labels["graveyard"]}:
+            raise CliError("zombie heal_pad must be a pad of its own, not a whole room")
     elif genre == "wave_defense":
         for k in ("players","waves","lane_width","wall_thickness","lane_margin","stop_width","stop_height",
                   "shared_lives","initial_timer","wave_interval_seconds","wave_growth",

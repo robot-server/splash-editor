@@ -36,6 +36,24 @@ def placed_zombies(cfg) -> int:
     return cfg["rules"]["zombie_population"] // 2
 
 
+def home_box(shelter, index, spacing):
+    """생존자 거점의 타일 사각형 (x0, y0, x1, y1). 로케이션 추가와 같다."""
+    hx = shelter[0] + 2 + (index % 2) * spacing
+    hy = shelter[1] + 3 + (index // 2) * spacing
+    return (hx, hy, hx + 6, hy + 6)
+
+
+def heal_pad_box(field):
+    """유료 회복 발판. 피난처 거점과 겹치지 않는 들판 한가운데다."""
+    x = field[0] + field[2] // 2 - 2
+    y = field[1] + field[3] // 2 - 2
+    return (x, y, x + 4, y + 4)
+
+
+def _rects_overlap(a, b) -> bool:
+    return a[0] <= b[2] and b[0] <= a[2] and a[1] <= b[3] and b[1] <= a[3]
+
+
 def build(cfg, enemy, boss_p, humans):
     rules,units,labels,msg=cfg["rules"],cfg["units"],cfg["labels"],cfg["text"]["messages"]
     players=rules["players"]
@@ -47,7 +65,8 @@ def build(cfg, enemy, boss_p, humans):
         players=players,waves=rules["wave_count"],zombies=rules["zombie_population"])
     T += scmap.part_intro(humans,intro,ore=cfg["starting_resources"]["minerals"],
         gas=cfg["starting_resources"]["gas"],objectives=objectives,
-        counters={units["infection_counter"]:0,units["wave_counter"]:0})
+        counters={units["infection_counter"]:0, units["wave_counter"]:0,
+                  units["boss_seen"]:0})
     T += scmap.part_leaderboard(msg["leaderboard"],kind="Kills")
     for k in range(rules["wave_count"]):
         seconds=(k+1)*rules["survive_seconds"]//rules["wave_count"]
@@ -92,7 +111,14 @@ Actions:
             effects=[f'\t{action.format_map(values)};' for action in shop["actions"]]
             T += scmap.part_beacon_shop(who,offer_loc,shop["cost"],effects,
                 shop["receipt"],push_to=home)
-        T += scmap.part_heal_zone(who,labels["shelter"],cost=rules["heal_cost"],push_to=home)
+        # 피난처 전체를 회복 칸으로 두고 그 안의 거점으로 밀면
+        # Bring 이 계속 참이라 매 프레임 결제된다. 값이 있을 때만
+        # 들판 발판에서 받고, 거점은 그 발판 밖에 둔다.
+        if rules["heal_cost"]:
+            T += scmap.part_heal_zone(who, labels["heal_pad"], cost=rules["heal_cost"],
+                                       push_to=home)
+        else:
+            T += scmap.part_heal_zone(who, labels["shelter"], cost=0)
         T.append(scmap.kill_bounty(who,rules["bounty_per_kill"],per_score=rules["bounty_score_step"]))
     boss_time=rules["boss_seconds"]
     T.append(f'''Trigger("{boss_p}"){{
@@ -106,9 +132,11 @@ Actions:
 \tPreserve Trigger();
 }}''')
     boss_msg=msg["boss"].format(minutes=boss_time//60)
+    # 웨이브 안내와 칸을 나누지 않으면, 보스가 마지막 웨이브보다 일찍
+    # wave_count+1 을 찍어 그 뒤 안내의 At most 가 영영 거짓이 된다.
     T += scmap.part_announce_once(humans,
-        f'Elapsed Time(At least, {boss_time});',units["wave_counter"],rules["wave_count"]+1,
-        [boss_msg],wav=msg.get("boss_wav","sound\\Zerg\\Ultra\\ZUlDth00.wav"))
+        f'Elapsed Time(At least, {boss_time});', units["boss_seen"], 1,
+        [boss_msg], wav=msg.get("boss_wav", "sound\\Zerg\\Ultra\\ZUlDth00.wav"))
     T += scmap.part_survive_timer(humans,rules["survive_seconds"],msg=msg["survived"])
     return scmap.TRIGGER_SEP.join(T)
 
@@ -168,10 +196,14 @@ def main(argv=None):
     loc=lambda name,r: cli.edit("location","add",cli.path,str(r[0]),str(r[1]),str(r[0]+r[2]),str(r[1]+r[3]),"--tiles","--name",name)
     loc(labels["shelter"],shelter);loc(labels["field"],field);loc(labels["graveyard"],grave)
     for i in range(players):
-        hx=shelter[0]+2+(i%2)*rules["home_spacing"]
-        hy=shelter[1]+3+(i//2)*rules["home_spacing"]
+        hx,hy,hx1,hy1=home_box(shelter,i,rules["home_spacing"])
+        if _rects_overlap((hx,hy,hx1,hy1), heal_pad_box(field)):
+            raise CliError("heal pad overlaps a survivor home; field is too small for this profile")
         home=f"{labels['home_prefix']}{i+1} {labels['home_suffix']}"
-        cli.edit("location","add",cli.path,str(hx),str(hy),str(hx+6),str(hy+6),"--tiles","--name",home)
+        cli.edit("location","add",cli.path,str(hx),str(hy),str(hx1),str(hy1),"--tiles","--name",home)
+    px0,py0,px1,py1=heal_pad_box(field)
+    cli.edit("location","add",cli.path,str(px0),str(py0),str(px1),str(py1),"--tiles","--name",labels["heal_pad"])
+    cli.place(units["heal_marker"],px0+1,py0+1,owner=12)
     for k,shop in enumerate(cfg["shops"]):
         sx=shelter[0]+3+k*rules["shop_spacing"]
         name=f"{labels['shop_prefix']}{k+1}"

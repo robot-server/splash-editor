@@ -61,7 +61,7 @@ def build_triggers(cfg, time_limit, player_unit, token_unit, labels):
             f'Deaths("Player 11", "{token_unit}", Exactly, {i})'], [
             f'Set Deaths("Player 11", "{token_unit}", Set To, {i+1})',
             f'Display Text Message(Always Display, "{cfg["text"]["messages"][f"seal_{i+1}"]}")',
-            'Play WAV("sound\\Misc\\Button.wav", 300)']))
+            f'Play WAV("{scmap.wav_trigger_literal("sound\\Misc\\Button.wav")}", 300)']))
     blocks.append(trig('"Player 1"', [
         f'Bring("Player 1", "{player_unit}", "{labels[steps + 2]}", At least, 1)',
         f'Deaths("Player 11", "{token_unit}", Exactly, {steps})'], [

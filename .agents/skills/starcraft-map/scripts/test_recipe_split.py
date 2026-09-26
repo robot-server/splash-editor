@@ -11,6 +11,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import recipe_config as profile
+import trigger_contracts
 import make_control
 import make_hide_seek
 import make_loadout_gauntlet
@@ -106,6 +107,66 @@ def _base_chase(name, briefing, minerals, pursuers, timer):
                          "minerals": 0, "gas": 0, "time": 1, "energy": 0},
         "unit_settings": {},
     }
+
+
+def _as_text(value):
+    if isinstance(value, str):
+        return value
+    return "\n".join(value)
+
+
+def _trigger_text(genre, cfg):
+    """배송된 build / build_triggers / chase_triggers 가 만든 트리거 글."""
+    if genre == "quiz":
+        pairs = [(q["prompt"], q["answer"]) for q in cfg["questions"]]
+        return _as_text(make_quiz.build_triggers(cfg, pairs, cfg["labels"]))
+    if genre == "control":
+        return _as_text(make_control.build_triggers(cfg, ["경기장"]))
+    if genre == "square_defense":
+        return _as_text(make_square_defense.build_triggers(
+            cfg, "Player 8", "Player 9", ["마당"]))
+    if genre == "wave_defense":
+        return _as_text(make_wave_defense.build_triggers(
+            cfg, "Player 8", "Player 9", [(1, 1, 4, 4)], ["가", "나"],
+            scmap.MapResources()))
+    if genre == "rpg":
+        return _as_text(make_rpg.build_triggers(cfg, "Player 8", "Player 9"))
+    if genre == "zombie":
+        humans = [f"Player {i}" for i in range(1, cfg["rules"]["players"] + 1)]
+        return _as_text(make_zombie.build(cfg, "Player 8", "Player 9", humans))
+    if genre == "hide_seek":
+        units = cfg["units"]
+        return _as_text(make_hide_seek.build_triggers(
+            cfg, cfg["rules"]["hiders"] + 1, cfg["rules"]["prep"],
+            cfg["rules"]["survive"], units["hunter"], units["hider"],
+            units["state_token"]))
+    if genre == "room_escape":
+        return _as_text(make_room_escape.build_triggers(
+            cfg, cfg["rules"]["time_limit"], cfg["units"]["player"],
+            cfg["units"]["state_token"], cfg["labels"]["areas"]))
+    if genre == "micro_trial":
+        return _as_text(make_micro_trial.build_triggers(
+            cfg, cfg["rules"]["stages"], cfg["rules"]["time_limit"],
+            cfg["units"]["player"], cfg["units"]["state_token"]))
+    if genre == "loadout_gauntlet":
+        units = cfg["units"]
+        humans = cfg["rules"]["players"]
+        return _as_text(make_loadout_gauntlet.build_triggers(
+            cfg, humans, cfg["offers"], cfg["waves"], cfg["labels"],
+            humans + 1, humans + 2, units["choice_state"], units["wave_state"],
+            units["notice_state"], units["presence_counter"],
+            units["recruit"], units["fallback"]))
+    if genre == "chase":
+        return _as_text(make_usemap.chase_triggers(cfg, "Player 2"))
+    raise AssertionError(genre)
+
+
+def _load_bundled():
+    bundled = {}
+    for path in (HERE / "recipe_profiles").glob("*.json"):
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        bundled[raw["genre"]] = profile.load_profile(str(path), raw["genre"])
+    return bundled
 
 
 class RecipeSplitTest(unittest.TestCase):
@@ -497,6 +558,215 @@ class RecipeSplitTest(unittest.TestCase):
         buy = make_control.build_triggers(json.loads(json.dumps(bundled["control"])), ["경기장"])
         self.assertIn('Bring("Player 1", "Men",', buy)
         self.assertNotIn('Bring("Player 1", "Any unit",', buy)
+
+    def test_trigger_contract_shapes(self):
+        """검사기가 빈 함수가 아닌지, 걸쇠의 정상 순서는 통과하는지."""
+        jumped = '''
+Trigger("Player 1"){
+Conditions:
+	Elapsed Time(At least, 180);
+	Deaths("Current Player", "Protoss Scarab", At most, 6);
+
+Actions:
+	Set Deaths("Current Player", "Protoss Scarab", Set To, 7);
+	Preserve Trigger();
+}
+Trigger("Player 1"){
+Conditions:
+	Elapsed Time(At least, 240);
+	Deaths("Current Player", "Protoss Scarab", At most, 3);
+
+Actions:
+	Set Deaths("Current Player", "Protoss Scarab", Set To, 4);
+	Preserve Trigger();
+}
+'''
+        self.assertTrue(trigger_contracts.check(jumped))
+        ordered = '''
+Trigger("Player 1"){
+Conditions:
+	Elapsed Time(At least, 60);
+	Deaths("Current Player", "Protoss Scarab", At most, 0);
+
+Actions:
+	Set Deaths("Current Player", "Protoss Scarab", Set To, 1);
+	Preserve Trigger();
+}
+Trigger("Player 1"){
+Conditions:
+	Elapsed Time(At least, 120);
+	Deaths("Current Player", "Protoss Scarab", At most, 1);
+
+Actions:
+	Set Deaths("Current Player", "Protoss Scarab", Set To, 2);
+	Preserve Trigger();
+}
+'''
+        self.assertEqual(trigger_contracts.check(ordered), [])
+        self.assertTrue(trigger_contracts.check(
+            'Play WAV("sound\\Misc\\Button.wav", 0);'))
+        self.assertEqual(trigger_contracts.check(
+            'Play WAV("sound\\\\Misc\\\\Button.wav", 0);'), [])
+        sticky = '''
+Trigger("Player 1"){
+Conditions:
+	Bring("Player 1", "Men", "pad", At least, 1);
+	Accumulate("Player 1", At least, 50, ore);
+
+Actions:
+	Set Resources("Player 1", Subtract, 50, ore);
+	Preserve Trigger();
+}
+'''
+        self.assertTrue(trigger_contracts.check(sticky))
+        pushed = sticky.replace(
+            "Set Resources(\"Player 1\", Subtract, 50, ore);",
+            "Set Resources(\"Player 1\", Subtract, 50, ore);\n"
+            "\tMove Unit(\"Player 1\", \"Men\", All, \"pad\", \"home\");")
+        self.assertEqual(trigger_contracts.check(pushed), [])
+        self.assertTrue(trigger_contracts.check('''
+Trigger("Player 8"){
+Conditions:
+	Always();
+
+Actions:
+	Create Unit("Player 8", "Zerg Zergling", 1, "grave");
+	Preserve Trigger();
+}
+'''))
+
+    def test_awkward_profiles_satisfy_trigger_contracts(self):
+        """보스가 마지막 웨이브보다 이르고, 치료비가 1 이상인 프로필도 계약을 지킨다."""
+        bundled = _load_bundled()
+        awkward = {}
+        for genre, cfg in bundled.items():
+            cfg = json.loads(json.dumps(cfg))
+            if genre == "zombie":
+                cfg["rules"]["boss_seconds"] = 1
+                cfg["text"]["messages"]["boss_wav"] = "sound\\Custom\\Horn.wav"
+            elif genre == "control":
+                cfg["rules"]["heal_cost"] = 1
+            elif genre == "rpg":
+                cfg["rules"]["heal_cost"] = 1
+            elif genre == "wave_defense":
+                cfg["text"]["wave_wav"] = "sound\\Custom\\Wave.wav"
+                cfg["text"]["boss_wav"] = "sound\\Custom\\Boss.wav"
+            awkward[genre] = cfg
+        chase = _base_chase("추격계약", "추격계약문", 15, 3, 40)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "chase.json"
+            path.write_text(json.dumps(chase), encoding="utf-8")
+            awkward["chase"] = profile.load_profile(str(path), "chase")
+
+        for genre, cfg in awkward.items():
+            findings = trigger_contracts.check(_trigger_text(genre, cfg))
+            self.assertEqual(findings, [], genre + "\n" + "\n".join(findings))
+
+        zombie = awkward["zombie"]
+        text = _trigger_text("zombie", zombie)
+        rules = zombie["rules"]
+        units = zombie["units"]
+        last = rules["wave_count"]
+        seconds = last * rules["survive_seconds"] // last
+        self.assertIn(
+            zombie["text"]["messages"]["wave"].format(
+                number=last, total=last, seconds=seconds),
+            text)
+        self.assertIn(
+            zombie["text"]["messages"]["boss"].format(minutes=rules["boss_seconds"] // 60),
+            text)
+        self.assertIn(
+            f'Deaths("Current Player", "{units["wave_counter"]}", At most, {last - 1})',
+            text)
+        self.assertNotIn(
+            f'Set Deaths("Current Player", "{units["wave_counter"]}", Set To, {last + 1})',
+            text)
+        self.assertIn(
+            f'Set Deaths("Current Player", "{units["boss_seen"]}", Set To, 1)',
+            text)
+        self.assertIn('Play WAV("sound\\\\Custom\\\\Horn.wav"', text)
+        self.assertIn('Play WAV("sound\\\\Custom\\\\Wave.wav"',
+                      _trigger_text("wave_defense", awkward["wave_defense"]))
+        self.assertIn('Play WAV("sound\\\\Custom\\\\Boss.wav"',
+                      _trigger_text("wave_defense", awkward["wave_defense"]))
+        self.assertIn('Play WAV("sound\\\\Misc\\\\PowerDown.wav"',
+                      _trigger_text("wave_defense", awkward["wave_defense"]))
+
+        shared = json.loads(json.dumps(zombie))
+        shared["units"]["boss_seen"] = shared["units"]["wave_counter"]
+        self.assertTrue(trigger_contracts.check(_trigger_text("zombie", shared)))
+
+        control = awkward["control"]
+        control_text = _trigger_text("control", control)
+        spawn = f'경기장 {control["labels"]["spawn_suffix"]}'
+        gate = f'경기장 {control["labels"]["gate_suffix"]}'
+        self.assertIn(
+            f'Move Unit("Player 1", "Men", All, "{spawn}", "{gate}")',
+            control_text)
+        self.assertIn('Subtract, 1, ore', control_text)
+        free = json.loads(json.dumps(bundled["control"]))
+        free["rules"]["heal_cost"] = 0
+        free_text = _trigger_text("control", free)
+        self.assertNotIn(
+            f'Move Unit("Player 1", "Men", All, "{spawn}", "{gate}")',
+            free_text)
+        self.assertEqual(trigger_contracts.check(free_text), [])
+
+        zombie_paid = awkward["zombie"]
+        pad = zombie_paid["labels"]["heal_pad"]
+        shelter = zombie_paid["labels"]["shelter"]
+        home = (f'{zombie_paid["labels"]["home_prefix"]}1 '
+                f'{zombie_paid["labels"]["home_suffix"]}')
+        self.assertGreater(zombie_paid["rules"]["heal_cost"], 0)
+        self.assertIn(f'Bring("Player 1", "Men", "{pad}", At least, 1)', text)
+        self.assertIn(
+            f'Move Unit("Player 1", "Men", All, "{pad}", "{home}")', text)
+        self.assertNotIn(
+            f'Bring("Player 1", "Men", "{shelter}", At least, 1)', text)
+        zombie_free = json.loads(json.dumps(zombie_paid))
+        zombie_free["rules"]["heal_cost"] = 0
+        free_zombie = _trigger_text("zombie", zombie_free)
+        self.assertIn(f'Bring("Player 1", "Men", "{shelter}", At least, 1)', free_zombie)
+        self.assertNotIn(f'Move Unit("Player 1", "Men", All, "{pad}"', free_zombie)
+        self.assertEqual(trigger_contracts.check(free_zombie), [])
+        # 거점이 피난처 밖으로 가장 멀리 나가는 합법 범위에서도 발판과 안 겹친다.
+        shelter_box = (4, 4, 20, 40)
+        field_box = (27, 4, 12, 40)
+        pad_box = make_zombie.heal_pad_box(field_box)
+        for index in range(6):
+            self.assertFalse(make_zombie._rects_overlap(
+                make_zombie.home_box(shelter_box, index, 18), pad_box))
+        with self.assertRaises(CliError):
+            scmap.part_heal_zone("Player 1", "같은칸", cost=1, push_to="같은칸")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "zombie.json"
+            missing = json.loads(json.dumps(bundled["zombie"]))
+            del missing["units"]["boss_seen"]
+            path.write_text(json.dumps(missing), encoding="utf-8")
+            with self.assertRaises(CliError):
+                profile.load_profile(str(path), "zombie")
+            collided = json.loads(json.dumps(bundled["zombie"]))
+            collided["units"]["boss_seen"] = collided["units"]["wave_counter"]
+            path.write_text(json.dumps(collided), encoding="utf-8")
+            with self.assertRaises(CliError):
+                profile.load_profile(str(path), "zombie")
+            presence = json.loads(json.dumps(bundled["zombie"]))
+            presence["units"]["boss_seen"] = scmap.PRESENCE_UNIT
+            path.write_text(json.dumps(presence), encoding="utf-8")
+            with self.assertRaises(CliError):
+                profile.load_profile(str(path), "zombie")
+            same_pad = json.loads(json.dumps(bundled["zombie"]))
+            same_pad["labels"]["heal_pad"] = same_pad["labels"]["shelter"]
+            path.write_text(json.dumps(same_pad), encoding="utf-8")
+            with self.assertRaises(CliError):
+                profile.load_profile(str(path), "zombie")
+            same_gate = json.loads(json.dumps(bundled["control"]))
+            same_gate["rules"]["heal_cost"] = 1
+            same_gate["labels"]["gate_suffix"] = same_gate["labels"]["spawn_suffix"]
+            path.write_text(json.dumps(same_gate), encoding="utf-8")
+            with self.assertRaises(CliError):
+                profile.load_profile(str(path), "control")
 
 
 if __name__ == "__main__":

@@ -69,6 +69,7 @@
     "infection_counter": "Dark Swarm",
     "wave_counter": "Protoss Scarab",
     "spawn_lock": "Scanner Sweep",
+    "boss_seen": "Nuclear Missile",
     "shop_selection": "Terran Civilian",
     "shop_beacon": "Protoss Beacon",
     "heal_marker": "Terran Beacon",
@@ -82,7 +83,8 @@
     "home_prefix": "생존자 ",
     "home_suffix": "거점",
     "shop_prefix": "보급관 ",
-    "wave_spawn": "옛 묘지"
+    "wave_spawn": "옛 묘지",
+    "heal_pad": "들판 샘"
   },
   "shops": [
     {

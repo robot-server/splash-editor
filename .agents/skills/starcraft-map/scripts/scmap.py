@@ -2757,6 +2757,9 @@ def part_heal_zone(player: str, where: str, cost: int = 0,
     if cost and not push_to:
         raise CliError("값을 받는 회복 구역에는 push_to 가 있어야 합니다. "
                        "안 밀어내면 서 있는 동안 매 프레임 결제됩니다.")
+    if cost and push_to == where:
+        raise CliError("값을 받는 회복 구역의 push_to 는 회복 칸과 달라야 합니다. "
+                       "같은 칸으로 밀면 조건이 계속 참입니다.")
     cond = [f'\tBring("{player}", "Men", "{where}", At least, 1);']
     acts = []
     if cost:
@@ -2783,6 +2786,18 @@ def part_wave_clock(owner: str, counter: str, waves: int, seconds: int) -> list[
             f'\tPreserve Trigger();\n}}']
 
 
+def wav_trigger_literal(path: str) -> str:
+    """트리거 원문에 넣는 WAV 경로. 구분자는 역슬래시 두 겹이다.
+
+    한 겹이면 저장할 때 이스케이프가 먹혀 `soundMiscButton.wav` 처럼
+    폴더가 붙는다. 이미 두 겹이거나 슬래시로 구분된 경로도 같은 꼴로 맞춘다.
+    """
+    parts = [part for part in re.split(r"[\\/]+", path) if part]
+    if not parts:
+        raise CliError("WAV 경로가 비어 있습니다")
+    return "\\\\".join(parts)
+
+
 def part_announce_once(humans: list[str], when: str, seen_counter: str,
                        step: int, lines: list[str],
                        wav: str | None = None) -> list[str]:
@@ -2796,7 +2811,7 @@ def part_announce_once(humans: list[str], when: str, seen_counter: str,
     acts = [f'\tSet Deaths("Current Player", "{seen_counter}", Set To, {step});']
     acts += [f'\tDisplay Text Message(Always Display, "{l}");' for l in lines]
     if wav:
-        acts.append(f'\tPlay WAV("{wav}", 0);')
+        acts.append(f'\tPlay WAV("{wav_trigger_literal(wav)}", 0);')
     acts.append('\tPreserve Trigger();')
     return [f'Trigger({who}){{\nConditions:\n\t{when}\n'
             f'\tDeaths("Current Player", "{seen_counter}", At most, {step - 1});\n\n'

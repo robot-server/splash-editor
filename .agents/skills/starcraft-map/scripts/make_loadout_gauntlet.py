@@ -63,7 +63,7 @@ def build_triggers(cfg, humans, offers, waves, labels, enemy_player, system_play
                 f'Set Resources("Player {p}", Subtract, {offer["cost"]}, ore)',
                 f'Create Unit("Player {p}", "{offer["unit"]}", {offer["count"]}, "{labels["homes"][p-1]}")',
                 f'Display Text Message(Always Display, "{offer["receipt"]}")',
-                'Play WAV("sound\\Misc\\Button.wav", 300)']))
+                f'Play WAV("{scmap.wav_trigger_literal("sound\\Misc\\Button.wav")}", 300)']))
         # No purchase before the draft clock runs out: recruit the profile-selected fallback.
         blocks.append(trig(f'"Player {p}"',[
             'Countdown Timer(At most, 0)',

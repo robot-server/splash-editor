@@ -127,11 +127,13 @@ Actions:
         # 잡은 만큼만 준다 — **킬 스코어를 깎는 관용구.** 죽은 수를
         # 소비하는 방법과 달리 누가 잡았는지 가려진다.
         add(scmap.kill_bounty(p, bounty, per_score=bounty_score))
-        # **제 주머니로 물러나면 공짜로 낫는다.** 안 그러면 한 번 깎인
-        # 체력이 끝까지 그대로라 초반에 진 사람은 구경만 하게 된다
-        # (실측 유즈맵 89%가 체력·에너지를 고쳐 준다). 값이 0이라
-        # 밀어내기가 필요 없다 — 서 있어도 잃을 것이 없다.
-        T.extend(scmap.part_heal_zone(p, f"{a} {cfg['labels']['spawn_suffix']}", cost=heal_cost))
+        # 주머니로 물러나면 낫는다. 값이 0이면 서 있어도 잃을 것이 없다.
+        # 값이 있으면 관문으로 밀어 낸다. 안 밀면 하이퍼 트리거가
+        # 회복 지점에 서 있는 동안 매 프레임 미네랄을 깎고, push_to 없이
+        # 돈을 받으면 part_heal_zone 이 거절한다.
+        heal_where = f"{a} {cfg['labels']['spawn_suffix']}"
+        push_to = f"{a} {cfg['labels']['gate_suffix']}" if heal_cost else None
+        T.extend(scmap.part_heal_zone(p, heal_where, cost=heal_cost, push_to=push_to))
         # 이김
         add(f'''Trigger("{p}"){{
 Conditions:
@@ -275,7 +277,10 @@ def main(argv=None):
         A = f"{cfg['labels']['player_prefix']}{i + 1}"
         names.append(A)
         loc(f"{A} {cfg['labels']['spawn_suffix']}", px + 2, py + 2, px + 8, py + 8)
-        loc(f"{A} {cfg['labels']['gate_suffix']}", px + POCKET // 2 - 3, py + POCKET - 6,
+        # 회복 칸은 위쪽 6칸이다. 관문이 그 안에 겹치면 돈을 낸 뒤에도
+        # Bring 이 참이라 하이퍼 트리거가 매 프레임 또 깎는다.
+        gate_y0 = max(py + 9, py + POCKET - 6)
+        loc(f"{A} {cfg['labels']['gate_suffix']}", px + POCKET // 2 - 3, gate_y0,
             px + POCKET // 2 + 3, py + POCKET - 1)
         for k in range(len(cfg["squads"])):
             bx = px + 2 + (k % 2) * 9

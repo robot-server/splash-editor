@@ -241,7 +241,7 @@ Conditions:
 
 Actions:
 	Display Text Message(Always Display, "{msg["leak"]}");
-	Play WAV("sound\\Misc\\PowerDown.wav", 500);
+	Play WAV("{scmap.wav_trigger_literal("sound\\Misc\\PowerDown.wav")}", 500);
 	Preserve Trigger();
 }}''')
     T.append(f'''Trigger("{enemy}"){{
