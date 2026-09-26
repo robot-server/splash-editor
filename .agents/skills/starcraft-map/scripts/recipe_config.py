@@ -298,7 +298,7 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
             _need(labels,k,str,"labels")
     elif genre == "zombie":
         for k in ("players","survive_seconds","wave_count","zombie_population","starting_survivors",
-                  "boss_seconds","heal_cost","field_obstacles","infection_spawn_count",
+                  "boss_seconds","boss_count","heal_cost","field_obstacles","infection_spawn_count",
                   "bounty_per_kill","bounty_score_step","margin","gap","min_shelter_width","min_graveyard_width","home_spacing","shop_spacing",
                   "shelter_ratio_pct","graveyard_ratio_pct"):
             _need(rules,k,int,"rules")
@@ -308,6 +308,8 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
             raise CliError("zombie population/survivor unit counts outside supported range")
         if not 0 <= rules["heal_cost"] <= 100000 or not 0 <= rules["field_obstacles"] <= 64 or not 1 <= rules["boss_seconds"] <= rules["survive_seconds"]:
             raise CliError("zombie costs, obstacle count, or boss time outside range")
+        if not 1 <= rules["boss_count"] <= 24:
+            raise CliError("zombie boss_count must be 1..24")
         if not 0 <= rules["bounty_per_kill"] <= 100000 or not 1 <= rules["bounty_score_step"] <= 100000:
             raise CliError("zombie bounty values out of range")
         if not 2 <= rules["margin"] <= 16 or not 3 <= rules["gap"] <= 20 or not 20 <= rules["min_shelter_width"] <= 48 or not 16 <= rules["min_graveyard_width"] <= 48:
@@ -319,7 +321,10 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
         players=_need(cfg,"players",dict,"root")
         for k in ("race","enemy_race","boss_race"):_need(players,k,str,"players")
         units=_need(cfg,"units",dict,"root")
-        for k in ("survivor","zombie","boss","infection_counter","wave_counter","shop_selection","shop_beacon","heal_marker","heal_building","field_obstacle"):_need(units,k,str,"units")
+        for k in ("survivor","zombie","boss","infection_counter","wave_counter","spawn_lock","shop_selection","shop_beacon","heal_marker","heal_building","field_obstacle"):_need(units,k,str,"units")
+        locks = [units[k] for k in ("infection_counter", "wave_counter", "spawn_lock")]
+        if len(set(locks)) != 3 or units["spawn_lock"] in {units["survivor"], units["zombie"], units["boss"]}:
+            raise CliError("zombie spawn_lock must be an unplaced counter distinct from infection and wave counters")
         shops=_need(cfg,"shops",list,"root")
         if not shops or len(shops)>4:raise CliError("zombie requires 1..4 profiled shops")
         for i,shop in enumerate(shops):

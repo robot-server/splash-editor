@@ -109,7 +109,7 @@ Actions:
         for k, squad in enumerate(squads):
             add(f'''Trigger("{p}"){{
 Conditions:
-\tBring("{p}", "Any unit", "{a} {cfg["labels"]["buy_prefix"]}{k + 1}", At least, 1);
+\tBring("{p}", "Men", "{a} {cfg["labels"]["buy_prefix"]}{k + 1}", At least, 1);
 \tAccumulate("{p}", At least, {money}, ore);
 
 Actions:

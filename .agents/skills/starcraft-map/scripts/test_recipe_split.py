@@ -468,6 +468,32 @@ class RecipeSplitTest(unittest.TestCase):
         self.assertEqual(make_loadout_gauntlet.draft_beacon_unit(beacon_b), "Zerg Flag")
         self.assertIn("cli.place(draft_beacon_unit(cfg)", Path(make_loadout_gauntlet.__file__).read_text(encoding="utf-8"))
 
+        def zombie_text(population):
+            cfg = json.loads(json.dumps(bundled["zombie"]))
+            cfg["rules"]["zombie_population"] = population
+            humans = [f"Player {i}" for i in range(1, cfg["rules"]["players"] + 1)]
+            return make_zombie.build(cfg, "Player 8", "Player 9", humans)
+
+        za = zombie_text(4)
+        zb = zombie_text(10)
+        grave = bundled["zombie"]["labels"]["graveyard"]
+        zunit = bundled["zombie"]["units"]["zombie"]
+        lock = bundled["zombie"]["units"]["spawn_lock"]
+        self.assertIn(f'Bring("Player 8", "{zunit}", "{grave}", At most, 3)', za)
+        self.assertIn(f'Bring("Player 8", "{zunit}", "{grave}", At most, 9)', zb)
+        self.assertNotIn(
+            f'Bring("Player 8", "{zunit}", "{bundled["zombie"]["labels"]["field"]}", At most,',
+            za)
+        self.assertIn(f'Deaths("Player 9", "{lock}", Exactly, 0)', za)
+        self.assertNotIn(f'Any unit", "{bundled["zombie"]["labels"]["field"]}", At most, 0', za)
+        self.assertIn(f'Set Deaths("Current Player", "{lock}", Set To, 1)', za)
+        self.assertIn('Command("Current Player", "Men", At least, 1)', za)
+        self.assertIn(f'Set Deaths("Current Player", "{lock}", Set To, 0)', za)
+
+        buy = make_control.build_triggers(json.loads(json.dumps(bundled["control"])), ["경기장"])
+        self.assertIn('Bring("Player 1", "Men",', buy)
+        self.assertNotIn('Bring("Player 1", "Any unit",', buy)
+
 
 if __name__ == "__main__":
     unittest.main()

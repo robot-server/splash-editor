@@ -49,19 +49,25 @@ def build(cfg, enemy, boss_p, humans):
         notice=msg["wave"].format(number=k+1,total=rules["wave_count"],seconds=seconds)
         T += scmap.part_announce_once(humans,
             f'Elapsed Time(At least, {seconds});',units["wave_counter"],k+1,[notice])
-    count=max(1,rules["zombie_population"]//2)
+    cap = rules["zombie_population"]
+    lock = units["spawn_lock"]
+    graveyard = labels["graveyard"]
+    # 생성은 묘지에서 일어나고, 발급 횟수와 묘지 수가 상한에 닿으면 멈춘다.
+    # 들판만 보면 하이퍼 트리거가 상한 전에 무리를 계속 더한다.
     T.append(f'''Trigger("{enemy}"){{
 Conditions:
-\tBring("{enemy}", "{zombie}", "{labels["field"]}", At most, {count});
+\tBring("{enemy}", "{zombie}", "{graveyard}", At most, {cap - 1});
+\tDeaths("{enemy}", "{lock}", At most, {cap - 1});
 
 Actions:
-\tCreate Unit("{enemy}", "{zombie}", {count}, "{labels["graveyard"]}");
+\tSet Deaths("{enemy}", "{lock}", Add, 1);
+\tCreate Unit("{enemy}", "{zombie}", 1, "{graveyard}");
 \tPreserve Trigger();
 }}''')
     T += scmap.part_patrol_path(enemy,[labels["graveyard"],labels["field"],labels["shelter"]],"attack")
     T += scmap.part_patrol_path(boss_p,[labels["graveyard"],labels["field"],labels["shelter"]],"attack")
     T += scmap.part_infection(humans,enemy,units["infection_counter"],zombie,
-        labels["graveyard"],msg["infected"],rules["infection_spawn_count"])
+        labels["graveyard"],msg["infected"],rules["infection_spawn_count"],lock)
     for p in range(1,players+1):
         who=f"Player {p}"
         home=f'{labels["home_prefix"]}{p} {labels["home_suffix"]}'
@@ -78,10 +84,11 @@ Actions:
     T.append(f'''Trigger("{boss_p}"){{
 Conditions:
 \tElapsed Time(At least, {boss_time});
-\tBring("{boss_p}", "Any unit", "{labels["field"]}", At most, 0);
+\tDeaths("{boss_p}", "{lock}", Exactly, 0);
 
 Actions:
-\tCreate Unit with Properties("{boss_p}", "{units["boss"]}", {rules["boss_count"]}, "{labels["graveyard"]}", 1);
+\tSet Deaths("{boss_p}", "{lock}", Set To, 1);
+\tCreate Unit with Properties("{boss_p}", "{units["boss"]}", {rules["boss_count"]}, "{graveyard}", 1);
 \tPreserve Trigger();
 }}''')
     boss_msg=msg["boss"].format(minutes=boss_time//60)

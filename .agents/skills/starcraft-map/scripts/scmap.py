@@ -2853,7 +2853,7 @@ def usemap_floor(cli: Cli, humans: int, system_owner: str,
 
 def part_infection(humans: list[str], zombie: str, mark: str,
                    zombie_unit: str, spawn_at: str,
-                   infected_message: str, spawn_count: int) -> list[str]:
+                   infected_message: str, spawn_count: int, lock: str) -> list[str]:
     """감염 — 병력을 다 잃은 사람이 좀비 편으로 넘어간다.
 
     실측 좀비 맵 35장 중 91% 가 `Set Alliance Status` 를 쓴다. 관용구는
@@ -2902,15 +2902,26 @@ def part_infection(humans: list[str], zombie: str, mark: str,
                    % (",".join('"%s"' % o for o in humans if o != h),
                       h, mark, mark, h))
 
-    # 4) 좀비가 된 사람에게 좀비 유닛을 준다
+    # 4) 좀비가 된 사람에게 좀비 유닛을 준다.
+    # 잠금을 먼저 걸고, 병력이 잡힌 뒤에만 푼다. 안 그러면 하이퍼 트리거가
+    # 새 유닛을 세기 전에 같은 죽음을 여러 번 생성한다.
     out.append(
         f'Trigger({who}){{\nConditions:\n'
         f'\tDeaths("Current Player", "{mark}", At least, 1);\n'
-        f'\tCommand("Current Player", "Men", At most, 0);\n\n'
+        f'\tCommand("Current Player", "Men", At most, 0);\n'
+        f'\tDeaths("Current Player", "{lock}", Exactly, 0);\n\n'
         f'Actions:\n'
+        f'\tSet Deaths("Current Player", "{lock}", Set To, 1);\n'
         f'\tSet Alliance Status("{zombie}", Ally);\n'
         f'\tCreate Unit("Current Player", "{zombie_unit}", {spawn_count}, "{spawn_at}");\n'
         f'\tCenter View("{spawn_at}");\n'
+        f'\tPreserve Trigger();\n}}')
+    out.append(
+        f'Trigger({who}){{\nConditions:\n'
+        f'\tCommand("Current Player", "Men", At least, 1);\n'
+        f'\tDeaths("Current Player", "{lock}", At least, 1);\n\n'
+        f'Actions:\n'
+        f'\tSet Deaths("Current Player", "{lock}", Set To, 0);\n'
         f'\tPreserve Trigger();\n}}')
     return out
 
