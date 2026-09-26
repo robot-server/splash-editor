@@ -382,6 +382,92 @@ class RecipeSplitTest(unittest.TestCase):
             source = (HERE / name).read_text(encoding="utf-8")
             self.assertNotIn("recipe_profiles", source)
 
+    def test_flagged_fields_differ_in_trigger_text(self):
+        """부활·누수·추격 상한·컨트롤 재소환·종족·비콘이 프로필 두 벌에서 갈린다."""
+        bundled = {}
+        for path in (HERE / "recipe_profiles").glob("*.json"):
+            raw = json.loads(path.read_text(encoding="utf-8"))
+            bundled[raw["genre"]] = profile.load_profile(str(path), raw["genre"])
+
+        square_a = json.loads(json.dumps(bundled["square_defense"]))
+        square_b = json.loads(json.dumps(bundled["square_defense"]))
+        square_a["text"]["messages"]["leak"] = "누수A"
+        square_b["text"]["messages"]["leak"] = "누수B"
+        square_a["text"]["messages"]["respawn"] = "부활A"
+        square_b["text"]["messages"]["respawn"] = "부활B"
+        square_a["rules"]["starting_unit_count"] = 1
+        square_b["rules"]["starting_unit_count"] = 8
+        sa = make_square_defense.build_triggers(square_a, "Player 8", "Player 9", ["마당"])
+        sb = make_square_defense.build_triggers(square_b, "Player 8", "Player 9", ["마당"])
+        self.assertIn("누수A", sa)
+        self.assertIn("부활A", sa)
+        self.assertIn(', 1, "', sa)
+        self.assertIn("누수B", sb)
+        self.assertIn("부활B", sb)
+        self.assertIn(', 8, "', sb)
+        self.assertNotIn("누수B", sa)
+        self.assertNotIn("병력을 다시 받았습니다", sa)
+
+        wave_a = json.loads(json.dumps(bundled["wave_defense"]))
+        wave_b = json.loads(json.dumps(bundled["wave_defense"]))
+        wave_a["text"]["messages"]["respawn"] = "재배치A"
+        wave_b["text"]["messages"]["respawn"] = "재배치B"
+        wa = "\n".join(make_wave_defense.build_triggers(
+            wave_a, "Player 8", "Player 9", [(1, 1, 4, 4)], ["가", "나"], scmap.MapResources()))
+        wb = "\n".join(make_wave_defense.build_triggers(
+            wave_b, "Player 8", "Player 9", [(1, 1, 4, 4)], ["가", "나"], scmap.MapResources()))
+        self.assertIn("재배치A", wa)
+        self.assertIn("재배치B", wb)
+        self.assertNotIn("재배치A", wb)
+
+        chase_a = _base_chase("추격A", "문장A", 11, 1, 40)
+        chase_b = _base_chase("추격B", "문장B", 22, 6, 80)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pa, pb = root / "a.json", root / "b.json"
+            pa.write_text(json.dumps(chase_a), encoding="utf-8")
+            pb.write_text(json.dumps(chase_b), encoding="utf-8")
+            ta = make_usemap.chase_triggers(profile.load_profile(str(pa), "chase"), "Player 2")
+            tb = make_usemap.chase_triggers(profile.load_profile(str(pb), "chase"), "Player 2")
+        self.assertIn("At most, 0", ta)
+        self.assertIn("At most, 5", tb)
+        self.assertIn(', 1, "', ta)
+        self.assertNotIn("At most, 2", ta)
+
+        control_a = json.loads(json.dumps(bundled["control"]))
+        control_b = json.loads(json.dumps(bundled["control"]))
+        control_a["text"]["messages"]["respawn"] = "증원A"
+        control_b["text"]["messages"]["respawn"] = "증원B"
+        control_a["squads"][control_a["starting_squad"]]["count"] = 1
+        control_b["squads"][control_b["starting_squad"]]["count"] = 8
+        ca = make_control.build_triggers(control_a, ["경기장"])
+        cb = make_control.build_triggers(control_b, ["경기장"])
+        self.assertIn("증원A", ca)
+        self.assertIn("증원B", cb)
+        self.assertIn("At most, 0", ca)
+        self.assertIn("At most, 0", cb)
+        self.assertNotIn("At most, 2", ca)
+        self.assertIn(', 1, "', ca)
+        self.assertIn(', 8, "', cb)
+        self.assertNotIn("증원A", cb)
+
+        for genre, race in (("hide_seek", "zerg"), ("room_escape", "protoss"), ("micro_trial", "terran")):
+            cfg = json.loads(json.dumps(bundled[genre]))
+            cfg["players"]["race"] = race
+            self.assertEqual(profile.human_race(cfg), race)
+        self.assertNotEqual(
+            profile.human_race({**bundled["hide_seek"], "players": {**bundled["hide_seek"]["players"], "race": "zerg"}}),
+            profile.human_race({**bundled["room_escape"], "players": {**bundled["room_escape"]["players"], "race": "protoss"}}),
+        )
+
+        beacon_a = json.loads(json.dumps(bundled["loadout_gauntlet"]))
+        beacon_b = json.loads(json.dumps(bundled["loadout_gauntlet"]))
+        beacon_a["units"]["draft_beacon"] = "Terran Flag"
+        beacon_b["units"]["draft_beacon"] = "Zerg Flag"
+        self.assertEqual(make_loadout_gauntlet.draft_beacon_unit(beacon_a), "Terran Flag")
+        self.assertEqual(make_loadout_gauntlet.draft_beacon_unit(beacon_b), "Zerg Flag")
+        self.assertIn("cli.place(draft_beacon_unit(cfg)", Path(make_loadout_gauntlet.__file__).read_text(encoding="utf-8"))
+
 
 if __name__ == "__main__":
     unittest.main()
