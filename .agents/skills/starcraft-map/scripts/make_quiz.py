@@ -55,10 +55,8 @@ def build_triggers(cfg, questions, labels):
     add = T.append
     HUMANS = ",".join(f'"Player {p}"' for p in range(1, players + 1))
     nq = len(questions)
-    # Countdown Timer uses game seconds: each unit lasts 0.672 real seconds
-    # at Fastest. Keep the displayed duration in real seconds and convert the
-    # trigger value so the timer matches what players are told.
-    timer_ticks = max(1, round(secs / 0.672))
+    # 문제 제한은 안내한 실제 초에 맞춘다. 카운트다운 칸에는 변환된 값이 보인다.
+    timer_ticks = scmap.game_ticks(secs)
 
     T.extend(scmap.hyper_triggers("Player 8"))
     T.extend(scmap.absent_player_cleanup(players, "Player 8"))

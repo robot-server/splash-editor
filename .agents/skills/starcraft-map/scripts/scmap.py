@@ -29,6 +29,20 @@ GAS_AMOUNT = 5000
 
 TILE = 32  # 타일 한 칸의 픽셀
 
+# Fastest에서 Countdown Timer와 Elapsed Time의 1단위는 실제 약 0.672초다.
+GAME_TIME_UNIT = 0.672
+
+
+def game_ticks(seconds: int) -> int:
+    """Fastest 실제 초를 Countdown Timer·Elapsed Time 값으로 바꾼다.
+
+    화면에 나오는 카운트다운 숫자와 프로필의 초를 같게 둘 때는 부르지 않는다.
+    그 숫자는 이미 게임 시간이다. 안내한 실제 시간과 맞출 때만 쓴다.
+    """
+    if seconds <= 0:
+        return 0
+    return max(1, round(seconds / GAME_TIME_UNIT))
+
 # **놓으면 게임이 튕기는 유닛.** 리마스터에서 베타 시절 더미 유닛 대부분은
 # 튕기지 않게 고쳐졌지만 아래는 여전히 튕긴다 (스타 에디터 아카데미 실측).
 CRASHING_UNITS = {
