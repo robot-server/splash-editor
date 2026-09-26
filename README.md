@@ -309,9 +309,9 @@ splash-cli string set map.scx 1 "새 글자" --encoding cp949 -o out.scx
 
 ## AI 로 맵 만들기
 
-프롬프트 지시로 맵을 만드는 에이전트 스킬이 `.agents/skills/starcraft-map`
-에 있다. Claude Code 는 `.claude/skills/` 만 뒤지므로 그쪽에 심볼릭 링크를
-걸어 두었다 — 알맹이는 `.agents` 쪽 한 곳뿐이다.
+프롬프트 지시로 맵을 만드는 에이전트 스킬이 `.agents/skills/` 에 있다.
+Claude Code 는 `.claude/skills/` 만 뒤지므로 `.claude` 를 `.agents` 로
+잇는 심볼릭 링크를 두었다. 알맹이는 `.agents` 쪽 한 곳뿐이다.
 
 ```sh
 export SC_INSTALL=/경로/StarCraft
