@@ -11,7 +11,7 @@
 
 - 패턴 이름: 지정 위치의 유닛만 런타임 Disable 처리
 - 구현하고자 하는 기능: 특정 이벤트가 발생하면 지정 유닛의 동작·표시 상태를 바꾼다.
-- 조건(Condition) 및 액션(Action) 구조 체인: 기능 조건 → `Set Doodad State(소유자, 유닛, 대상 로케이션, Disable/Enable/Toggle)` 순서로 둔다. 적용 가능한 유닛·로케이션 조합은 [트리거 액션](../trigger/actions.md)과 게임 데이터에서 확인한다.
+- 조건(Condition) 및 액션(Action) 구조 체인: 기능 조건 → `Set Doodad State(소유자, 유닛, 대상 로케이션, Disable/Enable/Toggle)` 순서로 둔다. 적용 가능한 유닛·로케이션 조합은 [트리거 액션](../trigger/actions.md)과 게임 데이터에서 확인한다. [scmscx 26Dc2DbB](https://scmscx.com/map/26Dc2DbB)의 트리거 3·4는 플레이어 2만 실행하고, 둘 다 `Preserve Trigger`다. 3은 `Bring(Current Player, Any unit, 1.Open Barbarian Gate, At least, 1)` 다음 `Set Doodad State(All players, Left Pit Door, 1.Barbarian Gate, disabled)`다. 4는 같은 `Bring`이 `Exactly 0`일 때 같은 문에 `enabled`다. 조건 로케이션은 인덱스 1, 픽셀 (896, 928)–(992, 992)다. 액션 로케이션은 인덱스 2, 픽셀 (1120, 928)–(1216, 1024)이고, 그 안에 있는 문 유닛은 플레이어 2 `Left Pit Door`(207) (1164, 971)뿐이다. 옆의 `Left Upper Level Door`(205) 둘은 이 사각형 밖이다. 감지 사각형 안에 플레이어 2 `Protoss Beacon`(196)이 (948, 947)에 있고 이 두 트리거는 그 비콘을 옮기지 않으므로, `Exactly 0`은 이 배치만으로는 성립하지 않는다. 문 스프라이트와 통행은 게임을 열지 않아 확인하지 않았다.
 - 예외 처리/버그 방지 로직 (예: 스위치 리셋, 트리거 순서 등): 액션 이름에 복수 대상처럼 보여도 강좌와 CLI 정의를 대조해 실제 적용 범위를 확인한다. 체력이 감소할 때 충돌하는 투명 건물 등 상태별 위험이 있으므로, 공격·피해·파괴까지 시험한다. 메딕, 시즈 모드 탱크, 골리앗 등 강좌에서 튕김 사례로 든 유닛과 부속 포탑 유닛은 사용하지 않는다.
 
 ## [에디터 타일/배치 제약사항]
@@ -19,4 +19,4 @@
 - 지형 간 연결 규칙: Active 스프라이트는 지형 타일이나 고저 경계를 만들지 않는다. 시각적 장식과 walk/build 속성을 별도로 확인한다.
 - 유닛 길막/동선 보장 규칙: Active 상태 유닛은 충돌 크기가 없어 길을 막지 않는다. 통로 차단은 충돌이 검증된 doodad/지형으로 만들고, 장식 유닛은 이동 경로 밖에 둔다. 투명 건물은 피해를 받아 체력 변화·불/피 효과가 날 때 튕길 수 있다는 강좌 주의사항을 시험한다.
 
-출처: Star Editor Academy [Set Doodad State의 Disable 효과](https://cafe.naver.com/edac/book5095361/76525), [유닛 스프라이트의 Active 효과](https://cafe.naver.com/edac/book5095361/76540). 원문 결과 목록은 유닛별로 다르므로 목록 전체를 보편 동작으로 일반화하지 않는다.
+출처: Star Editor Academy [Set Doodad State의 Disable 효과](https://cafe.naver.com/edac/book5095361/76525), [유닛 스프라이트의 Active 효과](https://cafe.naver.com/edac/book5095361/76540). 원문 결과 목록은 유닛별로 다르므로 목록 전체를 보편 동작으로 일반화하지 않는다. 트랩류는 강좌에서 열린 상태가 Disable이라고 적는다. 맵 [26Dc2DbB](https://scmscx.com/map/26Dc2DbB)의 `Left Pit Door`가 그렇게 열리는지는 확인하지 않았다.
