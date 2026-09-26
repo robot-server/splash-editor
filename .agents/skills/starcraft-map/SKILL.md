@@ -14,7 +14,7 @@ description: StarCraft: Brood War 맵(.scm/.scx)의 밀리·유즈맵을 실제 
 ## 제작 지식 확인
 
 - 레시피 시작점: 밀리맵은 [`make_melee.py`](scripts/make_melee.py), 퀴즈는 [`make_quiz.py`](scripts/make_quiz.py), 컨트롤 전투는 [`make_control.py`](scripts/make_control.py), RPG는 [`make_rpg.py`](scripts/make_rpg.py), 사각/웨이브 디펜스는 [`make_square_defense.py`](scripts/make_square_defense.py)·[`make_wave_defense.py`](scripts/make_wave_defense.py), 좀비 생존은 [`make_zombie.py`](scripts/make_zombie.py), 비대칭 숨바꼭질은 [`make_hide_seek.py`](scripts/make_hide_seek.py), 단계형 마이크로 시험은 [`make_micro_trial.py`](scripts/make_micro_trial.py), 방별 상태 퍼즐은 [`make_room_escape.py`](scripts/make_room_escape.py), 사전 유닛 드래프트 협동 방어는 [`make_loadout_gauntlet.py`](scripts/make_loadout_gauntlet.py)를 살핀다. 먼저 `--help`와 해당 생성 코드가 실제로 놓는 유닛·지형·로케이션·트리거를 읽고, 가장 가까운 레시피를 맵 목적에 맞게 바꾼다. 이름만 비슷한 레시피를 그대로 복사하지 않는다.
-- `verify_map.py`와 개별 측정 스크립트는 검사 대상과 한계를 확인한 뒤 진단 보조로 쓴다. 통과 결과만으로 게임 플레이 동작을 확정하지 않는다.
+- `verify_map.py`는 [확인 및 저장](#확인-및-저장)의 관문이다. 종료 코드 0은 플레이가 된다는 뜻이 아니다.
 - 문서의 수치 빈도, 평균, 중앙값을 설계 목표로 복사하지 않는다.
 - 구조 지식을 적용할 때는 [docs/README.md](../../../docs/README.md)에서 관련 기능 문서로 이동한다. 트리거는 [조건](../../../docs/trigger/conditions.md), [액션](../../../docs/trigger/actions.md), [실행 순서](../../../docs/trigger/execution.md), [Deaths 상태값](../../../docs/trigger/death-counts.md), [Bring 판정](../../../docs/trigger/bring-command.md), [로케이션](../../../docs/trigger/locations.md), [기능 조립 예시](../../../docs/trigger/recipes.md)를 함께 참조한다.
 - 유즈맵 상호작용은 [기능 설계](../../../docs/usemap/functional-design.md), [장르별 공간 구성](../../../docs/usemap/genres.md), [지형·이동 제약](../../../docs/usemap/terrain.md)을 참조한다. 유닛 생성 예외는 [유닛 특이 동작](../../../docs/unit/quirks.md), 스킬 반복 타이머는 [스킬 트리거 지침](../../../docs/trigger/skills.md)을 확인한다.
@@ -37,6 +37,9 @@ description: StarCraft: Brood War 맵(.scm/.scx)의 밀리·유즈맵을 실제 
 
 ## 확인 및 저장
 
-맵 변경 후 CLI 진단과 렌더를 확인한다. 트리거 생성·건물 배치·일꾼 채집·램프 이동 등 게임 엔진 동작은 정적 문서나 오버레이만으로 확정하지 않는다. 가능한 경우 게임에서 열어 확인하고, 실행 확인을 할 수 없으면 제한을 명시한다. 맵은 사용자의 `Maps` 하위 폴더에 명시된 출력 경로로 저장한다.
+맵 변경 후 렌더를 확인하고 `verify_map.py <맵>`을 돌린다. `--json`은 종료 코드가 항상 0이라 이 관문으로 쓰지 않는다. 종료 코드가 0이 아니면 그 맵을 결과로 쓰지 않는다. 여기에는 못 걷는 땅 66% 초과, 맵 밖 유닛, 기본값을 끈 배치 유닛의 체력 0, 사용 안 함·닫힘 슬롯만의 진행 트리거, 그리고 스크립트가 이미 `!!`로 실패시키는 자원 비트·스타팅·죽음 수 변수·Modify Unit 인자 순서가 들어간다. `?`와 종족 기울기는 종료 코드를 올리지 않는다.
 
-실제 맵 파일명은 레포 문서나 커밋 메시지에 쓰지 않는다. Git commit/push는 사용자가 현재 대화에서 명시적으로 요청한 경우에만 한다.
+프로필에 적은 시간이 화면에 보일 숫자면 Countdown Timer·Elapsed Time에 그 숫자를 그대로 넣는다. 실제 초를 맞추는 값이면 저장본 숫자가 `scmap.game_ticks` 결과와 같아야 한다. 다르면 그 맵을 쓰지 않는다. 어느 쪽인지는 맵 파일만으로 알 수 없으므로 이 비교는 프로필을 보고 한다.
+
+트리거 발동·건물 자리·일꾼 채집·램프 통과는 정적 검사로 확정하지 않는다. 가능한 경우 게임에서 열어 확인하고, 실행 확인을 할 수 없으면 제한을 명시한다. 맵은 사용자의 `Maps` 하위 폴더에 명시된 출력 경로로 저장한다.
+

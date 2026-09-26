@@ -778,9 +778,93 @@ def count_walk_islands(cli: Cli, m: dict, sample: int = 96) -> int:
     return islands
 
 
+# 체력이 0이어도 불 효과가 없어 문서가 예외로 둔 건물.
+_ZERO_HP_OK = ("temple", "power generator", "템플", "파워")
+
+# 비어 있는 슬롯이 주인이면 진행이 돌지 않는 동작.
+_PROGRESS_ACTIONS = (
+    "Create Unit", "Kill Unit", "Victory();", "Defeat();",
+    "Set Countdown Timer", "Set Resources", "Move Unit", "Transmission",
+)
+
+
+def _player_rows(cli: Cli) -> list[dict]:
+    """player list 의 고정 폭 칸을 읽는다. 슬롯 이름에 공백이 있다."""
+    rows = []
+    for line in cli.run("player", "list", cli.path).splitlines():
+        m = re.match(r"^  P(.{2})  (.{10})  (.{12})", line)
+        if not m:
+            continue
+        rows.append({
+            "player": int(m.group(1)),
+            "race": m.group(2).strip(),
+            "slot": m.group(3).strip(),
+        })
+    return rows
+
+
 def check_basics(cli: Cli, m: dict) -> list[tuple[str, str]]:
     """맵이 **열리기는 하는지**. 여기서 걸리면 밸런스는 따질 것도 없다."""
     out = []
+
+    width_px = m["width"] * 32
+    height_px = m["height"] * 32
+    outside = []
+    placed_names = set()
+    try:
+        for unit in cli.units():
+            placed_names.add(unit["type_name"])
+            if (unit["x"] < 0 or unit["y"] < 0
+                    or unit["x"] >= width_px or unit["y"] >= height_px):
+                outside.append(f"{unit['type_name']}({unit['x']},{unit['y']})")
+    except Exception as e:
+        out.append(("?", f"유닛 좌표를 못 읽었습니다: {e}"))
+    if outside:
+        out.append(("!!", f"맵 밖 유닛 {len(outside)}기: "
+                          f"{', '.join(outside[:3])}. 게임이 튕깁니다."))
+
+    zero_hp = []
+    for name in sorted(placed_names):
+        if any(token in name.lower() for token in _ZERO_HP_OK):
+            continue
+        try:
+            text = cli.run("unitdef", "get", cli.path, name)
+        except Exception:
+            continue
+        default = re.search(r"기본값\s*:\s*(\S+)", text)
+        hp = re.search(r"체력\s*:\s*(\d+)", text)
+        if default and default.group(1) == "아니오" and hp and int(hp.group(1)) == 0:
+            zero_hp.append(name)
+    if zero_hp:
+        out.append(("!!", f"기본값을 끈 배치 유닛의 체력이 0입니다: "
+                          f"{zero_hp[:3]}. 불 효과가 있는 건물은 튕깁니다."))
+
+    try:
+        inactive = {row["player"] for row in _player_rows(cli)
+                    if row["slot"] in ("사용 안 함", "닫힘")}
+        text = cli.trigger_text()
+    except Exception as e:
+        inactive = set()
+        text = ""
+        out.append(("?", f"슬롯·트리거 주인을 못 읽었습니다: {e}"))
+    if inactive and text:
+        owned = []
+        for block in text.split(TRIGGER_SEP_RE):
+            if not any(action in block for action in _PROGRESS_ACTIONS):
+                continue
+            header = re.match(r"\s*Trigger\(([^)]*)\)", block)
+            if not header:
+                continue
+            who = header.group(1)
+            if "All players" in who or "Current Player" in who or "Force" in who:
+                continue
+            nums = [int(n) for n in re.findall(r"Player (\d+)", who)]
+            if nums and all(n in inactive for n in nums):
+                owned.append(who.strip())
+        if owned:
+            out.append(("!!", f"사용 안 함·닫힘 슬롯만 실행하는 진행 트리거 "
+                              f"{len(owned)}개: {owned[0]}. 그 슬롯은 아무도 "
+                              f"맡지 않아 진행이 돌지 않습니다."))
 
     # 0a) **못 걷는 지형이 66% 를 넘으면 튕긴다.**
     #
