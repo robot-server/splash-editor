@@ -5,7 +5,7 @@ description: scmscx 맵 사례와 스타 에디터 아카데미 강좌에서 스
 
 # 스타크래프트 맵 지식 조사
 
-이 스킬은 기능 구현 사례를 조사하고 `docs/`를 갱신한다. 맵을 만들고 수정하는 [starcraft-map](../starcraft-map/SKILL.md) 스킬과 별개다.
+이 스킬은 기능 구현 사례를 조사하고 `docs/`를 갱신한다. 맵을 만들고 수정하는 [starcraft-map-melee](../starcraft-map-melee/SKILL.md)·[starcraft-map-usemap](../starcraft-map-usemap/SKILL.md) 스킬과 별개다.
 
 조사에 사용하는 설치 에셋 경로는 `SC_INSTALL` 또는 사용자가 제공한 경로에서만 가져온다. 값이 없으면 필요한 시점에 사용자에게 묻고, 기기 경로를 추측하지 않는다. CLI는 `SPLASH_CLI`가 설정되어 있으면 그 실행 파일을 쓰고, 그렇지 않으면 저장소 빌드본 `./build-cli/src/cli/splash-cli`를 확인한다. 없으면 CLI를 사용할 수 있는 상태인지 먼저 확인하며 옛 생성 스크립트를 열람 도구로 대체하지 않는다.
 

@@ -267,7 +267,9 @@ CLI 쪽으로는: 갈래별 명령(unit·sprite·doodad·location·terrain·fog�
 
 ## 맵 생성 (AI 로 맵 만들기)
 
-`.agents/skills/starcraft-map` 에 프롬프트로 맵을 만드는 스킬을 두었다.
+`.agents/skills/starcraft-map-melee`(밀리맵)·`.agents/skills/starcraft-map-usemap`(유즈맵)에
+프롬프트로 맵을 만드는 스킬을 두었다. 공통 절차는 `.agents/skills/starcraft-map/COMMON.md`,
+생성기·측정 스크립트와 코퍼스 데이터는 `.agents/skills/starcraft-map/scripts`·`data`에 있다.
 그 작업에서 드러난, 아직 못 고친 것들.
 
 ### `terrain mirror` 가 절벽을 뒤집지 못한다
