@@ -12,6 +12,7 @@ sys.path.insert(0, str(HERE))
 
 import recipe_config as profile
 import trigger_contracts
+import make_bomb_dodge
 import make_control
 import make_hide_seek
 import make_loadout_gauntlet
@@ -27,6 +28,7 @@ import scmap
 from scmap import CliError
 
 GENERATORS = [
+    "make_bomb_dodge.py",
     "make_control.py",
     "make_hide_seek.py",
     "make_loadout_gauntlet.py",
@@ -115,8 +117,30 @@ def _as_text(value):
     return "\n".join(value)
 
 
+def _bomb_dodge_args(cfg):
+    """main() 이 만드는 것과 같은 모양의 게이트·폭탄 셀 로케이션 이름.
+
+    실제 좌표는 필요 없다 — 여기서는 트리거 글이 프로필 값을 제대로
+    반영하는지만 본다.
+    """
+    rules, labels = cfg["rules"], cfg["labels"]
+    stages, players = rules["stages"], rules["players"]
+    operator = f"Player {players + 1}"
+    gates = ([labels["start"]]
+             + [f"{labels['checkpoint_prefix']}{i}" for i in range(1, stages)]
+             + [labels["goal"]])
+    stage_cell_locs = [
+        [f"{labels['bomb_prefix']}{s + 1}-{i + 1}"
+         for i in range(cfg["stages"][s]["grid"][0] * cfg["stages"][s]["grid"][1])]
+        for s in range(stages)]
+    return operator, gates, stage_cell_locs
+
+
 def _trigger_text(genre, cfg):
     """배송된 build / build_triggers / chase_triggers 가 만든 트리거 글."""
+    if genre == "bomb_dodge":
+        operator, gates, stage_cell_locs = _bomb_dodge_args(cfg)
+        return _as_text(make_bomb_dodge.build_triggers(cfg, operator, gates, stage_cell_locs))
     if genre == "quiz":
         pairs = [(q["prompt"], q["answer"]) for q in cfg["questions"]]
         return _as_text(make_quiz.build_triggers(cfg, pairs, cfg["labels"]))
@@ -247,6 +271,9 @@ class RecipeSplitTest(unittest.TestCase):
             return "\n".join(value)
 
         def text_of(genre, cfg):
+            if genre == "bomb_dodge":
+                operator, gates, stage_cell_locs = _bomb_dodge_args(cfg)
+                return as_text(make_bomb_dodge.build_triggers(cfg, operator, gates, stage_cell_locs))
             if genre == "quiz":
                 pairs = [(q["prompt"], q["answer"]) for q in cfg["questions"]]
                 return as_text(make_quiz.build_triggers(cfg, pairs, cfg["labels"]))

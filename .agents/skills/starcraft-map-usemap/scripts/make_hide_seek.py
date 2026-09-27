@@ -167,9 +167,11 @@ def main(argv=None):
         scmap.room(cli, pal, x, y, w, h, rim=1, wall=True)
     scmap.room(cli, pal, *hall, rim=1, wall=True)
     connect_rooms(cli, pal, rooms, hall)
-    opened = scmap.open_beside_paths(cli, ts, pal.tile("path"), W, H, limit=60)
-    if opened:
-        print(f"  못 걷는 비율을 맞추려고 길 옆 {opened}칸을 열었습니다")
+    # 예전에는 여기서 못 걷는 비율이 60%를 넘으면 길 옆을 무작위로 더
+    # 뚫었다 — 66% 초과가 튕긴다는 근거로 세운 안전장치였는데, 그 근거가
+    # 반증됐다(85x48 Space Platform/Brood War 205, 못 걷는 땅 80%가
+    # 실제 게임에서 정상 진행됨, tools/mapgen/verify_map.py 0a) 참고).
+    # 의도한 방 모양을 사후에 무작위로 뭉개던 걸 없앴다.
 
     grid = scmap.walk_grid(cli, ts, 0, 0, W, H)
     hx, hy = hall[0] + hall[2] // 2, hall[1] + hall[3] // 2

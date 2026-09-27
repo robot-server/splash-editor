@@ -336,15 +336,11 @@ def main(argv=None):
         scmap.room(cli, pal, x + RING + WALL, y + RING + WALL,
                    w - 2 * (RING + WALL), h - 2 * (RING + WALL),
                    rim=1)                                          # 섬
-    # 경기장 안 벽은 사거리용이라 그대로 둔다. 맵 밖 벽만 한도까지 연다.
-    protect = {(tx, ty)
-               for x, y, w, h in boxes
-               for ty in range(max(0, y), min(H, y + h))
-               for tx in range(max(0, x), min(W, x + w))}
-    opened = scmap.open_beside_paths(
-        cli, ts, pal.tile("floor"), W, H, limit=60, protect=protect)
-    if opened:
-        print(f"  못 걷는 비율을 맞추려고 경기장 밖 {opened}칸을 열었습니다")
+    # 경기장 안 벽은 사거리용이라 그대로 둔다.
+    # 예전에는 여기서 맵 밖 벽을 못 걷는 비율 60% 아래로 무작위로 더
+    # 뚫었다 — 66% 초과가 튕긴다는 근거로 세운 안전장치였는데, 그 근거가
+    # 반증됐다(85x48 Space Platform/Brood War 205, 못 걷는 땅 80%가
+    # 실제 게임에서 정상 진행됨, tools/mapgen/verify_map.py 0a) 참고).
 
     # 4) 플레이어 슬롯
     # 같은 지형 안의 **변종만** 흩는다. 그룹을 섞으면 얼룩덜룩한 덩이

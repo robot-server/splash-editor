@@ -35,11 +35,18 @@ WALLS = [(.20, .10, .30, .42), (.20, .58, .30, .90),
          (.65, .10, .75, .42), (.65, .58, .75, .90)]
 
 
-def chase_lane_rect(width: int, height: int, target_walk: float = 0.46):
+def chase_lane_rect(width: int, height: int, target_walk: float = 0.24):
     """추격에 쓰는 가로 띠 (x, y, w, h).
 
     검문 틈(세로 42~58%)은 띠 안에 두고, 모서리는 띠 밖에 남겨 벽으로
-    남긴다. 띠가 너무 좁으면 못 걷는 칸이 66%를 넘어 게임이 튕긴다.
+    남긴다.
+
+    `target_walk`(걷는 면적 비율)는 예전엔 0.46이었다 — "못 걷는 칸이
+    66%를 넘으면 튕긴다"는 근거로 추격 길을 실제 필요보다 두껍게 잡은
+    값이다. 그 근거는 반증됐다(85x48 Space Platform/Brood War 205,
+    못 걷는 땅 80%가 실제 게임에서 정상 진행됨,
+    tools/mapgen/verify_map.py 0a) 참고). 지금 값은 체크포인트 틈
+    (세로 16%)이 들어갈 만큼만 남기고 좁힌 것이다.
     """
     gap0 = int(0.42 * height)
     gap1 = max(gap0 + 1, int(0.58 * height))

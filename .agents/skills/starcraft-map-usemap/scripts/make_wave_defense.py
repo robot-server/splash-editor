@@ -20,9 +20,16 @@
 낫다 (docs/trigger/ai-scripts.md).
 
 **길은 벽으로 감싼다.** 앞판은 맵 전체를 걷는 바닥으로 깔아 놓고 길을
-색만 다르게 칠했다 — 그림으로는 길인데 게임에서는 벌판이었다. 다만
-맵을 통째로 못 걷게 덮으면 66% 를 넘겨 튕기므로(docs/game/crashes.md),
-**길 양옆 한 칸만** 막는다.
+색만 다르게 칠했다 — 그림으로는 길인데 게임에서는 벌판이었다. 길 양옆을
+실제로 막아야 적이 길로만 간다.
+
+한때는 "못 걷는 지형이 66%를 넘으면 튕긴다"(docs/game/crashes.md)는
+근거로 길을 13칸까지 넓히고 벽을 1칸으로 줄였다 — 방어선을 원래
+의도보다 헐렁하게 만든 셈이다. 그 근거는 반증됐다(85x48 Space
+Platform/Brood War 205, 못 걷는 땅 80%가 실제 게임에서 정상 진행됨,
+tools/mapgen/verify_map.py 0a) 참고). `lane_width`·`wall_thickness`는
+여전히 프로필이 정하므로, 좁고 진짜 길목다운 방어선을 원하면 값을
+줄이면 된다 — 코드가 강제로 넓히지 않는다.
 
 보기:
     python3 make_wave_defense.py out.scx --config profile.json
@@ -42,8 +49,8 @@ import recipe_config as profile
 TILESETS = {"badlands": 0, "space": 1, "ashworld": 3, "jungle": 4,
             "desert": 5, "ice": 6, "twilight": 7}
 
-LANE = 13       # 길 너비 — 길과 길목 방이 맵에서 충분한 걷는 면적을 차지한다
-WALLT = 1       # 길 양옆 벽 두께 — 128x128 Jungle 에서 불가 지형 41% (기존 59%)
+LANE = 9        # 길 너비 — parse() 에서 rules.lane_width 로 항상 덮어써진다
+WALLT = 3       # 길 양옆 벽 두께 — parse() 에서 rules.wall_thickness 로 항상 덮어써진다
 LANE_MARGIN = 12  # 맵 가장자리에서 길까지
 STOP_W, STOP_H = 12, 10   # 길목 방 (두대드가 들어갈 만큼 넉넉히)
 

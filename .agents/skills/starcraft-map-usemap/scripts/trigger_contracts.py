@@ -112,6 +112,16 @@ def _pad_locked(cond: str, acts: str) -> bool:
     return False
 
 
+def _wait_paced(acts: str) -> bool:
+    """Create 뒤에 Wait 가 있으면 매 프레임 반복이 아니다.
+
+    Wait 는 그 트리거의 실행 자체를 그 시간만큼 묶는다 — Preserve Trigger
+    로 다시 조건을 검사하기 전에 Wait 가 끝나야 하므로, 스위치·수량
+    잠금 없이도 폭탄피하기의 킬-생성-킬 반복처럼 자연히 박자가 난다.
+    """
+    return "Wait(" in acts
+
+
 def check(text: str) -> list[str]:
     """트리거 글의 계약 위반. 비어 있으면 통과."""
     findings: list[str] = []
@@ -127,7 +137,8 @@ def check(text: str) -> list[str]:
         if "Preserve Trigger()" in acts:
             for _owner, unit, loc in _CREATE.findall(acts):
                 if (_one_shot(cond, acts) or _spawn_capped(cond, unit, loc)
-                        or _countdown_gated(cond, text) or _pad_locked(cond, acts)):
+                        or _countdown_gated(cond, text) or _pad_locked(cond, acts)
+                        or _wait_paced(acts)):
                     continue
                 findings.append(
                     "생성 잠금 없음: Preserve 와 Create 가 있는데 "

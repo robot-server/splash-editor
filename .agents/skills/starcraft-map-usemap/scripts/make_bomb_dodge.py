@@ -156,12 +156,15 @@ def build_triggers(cfg, operator: str, gates: list[str],
     # 켠다(아래) — Always()로 무조건 켜면 정적 검사가 "시작 배치만으로
     # 진행되는 트리거"로 잡고, 실제로도 체크포인트 스위치 번호가 하나씩
     # 밀려 스테이지 2를 건너뛰는 결과를 낳았다.
+    res = cfg["starting_resources"]
     blocks.append(f'''Trigger({HUMANS}){{
 Conditions:
 \tAlways();
 
 Actions:
 \tSet Alliance Status("{operator}", Ally);
+\tSet Resources("Current Player", Set To, {res["minerals"]}, ore);
+\tSet Resources("Current Player", Set To, {res["gas"]}, gas);
 \tDisplay Text Message(Always Display, "{msg["intro"]}");
 \tSet Mission Objectives("{cfg["text"]["objectives"]}");
 }}''')

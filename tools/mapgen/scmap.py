@@ -1067,20 +1067,6 @@ def halo_open_grid(grid, props: dict, floor: int, limit: float = 64.0,
     return out, opened
 
 
-def open_beside_paths(cli, tileset_id: int, floor: int, width: int, height: int,
-                     limit: float = 64.0, protect=None) -> int:
-    """못 걷는 칸이 limit 를 넘으면, 길 옆 벽만 바닥으로 연다.
-
-    맵 전체를 걷는 바닥으로 되돌리지 않는다. 66%를 넘으면 게임이 튕긴다.
-    """
-    props = tileset_tiles(cli, tileset_id)
-    grid = cli.tiles(0, 0, width, height)
-    nxt, opened = halo_open_grid(grid, props, floor, limit, protect=protect)
-    if opened:
-        cli.paste_tiles(0, 0, nxt)
-    return opened
-
-
 def blocked_mini_pct(grid, props: dict) -> float:
     """미니타일 기준 못 걷는 비율. 표에 없는 타일은 못 걷는 칸으로 센다."""
     if not grid or not grid[0]:
