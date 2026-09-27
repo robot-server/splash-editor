@@ -182,7 +182,7 @@ def main(argv=None):
     rng = random.Random(a.seed)
     W, H = (int(v) for v in a.size.lower().split("x"))
     ts = TILESETS[a.tileset]
-    POCKET = cfg["rules"]["pocket_size"]
+    POCKET = max(int(cfg["rules"]["pocket_size"]), 36)
 
     print(f"컨트롤 {W}x{H} {a.tileset}, {a.players}명, {a.goal}킬")
     cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False,
@@ -276,29 +276,25 @@ def main(argv=None):
         loc(f"{A} {cfg['labels']['gate_suffix']}", px + POCKET // 2 - 3, gate_y0,
             px + POCKET // 2 + 3, py + POCKET - 1)
         for k in range(len(cfg["squads"])):
-            bx = px + 2 + (k % 2) * 9
-            by = py + 11 + (k // 2) * 5
-            loc(f"{A} {cfg['labels']['buy_prefix']}{k + 1}", bx, by, bx + 4, by + 3)
+            bx, by = px + 3, py + 14 + k * 8
+            loc(f"{A} {cfg['labels']['buy_prefix']}{k + 1}", bx - 1, by - 1, bx + 6, by + 4)
         loc(f"{A} {cfg['labels']['all_suffix']}", px, py, px + POCKET, py + POCKET)
     loc(cfg["labels"]["arena"], cx - AR, cy - AR, cx + AR, cy + AR)
 
     print("유닛을 놓습니다...")
     for i, (px, py) in enumerate(spots):
         p = i + 1
-        cli.place(scmap.START_LOCATION, px + 5, py + 5, owner=p)
+        cli.place(scmap.START_LOCATION, px + 5, py + 4, owner=p)
         squad=cfg["squads"][cfg["starting_squad"]]
         for k in range(squad["count"]):
-            cli.place(squad["unit"],px+3+k,py+8,owner=p)
+            cli.place(squad["unit"], px + 3 + (k % 4), py + 5 + (k // 4), owner=p)
         for k,squad in enumerate(cfg["squads"]):
-            bx = px + 4 + (k % 2) * 9
-            by = py + 12 + (k // 2) * 5
-            scmap.pad(cli, pal, bx, by, 3, 3)
-            cli.place(cfg["units"]["purchase_beacon"],bx,by,owner=p)
-            scmap.place_shop_show(
-                cli,
+            bx, by = px + 3, py + 14 + k * 8
+            scmap.pad(cli, pal, bx, by, 6, 4)
+            scmap.place_beacon_shop(
+                cli, cfg["units"]["purchase_beacon"],
                 [f'Create Unit("Player {p}", "{squad["unit"]}", {squad["count"]}, "x")'],
-                squad["unit"], bx, by - 3)
-            scmap.place_price_mineral(cli, bx + 2, by - 1, cfg["rules"]["buy_cost"])
+                squad["unit"], bx, by, cfg["rules"]["buy_cost"], beacon_owner=p)
     # 싸움터 가운데 장애물 — 트인 벌판이면 컨트롤이 안 나온다
     for k in range(cfg["rules"]["obstacle_count"]):
         ang = 2 * math.pi * k / max(1,cfg["rules"]["obstacle_count"])

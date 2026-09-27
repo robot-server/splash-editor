@@ -362,7 +362,7 @@ def main(argv=None):
     for i, (sx, sy, sw, sh) in enumerate(stops):
         loc(f"{labels['stop_prefix']}{i + 1}", sx, sy, sw, sh)
         for k in range(len(shops)):
-            loc(f"{labels['stop_prefix']}{i + 1} {labels['shop_suffix']}{k + 1}", sx + 1 + k * 3, sy + 1, 2, 2)
+            loc(f"{labels['stop_prefix']}{i + 1} {labels['shop_suffix']}{k + 1}", sx + 1 + k * 6, sy + 1, 5, 4)
 
     print("스타팅과 시작 유닛을 놓습니다...")
     for i in range(1, a.players + 1):
@@ -377,10 +377,10 @@ def main(argv=None):
     print("비콘을 놓습니다 (하는 일이 셋 다 다릅니다)...")
     for i,(sx,sy,sw,sh) in enumerate(stops):
         for k,shop in enumerate(shops):
-            bx,by=sx+1+k*3,sy+1
-            cli.place(shop["beacon"],bx,by,owner=i+1)
-            scmap.place_shop_show(cli, shop["actions"], shop["icon"], bx, by + 3)
-            scmap.place_price_mineral(cli, bx + 2, by + 3, shop["cost"])
+            bx, by = sx + 1 + k * 6, sy + 1
+            scmap.place_beacon_shop(
+                cli, shop["beacon"], shop["actions"], shop["icon"],
+                bx, by, shop["cost"], beacon_owner=i + 1)
 
     print("시야를 엽니다...")
     scmap.apply_reveal(cli, "wave_defense", a.players)
