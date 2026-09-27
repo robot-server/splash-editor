@@ -1362,10 +1362,7 @@ def place_price_mineral(cli: Cli, tile_x: int, tile_y: int, cost: int) -> bool:
     """
     info = cli.info()
     width, height = info["width"], info["height"]
-    taken = set()
-    for unit in cli.units():
-        if "Mineral" in unit["type_name"]:
-            taken.add((unit["x"] // TILE, unit["y"] // TILE))
+    taken = {(unit["x"] // TILE, unit["y"] // TILE) for unit in cli.units()}
     spot = price_mineral_spot(
         tile_x, tile_y,
         lambda cell: cli.nearest_legal(
@@ -1419,6 +1416,23 @@ def shop_preview_count(actions) -> int:
         if match:
             return max(1, int(match.group(1)))
     return 1
+
+
+def place_beacon_shop(cli: "Cli", beacon: str, actions, fallback: str,
+                      tile_x: int, tile_y: int, cost: int,
+                      beacon_owner: int = 12) -> str:
+    """비콘, 그 구매 미리보기, 그 가격 미네랄만 한 덩어리로 놓는다.
+
+    미리보기는 비콘 오른쪽에 두고, 미네랄은 비콘 아래에 둔다.
+    옆 상점과 칸이 겹치지 않게 호출부가 8칸 이상 떼어 놓는다.
+    """
+    kind = shop_preview_type(actions, fallback)
+    count = shop_preview_count(actions)
+    cli.place(beacon, tile_x, tile_y, owner=beacon_owner)
+    for index in range(count):
+        cli.place(kind, tile_x + 2 + (index % 3), tile_y + (index // 3), owner=12)
+    place_price_mineral(cli, tile_x, tile_y + 2, cost)
+    return kind
 
 
 def place_shop_show(cli: "Cli", actions, fallback: str, tile_x: int, tile_y: int,

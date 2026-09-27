@@ -242,13 +242,11 @@ def main(argv=None):
         cli.place(recruit,x,46,owner=p)
     for i, offer in enumerate(offers):
         cx,cy=SHOP_CENTERS[i]
-        scmap.pad(cli,pal,cx,cy,7,7)
-        cli.place(draft_beacon_unit(cfg),cx,cy,owner=12)
-        scmap.place_shop_show(
-            cli,
+        scmap.pad(cli,pal,cx,cy,7,4)
+        scmap.place_beacon_shop(
+            cli, draft_beacon_unit(cfg),
             [f'Create Unit("Player 1", "{offer["unit"]}", {offer["count"]}, "x")'],
-            offer["unit"], cx, cy - 4)
-        scmap.place_price_mineral(cli, cx + 2, cy - 4, offer["cost"])
+            offer["unit"], cx, cy, offer["cost"])
     for p in range(humans):
         cli.place(cfg["units"]["home_marker"],HERO_XS[p],HERO_Y-2,owner=12)
     cli.place(scmap.START_LOCATION,64,103,owner=enemy_player)

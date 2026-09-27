@@ -203,11 +203,17 @@ def main(argv=None):
         cli.edit("location","add",cli.path,str(hx),str(hy),str(hx1),str(hy1),"--tiles","--name",home)
     px0,py0,px1,py1=heal_pad_box(field)
     cli.edit("location","add",cli.path,str(px0),str(py0),str(px1),str(py1),"--tiles","--name",labels["heal_pad"])
-    cli.place(units["heal_marker"],px0+1,py0+1,owner=12)
+    # 치료는 구매가 아니다. 비콘 대신 이름 붙인 건물이 그 행동을 설명한다.
+    cli.place("Terran Supply Depot", px0+1, py0+1, owner=12)
+    cli.edit("unitdef", "set", cli.path, "Terran Supply Depot",
+             "--name", cfg["unit_names"].get(units["heal_marker"], "치료"))
+    if rules["heal_cost"]:
+        scmap.place_price_mineral(cli, px0+3, py0+1, rules["heal_cost"])
     for k,shop in enumerate(cfg["shops"]):
-        sx=shelter[0]+3+k*rules["shop_spacing"]
+        sx=shelter[0]+4+k*12
+        by=shelter[1]+room_h-8
         name=f"{labels['shop_prefix']}{k+1}"
-        cli.edit("location","add",cli.path,str(sx),str(shelter[1]+room_h-7),str(sx+4),str(shelter[1]+room_h-3),"--tiles","--name",name)
+        cli.edit("location","add",cli.path,str(sx-1),str(by-1),str(sx+7),str(by+4),"--tiles","--name",name)
 
     for i in range(players):
         p=i+1;hx=shelter[0]+4+(i%2)*rules["home_spacing"];hy=shelter[1]+5+(i//2)*rules["home_spacing"]
@@ -216,13 +222,12 @@ def main(argv=None):
             cli.place(units["survivor"],hx-2+k%3,hy+k//3,owner=p)
         cli.place(units["shop_selection"],hx,hy+3,owner=p)
     for k,shop in enumerate(cfg["shops"]):
-        sx=shelter[0]+5+k*rules["shop_spacing"]
-        scmap.pad(cli,pal,sx,shelter[1]+room_h-5,3,3)
-        cli.place(units["shop_beacon"],sx,shelter[1]+room_h-5,owner=12)
-        scmap.place_shop_show(
-            cli, shop["actions"], shop.get("unit") or shop["marker"],
-            sx, shelter[1] + room_h - 10)
-        scmap.place_price_mineral(cli, sx + 2, shelter[1]+room_h-10, shop["cost"])
+        sx=shelter[0]+4+k*12
+        by=shelter[1]+room_h-8
+        scmap.pad(cli,pal,sx,by,7,4)
+        scmap.place_beacon_shop(
+            cli, units["shop_beacon"], shop["actions"],
+            shop.get("unit") or shop["marker"], sx, by, shop["cost"])
     cli.place(scmap.START_LOCATION,grave[0]+3,grave[1]+3,owner=enemy_no)
     cli.place(scmap.START_LOCATION,grave[0]+3,grave[1]+room_h-4,owner=boss_no)
     for k in range(placed_zombies(cfg)):

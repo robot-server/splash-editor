@@ -332,8 +332,9 @@ def main(argv=None):
         hy = ty + 3 + ((p - 1) // 3) * 6
         loc(f"{labels['home_prefix']}{p} {labels['home_suffix']}", hx, hy, hx + 4, hy + 4)
     for k,shop in enumerate(shops):
-        sx = tx + 2 + k * 6
-        loc(f"{labels['shop_prefix']}{k+1}", sx, ty + th - 8, sx + 4, ty + th - 4)
+        sx = tx + 3 + k * 12
+        by = ty + th - 10
+        loc(f"{labels['shop_prefix']}{k+1}", sx - 1, by - 1, sx + 7, by + 4)
     for z,zone in enumerate(zones):
         zx, zy, zw, zh = cells[z + 1]
         zone_loc=f"{labels['zone_prefix']}{z+1}"
@@ -355,11 +356,12 @@ def main(argv=None):
         for k in range(cfg["rules"]["companion_count"]):
             cli.place(units["companion"], hx - 1 + k, hy + 2, owner=p)
     for k,shop in enumerate(shops):
-        sx = tx + 4 + k * 6
-        scmap.place_shop_show(cli, shop["actions"], shop["marker"], sx, ty + th - 11)
-        scmap.place_price_mineral(cli, sx + 2, ty + th - 11, shop["cost"])
-        scmap.pad(cli, pal, sx, ty + th - 6, 3, 3)
-        cli.place(units["shop_beacon"], sx, ty + th - 6, owner=12)
+        sx = tx + 3 + k * 12
+        by = ty + th - 10
+        scmap.pad(cli, pal, sx, by, 7, 4)
+        scmap.place_beacon_shop(
+            cli, units["shop_beacon"], shop["actions"], shop["marker"],
+            sx, by, shop["cost"])
     # 구역마다 몬스터를 미리 깔아 둔다 (트리거가 채우기 전에도 보이게)
     for z,zone in enumerate(zones):
         zx, zy, zw, zh = cells[z + 1]

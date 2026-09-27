@@ -382,8 +382,8 @@ def main(argv=None):
         cx,cy=x+w//2,y+h//2
         loc(f"{A} {labels['center_suffix']}",cx-4,cy-4,cx+4,cy+4)
         for k in range(len(shops)):
-            bx=cx-(len(shops)-1)*2+k*5
-            loc(f"{A} {labels['shop_suffix']}{k+1}",bx,cy+8,bx+3,cy+11)
+            bx, by = x + 6 + k * 11, y + h - 4
+            loc(f"{A} {labels['shop_suffix']}{k+1}", bx - 1, by - 1, bx + 6, by + 4)
         loc(f"{A} {labels['all_suffix']}",x,y,x+w,y+h)
 
     print("프로필 유닛을 놓습니다...")
@@ -404,14 +404,12 @@ def main(argv=None):
         cli.place(units["selection"],cx,cy+4,owner=p)
         A=arena_names[i]
         for k,shop in enumerate(shops):
-            bx=cx-(len(shops)-1)*2+k*5
-            by=cy+9
-            scmap.pad(cli,pal,bx+1,by,3,3)
-            cli.place(shop["beacon"],bx+1,by,owner=p)
-            preview = scmap.place_shop_show(
-                cli, shop["actions"], shop.get("icon"), bx + 1, by - 3)
+            bx, by = x + 6 + k * 11, y + h - 4
+            scmap.pad(cli, pal, bx, by, 6, 4)
+            preview = scmap.place_beacon_shop(
+                cli, shop["beacon"], shop["actions"], shop.get("icon"),
+                bx, by, shop["cost"], beacon_owner=p)
             label = shop.get("icon_name") or shop["label"]
-            scmap.place_price_mineral(cli, bx+3, by-3, shop["cost"])
             if preview in icon_names and icon_names[preview] != label:
                 raise CliError(f"unit type {preview} has conflicting display names")
             icon_names[preview] = label
