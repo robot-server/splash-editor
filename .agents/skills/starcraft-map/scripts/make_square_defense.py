@@ -399,10 +399,12 @@ def main(argv=None):
             by=cy+9
             scmap.pad(cli,pal,bx+1,by,3,3)
             cli.place(shop["beacon"],bx+1,by,owner=p)
+            label = scmap.priced_name(shop.get("icon_name") or shop["label"], shop["cost"])
             cli.place(shop["icon"],bx+1,by-3,owner=12)
-            if shop["icon"] in icon_names and icon_names[shop["icon"]]!=shop["icon_name"]:
+            scmap.place_price_mineral(cli, bx+3, by-3, shop["cost"])
+            if shop["icon"] in icon_names and icon_names[shop["icon"]]!=label:
                 raise CliError(f"unit type {shop['icon']} has conflicting display names")
-            icon_names[shop["icon"]]=shop["icon_name"]
+            icon_names[shop["icon"]]=label
     # 적·보스도 스타팅이 있어야 슬롯이 산다. 첫 경기장 통로 구석에 둔다.
     bx, by, bw, bh = boxes[0]
     cli.place(scmap.START_LOCATION, bx + 2, by + bh // 2, owner=enemy_no)

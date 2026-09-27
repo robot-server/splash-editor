@@ -969,6 +969,60 @@ def solid_blocker(props: dict) -> int | None:
     return min(groups[best])
 
 
+def _walk_mask(props: dict, tile_id: int) -> int:
+    prop = props.get(tile_id)
+    if not prop or len(prop) < 5:
+        return 0
+    return prop[4] & 0xFFFF
+
+
+def halo_open_grid(grid, props: dict, floor: int, limit: float = 64.0,
+                   passes: int = 12):
+    """길 옆 벽만 바닥으로 연 격자와, 연 칸 수.
+
+    걷기 판정은 미니타일 마스크다. 걷기 비트만 보면 마스크가 비어 있는
+    칸을 이미 열린 칸으로 넘겨, 못 걷는 비율이 줄지 않는다. 맵 전체를
+    바닥으로 되돌리지 않고, 한계에 닿으면 먼 벽은 그대로 둔다.
+    """
+    if not grid or not grid[0]:
+        return grid, 0
+    height, width = len(grid), len(grid[0])
+    out = [row[:] for row in grid]
+    opened = 0
+    for _ in range(passes):
+        if blocked_mini_pct(out, props) <= limit:
+            break
+        nxt = [row[:] for row in out]
+        changed = 0
+        for y in range(1, height - 1):
+            for x in range(1, width - 1):
+                if _walk_mask(props, out[y][x]) == 0xFFFF:
+                    continue
+                if any(_walk_mask(props, out[y + dy][x + dx])
+                       for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                    nxt[y][x] = floor
+                    changed += 1
+        if not changed:
+            break
+        out = nxt
+        opened += changed
+    return out, opened
+
+
+def open_beside_paths(cli, tileset_id: int, floor: int, width: int, height: int,
+                     limit: float = 64.0) -> int:
+    """못 걷는 칸이 limit 를 넘으면, 길 옆 벽만 바닥으로 연다.
+
+    맵 전체를 걷는 바닥으로 되돌리지 않는다. 66%를 넘으면 게임이 튕긴다.
+    """
+    props = tileset_tiles(cli, tileset_id)
+    grid = cli.tiles(0, 0, width, height)
+    nxt, opened = halo_open_grid(grid, props, floor, limit)
+    if opened:
+        cli.paste_tiles(0, 0, nxt)
+    return opened
+
+
 def blocked_mini_pct(grid, props: dict) -> float:
     """미니타일 기준 못 걷는 비율. 표에 없는 타일은 못 걷는 칸으로 센다."""
     if not grid or not grid[0]:
@@ -1904,20 +1958,14 @@ class Palette:
 
 def cover_map(cli: "Cli", pal: Palette, width: int, height: int,
               margin: int = 0):
-    """맵 바탕을 깐다. **기본은 걸을 수 있는 바닥이다.**
+    """안 쓰는 칸은 못 걷는 지형으로 둔다.
 
-    검은 칸으로 맵 전체를 덮고 방만 뚫으면 화면이 비고 이동 가능 면도
-    의도와 다르게 잘릴 수 있다.
-
-    그래서 검은 칸 대신 **못 걷는 지형(물·용암)** 으로 덮었는데, 이번에는
-    다른 데서 걸렸다 — **못 걷는 지형이 맵의 66% 를 넘으면 게임이
-    튕긴다** (docs/game/crashes.md). 퀴즈 맵이 89%, 좀비 맵이 80% 였다.
-
-    그래서 뒤집었다. **바닥을 먼저 깔고**, 벽은 방 둘레에만 두른다.
-    `margin` 을 주면 맵 가장자리만 벽으로 두른다 (맵 밖으로 나가는 것을
-    막는 용도).
+    맵 전체를 걷는 바닥으로 깔면 경기장 밖도 돌아다닌다. 필요한 방과
+    통로는 이 다음에 바닥으로 뚫는다. 못 걷는 칸이 66%를 넘으면 게임이
+    튕기므로, 뚫고 난 뒤의 비율을 검증으로 확인한다. `margin` 은 가장자리를
+    다시 벽으로 고정할 때 쓴다.
     """
-    pal.fill(cli, "floor", 0, 0, width, height)
+    pal.fill(cli, "wall", 0, 0, width, height)
     if margin > 0:
         pal.fill(cli, "wall", 0, 0, width, margin)
         pal.fill(cli, "wall", 0, height - margin, width, margin)

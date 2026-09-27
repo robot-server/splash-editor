@@ -1410,7 +1410,12 @@ def initial_progress_faults(text: str, counts: dict[tuple[str, str], int]) -> li
                     r'Command\("([^"]+)", "([^"]+)", (At most|At least|Exactly), (\d+)\)', line)
                 if command:
                     player = current if command.group(1) == "Current Player" else command.group(1)
-                    have = state_counts.get((player, command.group(2)), 0)
+                    unit = command.group(2)
+                    if unit in ("Men", "Any unit"):
+                        have = sum(amount for (owner, name), amount in state_counts.items()
+                                   if owner == player and name != "Start Location")
+                    else:
+                        have = state_counts.get((player, unit), 0)
                     holds = holds and _cmp_amount(command.group(3), have, int(command.group(4)))
                     continue
                 known = False
@@ -1430,7 +1435,10 @@ def initial_progress_faults(text: str, counts: dict[tuple[str, str], int]) -> li
             if not known or not holds:
                 continue
         actions = act.group(1)
-        if "Victory()" in actions or "Defeat()" in actions:
+        only_always = all(line == "Always()" for line in lines)
+        starts_stage = ("Create Unit" in actions or "Display Text Message" in actions)
+        if ("Victory()" in actions or "Defeat()" in actions
+                or (not only_always and starts_stage)):
             who = re.search(r"Trigger\(([^)]*)\)", block)
             faults.append(who.group(1).strip() if who else "trigger")
         if uses_current:
@@ -1563,6 +1571,21 @@ def _resource_clusters(resources: list[dict]) -> list[list[dict]]:
     return clusters
 
 
+def dat_weapon_damage(rows) -> dict[int, int]:
+    """설치본 유닛 표에서 무기 번호별 기본 피해.
+
+    무기 0은 가우스다. ``or 130`` 으로 읽으면 0이 빈 값으로 빠져 검사를 피한다.
+    """
+    dat: dict[int, int] = {}
+    for row in rows:
+        for key, bonus in (("ground_weapon", "ground_damage"), ("air_weapon", "air_damage")):
+            raw = row.get(key)
+            weapon = 130 if raw is None or raw == "" else int(raw)
+            if weapon < 130:
+                dat[weapon] = max(dat.get(weapon, 0), int(row.get(bonus) or 0))
+    return dat
+
+
 def _weapon_findings(cli: Cli) -> list[str]:
     try:
         dumped = cli.run("unitdef", "weapons", cli.path)
@@ -1579,13 +1602,7 @@ def _weapon_findings(cli: Cli) -> list[str]:
     if not custom:
         return []
     raw = json.loads(cli.run("unit-stats", cli.install, "--json"))
-    dat = {}
-    for row in raw.values():
-        for key, bonus in (("ground_weapon", "ground_damage"), ("air_weapon", "air_damage")):
-            weapon = int(row.get(key) or 130)
-            if weapon < 130:
-                dat[weapon] = max(dat.get(weapon, 0), int(row.get(bonus) or 0))
-    return weapon_zero_faults(dat, map_damage, True)
+    return weapon_zero_faults(dat_weapon_damage(raw.values()), map_damage, True)
 
 
 def _create_location_faults(cli: Cli, text: str) -> list[str]:

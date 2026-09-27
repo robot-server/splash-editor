@@ -99,6 +99,13 @@ class PlacementAndProgress(unittest.TestCase):
         self.assertTrue(faults)
         self.assertEqual(verify_map.weapon_zero_faults({0: 6}, {0: 6}, True), [])
         self.assertEqual(verify_map.weapon_zero_faults({0: 6}, {0: 0}, False), [])
+        # 무기 0은 가우스다. 빈 값으로 읽으면 피해 0을 검사하지 않는다.
+        rows = [{"ground_weapon": 0, "ground_damage": 6,
+                 "air_weapon": 130, "air_damage": 0}]
+        parsed = verify_map.dat_weapon_damage(rows)
+        self.assertEqual(parsed.get(0), 6)
+        self.assertNotIn(130, parsed)
+        self.assertTrue(verify_map.weapon_zero_faults(parsed, {0: 0}, True))
         findings = verify_map.assess({
             "outside_units": 0, "blocked_pct": 10, "burn_hp_zero": [],
             "inactive_progress": [], "bad_resource_bits": 0, "starts": 1,
@@ -172,6 +179,52 @@ Actions:
 }
 """
         self.assertEqual(verify_map.initial_progress_faults(lives, {}), [])
+        spawn = """
+Trigger("Player 3"){
+Conditions:
+	Command("Player 3", "Zerg Zergling", At most, 5);
+
+Actions:
+	Create Unit("Player 3", "Zerg Zergling", 1, "검문소");
+	Display Text Message(Always Display, "추격이 붙습니다.");
+}
+"""
+        self.assertTrue(verify_map.initial_progress_faults(spawn, {}))
+        occupied = """
+Trigger("Player 1"){
+Conditions:
+	Command("Player 1", "Men", At most, 0);
+
+Actions:
+	Create Unit("Player 1", "Terran Marine", 1, "길목");
+}
+"""
+        self.assertEqual(verify_map.initial_progress_faults(
+            occupied, {("Player 1", "Terran Marine"): 4}), [])
+        self.assertTrue(verify_map.initial_progress_faults(occupied, {}))
+        armed = """
+Trigger("All players"){
+Conditions:
+	Always();
+
+Actions:
+	Set Switch("추격시작", set);
+}
+"""
+        gated = """
+Trigger("Player 3"){
+Conditions:
+	Switch("추격시작", set);
+	Command("Player 3", "Zerg Zergling", At most, 5);
+
+Actions:
+	Create Unit("Player 3", "Zerg Zergling", 1, "검문소");
+}
+"""
+        # 스위치가 꺼진 채로는 생성되지 않는다. 켜진 뒤에는 생성된다.
+        self.assertEqual(verify_map.initial_progress_faults(gated, {}), [])
+        self.assertTrue(verify_map.initial_progress_faults(
+            armed + "\n\n//-----------------------------------------------------------------//\n\n" + gated, {}))
         self.assertTrue(verify_map.initial_progress_faults(
             owned, {("Player 1", "Terran Vulture"): 1}))
         findings = verify_map.assess({
@@ -274,6 +327,47 @@ Actions:
         walled = scmap.ring_wall_cells(40, 40, [(15, 15)], gap, set())
         self.assertNotIn((15, 24), walled)
         self.assertIn((23, 15), walled)
+
+    def test_halo_opens_beside_paths_not_the_whole_map(self):
+        import scmap
+        props = {1: (0, 1, 1, 0, 0xFFFF), 2: (0, 0, 0, 0, 0)}
+        grid = [[2] * 30 for _ in range(30)]
+        for y in range(14, 16):
+            for x in range(14, 16):
+                grid[y][x] = 1
+        out, opened = scmap.halo_open_grid(grid, props, 1, limit=60)
+        self.assertGreater(opened, 0)
+        self.assertLessEqual(scmap.blocked_mini_pct(out, props), 60)
+        self.assertEqual(out[1][1], 2)
+        self.assertEqual(out[14][13], 1)
+        full = [[1] * 5 for _ in range(5)]
+        same, none_opened = scmap.halo_open_grid(full, props, 1, limit=60)
+        self.assertEqual(none_opened, 0)
+        self.assertEqual(same[0][0], 1)
+
+    def test_chase_lane_keeps_corners_out(self):
+        import make_usemap
+        x, y, w, h = make_usemap.chase_lane_rect(128, 96)
+        self.assertLess(y + h, 96)
+        self.assertGreater(y, 0)
+        self.assertLessEqual(y, int(0.50 * 96))
+        self.assertGreaterEqual(y + h, int(0.50 * 96))
+        self.assertNotIn(0, range(y, y + h))
+        # 검문 틈의 한가운데는 벽 사각형 밖이다.
+        cx, cy = int(0.25 * 128), int(0.50 * 96)
+        inside = False
+        for rx0, ry0, rx1, ry1 in make_usemap.WALLS:
+            if rx0 * 128 <= cx < rx1 * 128 and ry0 * 96 <= cy < ry1 * 96:
+                inside = True
+        self.assertFalse(inside)
+
+    def test_beacon_label_carries_the_price(self):
+        import make_square_defense
+        import scmap
+        self.assertEqual(scmap.priced_name("의무병", 200), "의무병 200광물")
+        src = inspect.getsource(make_square_defense.main)
+        self.assertIn("priced_name", src)
+        self.assertIn("place_price_mineral", src)
 
 
 class AssessSplit(unittest.TestCase):

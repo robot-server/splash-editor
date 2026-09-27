@@ -42,7 +42,9 @@ def connect_rooms(cli, palette, rooms):
     # 쓰는 방만 홀로 잇는다. 비어 있는 방은 길을 내지 않는다.
     doors = ((43, 23), (78, 23), (43, 93), (78, 93))
     for door, _room in zip(doors, rooms):
-        palette.fill(cli, "path", door[0], door[1], 8, 7)
+        # 바깥이 못 걷는 바닥이라 문과 가운데 통로를 이어야 한다.
+        left = min(door[0], 60)
+        palette.fill(cli, "path", left, door[1], max(door[0] + 8, 68) - left, 7)
     if any(room[1] < 40 for room in rooms):
         palette.fill(cli, "path", 60, 29, 8, 21)
     if any(room[1] > 40 for room in rooms):
@@ -154,6 +156,9 @@ def main(argv=None):
         pal.fill(cli, "wall", x, y, w, h)
     scmap.room(cli, pal, *HALL, rim=2, wall=True)
     connect_rooms(cli, pal, used_rooms)
+    opened = scmap.open_beside_paths(cli, ts, pal.tile("path"), W, H, limit=60)
+    if opened:
+        print(f"  못 걷는 비율을 맞추려고 길 옆 {opened}칸을 열었습니다")
 
     grid = scmap.walk_grid(cli, ts, 0, 0, W, H)
     points = [(64, 64)] + [(x + w // 2, y + h // 2)
@@ -185,7 +190,7 @@ def main(argv=None):
     scmap.reveal_for_all(cli, humans)
     cli.apply_triggers(scmap.TRIGGER_SEP.join(blocks))
     profile.apply_profile_metadata(cli, cfg, humans)
-    print(f"\nCreated {a.out}: {humans} humans, 4 rooms, "
+    print(f"\nCreated {a.out}: {humans} humans, {len(used_rooms)} rooms, "
           f"{len(blocks)} triggers; walk graph connected")
     scmap.assert_create_targets(cli)
     return 0

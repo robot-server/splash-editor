@@ -120,6 +120,9 @@ def main(argv=None):
     for i in range(a.stages - 1):
         x = BAYS[i][1] + BAYS[i][3] - 1
         pal.fill(cli, "path", x, 59, 5, 10)
+    opened = scmap.open_beside_paths(cli, ts, pal.tile("path"), W, H, limit=60)
+    if opened:
+        print(f"  못 걷는 비율을 맞추려고 길 옆 {opened}칸을 열었습니다")
     starts = [(BAYS[0][1] + 5, 64)]
     targets = [(x + w // 2, y + h // 2) for _, x, y, w, h in BAYS[:a.stages]]
     grid = scmap.walk_grid(cli, ts, 0, 0, W, H)
