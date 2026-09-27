@@ -22,14 +22,21 @@ import recipe_config as profile
 
 TILESETS = {"badlands": 0, "space": 1, "ashworld": 3, "jungle": 4,
             "desert": 5, "ice": 6, "twilight": 7}
-W = H = 128
-ROOMS = [
-    (12, 12, 34, 30),
-    (82, 12, 34, 30),
-    (12, 86, 34, 30),
-    (82, 86, 34, 30),
-]
-HALL = (46, 46, 36, 36)
+W = H = 96
+
+
+def lay_rooms(width: int, height: int):
+    """작은 방을 격자로 깐다. 숨는 사람 수만큼의 큰 방 몇 개로 끝내지 않는다."""
+    rw, rh, gap, margin = 11, 9, 3, 4
+    cols = max(3, (width - 2 * margin + gap) // (rw + gap))
+    rows = max(3, (height - 2 * margin + gap) // (rh + gap))
+    rooms = [(margin + c * (rw + gap), margin + r * (rh + gap), rw, rh)
+             for r in range(rows) for c in range(cols)]
+    cx, cy = width / 2, height / 2
+    hall = min(rooms, key=lambda room: abs(room[0] + room[2] / 2 - cx)
+               + abs(room[1] + room[3] / 2 - cy))
+    rooms.remove(hall)
+    return rooms, hall
 
 
 def trig(owner: str, conditions: list[str], actions: list[str]) -> str:
@@ -38,23 +45,30 @@ def trig(owner: str, conditions: list[str], actions: list[str]) -> str:
             "".join(f"\t{a};\n" for a in actions) + "}")
 
 
-def connect_rooms(cli, palette, rooms):
-    # 쓰는 방만 홀로 잇는다. 비어 있는 방은 길을 내지 않는다.
-    doors = ((43, 23), (78, 23), (43, 93), (78, 93))
-    for door, _room in zip(doors, rooms):
-        # 바깥이 못 걷는 바닥이라 문과 가운데 통로를 이어야 한다.
-        left = min(door[0], 60)
-        palette.fill(cli, "path", left, door[1], max(door[0] + 8, 68) - left, 7)
-    if any(room[1] < 40 for room in rooms):
-        palette.fill(cli, "path", 60, 29, 8, 21)
-    if any(room[1] > 40 for room in rooms):
-        palette.fill(cli, "path", 60, 78, 8, 21)
-    palette.fill(cli, "path", 48, 58, 16, 8)
-    palette.fill(cli, "path", 64, 58, 16, 8)
+def connect_rooms(cli, palette, rooms, hall):
+    """맞닿은 방 사이의 틈만 통로로 잇는다. 맵 끝 공터는 만들지 않는다."""
+    cells = list(rooms) + [hall]
+    rows = {}
+    cols = {}
+    for room in cells:
+        rows.setdefault(room[1], []).append(room)
+        cols.setdefault(room[0], []).append(room)
+    for row in rows.values():
+        row.sort()
+        for left, right in zip(row, row[1:]):
+            x0 = left[0] + left[2]
+            palette.fill(cli, "path", x0, left[1] + left[3] // 2 - 1,
+                         right[0] - x0, 3)
+    for col in cols.values():
+        col.sort(key=lambda room: room[1])
+        for upper, lower in zip(col, col[1:]):
+            y0 = upper[1] + upper[3]
+            palette.fill(cli, "path", upper[0] + upper[2] // 2 - 1, y0,
+                         3, lower[1] - y0)
 
 
 def build_triggers(cfg, humans, prep, survive, hunter_unit, hider_unit, token_unit):
-    room_names = cfg["labels"]["rooms"][:humans - 1]
+    room_names = cfg["labels"]["rooms"]
     hiders = [f"Player {p}" for p in range(2, humans + 1)]
     blocks = scmap.hyper_triggers("Player 8")
     messages = cfg["text"]["messages"]
@@ -131,8 +145,6 @@ def main(argv=None):
         if getattr(a, key) is None:
             setattr(a, key, cfg["rules"][key])
     a.tileset, a.seed = cfg["map"]["tileset"], cfg["map"]["seed"]
-    if tuple(cfg["map"]["size"]) != (W, H):
-        raise CliError("hide seek profile requires 128x128")
     if os.path.exists(a.out) and not a.force:
         ap.error(f"이미 있습니다: {a.out} (--force 로 덮어쓰기)")
     if not 2 <= a.hiders <= 4:
@@ -144,25 +156,24 @@ def main(argv=None):
     ts = TILESETS[a.tileset]
     cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False,
                         install=a.install)
-    cli.edit("unitdef", "set", cli.path, cfg["units"]["room_marker"],
-             "--name", cfg["units"]["room_marker_name"])
     pal = scmap.Palette(cli, ts, random.Random(a.seed), "usemap")
-    used_rooms = ROOMS[:a.hiders]
+    rooms, hall = lay_rooms(W, H)
+    given = list(cfg["labels"]["rooms"])
+    room_names = [given[i] if i < len(given) else f"숨는 칸 {i + 1}"
+                  for i in range(len(rooms))]
+    cfg["labels"]["rooms"] = room_names
     scmap.cover_map(cli, pal, W, H, margin=2)
-    for x, y, w, h in used_rooms:
-        scmap.room(cli, pal, x, y, w, h, rim=2, wall=True)
-    # 이번 판에 쓰지 않는 방 자리는 걸어 다니는 빈 마당으로 두지 않는다.
-    for x, y, w, h in ROOMS[a.hiders:]:
-        pal.fill(cli, "wall", x, y, w, h)
-    scmap.room(cli, pal, *HALL, rim=2, wall=True)
-    connect_rooms(cli, pal, used_rooms)
+    for x, y, w, h in rooms:
+        scmap.room(cli, pal, x, y, w, h, rim=1, wall=True)
+    scmap.room(cli, pal, *hall, rim=1, wall=True)
+    connect_rooms(cli, pal, rooms, hall)
     opened = scmap.open_beside_paths(cli, ts, pal.tile("path"), W, H, limit=60)
     if opened:
         print(f"  못 걷는 비율을 맞추려고 길 옆 {opened}칸을 열었습니다")
 
     grid = scmap.walk_grid(cli, ts, 0, 0, W, H)
-    points = [(64, 64)] + [(x + w // 2, y + h // 2)
-                           for x, y, w, h in ROOMS[:a.hiders]]
+    hx, hy = hall[0] + hall[2] // 2, hall[1] + hall[3] // 2
+    points = [(hx, hy)] + [(x + w // 2, y + h // 2) for x, y, w, h in rooms]
     walk = [scmap.nearest_walkable(grid, x * 4 + 2, y * 4 + 2, 24)
             for x, y in points]
     if any(p is None for p in walk) or any(
@@ -171,26 +182,27 @@ def main(argv=None):
 
     scmap.setup_usemap_players(cli, humans, [8], race=profile.human_race(cfg),
                                computer_race=profile.human_race(cfg))
-    location_specs = [(cfg["labels"]["hall"], *HALL)] + [
-        (cfg["labels"]["rooms"][i], *r) for i, r in enumerate(ROOMS[:a.hiders])]
+    location_specs = [(cfg["labels"]["hall"], *hall)] + [
+        (room_names[i], *r) for i, r in enumerate(rooms)]
     for name, x, y, w, h in location_specs:
         cli.edit("location", "add", cli.path, str(x), str(y),
                  str(x + w), str(y + h), "--tiles", "--name", name)
 
-    cli.place(scmap.START_LOCATION, 64, 64, owner=1)
+    cli.place(scmap.START_LOCATION, hx, hy, owner=1)
     hunter_unit, hider_unit, token_unit = (cfg["units"][k] for k in ("hunter", "hider", "state_token"))
-    cli.place(hunter_unit, 64, 64, owner=1)
-    for p, (x, y, w, h) in enumerate(ROOMS[:a.hiders], start=2):
+    cli.place(hunter_unit, hx, hy, owner=1)
+    for p, (x, y, w, h) in enumerate(rooms[:a.hiders], start=2):
         px, py = x + w // 2, y + h // 2
         cli.place(scmap.START_LOCATION, px, py, owner=p)
         cli.place(hider_unit, px, py, owner=p)
-        cli.place(cfg["units"]["room_marker"], x + w - 4, y + 3, owner=12)
 
     blocks = build_triggers(cfg, humans, a.prep, a.survive, hunter_unit, hider_unit, token_unit)
-    scmap.reveal_for_all(cli, humans)
+    zones = [(1, hall)] + [
+        (p, room) for p, room in enumerate(rooms[:a.hiders], start=2)]
+    scmap.apply_reveal(cli, "hide_seek", humans, zones=zones)
     cli.apply_triggers(scmap.TRIGGER_SEP.join(blocks))
     profile.apply_profile_metadata(cli, cfg, humans)
-    print(f"\nCreated {a.out}: {humans} humans, {len(used_rooms)} rooms, "
+    print(f"\nCreated {a.out}: {humans} humans, {len(rooms)} rooms, "
           f"{len(blocks)} triggers; walk graph connected")
     scmap.assert_create_targets(cli)
     return 0

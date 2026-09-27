@@ -364,18 +364,68 @@ Actions:
                 inside = True
         self.assertFalse(inside)
 
-    def test_beacon_label_carries_the_price(self):
-        import make_square_defense
+    def test_illegal_footprint_moves_or_uses_isom(self):
         import scmap
-        self.assertEqual(scmap.priced_name("의무병", 200), "의무병 200광물")
-        self.assertEqual(
-            scmap.overlay_unit_names(
-                {"Terran Medic": "의무병 · 분대 회복"},
-                {"Terran Medic": scmap.priced_name("의무병 · 분대 회복", 105)}),
-            {"Terran Medic": "의무병 · 분대 회복 105광물"})
-        src = inspect.getsource(make_square_defense.main)
-        self.assertIn("priced_name", src)
-        self.assertIn("place_price_mineral", src)
+
+        def prop_at(tx, ty):
+            if (tx, ty) == (5, 5):
+                return (1, 0, 0, 0, 0)
+            return (1, 1, 1, 0, 0xFFFF)
+
+        moved = scmap.footprint_remedy(5, 5, 1, 1, prop_at, 20, 20, 7)
+        self.assertEqual(moved["action"], "move")
+        self.assertNotEqual(moved["at"], (5, 5))
+        self.assertNotIn("tiles", moved)
+
+        def nowhere(tx, ty):
+            return (0, 0, 0, 0, 0)
+
+        def other_height(tx, ty):
+            if (tx, ty) == (3, 3):
+                return (1, 0, 0, 0, 0)
+            return (2, 1, 1, 0, 0xFFFF)
+
+        stayed = scmap.footprint_remedy(3, 3, 1, 1, other_height, 10, 10, 4)
+        self.assertEqual(stayed["action"], "isom")
+        painted = scmap.footprint_remedy(4, 4, 2, 1, nowhere, 20, 20, 7)
+        self.assertEqual(painted["action"], "isom")
+        self.assertTrue(painted["strokes"])
+        self.assertTrue(all(stroke[2] == 7 and stroke[3] == 1 for stroke in painted["strokes"]))
+        self.assertNotIn("tiles", painted)
+
+    def test_shop_preview_matches_create_and_price_is_not_in_the_name(self):
+        import scmap
+        actions = ['Create Unit("{player}", "Protoss Zealot", 1, "{home}")']
+        self.assertEqual(scmap.shop_preview_type(actions, "Protoss Gateway"), "Protoss Zealot")
+        self.assertEqual(scmap.shop_preview_type(
+            ["Modify Unit Shield Points(\"{player}\", \"Men\", 100, 0, \"{shop}\")"],
+            "Protoss Shield Battery"), "Protoss Shield Battery")
+        names = scmap.merge_display_names(
+            {"Terran Medic": "의무병 · 분대 회복",
+             "Protoss Shield Battery": "보호막 회복 · 미네랄 100",
+             "Terran Marine": "해병 돌격"},
+            {"Protoss Zealot": "질럿 80광물"})
+        self.assertEqual(names["Terran Medic"], "의무병 · 분대 회복")
+        self.assertEqual(names["Protoss Shield Battery"], "보호막 회복")
+        self.assertEqual(names["Terran Marine"], "해병 돌격")
+        self.assertEqual(names["Protoss Zealot"], "질럿")
+        self.assertNotIn("광물", names["Protoss Zealot"])
+        self.assertEqual(scmap.shop_preview_count(
+            ['Create Unit("{player}", "Protoss Dragoon", 2, "{center}")']), 2)
+        self.assertEqual(scmap.shop_preview_count(
+            ['Modify Unit Shield Points("{player}", "Men", 100, 0, "{shop}")']), 1)
+        self.assertEqual(scmap.middle_group_tile([16, 23, 31, 22]), 23)
+        self.assertEqual(scmap.reveal_scope("quiz"), "board")
+        self.assertEqual(scmap.reveal_scope("wave_defense"), "board")
+        self.assertEqual(scmap.reveal_scope("chase"), "start")
+        self.assertEqual(scmap.reveal_scope("hide_seek"), "start")
+        self.assertEqual(scmap.reveal_scope("square_defense"), "board")
+        self.assertEqual(scmap.reveal_scope("loadout"), "board")
+        self.assertEqual(scmap.reveal_scope("control"), "board")
+        self.assertEqual(scmap.reveal_scope("micro_trial"), "board")
+        self.assertEqual(scmap.reveal_scope("rpg"), "start")
+        self.assertEqual(scmap.reveal_scope("zombie"), "start")
+        self.assertEqual(scmap.reveal_scope("room_escape"), "start")
 
 
 class AssessSplit(unittest.TestCase):

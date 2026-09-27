@@ -133,7 +133,7 @@ def main(argv=None):
         scmap.pad(cli, pal, x + w // 2, y + h // 2, 5, 5)
 
     blocks = build_triggers(cfg, a.time_limit, player_unit, token_unit, labels)
-    scmap.reveal_for_all(cli, 1)
+    scmap.apply_reveal(cli, "room_escape", 1, AREA_RECTS[0])
     cli.apply_triggers(scmap.TRIGGER_SEP.join(blocks))
     profile.apply_profile_metadata(cli, cfg, 1)
     print(f"\nCreated {a.out}: 3 ordered room states, connected room graph, "

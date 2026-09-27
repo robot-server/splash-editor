@@ -172,11 +172,7 @@ def main(argv=None):
         for key in ("unit", "marker"):
             if item[key] in reserved:
                 raise CliError(f"units.{key} must not reuse reserved counter/recruit unit {item[key]}")
-        for unit,name in ((item["unit"], scmap.priced_name(item["unit_name"], item["cost"])),
-                          (item["marker"], scmap.priced_name(item["marker_name"], item["cost"]))):
-            if unit in custom_names and custom_names[unit] != name:
-                raise CliError(f"unit type {unit} is assigned conflicting map-wide display names")
-            custom_names[unit]=name
+        custom_names[item["unit"]] = item["unit_name"]
     for wave in waves:
         if wave["unit"] in reserved:
             raise CliError("wave unit conflicts with reserved counter/recruit unit")
@@ -201,7 +197,8 @@ def main(argv=None):
     cli = scmap.new_map(a.out, W, H, ts, terrain=None, melee=False, install=a.install)
     cli.edit("switch", "name", cli.path, "1", cfg["launch_switch"])
     # UNIS/UNIx names are type-wide; config validation forbids conflicting labels.
-    profile.apply_unit_names(cli, {**cfg, "unit_names": custom_names})
+    profile.apply_unit_names(cli, {
+        "unit_names": scmap.merge_display_names(cfg.get("unit_names"), custom_names)})
     pal = scmap.Palette(cli, ts, random.Random(cfg["map"]["seed"]), "usemap")
     scmap.cover_map(cli, pal, W, H, margin=2)
     scmap.room(cli, pal, *DRAFT, rim=2, wall=True)
@@ -247,7 +244,10 @@ def main(argv=None):
         cx,cy=SHOP_CENTERS[i]
         scmap.pad(cli,pal,cx,cy,7,7)
         cli.place(draft_beacon_unit(cfg),cx,cy,owner=12)
-        cli.place(offer["marker"],cx,cy-4,owner=12)
+        scmap.place_shop_show(
+            cli,
+            [f'Create Unit("Player 1", "{offer["unit"]}", {offer["count"]}, "x")'],
+            offer["unit"], cx, cy - 4)
         scmap.place_price_mineral(cli, cx + 2, cy - 4, offer["cost"])
     for p in range(humans):
         cli.place(cfg["units"]["home_marker"],HERO_XS[p],HERO_Y-2,owner=12)
@@ -262,7 +262,7 @@ def main(argv=None):
                                keep_clear=keep_clear)
     print(f"  방 경계 장식 {dressed}개 (유닛/상점/웨이브 발판 제외)")
     blocks = build_triggers(cfg, humans, offers, waves, labels, enemy_player, system_player, state, stage_state, notice_state, presence_counter, recruit, fallback)
-    scmap.reveal_for_all(cli, humans)
+    scmap.apply_reveal(cli, "loadout", humans)
     cli.apply_triggers(scmap.TRIGGER_SEP.join(blocks))
     profile.apply_profile_metadata(cli,cfg,humans)
     print(f"\nCreated {a.out}: {humans} players, {len(offers)} draft offers, {len(waves)} waves, {len(blocks)} triggers")

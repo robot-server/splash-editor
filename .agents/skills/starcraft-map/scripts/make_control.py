@@ -258,17 +258,9 @@ def main(argv=None):
     # 컨트롤 맵은 업그레이드를 **미리 다 해 둔다.** 파는 맵이 아니라
     # 순수하게 조작을 겨루는 맵이라, 업그레이드 차이가 나면 안 된다
     # (docs/chk/anatomy.md — 유즈맵은 업그레이드를 고친다).
-    names={}
-    for squad in cfg["squads"]:
-        cost = cfg["rules"]["buy_cost"]
-        for unit,name in ((squad["unit"], scmap.priced_name(squad["unit_name"], cost)),
-                          (squad["marker"], scmap.priced_name(squad["marker_name"], cost))):
-            if unit in names and names[unit] != name:
-                raise CliError(f"유닛 타입 {unit} 에 서로 다른 맵 이름이 지정됐습니다")
-            names[unit]=name
-    name_cfg=dict(cfg)
-    name_cfg["unit_names"]=names
-    profile.apply_unit_names(cli,name_cfg)
+    captions = {squad["unit"]: squad["unit_name"] for squad in cfg["squads"]}
+    profile.apply_unit_names(cli, {
+        "unit_names": scmap.merge_display_names(cfg.get("unit_names"), captions)})
     print("로케이션을 놓습니다...")
     loc = lambda n, x0, y0, x1, y1: cli.edit(
         "location", "add", cli.path, str(x0), str(y0), str(x1), str(y1),
@@ -302,7 +294,10 @@ def main(argv=None):
             by = py + 12 + (k // 2) * 5
             scmap.pad(cli, pal, bx, by, 3, 3)
             cli.place(cfg["units"]["purchase_beacon"],bx,by,owner=p)
-            cli.place(squad["marker"],bx,by-3,owner=12)
+            scmap.place_shop_show(
+                cli,
+                [f'Create Unit("Player {p}", "{squad["unit"]}", {squad["count"]}, "x")'],
+                squad["unit"], bx, by - 3)
             scmap.place_price_mineral(cli, bx + 2, by - 1, cfg["rules"]["buy_cost"])
     # 싸움터 가운데 장애물 — 트인 벌판이면 컨트롤이 안 나온다
     for k in range(cfg["rules"]["obstacle_count"]):
@@ -312,7 +307,7 @@ def main(argv=None):
         cli.place(cfg["units"]["arena_obstacle"], ox, oy, owner=12)
 
     print("시야를 엽니다...")
-    scmap.reveal_for_all(cli, a.players)
+    scmap.apply_reveal(cli, "control", a.players)
 
 
     # 방 테두리 두대드는 실제 보행·시야·배치 검증 뒤 선택한다.

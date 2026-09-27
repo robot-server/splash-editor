@@ -153,8 +153,22 @@ def main(argv=None):
     ex, ey = targets[0]
     cli.place(scmap.START_LOCATION, ex, ey, owner=2)
 
+    reward = int(cfg["waves"][0].get("reward") or 0)
     blocks = build_triggers(cfg, a.stages, a.time_limit, player_unit, state_token)
-    scmap.reveal_for_all(cli, 1)
+    if reward > 0:
+        shop = cfg["labels"].get("supply", "보급")
+        cli.edit("location", "add", cli.path, str(sx + 6), str(sy - 2),
+                 str(sx + 10), str(sy + 2), "--tiles", "--name", shop)
+        cli.place("Terran Beacon", sx + 8, sy, owner=1)
+        cli.place(player_unit, sx + 9, sy, owner=12)
+        scmap.place_price_mineral(cli, sx + 10, sy, reward)
+        blocks.append(trig('"Player 1"', [
+            f'Bring("Player 1", "Men", "{shop}", At least, 1)',
+            f'Accumulate("Player 1", At least, {reward}, ore)'], [
+            f'Set Resources("Player 1", Subtract, {reward}, ore)',
+            f'Create Unit("Player 1", "{player_unit}", 1, "{cfg["labels"]["player_start"]}")',
+            'Preserve Trigger()']))
+    scmap.apply_reveal(cli, "micro_trial", 1)
     cli.apply_triggers(scmap.TRIGGER_SEP.join(blocks))
     profile.apply_profile_metadata(cli, cfg, 1)
     print(f"\nCreated {a.out}: {a.stages} enemy waves, connected walk graph, "

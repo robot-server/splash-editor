@@ -461,6 +461,7 @@ def _placed_items(cli) -> list[dict]:
             continue
         role = cli._roles.get(name, "ground")
         items.append({
+            "index": unit["index"],
             "name": name,
             "tx": unit["x"] // 32,
             "ty": unit["y"] // 32,
@@ -483,8 +484,8 @@ def _terrain_prop(cli, tileset_id: int, width: int, height: int):
 
 
 def _paint_floor_under(cli, tileset_id: int, width: int, height: int,
-                       items: list[dict]) -> int:
-    """발자국을 한 높이의 건설 타일로 직접 덮는다. ISOM 경계는 남긴다."""
+                       items: list[dict], terrain_id: int) -> int:
+    """불법 발자국은 합법 칸으로 옮기거나 isometric 붓으로 다시 칠한다."""
     import verify_map
     props = scmap.tileset_tiles(cli, tileset_id)
     grid = cli.tiles(0, 0, width, height)
@@ -494,31 +495,48 @@ def _paint_floor_under(cli, tileset_id: int, width: int, height: int,
             return None
         return props.get(grid[ty][tx])
 
-    groups = verify_map._resource_clusters(
-        [item for item in items if item["role"] == "resource"])
-    groups += [[item] for item in items if item["role"] == "building"]
-    changed = 0
-    for group in groups:
-        cells = []
-        for item in group:
-            cells.extend(c for c in scmap.footprint_cells(
-                item["tx"], item["ty"], *item["foot"])
-                if 0 <= c[1] < height and 0 <= c[0] < width)
-        if not cells:
+    occupied = set()
+    for item in items:
+        if item["role"] == "resource":
+            occupied.update(scmap.footprint_cells(item["tx"], item["ty"], *item["foot"]))
+    cluster_height = {}
+    for cluster in verify_map._resource_clusters(
+            [item for item in items if item["role"] == "resource"]):
+        heights = []
+        for item in cluster:
+            for x, y in scmap.footprint_cells(item["tx"], item["ty"], *item["foot"]):
+                prop = prop_at(x, y)
+                if prop and prop[1] and prop[2]:
+                    heights.append(prop[0])
+        elev = max(set(heights), key=heights.count) if heights else None
+        for item in cluster:
+            cluster_height[item["index"]] = elev
+    moved = 0
+    strokes = []
+    for item in items:
+        if item["role"] not in ("resource", "building", "ground"):
             continue
-        props_here = [prop_at(x, y) for x, y in cells]
-        bad = any(prop is None or not prop[1] or not prop[2] for prop in props_here)
-        heights = [prop[0] for prop in props_here if prop is not None]
-        if not bad and len(set(heights)) <= 1:
-            continue
-        elev = max(set(heights), key=heights.count) if heights else 0
-        floor = scmap.solid_floor(props, elev) or scmap.solid_floor(props, 0)
-        if floor is None:
-            continue
-        for x, y in cells:
-            if grid[y][x] != floor:
-                grid[y][x] = floor
-                changed += 1
+        own = set(scmap.footprint_cells(item["tx"], item["ty"], *item["foot"]))
+        remedy = scmap.footprint_remedy(
+            item["tx"], item["ty"], *item["foot"], prop_at, width, height,
+            terrain_id, build=item["role"] != "ground",
+            blocked=occupied - own,
+            prefer=cluster_height.get(item["index"]))
+        if remedy["action"] == "move":
+            tx, ty = remedy["at"]
+            cli.edit("unit", "move", cli.path, str(item["index"]),
+                     str(tx), str(ty), "--tiles")
+            moved += 1
+        elif remedy["action"] == "isom":
+            strokes.extend(remedy["strokes"])
+    items = _placed_items(cli)
+    grid = cli.tiles(0, 0, width, height)
+
+    def prop_at(tx, ty):
+        if not (0 <= ty < len(grid) and 0 <= tx < len(grid[0])):
+            return None
+        return props.get(grid[ty][tx])
+
     for cluster in verify_map._resource_clusters(
             [item for item in items if item["role"] == "resource"]):
         cells = []
@@ -531,7 +549,7 @@ def _paint_floor_under(cli, tileset_id: int, width: int, height: int,
         here = [prop_at(x, y) for x, y in cells]
         if any(prop is None or not prop[1] or not prop[2] for prop in here):
             continue
-        heights = {prop[0] for prop in here}
+        heights = {prop[0] for prop in here if prop is not None}
         if len(heights) != 1:
             continue
         elev = next(iter(heights))
@@ -540,42 +558,38 @@ def _paint_floor_under(cli, tileset_id: int, width: int, height: int,
         cy = sum(item["ty"] for item in cluster) // len(cluster)
         if scmap.find_townhall(prop_at, blocked, cx, cy, cells, elev):
             continue
-        floor = scmap.solid_floor(props, elev) or scmap.solid_floor(props, 0)
-        if floor is None:
-            continue
-        stamped = False
         for oy in range(-8, 9):
             for ox in range(-8, 9):
                 origin_x, origin_y = cx + ox, cy + oy
                 hx, hy = origin_x + 1.5, origin_y + 1.0
                 if any(math.hypot(tx - hx, ty - hy) > 8 for tx, ty in cells):
                     continue
+                placed = False
                 for rect in scmap.townhall_rects(origin_x, origin_y):
                     if any(cell in blocked or not (0 <= cell[0] < width and 0 <= cell[1] < height)
                            for cell in rect):
                         continue
                     for x, y in rect:
-                        if grid[y][x] != floor:
-                            grid[y][x] = floor
-                            changed += 1
-                    stamped = True
+                        strokes.append((x - x % 2, y, terrain_id, 1))
+                    placed = True
                     break
-                if stamped:
+                if placed:
                     break
-            if stamped:
-                break
-    if changed:
-        cli.paste_tiles(0, 0, grid)
-    return changed
+            else:
+                continue
+            break
+    if strokes:
+        cli.isom_batch(strokes)
+    if moved or strokes:
+        print(f"  불법 발자국 {moved}기를 옮기고 isometric {len(strokes)}붓을 쳤습니다")
+    return moved + len(strokes)
 
 
 def restore_illegal_floors(cli, tileset_id: int, low_terrain: int,
                            width: int, height: int) -> None:
-    """나중에 칠한 지형이 자원·건물 발자국을 덮었으면 건설 가능한 칸으로 덮는다."""
+    """자원·건물·크리쳐 발자국이 불법이면 옮기거나 isometric으로 다시 칠한다."""
     items = _placed_items(cli)
-    changed = _paint_floor_under(cli, tileset_id, width, height, items)
-    if changed:
-        print(f"  불법 지형 위 자원·건물 칸 {changed}곳을 바닥으로 되돌립니다")
+    _paint_floor_under(cli, tileset_id, width, height, items, low_terrain)
 
 
 def assert_placed_terrain(cli, tileset_id: int, width: int, height: int) -> None:
@@ -2123,7 +2137,7 @@ def main(argv=None):
     avoid = [(u["x"] // 32, u["y"] // 32) for u in cli.units()]
     place_legal_critters(cli, tileset_id, args.critters, args.critter_unit or "",
                          width, height, avoid)
-    _paint_floor_under(cli, tileset_id, width, height, _placed_items(cli))
+    _paint_floor_under(cli, tileset_id, width, height, _placed_items(cli), low_terrain)
     assert_placed_terrain(cli, tileset_id, width, height)
     import verify_map
     tile_grid = cli.tiles(0, 0, width, height)

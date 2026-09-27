@@ -219,7 +219,9 @@ def main(argv=None):
         sx=shelter[0]+5+k*rules["shop_spacing"]
         scmap.pad(cli,pal,sx,shelter[1]+room_h-5,3,3)
         cli.place(units["shop_beacon"],sx,shelter[1]+room_h-5,owner=12)
-        cli.place(shop["marker"],sx,shelter[1]+room_h-10,owner=12)
+        scmap.place_shop_show(
+            cli, shop["actions"], shop.get("unit") or shop["marker"],
+            sx, shelter[1] + room_h - 10)
         scmap.place_price_mineral(cli, sx + 2, shelter[1]+room_h-10, shop["cost"])
     cli.place(scmap.START_LOCATION,grave[0]+3,grave[1]+3,owner=enemy_no)
     cli.place(scmap.START_LOCATION,grave[0]+3,grave[1]+room_h-4,owner=boss_no)
@@ -230,10 +232,11 @@ def main(argv=None):
 
     names={}
     for shop in cfg["shops"]:
-        names[shop["marker"]]=scmap.priced_name(shop["marker_name"], shop["cost"])
-    name_cfg=dict(cfg);name_cfg["unit_names"]=scmap.overlay_unit_names(cfg.get("unit_names"), names)
+        preview = scmap.shop_preview_type(shop["actions"], shop.get("unit") or shop["marker"])
+        names[preview] = shop.get("unit_name") or shop["marker_name"]
+    name_cfg=dict(cfg);name_cfg["unit_names"]=scmap.merge_display_names(cfg.get("unit_names"), names)
     profile.apply_unit_names(cli,name_cfg)
-    scmap.reveal_for_all(cli,players)
+    scmap.apply_reveal(cli, "zombie", players, shelter)
     clear=[(u["x"]//32-2,u["y"]//32-2,5,5) for u in cli.units()]
     decorated=scmap.decorate_rim(cli,ts,[shelter,field,grave],rng,keep_clear=clear)
     print(f"  border doodads {decorated}")

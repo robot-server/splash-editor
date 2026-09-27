@@ -192,7 +192,8 @@ def main(argv=None):
     if not 1 <= a.players <= 7:
         ap.error("1~7명입니다 (진행용으로 슬롯 하나를 더 씁니다).")
     questions=[(q["prompt"].replace('"',"'").replace("\n"," "),q["answer"]) for q in cfg["questions"]]
-    W,H=cfg["map"]["size"]
+    # 프로필 크기가 커도 이 놀이는 좌우 한 걸음이다. 세로는 그 판만 잡는다.
+    W, H = 64, 64
     a.seed=cfg["map"]["seed"]
     a.tileset=cfg["map"]["tileset"]
     labels=cfg["labels"]
@@ -227,9 +228,9 @@ def main(argv=None):
     #
     # 좌우로 몇 칸이면 닿아야 하는 놀이라 발판은 지나치게 넓히지 않고,
     # 대신 **세로를 맵에 맞춰** 길게 뽑는다.
-    MID_W = max(7, W // 8)
-    PAD_W = max(14, (W - 2 * 3 - MID_W) // 2)
-    PAD_H = max(13, H - 2 * 3)
+    MID_W = 8
+    PAD_W = (W - 4 - MID_W) // 2
+    PAD_H = 26
     used_w = PAD_W * 2 + MID_W
     used_h = PAD_H
     ox = (W - used_w) // 2
@@ -288,14 +289,9 @@ def main(argv=None):
                               role="pad", thick=2)
         print(f"  '{mark}' 를 지형 {n}칸으로 그렸습니다")
 
-    # 비콘은 발판 **위쪽 끝**에 둔다. 글자 위에 겹치면 둘 다 안 읽힌다.
-    for (r, mark) in ((pad_o, "O"), (pad_x, "X")):
-        cx = r[0] + r[2] // 2
-        scmap.pad(cli, pal, cx, r[1] + 1, 3, 2)
-        cli.place(units["o_marker"] if mark == "O" else units["x_marker"], cx, r[1] + 1, owner=12)
-
+    # O/X 는 지형 글자가 이미 구역을 말한다. 들어가도 아무 일도 없는 비콘은 두지 않는다.
     print("시야를 엽니다...")
-    scmap.reveal_for_all(cli, a.players)
+    scmap.apply_reveal(cli, "quiz", a.players)
 
 
     # 방 테두리 두대드는 실제 보행·시야·배치 검증 뒤 선택한다.

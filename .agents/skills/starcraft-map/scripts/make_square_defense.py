@@ -408,12 +408,13 @@ def main(argv=None):
             by=cy+9
             scmap.pad(cli,pal,bx+1,by,3,3)
             cli.place(shop["beacon"],bx+1,by,owner=p)
-            label = scmap.priced_name(shop.get("icon_name") or shop["label"], shop["cost"])
-            cli.place(shop["icon"],bx+1,by-3,owner=12)
+            preview = scmap.place_shop_show(
+                cli, shop["actions"], shop.get("icon"), bx + 1, by - 3)
+            label = shop.get("icon_name") or shop["label"]
             scmap.place_price_mineral(cli, bx+3, by-3, shop["cost"])
-            if shop["icon"] in icon_names and icon_names[shop["icon"]]!=label:
-                raise CliError(f"unit type {shop['icon']} has conflicting display names")
-            icon_names[shop["icon"]]=label
+            if preview in icon_names and icon_names[preview] != label:
+                raise CliError(f"unit type {preview} has conflicting display names")
+            icon_names[preview] = label
     # 적·보스도 스타팅이 있어야 슬롯이 산다. 첫 경기장 통로 구석에 둔다.
     bx, by, bw, bh = boxes[0]
     cli.place(scmap.START_LOCATION, bx + 2, by + bh // 2, owner=enemy_no)
@@ -422,10 +423,10 @@ def main(argv=None):
 
     # 7) 시야 (실측: 유즈맵 74% 가 Map Revealer 를 쓴다)
     print("시야를 엽니다...")
-    scmap.reveal_for_all(cli, a.players)
+    scmap.apply_reveal(cli, "square_defense", a.players)
 
     # Apply AI-authored type labels before exposing the map.
-    name_cfg=dict(cfg);name_cfg["unit_names"]=scmap.overlay_unit_names(cfg.get("unit_names"), icon_names)
+    name_cfg=dict(cfg);name_cfg["unit_names"]=scmap.merge_display_names(cfg.get("unit_names"), icon_names)
     profile.apply_unit_names(cli,name_cfg)
     cli.apply_triggers(build_triggers(cfg,enemy,boss_p,arena_names))
     profile.apply_profile_metadata(cli,cfg,a.players)

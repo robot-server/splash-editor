@@ -200,6 +200,8 @@ def main(argv=None):
     ey = max(3, min(height - 4, int(0.50 * height)))
     cli.place(scmap.START_LOCATION, ex, ey, owner=enemy_no)
 
+    scmap.apply_reveal(cli, "chase", players,
+                       start=(sx0, sy0, max(4, sx1 - sx0), max(4, sy1 - sy0)))
     cli.apply_triggers(chase_triggers(cfg, enemy))
     profile.apply_profile_metadata(cli, cfg, players)
     print(f"만들었습니다: {args.out}")

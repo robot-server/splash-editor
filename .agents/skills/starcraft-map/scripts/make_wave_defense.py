@@ -379,11 +379,11 @@ def main(argv=None):
         for k,shop in enumerate(shops):
             bx,by=sx+1+k*3,sy+1
             cli.place(shop["beacon"],bx,by,owner=i+1)
-            cli.place(shop["icon"],bx,by+3,owner=12)
+            scmap.place_shop_show(cli, shop["actions"], shop["icon"], bx, by + 3)
             scmap.place_price_mineral(cli, bx + 2, by + 3, shop["cost"])
 
     print("시야를 엽니다...")
-    scmap.reveal_for_all(cli, a.players)
+    scmap.apply_reveal(cli, "wave_defense", a.players)
 
     print("방 테두리를 두대드로 꾸밉니다...")
     # **길 가장자리에 놓는다.** 길목 방은 비콘·병력·스타팅으로 꽉 차서
@@ -400,11 +400,9 @@ def main(argv=None):
 
     names={}
     for shop in shops:
-        label = scmap.priced_name(shop["icon_name"], shop["cost"])
-        if shop["icon"] in names and names[shop["icon"]] != label:
-            raise scmap.CliError(f"unit type {shop['icon']} has conflicting map display names")
-        names[shop["icon"]] = label
-    name_cfg=dict(cfg);name_cfg["unit_names"]=scmap.overlay_unit_names(cfg.get("unit_names"), names)
+        preview = scmap.shop_preview_type(shop["actions"], shop["icon"])
+        names[preview] = shop["icon_name"]
+    name_cfg=dict(cfg);name_cfg["unit_names"]=scmap.merge_display_names(cfg.get("unit_names"), names)
     profile.apply_unit_names(cli,name_cfg)
     res=scmap.MapResources(in_play=scmap.units_in_play(cli))
     ways=[f"{labels['way_prefix']}{i+1}" for i in range(len(pts))]

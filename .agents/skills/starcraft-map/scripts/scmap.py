@@ -309,7 +309,9 @@ class Cli:
         w, h = info["width"], info["height"]
         if check and isinstance(unit, str):
             spot = self.nearest_legal(unit, tile_x, tile_y, w, h)
-            if spot is None and unit != "Start Location":
+            self._role_table()
+            if spot is None and self._roles.get(unit) == "building":
+                # 유즈맵 건물은 통로 타일 위에 놓인다. 자원은 여기서 바닥을 덮지 않는다.
                 self.stamp_footprint(unit, tile_x, tile_y)
                 spot = self.nearest_legal(unit, tile_x, tile_y, w, h)
             if spot is None:
@@ -748,6 +750,60 @@ def _pad_ok(grid, tiles, cells, elev) -> bool:
         if p is None or p[0] != elev or not p[1] or not p[2]:
             return False
     return True
+
+
+def footprint_remedy(tx: int, ty: int, fw: int, fh: int, prop_at,
+                     width: int, height: int, terrain_id: int, *,
+                     build: bool = True, radius: int = 8,
+                     blocked: set | None = None,
+                     prefer: int | None = None) -> dict:
+    """불법 발자국을 옮기거나 isometric 붓질로 고친다.
+
+    한 종류 타일로 발자국 직사각형을 덮는 결과는 만들지 않는다.
+    근처에 합법 칸이 있으면 그 좌표로 옮기고, 없으면 발자국을
+    isometric 붓 1로 다시 칠할 좌표를 돌려준다.
+    """
+    blocked = blocked or set()
+    if prefer is None:
+        here = prop_at(tx, ty)
+        prefer = here[0] if here is not None else None
+
+    def legal(ox: int, oy: int) -> bool:
+        elev = None
+        for x, y in footprint_cells(ox, oy, fw, fh):
+            if (x, y) in blocked or not (0 <= x < width and 0 <= y < height):
+                return False
+            prop = prop_at(x, y)
+            if prop is None or not prop[1] or (build and not prop[2]):
+                return False
+            if build and prefer is not None and prop[0] != prefer:
+                return False
+            if build:
+                if elev is None:
+                    elev = prop[0]
+                elif prop[0] != elev:
+                    return False
+        return True
+
+    if legal(tx, ty):
+        return {"action": "keep", "at": (tx, ty)}
+    for rad in range(1, radius + 1):
+        for dy in range(-rad, rad + 1):
+            for dx in range(-rad, rad + 1):
+                if max(abs(dx), abs(dy)) != rad:
+                    continue
+                if legal(tx + dx, ty + dy):
+                    return {"action": "move", "at": (tx + dx, ty + dy)}
+    strokes = []
+    seen = set()
+    for x, y in footprint_cells(tx, ty, fw, fh):
+        if not (0 <= x < width and 0 <= y < height):
+            continue
+        stroke = (x - x % 2, y, terrain_id, 1)
+        if stroke not in seen:
+            seen.add(stroke)
+            strokes.append(stroke)
+    return {"action": "isom", "at": (tx, ty), "strokes": strokes}
 
 
 def footprint_cells(tx: int, ty: int, w: int, h: int) -> list[tuple[int, int]]:
@@ -1208,14 +1264,61 @@ def setup_usemap_players(cli: Cli, humans: int, computers: list[int],
                  "--randomize-start", "off")
 
 
-def reveal_for_all(cli: Cli, humans: int, spacing: int = 16):
-    """사람 플레이어 **모두**에게 시야를 연다.
+def reveal_scope(genre: str) -> str:
+    """지금 봐야 하는 정보와, 보면 장르가 깨지는 정보를 나눈다.
 
-    각 사람 슬롯에 배치해야 모두 같은 시야를 받는다.
+    board 는 판 전체가 동시에 판단 재료다.
+    start 는 다음 구역을 미리 보면 장르가 죽는다. 지금 있는 구역만 밝힌다.
+    """
+    if genre in {"quiz", "control", "wave_defense", "micro_trial",
+                 "square_defense", "loadout"}:
+        return "board"
+    if genre in {"rpg", "zombie", "room_escape", "chase", "hide_seek"}:
+        return "start"
+    return "start"
+
+
+def apply_reveal(cli: Cli, genre: str, humans: int, start=None, zones=None):
+    """장르 시야 규칙대로 리빌러를 깐다.
+
+    start 는 전원이 공유하는 (x, y, w, h).
+    zones 는 (플레이어, 사각형) 목록이다. 사람마다 시작 구역이 다를 때 쓴다.
+    """
+    scope = reveal_scope(genre)
+    if scope == "board":
+        reveal_for_all(cli, humans)
+        return
+    if zones:
+        for owner, rect in zones:
+            reveal_rect(cli, 1, *rect, owners=[owner])
+    elif start:
+        reveal_rect(cli, humans, *start)
+
+
+def reveal_for_all(cli: Cli, humans: int, spacing: int = 16):
+    """사람 플레이어 **모두**에게 맵 전체 시야를 연다.
+
+    퀴즈처럼 전체를 봐야 하는 맵에만 쓴다. 숨바꼭질처럼 안개가
+    규칙인 맵에는 쓰지 않는다.
     """
     for p in range(1, humans + 1):
         cli.edit("scenario", "revealers", cli.path,
                  "--owner", str(p), "--spacing", str(spacing))
+
+
+def reveal_rect(cli: Cli, humans: int, x: int, y: int, w: int, h: int,
+                spacing: int = 14, owners=None):
+    """사람 슬롯의 시야를 사각형 안에만 연다."""
+    who = owners if owners is not None else range(1, humans + 1)
+    for p in who:
+        yy = y + spacing // 2
+        while yy < y + h:
+            xx = x + spacing // 2
+            while xx < x + w:
+                cli.place("Map Revealer", min(xx, x + w - 1), min(yy, y + h - 1),
+                          owner=p, check=False)
+                xx += spacing
+            yy += spacing
 
 
 def set_all_resources(cli: Cli, mineral_amount: int = MINERAL_AMOUNT,
@@ -1252,18 +1355,56 @@ def place_price_mineral(cli: Cli, tile_x: int, tile_y: int, cost: int) -> bool:
     return False
 
 
-def priced_name(name: str, cost: int) -> str:
-    """표시 이름에 가격을 붙인다. 따옴표는 트리거를 깨므로 넣지 않는다."""
-    text = f"{name} {int(cost)}광물"
-    return text.replace('"', "").replace("\n", " ")
+_PRICE_TAIL = re.compile(r"(?:\s*[·•]\s*)?(?:\d+\s*광물|미네랄\s*\d+)\s*$")
+_CREATE_TYPE = re.compile(
+    r'Create Unit(?: with Properties)?\(\s*"[^"]+"\s*,\s*"([^"]+)"')
 
 
-def overlay_unit_names(profile_names: dict | None, shop_names: dict) -> dict:
-    """상점 표시 이름이 프로필 이름을 덮는다.
+def shop_caption(description: str) -> str:
+    """상점 표시 이름. 가격 숫자는 빼서 미네랄 자원량만 가격이 되게 한다."""
+    return _PRICE_TAIL.sub("", description).strip()
 
-    프로필 이름을 나중에 합치면 가격이 지워진다.
-    """
-    return {**(profile_names or {}), **shop_names}
+
+_CREATE_COUNT = re.compile(
+    r'Create Unit(?: with Properties)?\(\s*"[^"]+"\s*,\s*"[^"]+"\s*,\s*(\d+)')
+
+
+def shop_preview_type(actions, fallback: str | None = None) -> str | None:
+    """구매가 만드는 유닛. 만드는 유닛이 없으면 fallback (행동 설명용 건물)."""
+    for action in actions or []:
+        match = _CREATE_TYPE.search(action)
+        if match:
+            return match.group(1)
+    return fallback
+
+
+def shop_preview_count(actions) -> int:
+    """직접 뽑는 수. 행동이라면 설명 건물 하나다."""
+    for action in actions or []:
+        if not _CREATE_TYPE.search(action):
+            continue
+        match = _CREATE_COUNT.search(action)
+        if match:
+            return max(1, int(match.group(1)))
+    return 1
+
+
+def place_shop_show(cli: "Cli", actions, fallback: str, tile_x: int, tile_y: int,
+                    owner: int = 12) -> str:
+    """비콘 옆에 구매 결과를 보여 준다. 뽑기면 그 대수, 행동이면 건물 하나."""
+    kind = shop_preview_type(actions, fallback)
+    count = shop_preview_count(actions)
+    for index in range(count):
+        cli.place(kind, tile_x + (index % 4), tile_y - (index // 4), owner=owner)
+    return kind
+
+
+def merge_display_names(profile_names: dict | None, shop_names: dict) -> dict:
+    """프로필 문구를 우선하고, 표시 이름에서 가격 꼬리만 뺀다."""
+    merged = {unit: shop_caption(name) for unit, name in shop_names.items()}
+    for unit, name in (profile_names or {}).items():
+        merged[unit] = shop_caption(name)
+    return merged
 
 
 _CREATE_RE = re.compile(
@@ -1278,11 +1419,10 @@ def assert_create_targets(cli: Cli) -> None:
     locs = {}
     for line in raw.splitlines():
         m = re.match(
-            r"\s*\d+\s+\((-?\d+),\s*(-?\d+)\)\s*-\s*\((-?\d+),\s*(-?\d+)\)\s+\([^)]*\)\s+(.*)$",
+            r"\s*(\d+)\s+\((-?\d+),\s*(-?\d+)\)\s*-\s*\((-?\d+),\s*(-?\d+)\)\s+\([^)]*\)\s+(.*)$",
             line)
         if m:
-            left, top, right, bottom = (int(m.group(i)) for i in range(1, 5))
-            locs[m.group(5).strip()] = (left, top, right, bottom)
+            locs[m.group(6).strip()] = tuple(int(m.group(i)) for i in range(1, 6))
     bad = []
     info = cli.info()
     width, height = info["width"], info["height"]
@@ -1291,13 +1431,17 @@ def assert_create_targets(cli: Cli) -> None:
         if box is None:
             bad.append(f"{unit}@{loc} 로케이션 없음")
             continue
-        left, top, right, bottom = box
+        index, left, top, right, bottom = box
         tx = ((left + right) // 2) // TILE
         ty = ((top + bottom) // 2) // TILE
-        if cli.nearest_legal(unit, tx, ty, width, height) != (tx, ty):
-            cli.stamp_footprint(unit, tx, ty)
-        if cli.nearest_legal(unit, tx, ty, width, height) != (tx, ty):
+        spot = cli.nearest_legal(unit, tx, ty, width, height)
+        if spot is None:
             bad.append(f"{unit}@{loc} 중심 ({tx},{ty})")
+            continue
+        dx, dy = spot[0] - tx, spot[1] - ty
+        if dx or dy:
+            cli.edit("location", "move", cli.path, str(index),
+                     str(dx), str(dy), "--tiles")
     if bad:
         raise CliError("트리거 생성 위치가 지형 검사를 통과하지 못했습니다: "
                        + ", ".join(bad[:4]))
@@ -1758,6 +1902,14 @@ def _color_dist(a, b) -> float:
     return sum((x - y) ** 2 for x, y in zip(a, b)) ** 0.5
 
 
+def middle_group_tile(pool: list[int]) -> int:
+    """그룹 16칸 중 가운데 변종.
+
+    0번과 15번은 경계 무늬라 사각형으로 깔면 면이 금이 가 보인다.
+    """
+    return min(pool, key=lambda tile: (abs((tile & 15) - 7), (tile & 15) in (0, 15), tile))
+
+
 class Palette:
     """방·통로·발판·벽에 쓸 지형 한 벌.
 
@@ -1935,19 +2087,18 @@ class Palette:
         return getattr(self, role)
 
     def tile(self, role: str) -> int:
-        """그 몫의 타일 하나 — **그룹은 하나로 고정**, 변종만 바뀐다."""
+        """사각형에 깔 가운데 변종. 그룹의 끄트머리는 쓰지 않는다."""
         gs = self.groups(role)
         if not gs:
             return 0
-        return self.rng.choice(self._pool[gs[0]])
+        return middle_group_tile(self._pool[gs[0]])
 
     def fill(self, cli: "Cli", role: str, x: int, y: int, w: int, h: int):
         """네모 한 칸을 그 몫으로 칠한다.
 
         **한 구획은 한 그룹이다.** 칸마다 그룹을 다시 뽑으면 눈밭·풀밭·
         흙바닥이 뒤섞인 소금후추 무늬가 된다 — 실제로 그렇게 그려 보고
-        걷어냈다. 그룹은 고정하고 **같은 그룹 안의 변종만** 흩어서 결을
-        낸다.
+        걷어냈다. 사각형은 그 그룹의 가운데 변종 하나로만 채운다.
         """
         if w <= 0 or h <= 0:
             return
@@ -1956,7 +2107,8 @@ class Palette:
             cli.edit("terrain", "fill", cli.path, str(x), str(y),
                      str(w), str(h), "0")
             return
-        rows = [[self.tile(role) for _ in range(w)] for _ in range(h)]
+        tile = self.tile(role)
+        rows = [[tile for _ in range(w)] for _ in range(h)]
         cli.paste_tiles(x, y, rows)
 
     def describe(self) -> str:

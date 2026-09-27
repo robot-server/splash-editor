@@ -356,7 +356,7 @@ def main(argv=None):
             cli.place(units["companion"], hx - 1 + k, hy + 2, owner=p)
     for k,shop in enumerate(shops):
         sx = tx + 4 + k * 6
-        cli.place(shop["marker"], sx, ty + th - 11, owner=12)
+        scmap.place_shop_show(cli, shop["actions"], shop["marker"], sx, ty + th - 11)
         scmap.place_price_mineral(cli, sx + 2, ty + th - 11, shop["cost"])
         scmap.pad(cli, pal, sx, ty + th - 6, 3, 3)
         cli.place(units["shop_beacon"], sx, ty + th - 6, owner=12)
@@ -397,7 +397,7 @@ def main(argv=None):
     # 진행 변수와 겹친다.
 
     print("시야를 엽니다...")
-    scmap.reveal_for_all(cli, a.players)
+    scmap.apply_reveal(cli, "rpg", a.players, cells[0])
 
 
     # 방 테두리 두대드는 실제 보행·시야·배치 검증 뒤 선택한다.
@@ -412,16 +412,13 @@ def main(argv=None):
     name_map={}
     for collection,unit_key,name_key in ((shops,"marker","marker_name"),):
         for item in collection:
-            label = item[name_key]
-            if "cost" in item:
-                label = scmap.priced_name(label, item["cost"])
-            if item[unit_key] in name_map and name_map[item[unit_key]] != label:
-                raise CliError(f"{item[unit_key]} is assigned conflicting display names")
-            name_map[item[unit_key]]=label
+            preview = scmap.shop_preview_type(item.get("actions"), item[unit_key])
+            label = item.get("marker_name") or item.get("label") or item[name_key]
+            name_map[preview] = label
     for zone in zones:
         if zone["marker"] not in name_map:
             name_map[zone["marker"]] = zone["marker_name"]
-    name_cfg=dict(cfg); name_cfg["unit_names"]=scmap.overlay_unit_names(cfg.get("unit_names"), name_map)
+    name_cfg=dict(cfg); name_cfg["unit_names"]=scmap.merge_display_names(cfg.get("unit_names"), name_map)
     profile.apply_unit_names(cli,name_cfg)
     print("트리거를 짭니다...")
     cli.apply_triggers(build_triggers(cfg,enemy,boss_p))
