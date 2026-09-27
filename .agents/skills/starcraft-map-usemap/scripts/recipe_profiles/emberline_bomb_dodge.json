@@ -17,7 +17,10 @@
       "표시 유닛이 뜬 칸은 곧 터집니다. 칸이 비었을 때 지나가세요.",
       "체크포인트를 지나면 죽어도 그 자리에서 다시 시작합니다."
     ],
-    "portrait": "Terran Ghost",
+    "portraits": [
+      { "unit": "Zerg Zergling", "slot": 0 },
+      { "unit": "Protoss Dark Archon", "slot": 3 }
+    ],
     "briefing_hold_ms": 1600,
     "messages": {
       "intro": "화선 회랑에 오신 것을 환영합니다. 폭발 칸을 피해 목표까지 가세요.",
@@ -33,11 +36,11 @@
     "revive": true
   },
   "players": {
-    "race": "terran",
+    "race": "zerg",
     "operator_race": "zerg"
   },
   "units": {
-    "runner": "Terran Marine",
+    "runner": "Zerg Zergling",
     "bomb": "Protoss Dark Archon",
     "stage_counter": "Protoss Scarab",
     "revive_lock": "Zerg Broodling"
@@ -115,9 +118,9 @@
     "goal": "도착선"
   },
   "unit_settings": {
-    "Terran Marine": {
+    "Zerg Zergling": {
       "hp": 40,
-      "armor": 0
+      "armor": 1
     }
   },
   "language": "ko",

@@ -62,7 +62,33 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
                 raise CliError("rpg text.messages.intro must be a list of non-empty strings")
         elif not isinstance(v,str) or not v:
             raise CliError(f"text.messages.{k} must be a non-empty string")
-    _need(t, "portrait", str, "text")
+    # 초상화는 한 프로필 안에서 한 가지 형태만 쓴다 — 단일 필드 `portrait`
+    # (슬롯 0 하나만 쓰는 기존 방식, 다른 장르 프로필 전부가 이 형태다)
+    # 아니면 `portraits`(슬롯 0~3 여러 명을 배열로) 둘 중 하나만 있어야
+    # 한다. 섞어 쓰면(예: portrait + portraits) 어느 쪽이 슬롯 0을
+    # 차지하는지 프로필만 보고 알 수 없다.
+    has_single = "portrait" in t
+    has_array = "portraits" in t
+    if has_single == has_array:
+        raise CliError("text must have exactly one of 'portrait' (single) "
+                       "or 'portraits' (list of {unit, slot}), not both/neither")
+    if has_single:
+        if not isinstance(t["portrait"], str) or not t["portrait"]:
+            raise CliError("text.portrait must be a non-empty string")
+    else:
+        arr = t["portraits"]
+        if not isinstance(arr, list) or not arr:
+            raise CliError("text.portraits must be a non-empty list of {unit, slot} objects")
+        seen_slots = set()
+        for i, item in enumerate(arr):
+            if (not isinstance(item, dict)
+                    or not isinstance(item.get("unit"), str) or not item["unit"]
+                    or type(item.get("slot")) is not int or not 0 <= item["slot"] <= 3):
+                raise CliError(f"text.portraits[{i}] must be "
+                               f"{{'unit': non-empty str, 'slot': 0..3}}")
+            if item["slot"] in seen_slots:
+                raise CliError(f"text.portraits has two entries for slot {item['slot']}")
+            seen_slots.add(item["slot"])
     _need(t, "briefing_hold_ms", int, "text")
     if not 0 <= t["briefing_hold_ms"] <= 60000:
         raise CliError("text.briefing_hold_ms must be from 0 to 60000")
@@ -669,10 +695,13 @@ def apply_profile_metadata(cli, cfg: dict, humans: int):
     configure_progression(cli, cfg, humans)
     apply_force_names(cli, cfg)
     apply_unit_settings(cli, cfg)
+    if "portraits" in cfg["text"]:
+        portraits = [(p["unit"], p["slot"]) for p in cfg["text"]["portraits"]]
+    else:
+        portraits = [(cfg["text"]["portrait"], 0)]
     cli.apply_briefing(briefing_text(
         cfg["text"]["briefing"], objectives=cfg["text"]["objectives"],
-        portrait=cfg["text"]["portrait"],
-        hold_ms=cfg["text"]["briefing_hold_ms"]))
+        portraits=portraits, hold_ms=cfg["text"]["briefing_hold_ms"]))
     cli.set_map_name(cfg["map"]["name"], cfg["map"]["description"])
 
 

@@ -3128,7 +3128,8 @@ def absent_player_cleanup(humans: int, system_owner: str,
 
 
 def briefing_text(lines: list[str], objectives: str | None = None,
-                  portrait: str | None = None, hold_ms: int = 6000) -> str:
+                  hold_ms: int = 6000,
+                  portraits: list[tuple[str, int]] | None = None) -> str:
     """미션 브리핑(MBRF) 을 글로 짠다.
 
     유즈맵을 열면 게임 전에 뜨는 화면이다. **실측 772장 중 457장(59%)이
@@ -3143,6 +3144,10 @@ def briefing_text(lines: list[str], objectives: str | None = None,
         Wait                65%   다음 줄까지 기다린다
         Show Portrait       55%   말하는 얼굴을 띄운다 (유닛, 슬롯)
         Play WAV            24%
+
+    `portraits`는 (유닛, 슬롯) 쌍의 목록이다. 슬롯은 0~3, 화면에 동시에
+    세울 수 있는 자리 번호다 — 내레이터 하나만 세우면 `[(unit, 0)]`,
+    맞은편에 위협 대상까지 세우려면 반대쪽 슬롯을 더한다.
     """
     out = []
     if objectives:
@@ -3150,8 +3155,9 @@ def briefing_text(lines: list[str], objectives: str | None = None,
                    f'\tMission Objectives("{objectives}");\n}}')
     for i, line in enumerate(lines):
         body = ""
-        if portrait and i == 0:
-            body += f'\tShow Portrait("{portrait}", 0);\n'
+        if i == 0 and portraits:
+            for unit, slot in portraits:
+                body += f'\tShow Portrait("{unit}", {slot});\n'
         body += f'\tText Message("{line}", {hold_ms});\n'
         body += f'\tWait({hold_ms});\n'
         out.append('Briefing("All players"){\n' + body + '}')
