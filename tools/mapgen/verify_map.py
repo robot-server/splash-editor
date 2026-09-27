@@ -878,12 +878,24 @@ def check_basics(cli: Cli, m: dict) -> list[tuple[str, str]]:
                               f"{len(owned)}개: {owned[0]}. 그 슬롯은 아무도 "
                               f"맡지 않아 진행이 돌지 않습니다."))
 
-    # 0a) **못 걷는 지형이 66% 를 넘으면 튕긴다.**
+    # 0a) 못 걷는 지형 비율 — "66% 를 넘으면 튕긴다" 는 절대 문턱이
+    #     아니다. 이전에는 여기서 66% 초과를 `!!`(치명)로 걸었다.
     #
-    #      카페 `에디터의 모/든/것` 의 "스타가 팅기는 증상들" 은 본문에
-    #      "건설이 불가능한 지형 66%" 라고 적었는데, 댓글이 **"이동이
-    #      불가능한 지형 66%"** 로 정정한다. 물·용암을 벽으로 쓰는
-    #      유즈맵이 바로 걸린다 — 내가 만든 맵 여섯 중 넷이 넘겼다.
+    #     근거였던 것: 카페 `에디터의 모/든/것` 의 "스타가 팅기는 증상들"
+    #     이 본문에 "건설이 불가능한 지형 66%", 댓글이 "이동이 불가능한
+    #     지형 66%" 로 정정한 글, 그리고 이 저장소 작성자가 만든 맵
+    #     여섯 중 넷이 그 문턱을 넘겨 튕겼다는 경험담.
+    #
+    #     반증: 폭탄피하기 생성기로 만든 못 걷는 땅 80% 짜리 맵
+    #     (85x48 Ashworld, Brood War 205, `wall` 몫 그룹 15, `void_wall`
+    #     아님 — 검은 칸이 아니라 실제 지형 그룹으로 막음)을 사용자가
+    #     실제 게임에서 직접 열어 확인했고 튕기지 않고 정상 진행됐다
+    #     (2026-09-27). 즉 66% 는 이 조합에서는 재현되지 않았다 — 카페
+    #     글의 조건(어느 타일셋·버전·물/용암 여부)과 이 반증의 조건이
+    #     다를 수 있어 "66% 는 항상 안전/항상 위험" 둘 다 아직 확정할
+    #     근거가 없다. 그래서 `!!`(맵을 버리는 조건)이 아니라 참고
+    #     정보로만 낮췄다 — 다른 조합(다른 타일셋·물/용암 벽·확장자)에서
+    #     또 튕기는 사례가 재현되면 다시 올린다.
     ts0 = m.get("tileset_id")
     if ts0 is not None:
         try:
@@ -891,12 +903,14 @@ def check_basics(cli: Cli, m: dict) -> list[tuple[str, str]]:
             tot0 = len(g0) * len(g0[0])
             blocked = 100.0 * (tot0 - sum(sum(r) for r in g0)) / tot0
             if blocked > 66:
-                out.append(("!!", f"못 걷는 지형이 **{blocked:.0f}%** 입니다. "
-                                  f"**66% 를 넘으면 게임이 튕깁니다.** 검게 "
-                                  f"뚫거나 물·용암으로 막은 자리를 줄이세요."))
+                out.append(("? ", f"못 걷는 지형이 {blocked:.0f}% 입니다. 예전엔 "
+                                  f"66% 초과를 튕김 위험으로 걸었지만, 85x48 "
+                                  f"Ashworld/Brood War 205 조합에서 80%도 실제 "
+                                  f"게임에서 정상 진행되는 반증이 나와 참고 정보로 "
+                                  f"낮췄다 — 다른 조합에서 튕기면 알려서 다시 올린다."))
             elif blocked > 58:
                 out.append(("? ", f"못 걷는 지형이 {blocked:.0f}% 입니다. "
-                                  f"66% 를 넘으면 튕기니 여유가 얼마 없습니다."))
+                                  f"66% 부근부터는 옛 튕김 보고가 있었으니 참고하세요."))
         except Exception:
             pass
 
@@ -1639,9 +1653,12 @@ def assess(snapshot: dict) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = []
     if snapshot.get("outside_units"):
         out.append(("!!", f"맵 밖 유닛 {snapshot['outside_units']}기. 게임이 튕깁니다."))
+    # 66% 초과를 예전엔 `!!` 로 걸었다. check_basics 의 0a) 주석에 적은
+    # 반증(85x48 Ashworld/Brood War 205, 80% 도 실제 게임에서 정상 진행)
+    # 때문에 참고 정보로 낮췄다 — 다른 조합에서 튕기면 다시 올린다.
     blocked = snapshot.get("blocked_pct")
     if blocked is not None and blocked > 66:
-        out.append(("!!", f"못 걷는 지형이 **{blocked:.0f}%** 입니다."))
+        out.append(("? ", f"못 걷는 지형이 {blocked:.0f}% 입니다."))
     if snapshot.get("burn_hp_zero"):
         out.append(("!!", "불 효과가 있는 건물의 체력이 0입니다: "
                           f"{snapshot['burn_hp_zero']}."))

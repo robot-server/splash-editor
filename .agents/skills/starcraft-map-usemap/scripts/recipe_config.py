@@ -447,6 +447,68 @@ def load_profile(path: str, genre: str) -> dict[str, Any]:
         for k in ("intro", "checkpoint", "pursuit", "victory", "defeat"):
             if not isinstance(msg.get(k), str) or not msg[k]:
                 raise CliError(f"chase text.messages.{k} is required")
+    elif genre == "bomb_dodge":
+        for k in ("players", "stages"):
+            _need(rules, k, int, "rules")
+        if not 1 <= rules["players"] <= 4:
+            raise CliError("bomb_dodge players must be 1..4")
+        if not 2 <= rules["stages"] <= 6:
+            raise CliError("bomb_dodge stages must be 2..6")
+        _need(rules, "revive", bool, "rules")
+        stages_cfg = _need(cfg, "stages", list, "root")
+        if len(stages_cfg) < rules["stages"]:
+            raise CliError("stages must have at least rules.stages entries")
+        for i, st in enumerate(stages_cfg[:rules["stages"]]):
+            if not isinstance(st, dict):
+                raise CliError(f"stages[{i}] must be an object")
+            # grid = [cols, rows]. cols는 진행 방향 길이(칸 수), rows는 통로
+            # 폭(칸 수)이다. 코퍼스 표본은 통로 폭이 1~3칸인 좁은 길이었다
+            # ("ㅁㅁㅁㅁㅁ" 한 줄, 많아야 석 줄) — 5줄짜리 널찍한 격자를
+            # 그대로 코스 폭으로 쓰면 안 된다. rows는 그 폭만 제한한다.
+            grid = st.get("grid")
+            if (not isinstance(grid, list) or len(grid) != 2
+                    or type(grid[0]) is not int or not 2 <= grid[0] <= 10
+                    or type(grid[1]) is not int or not 1 <= grid[1] <= 3):
+                raise CliError(f"stages[{i}].grid must be [cols,rows] — cols(길이) 2..10, "
+                               f"rows(통로 폭) 1..3")
+            cols, rows = grid
+            cell = st.get("cell")
+            if (not isinstance(cell, list) or len(cell) != 2
+                    or any(type(x) is not int or not 2 <= x <= 5 for x in cell)):
+                raise CliError(f"stages[{i}].cell must be [cell_w,cell_h] tiles, each 2..5 "
+                               f"— this is the size of one dodge cell, not the whole segment")
+            seq = st.get("sequence")
+            if not isinstance(seq, list) or not seq:
+                raise CliError(f"stages[{i}].sequence must be a non-empty list of beats")
+            for j, beat in enumerate(seq):
+                if not isinstance(beat, dict):
+                    raise CliError(f"stages[{i}].sequence[{j}] must be an object")
+                cells = beat.get("cells")
+                wait_ms = beat.get("wait_ms")
+                if (not isinstance(cells, list) or not cells
+                        or any(type(c) is not int or not 0 <= c < cols * rows for c in cells)):
+                    raise CliError(f"stages[{i}].sequence[{j}].cells must reference grid cell indices 0..{cols*rows-1}")
+                if type(wait_ms) is not int or not 50 <= wait_ms <= 3000:
+                    raise CliError(f"stages[{i}].sequence[{j}].wait_ms must be 50..3000")
+        for k in ("runner", "bomb", "stage_counter", "revive_lock"):
+            _need(units, k, str, "units")
+        if units["bomb"] == units["runner"]:
+            raise CliError("bomb_dodge units.bomb must differ from units.runner")
+        if len({units["stage_counter"], units["revive_lock"]}) != 2:
+            raise CliError("bomb_dodge stage_counter and revive_lock must be distinct unplaced counters")
+        labels = _need(cfg, "labels", dict, "root")
+        for k in ("start", "checkpoint_prefix", "bomb_prefix", "goal"):
+            _need(labels, k, str, "labels")
+        players = _need(cfg, "players", dict, "root")
+        for k in ("race", "operator_race"):
+            _need(players, k, str, "players")
+        msg = _need(t, "messages", dict, "text")
+        needed = ["intro", "checkpoint", "victory", "defeat"]
+        if rules["revive"]:
+            needed.append("revive")
+        for k in needed:
+            if not isinstance(msg.get(k), str) or not msg[k]:
+                raise CliError(f"bomb_dodge text.messages.{k} is required")
 
     # Beacon/result labels are type-wide UNIS names. The visible name beside a
     # beacon must agree with the name that the profile asks us to store.

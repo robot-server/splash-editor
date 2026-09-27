@@ -3182,12 +3182,15 @@ def part_ally_humans(humans: list[str]) -> list[str]:
     """
     out = []
     for h in humans:
-        others = ",".join(f'"{o}"' for o in humans if o != h)
+        others = [o for o in humans if o != h]
         if not others:
             continue
+        # Set Alliance Status는 플레이어 인자를 하나만 받는다 — 여러 명을
+        # 쉼표로 묶어 넘기면 컴파일이 깨진다(사람 3명 이상에서 재현).
+        actions = "".join(
+            f'\tSet Alliance Status("{o}", Allied Victory);\n' for o in others)
         out.append(f'Trigger("{h}"){{\nConditions:\n\tAlways();\n\n'
-                   f'Actions:\n'
-                   f'\tSet Alliance Status({others}, Allied Victory);\n}}')
+                   f'Actions:\n{actions}}}')
     return out
 
 def part_intro(humans: list[str], lines: list[str], ore: int = 0, gas: int = 0,
