@@ -527,12 +527,6 @@ def _paint_floor_under(cli, tileset_id: int, width: int, height: int,
             cli.edit("unit", "move", cli.path, str(item["index"]),
                      str(tx), str(ty), "--tiles")
             moved += 1
-            # 옮겨도 원래 칸이 못 걸으면 길이 끊긴다. 그 칸은 isometric으로 연다.
-            for x, y in own:
-                prop = prop_at(x, y)
-                if prop is not None and prop[1]:
-                    continue
-                strokes.append((x - x % 2, y, terrain_id, 1))
         elif remedy["action"] == "isom":
             strokes.extend(remedy["strokes"])
     items = _placed_items(cli)
@@ -2106,7 +2100,8 @@ def main(argv=None):
                 if not (0 <= y < height and 0 <= x < width):
                     continue
                 prop = props.get(grid[y][x])
-                if prop is None or not prop[1]:
+                mask = (prop[4] & 0xFFFF) if prop is not None and len(prop) > 4 else 0
+                if mask != 0xFFFF:
                     grid[y][x] = floor
         cli.paste_tiles(0, 0, grid)
         if not _starts_connected():
