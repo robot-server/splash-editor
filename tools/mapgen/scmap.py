@@ -621,7 +621,7 @@ def _ramp_table() -> dict:
         return _RAMP_TABLE
     except NameError:
         pass
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+    path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                         "data", "ramps.json")
     try:
         with open(os.path.normpath(path), encoding="utf-8") as f:
@@ -1929,7 +1929,7 @@ def _tile_colors(tileset_id: int) -> dict[int, tuple[int, int, int]]:
     """타일 그룹 → 렌더러로 잰 평균 RGB. `measure_tile_colors.py` 가 만든다."""
     global _COLOR_CACHE
     if _COLOR_CACHE is None:
-        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+        path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                             "data", "tile-colors.json")
         try:
             with open(os.path.normpath(path), encoding="utf-8") as f:
@@ -2633,7 +2633,7 @@ def terrain_types_table(tileset_id: int) -> dict:
     """지형 종류 이름 → {번호, 타일 그룹, 고도}. `measure_terrain_types.py` 산."""
     global _TERRAIN_TYPES
     if _TERRAIN_TYPES is None:
-        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+        path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                             "data", "terrain-types.json")
         try:
             with open(os.path.normpath(path), encoding="utf-8") as f:
@@ -2715,7 +2715,7 @@ def doodad_walk_table(tileset_id: int) -> dict[int, dict]:
     """
     global _DOODAD_WALK
     if _DOODAD_WALK is None:
-        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+        path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                             "data", "doodad-walk.json")
         try:
             with open(os.path.normpath(path), encoding="utf-8") as f:
