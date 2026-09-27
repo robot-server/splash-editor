@@ -331,4 +331,6 @@ MappingCore 의 `Sc::Isom::TerrainTypeInfo` 표에도 램프 항목이 없다.
 지금은 `tileset-ramps` 명령으로 그 타일을 찾고 스킬이 직접 찍는다.
 **다시 붙는다면**: 지형 팔레트에 램프 브러시를 더해 GUI 에서도 놓을 수
 있게 하는 것이 남았다. 어느 램프가 어느 지형 짝을 잇는지는 공식 맵을
-훑어 세는 방법으로 알아냈다 (`.agents/skills/starcraft-map/references/melee-terrain.md`).
+훑어 세는 방법으로 알아냈다 (`.agents/skills/starcraft-map/scripts/measure_ramps.py`가
+만든 `.agents/skills/starcraft-map/data/ramps.json`, 정리한 문서는
+[docs/tileset/ramps.md](docs/tileset/ramps.md)).
