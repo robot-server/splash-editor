@@ -116,7 +116,10 @@
     "Protoss Dragoon": {
       "hp": 170,
       "shields": 120,
-      "armor": 2
+      "armor": 2,
+      "minerals": 175,
+      "gas": 65,
+      "build_time": 750
     },
     "Terran Vulture": {
       "hp": 115,

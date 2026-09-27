@@ -156,7 +156,10 @@
     },
     "Terran Medic": {
       "hp": 90,
-      "armor": 1
+      "armor": 1,
+      "minerals": 50,
+      "gas": 25,
+      "build_time": 300
     },
     "Zerg Hydralisk": {
       "hp": 125,
