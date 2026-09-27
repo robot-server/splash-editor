@@ -25,7 +25,7 @@ from scmap import Cli
 import preview
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                   "..", "data", "tile-colors.json")
+                   "data", "tile-colors.json")
 NAMES = {0: "badlands", 1: "space", 2: "installation", 3: "ashworld",
          4: "jungle", 5: "desert", 6: "ice", 7: "twilight"}
 CELL = 2                      # 그룹 하나를 2x2 타일로 깐다

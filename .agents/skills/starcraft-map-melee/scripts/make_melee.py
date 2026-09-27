@@ -1570,7 +1570,7 @@ def main(argv=None):
     bridge_plan = []
     bridge_patterns={}
     if args.main_entry == "bridge":
-        pattern_path=os.path.normpath(os.path.join(os.path.dirname(__file__),"..","data","bridge-patterns.json"))
+        pattern_path=os.path.normpath(os.path.join(os.path.dirname(__file__),"..","..","..","..","tools","mapgen","data","bridge-patterns.json"))
         with open(pattern_path,encoding="utf-8") as f:
             bridge_patterns={p["doodad_id"]:p for p in json.load(f)["patterns"]}
 

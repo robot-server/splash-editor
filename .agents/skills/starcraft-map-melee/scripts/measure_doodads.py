@@ -26,7 +26,7 @@ import scmap
 from scmap import Cli, CliError
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                   "..", "data", "doodad-walk.json")
+                   "..", "..", "..", "..", "tools", "mapgen", "data", "doodad-walk.json")
 NAMES = {0: "badlands", 1: "space", 2: "installation", 3: "ashworld",
          4: "jungle", 5: "desert", 6: "ice", 7: "twilight"}
 CELL = 10                 # 두대드 하나에 10x10 칸을 준다 (가장 큰 것이 14x9)

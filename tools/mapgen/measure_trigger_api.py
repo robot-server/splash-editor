@@ -29,7 +29,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-OUT = os.path.join(HERE, "..", "data", "trigger-api.json")
+OUT = os.path.join(HERE, "data", "trigger-api.json")
 
 
 def find_chk_cpp() -> str:

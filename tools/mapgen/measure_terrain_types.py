@@ -32,7 +32,7 @@ import scmap
 from scmap import Cli
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                   "..", "data", "terrain-types.json")
+                   "data", "terrain-types.json")
 NAMES = {0: "badlands", 1: "space", 2: "installation", 3: "ashworld",
          4: "jungle", 5: "desert", 6: "ice", 7: "twilight"}
 PATCH = 24          # 종류 하나를 24x24 타일에 칠한다

@@ -55,7 +55,7 @@ import scmap
 from scmap import Cli, CliError
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                   "..", "data", "ramps.json")
+                   "..", "..", "..", "..", "tools", "mapgen", "data", "ramps.json")
 NAMES = {0: "badlands", 1: "space", 2: "installation", 3: "ashworld",
          4: "jungle", 5: "desert", 6: "ice", 7: "twilight"}
 MAPW = MAPH = 64

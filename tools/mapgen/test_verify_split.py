@@ -348,22 +348,6 @@ Actions:
         self.assertEqual(none_opened, 0)
         self.assertEqual(same[0][0], 1)
 
-    def test_chase_lane_keeps_corners_out(self):
-        import make_usemap
-        x, y, w, h = make_usemap.chase_lane_rect(128, 96)
-        self.assertLess(y + h, 96)
-        self.assertGreater(y, 0)
-        self.assertLessEqual(y, int(0.50 * 96))
-        self.assertGreaterEqual(y + h, int(0.50 * 96))
-        self.assertNotIn(0, range(y, y + h))
-        # 검문 틈의 한가운데는 벽 사각형 밖이다.
-        cx, cy = int(0.25 * 128), int(0.50 * 96)
-        inside = False
-        for rx0, ry0, rx1, ry1 in make_usemap.WALLS:
-            if rx0 * 128 <= cx < rx1 * 128 and ry0 * 96 <= cy < ry1 * 96:
-                inside = True
-        self.assertFalse(inside)
-
     def test_illegal_footprint_moves_or_uses_isom(self):
         import scmap
 

@@ -25,7 +25,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import scmap  # noqa: E402
 
-OUT = os.path.join(HERE, "..", "data", "heroes.json")
+OUT = os.path.join(HERE, "data", "heroes.json")
 
 # 비교해 낼 값과 이름. **맵이 못 고치는 것에 별표를 붙인다.**
 FIELDS = [
