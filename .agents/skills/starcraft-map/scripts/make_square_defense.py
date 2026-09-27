@@ -336,6 +336,15 @@ def main(argv=None):
         scmap.room(cli, pal, x + RING + WALL, y + RING + WALL,
                    w - 2 * (RING + WALL), h - 2 * (RING + WALL),
                    rim=1)                                          # 섬
+    # 경기장 안 벽은 사거리용이라 그대로 둔다. 맵 밖 벽만 한도까지 연다.
+    protect = {(tx, ty)
+               for x, y, w, h in boxes
+               for ty in range(max(0, y), min(H, y + h))
+               for tx in range(max(0, x), min(W, x + w))}
+    opened = scmap.open_beside_paths(
+        cli, ts, pal.tile("floor"), W, H, limit=60, protect=protect)
+    if opened:
+        print(f"  못 걷는 비율을 맞추려고 경기장 밖 {opened}칸을 열었습니다")
 
     # 4) 플레이어 슬롯
     # 같은 지형 안의 **변종만** 흩는다. 그룹을 섞으면 얼룩덜룩한 덩이
@@ -416,7 +425,7 @@ def main(argv=None):
     scmap.reveal_for_all(cli, a.players)
 
     # Apply AI-authored type labels before exposing the map.
-    name_cfg=dict(cfg);name_cfg["unit_names"]={**icon_names,**cfg.get("unit_names",{})}
+    name_cfg=dict(cfg);name_cfg["unit_names"]=scmap.overlay_unit_names(cfg.get("unit_names"), icon_names)
     profile.apply_unit_names(cli,name_cfg)
     cli.apply_triggers(build_triggers(cfg,enemy,boss_p,arena_names))
     profile.apply_profile_metadata(cli,cfg,a.players)

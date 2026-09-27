@@ -421,7 +421,7 @@ def main(argv=None):
     for zone in zones:
         if zone["marker"] not in name_map:
             name_map[zone["marker"]] = zone["marker_name"]
-    name_cfg=dict(cfg); name_cfg["unit_names"]={**name_map,**cfg.get("unit_names",{})}
+    name_cfg=dict(cfg); name_cfg["unit_names"]=scmap.overlay_unit_names(cfg.get("unit_names"), name_map)
     profile.apply_unit_names(cli,name_cfg)
     print("트리거를 짭니다...")
     cli.apply_triggers(build_triggers(cfg,enemy,boss_p))

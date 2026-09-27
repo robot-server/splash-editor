@@ -231,7 +231,7 @@ def main(argv=None):
     names={}
     for shop in cfg["shops"]:
         names[shop["marker"]]=scmap.priced_name(shop["marker_name"], shop["cost"])
-    name_cfg=dict(cfg);name_cfg["unit_names"]={**names,**cfg.get("unit_names",{})}
+    name_cfg=dict(cfg);name_cfg["unit_names"]=scmap.overlay_unit_names(cfg.get("unit_names"), names)
     profile.apply_unit_names(cli,name_cfg)
     scmap.reveal_for_all(cli,players)
     clear=[(u["x"]//32-2,u["y"]//32-2,5,5) for u in cli.units()]

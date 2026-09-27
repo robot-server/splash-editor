@@ -977,15 +977,17 @@ def _walk_mask(props: dict, tile_id: int) -> int:
 
 
 def halo_open_grid(grid, props: dict, floor: int, limit: float = 64.0,
-                   passes: int = 12):
+                   passes: int = 12, protect=None):
     """길 옆 벽만 바닥으로 연 격자와, 연 칸 수.
 
     걷기 판정은 미니타일 마스크다. 걷기 비트만 보면 마스크가 비어 있는
     칸을 이미 열린 칸으로 넘겨, 못 걷는 비율이 줄지 않는다. 맵 전체를
     바닥으로 되돌리지 않고, 한계에 닿으면 먼 벽은 그대로 둔다.
+    `protect` 칸은 경기장 벽처럼 열지 않는다.
     """
     if not grid or not grid[0]:
         return grid, 0
+    protect = protect or set()
     height, width = len(grid), len(grid[0])
     out = [row[:] for row in grid]
     opened = 0
@@ -996,7 +998,7 @@ def halo_open_grid(grid, props: dict, floor: int, limit: float = 64.0,
         changed = 0
         for y in range(1, height - 1):
             for x in range(1, width - 1):
-                if _walk_mask(props, out[y][x]) == 0xFFFF:
+                if (x, y) in protect or _walk_mask(props, out[y][x]) == 0xFFFF:
                     continue
                 if any(_walk_mask(props, out[y + dy][x + dx])
                        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1))):
@@ -1010,14 +1012,14 @@ def halo_open_grid(grid, props: dict, floor: int, limit: float = 64.0,
 
 
 def open_beside_paths(cli, tileset_id: int, floor: int, width: int, height: int,
-                     limit: float = 64.0) -> int:
+                     limit: float = 64.0, protect=None) -> int:
     """못 걷는 칸이 limit 를 넘으면, 길 옆 벽만 바닥으로 연다.
 
     맵 전체를 걷는 바닥으로 되돌리지 않는다. 66%를 넘으면 게임이 튕긴다.
     """
     props = tileset_tiles(cli, tileset_id)
     grid = cli.tiles(0, 0, width, height)
-    nxt, opened = halo_open_grid(grid, props, floor, limit)
+    nxt, opened = halo_open_grid(grid, props, floor, limit, protect=protect)
     if opened:
         cli.paste_tiles(0, 0, nxt)
     return opened
@@ -1254,6 +1256,14 @@ def priced_name(name: str, cost: int) -> str:
     """표시 이름에 가격을 붙인다. 따옴표는 트리거를 깨므로 넣지 않는다."""
     text = f"{name} {int(cost)}광물"
     return text.replace('"', "").replace("\n", " ")
+
+
+def overlay_unit_names(profile_names: dict | None, shop_names: dict) -> dict:
+    """상점 표시 이름이 프로필 이름을 덮는다.
+
+    프로필 이름을 나중에 합치면 가격이 지워진다.
+    """
+    return {**(profile_names or {}), **shop_names}
 
 
 _CREATE_RE = re.compile(

@@ -340,6 +340,9 @@ Actions:
         self.assertLessEqual(scmap.blocked_mini_pct(out, props), 60)
         self.assertEqual(out[1][1], 2)
         self.assertEqual(out[14][13], 1)
+        held, _n = scmap.halo_open_grid(grid, props, 1, limit=60, protect={(14, 13)})
+        self.assertEqual(held[13][14], 2)
+        self.assertEqual(held[14][13], 1)
         full = [[1] * 5 for _ in range(5)]
         same, none_opened = scmap.halo_open_grid(full, props, 1, limit=60)
         self.assertEqual(none_opened, 0)
@@ -365,6 +368,11 @@ Actions:
         import make_square_defense
         import scmap
         self.assertEqual(scmap.priced_name("의무병", 200), "의무병 200광물")
+        self.assertEqual(
+            scmap.overlay_unit_names(
+                {"Terran Medic": "의무병 · 분대 회복"},
+                {"Terran Medic": scmap.priced_name("의무병 · 분대 회복", 105)}),
+            {"Terran Medic": "의무병 · 분대 회복 105광물"})
         src = inspect.getsource(make_square_defense.main)
         self.assertIn("priced_name", src)
         self.assertIn("place_price_mineral", src)

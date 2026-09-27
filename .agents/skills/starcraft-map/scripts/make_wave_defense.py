@@ -404,7 +404,7 @@ def main(argv=None):
         if shop["icon"] in names and names[shop["icon"]] != label:
             raise scmap.CliError(f"unit type {shop['icon']} has conflicting map display names")
         names[shop["icon"]] = label
-    name_cfg=dict(cfg);name_cfg["unit_names"]={**names,**cfg.get("unit_names",{})}
+    name_cfg=dict(cfg);name_cfg["unit_names"]=scmap.overlay_unit_names(cfg.get("unit_names"), names)
     profile.apply_unit_names(cli,name_cfg)
     res=scmap.MapResources(in_play=scmap.units_in_play(cli))
     ways=[f"{labels['way_prefix']}{i+1}" for i in range(len(pts))]
