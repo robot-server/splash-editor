@@ -178,6 +178,7 @@ public:
         std::uint8_t groundCooldown = 0;        ///< 프레임
         std::uint32_t airRange = 0;
         std::uint16_t airDamage = 0;
+        std::uint16_t airDamageBonus = 0; ///< 공중 무기, 업그레이드 한 단계당
         /// 이 무기의 피해를 올려 주는 업그레이드 번호. 61 이면 없다.
         /// **영웅 무기는 대개 일반 무기와 다른 번호를 쓴다** — 그래서
         /// 일반 유닛만 업그레이드를 받고 영웅은 못 받는 일이 생긴다.
@@ -199,6 +200,9 @@ public:
         std::uint8_t airDamageType = 0;
         std::uint8_t groundDamageUpgrade = 61;
         std::uint8_t airDamageUpgrade = 61;
+        /// StarEdit 배치 상자. 건물이 차지하는 칸은 이 픽셀을 32로 나눈 값이다.
+        int placeWidth = 0;
+        int placeHeight = 0;
         /// AI 스크립트 번호. 컴퓨터가 이 유닛을 어떻게 굴리는가 —
         /// 쫓아갔다 돌아오는지, 끝까지 쫓아가는지가 여기서 갈린다.
         std::uint8_t aiCompIdle = 0;
@@ -274,28 +278,28 @@ public:
     /// 이 유닛이 크립을 만드는 저그 건물인지 (units.dat 의 CreepBuilding 특성).
     bool isCreepBuilding(std::uint16_t unitType) const;
 
-    /// 타일셋이 가진 두들(나무·바위 같은 장식) 하나.
+    /// 타일셋이 가진 두대드(나무·바위 같은 장식) 하나.
     struct DoodadInfo
     {
         std::uint16_t id = 0;         ///< dddata.bin 번호 (CHK 의 DD2 에 들어간다)
         std::string name;             ///< 사람이 읽는 이름
         int tileWidth = 0;
         int tileHeight = 0;
-        std::uint16_t startTileGroup = 0; ///< 두들 타일이 시작하는 CV5 그룹
+        std::uint16_t startTileGroup = 0; ///< 두대드 타일이 시작하는 CV5 그룹
         std::uint16_t previewTileId = 0;  ///< 팔레트에 보일 타일
 
-        /// 두들에 딸린 그림 조각. 0 이면 없다.
+        /// 두대드에 딸린 그림 조각. 0 이면 없다.
         ///
-        /// 불타는 잔해나 깜빡이는 불빛처럼 움직이는 두들은 타일만으로는
+        /// 불타는 잔해나 깜빡이는 불빛처럼 움직이는 두대드는 타일만으로는
         /// 표현되지 않아 스프라이트를 하나 더 얹는다.
         std::uint16_t overlayIndex = 0;
         bool spriteOverlay = false; ///< 참이면 sprites.dat, 거짓이면 units.dat
     };
 
-    /// 그 타일셋의 두들 목록. 처음 부를 때 만들어 두고 그대로 돌려준다.
+    /// 그 타일셋의 두대드 목록. 처음 부를 때 만들어 두고 그대로 돌려준다.
     const std::vector<DoodadInfo> & doodads(std::uint16_t tilesetId) const;
 
-    /// 그 두들을 그 자리에 놓을 수 있는지 (dddata.bin 의 배치 가능 표).
+    /// 그 두대드를 그 자리에 놓을 수 있는지 (dddata.bin 의 배치 가능 표).
     ///
     /// 표는 칸마다 "여기에 이 타일 그룹이 있어야 한다"를 적어 둔다. 0 이면
     /// 어떤 지형이든 좋다.
@@ -303,14 +307,14 @@ public:
                                    const std::vector<std::uint16_t> & mapTiles,
                                    int mapWidth, int mapHeight, int tileX, int tileY) const;
 
-    /// 두들이 덮는 타일 값들 (왼쪽 위부터 가로 순서).
+    /// 두대드가 덮는 타일 값들 (왼쪽 위부터 가로 순서).
     std::vector<std::uint16_t> doodadTiles(std::uint16_t tilesetId, std::uint16_t doodadId) const;
 
-    /// 두들이 덮는 칸들의 메가타일 번호 (왼쪽 위부터 가로 순서).
+    /// 두대드가 덮는 칸들의 메가타일 번호 (왼쪽 위부터 가로 순서).
     ///
-    /// 타일 값은 에디터마다 다르게 적히지만 — StarEdit 는 두들을 일반 타일로
-    /// 구워 넣고 SCMDraft 는 두들 그룹 타일을 그대로 남긴다 — 화면에 보이는
-    /// 그림은 메가타일이 정한다. 두들이 멀쩡한지 따질 때는 이쪽을 본다.
+    /// 타일 값은 에디터마다 다르게 적히지만 — StarEdit 는 두대드를 일반 타일로
+    /// 구워 넣고 SCMDraft 는 두대드 그룹 타일을 그대로 남긴다 — 화면에 보이는
+    /// 그림은 메가타일이 정한다. 두대드가 멀쩡한지 따질 때는 이쪽을 본다.
     std::vector<std::uint16_t> doodadMegaTiles(std::uint16_t tilesetId,
                                                std::uint16_t doodadId) const;
 
@@ -486,9 +490,9 @@ inline std::uint8_t tilesetPlayerColor(std::uint16_t tilesetId, std::uint8_t col
     }
 }
 
-/// 두들 가운데 픽셀에서 왼쪽 위 타일 좌표를 구한다.
+/// 두대드 가운데 픽셀에서 왼쪽 위 타일 좌표를 구한다.
 ///
-/// 칸 수가 짝수인 두들은 타일 경계에, 홀수인 두들은 타일 한가운데에 중심이
+/// 칸 수가 짝수인 두대드는 타일 경계에, 홀수인 두대드는 타일 한가운데에 중심이
 /// 온다. 두 경우를 섞어 쓰면 한 칸씩 밀린다.
 inline int doodadOriginTile(int centerPixel, int tileCount)
 {

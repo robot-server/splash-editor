@@ -123,6 +123,8 @@ class Cli:
         --in-place 는 옆에 먼저 쓰고 바꿔치기하므로, 쓰다 멈춰도 원본이
         남는다.
         """
+        if args and args[0] == "terrain":
+            self._tile_grid = None
         return self.run(*args, "--in-place", timeout=timeout)
 
     # --- 읽기 ---
@@ -190,7 +192,7 @@ class Cli:
         return [rows[k] for k in sorted(rows)]
 
     def doodad_catalogue(self) -> list[dict]:
-        """이 맵 타일셋의 두뎃 목록. (번호, 가로, 세로, 갈래)"""
+        """이 맵 타일셋의 두대드 목록. (번호, 가로, 세로, 갈래)"""
         out = self.run("doodad", "list", self.path, "--catalogue",
                        "--install", self.install)
         items = []
@@ -202,12 +204,12 @@ class Cli:
         return items
 
     def doodads(self) -> list[dict]:
-        """이 맵에 **놓여 있는** 두뎃. 목록 차례가 곧 `doodad remove` 번호다."""
+        """이 맵에 **놓여 있는** 두대드. 목록 차례가 곧 `doodad remove` 번호다."""
         out = self.run("doodad", "list", self.path, "--install", self.install)
         items = []
         for line in out.splitlines():
             m = re.match(r"^\s*(\d+)\s+\((\d+), *(\d+)\)\s+타일 "
-                         r"\((\d+), *(\d+)\)\s+두들 (\d+)", line)
+                         r"\((\d+), *(\d+)\)\s+두대드 (\d+)", line)
             if m:
                 items.append({"index": int(m.group(1)),
                               "x": int(m.group(4)), "y": int(m.group(5)),
@@ -290,19 +292,30 @@ class Cli:
             os.unlink(tmp)
 
     def place(self, unit: int | str, tile_x: int, tile_y: int, owner: int = 1,
-              sub_x: int = 0, sub_y: int = 0):
+              sub_x: int = 0, sub_y: int = 0, *, check: bool = True):
         """유닛을 놓는다. 좌표는 타일, sub_* 로 픽셀 단위 미세 조정.
 
         **맵 밖에 놓으면 게임이 튕긴다.** 생성기가 좌표를 한 칸 잘못
         잡는 일은 흔한데 그 대가가 튕김이다. 여기서 막는다.
 
         놓으면 튕기는 유닛도 막는다 (포탑 더미 유닛 등).
+        지상 유닛·크리쳐는 걸을 수 있는 칸, 건물은 지을 수 있는 칸만 받는다.
+        건물은 겹쳐도 된다. 유닛은 최초 칸이 불법이면 가까운 합법 칸으로 옮긴다.
         """
         if isinstance(unit, str) and unit in CRASHING_UNITS:
             raise CliError(f"'{unit}' 은 배치하면 게임이 튕깁니다. "
                            f"놓지 않습니다.")
         info = self.info()
         w, h = info["width"], info["height"]
+        if check and isinstance(unit, str):
+            spot = self.nearest_legal(unit, tile_x, tile_y, w, h)
+            if spot is None and unit != "Start Location":
+                self.stamp_footprint(unit, tile_x, tile_y)
+                spot = self.nearest_legal(unit, tile_x, tile_y, w, h)
+            if spot is None:
+                raise CliError(f"{unit} 을 ({tile_x},{tile_y}) 근처에 "
+                               f"합법 지형으로 놓지 못했습니다.")
+            tile_x, tile_y = spot
         if not (0 <= tile_x < w and 0 <= tile_y < h):
             raise CliError(f"맵 밖에 유닛을 놓으려 했습니다: "
                            f"({tile_x},{tile_y}) — 맵은 {w}x{h} 입니다. "
@@ -310,6 +323,126 @@ class Cli:
         self.edit("unit", "place", self.path, str(unit),
                   str(tile_x * TILE + sub_x), str(tile_y * TILE + sub_y),
                   "--owner", str(owner))
+
+    def _role_table(self) -> dict:
+        if getattr(self, "_roles", None) is None:
+            raw = json.loads(self.run("unit-stats", self.install, "--json"))
+            roles = {}
+            feet = {}
+            for row in raw.values():
+                name = row.get("name") or ""
+                group = int(row.get("staredit_group") or 0)
+                if name.startswith("Mineral Field") or "Vespene" in name:
+                    role = "resource"
+                elif group & 0x10:
+                    role = "building"
+                elif row.get("flyer"):
+                    role = "air"
+                else:
+                    role = "ground"
+                roles[name] = role
+                feet[name] = unit_footprint(
+                    name, role, int(row.get("place_w") or 0),
+                    int(row.get("place_h") or 0))
+            self._roles = roles
+            self._feet = feet
+        return self._roles
+
+    def _prop_at(self, tx: int, ty: int):
+        if getattr(self, "_tile_props", None) is None:
+            info = self.info()
+            self._tile_props = tileset_tiles(self, info["tileset_id"])
+        grid = getattr(self, "_tile_grid", None)
+        if grid is None:
+            info = self.info()
+            grid = self.tiles(0, 0, info["width"], info["height"])
+            self._tile_grid = grid
+        if not grid or not (0 <= ty < len(grid) and 0 <= tx < len(grid[0])):
+            return None
+        return self._tile_props.get(grid[ty][tx])
+
+    def nearest_legal(self, unit: str, tile_x: int, tile_y: int,
+                      width: int, height: int):
+        """역할에 맞는 가장 가까운 칸. 없으면 None.
+
+        건물·자원은 발자국 전체가 같은 높이에서 걷고 지을 수 있어야 한다.
+        지상 유닛·크리쳐·비콘은 발자국이 걸을 수 있으면 된다. 스타팅은
+        한 칸만 보고, 불법이면 옮기지 않는다.
+        """
+        self._role_table()
+        role = self._roles.get(unit, "ground")
+        fw, fh = self._feet.get(unit, (1, 1))
+        if unit == "Start Location":
+            role, fw, fh = "ground", 1, 1
+
+        def ok(tx: int, ty: int) -> bool:
+            if role == "air":
+                return 0 <= tx < width and 0 <= ty < height
+            elev = None
+            for xx, yy in footprint_cells(tx, ty, fw, fh):
+                if not (0 <= xx < width and 0 <= yy < height):
+                    return False
+                p = self._prop_at(xx, yy)
+                if p is None or not p[1]:
+                    return False
+                if role in ("building", "resource") and not p[2]:
+                    return False
+                if role in ("building", "resource"):
+                    if elev is None:
+                        elev = p[0]
+                    elif p[0] != elev:
+                        return False
+            return True
+
+        if ok(tile_x, tile_y):
+            return tile_x, tile_y
+        if unit == "Start Location":
+            return None
+        for rad in range(1, 9):
+            for dy in range(-rad, rad + 1):
+                for dx in range(-rad, rad + 1):
+                    if max(abs(dx), abs(dy)) != rad:
+                        continue
+                    tx, ty = tile_x + dx, tile_y + dy
+                    if ok(tx, ty):
+                        return tx, ty
+        return None
+
+    def stamp_footprint(self, unit: str, tile_x: int, tile_y: int) -> None:
+        """그 칸의 발자국을 같은 높이의 건설 바닥으로 덮는다."""
+        self._role_table()
+        role = self._roles.get(unit, "ground")
+        if role == "air" or unit == "Start Location":
+            return
+        fw, fh = self._feet.get(unit, (1, 1))
+        cells = footprint_cells(tile_x, tile_y, fw, fh)
+        info = self.info()
+        width, height = info["width"], info["height"]
+        cells = [(x, y) for x, y in cells if 0 <= x < width and 0 <= y < height]
+        if not cells:
+            return
+        if getattr(self, "_tile_props", None) is None:
+            self._tile_props = tileset_tiles(self, info["tileset_id"])
+        center = self._prop_at(tile_x, tile_y)
+        elev = center[0] if center else 0
+        floor = solid_floor(self._tile_props, elev) or solid_floor(self._tile_props, 0)
+        if floor is None:
+            return
+        if getattr(self, "_tile_grid", None) is None:
+            self._tile_grid = self.tiles(0, 0, width, height)
+        x0 = min(x for x, _y in cells)
+        y0 = min(y for _x, y in cells)
+        x1 = max(x for x, _y in cells)
+        y1 = max(y for _x, y in cells)
+        wanted = set(cells)
+        rows = []
+        for y in range(y0, y1 + 1):
+            row = []
+            for x in range(x0, x1 + 1):
+                row.append(floor if (x, y) in wanted else self._tile_grid[y][x])
+            rows.append(row)
+        self.paste_tiles(x0, y0, rows)
+        self._tile_grid = None
 
     def set_resource(self, index: int, amount: int):
         self.edit("unit", "set", self.path, str(index), "--resource", str(amount))
@@ -463,12 +596,12 @@ def symmetric_points(x: float, y: float, symmetry: str, count: int,
 
 # --- 램프 ---
 #
-# **램프는 생타일이 아니라 두뎃이다.** 이걸 몰라서 세 번 틀렸다.
+# **램프는 생타일이 아니라 두대드다.** 이걸 몰라서 세 번 틀렸다.
 #
 #   1. 손으로 적은 표에 "기준 타일값 0x4a70" 처럼 적어 두었는데, 그
-#      값은 사실 **두뎃 번호**였다.
+#      값은 사실 **두대드 번호**였다.
 #   2. 한 세트에서 **행 오프셋만 바꿔** 네 방향에 붙였다. 방향마다
-#      아예 다른 두뎃을 써야 한다.
+#      아예 다른 두대드를 써야 한다.
 #   3. "Space·Desert·Ice·Twilight 는 램프가 없다" 고 적었다. 실은
 #      그 넷이 가장 많다 (Desert 166개, Space 136개).
 #
@@ -480,7 +613,7 @@ def symmetric_points(x: float, y: float, symmetry: str, count: int,
 
 
 def _ramp_table() -> dict:
-    """`data/ramps.json` — 타일셋마다 램프 두뎃과 그 방향."""
+    """`data/ramps.json` — 타일셋마다 램프 두대드와 그 방향."""
     global _RAMP_TABLE
     try:
         return _RAMP_TABLE
@@ -501,7 +634,7 @@ TILESET_NAMES = ("badlands", "space", "installation", "ashworld",
 
 
 def ramp_candidates(tileset_id: int, direction="down") -> list[dict]:
-    """그 타일셋·방향에서 쓸 **램프 두뎃** 목록. 실측 표에서 읽는다.
+    """그 타일셋·방향에서 쓸 **램프 두대드** 목록. 실측 표에서 읽는다.
 
     direction 은 "down"/"up"/"left"/"right" — **내려가는 쪽**이다. 옛
     코드를 위해 참/거짓도 받는다 (참이면 down).
@@ -530,7 +663,7 @@ def place_ramp(cli: Cli, tile_x: int, tile_y: int, doodad_id: int,
 
 
 def default_ramp(tileset_id: int):
-    """옛 이름. (두뎃번호, 가로, 세로) 또는 None."""
+    """옛 이름. (두대드번호, 가로, 세로) 또는 None."""
     entries = ramp_candidates(tileset_id, "down")
     if not entries:
         return None
@@ -608,46 +741,246 @@ def layout_resources(tile_x: int, tile_y: int, minerals: int, gas: int,
     return mins, gases
 
 
+def _pad_ok(grid, tiles, cells, elev) -> bool:
+    """칸이 모두 지도 안이고, 걷고 지을 수 있으며 높이가 elev 와 같은지."""
+    for tx, ty in cells:
+        p = _cell_prop(grid, tiles, tx, ty)
+        if p is None or p[0] != elev or not p[1] or not p[2]:
+            return False
+    return True
+
+
+def footprint_cells(tx: int, ty: int, w: int, h: int) -> list[tuple[int, int]]:
+    """중심 타일 기준 발자국. 가로·세로는 타일 수."""
+    cells = []
+    for yy in range(ty - h // 2, ty + (h + 1) // 2):
+        for xx in range(tx - w // 2, tx + (w + 1) // 2):
+            cells.append((xx, yy))
+    return cells
+
+
+def unit_footprint(name: str, role: str, place_w: int = 0,
+                   place_h: int = 0) -> tuple[int, int]:
+    """units.dat 배치 상자. 공중은 칸을 가리지 않는다."""
+    if role == "air":
+        return (1, 1)
+    if role == "resource":
+        return (4, 2) if "Vespene" in name else (2, 1)
+    if place_w >= 1 and place_h >= 1:
+        return (place_w, place_h)
+    return (1, 1)
+
+
+def townhall_rects(origin_x: int, origin_y: int) -> tuple[list, list]:
+    """4×3 기지와 오른쪽 2×2 애드온. 위쪽 정렬과 아래쪽 정렬."""
+    hall = [(origin_x + dx, origin_y + dy)
+            for dy in range(3) for dx in range(4)]
+    top = [(origin_x + 4 + dx, origin_y + dy)
+           for dy in range(2) for dx in range(2)]
+    bot = [(origin_x + 4 + dx, origin_y + 1 + dy)
+           for dy in range(2) for dx in range(2)]
+    return hall + top, hall + bot
+
+
+def find_townhall(prop_at, blocked, cx: int, cy: int,
+                  resource_cells, elev) -> list | None:
+    """군집 중심 근처에서 자원과 같은 높이의 기지·애드온 칸."""
+    for oy in range(-8, 9):
+        for ox in range(-8, 9):
+            origin_x, origin_y = cx + ox, cy + oy
+            hx, hy = origin_x + 1.5, origin_y + 1.0
+            if any(math.hypot(tx - hx, ty - hy) > 8 for tx, ty in resource_cells):
+                continue
+            for rect in townhall_rects(origin_x, origin_y):
+                if any(cell in blocked for cell in rect):
+                    continue
+                good = True
+                for x, y in rect:
+                    prop = prop_at(x, y)
+                    if prop is None or prop[0] != elev or not prop[1] or not prop[2]:
+                        good = False
+                        break
+                if good:
+                    return rect
+    return None
+
+
 def townhall_pad(grid, tiles, anchor_x: int, anchor_y: int,
                  resource_cells, width: int, height: int):
-    """커맨드·넥서스·해처리가 같이 들어가는 4×3.
+    """커맨드·넥서스·해처리 4×3 과 테란 애드온 2×2.
 
-    셋 다 4×3 이고, 일꾼이 붙으려면 자원과 **같은 높이**여야 한다.
-    Dirt 위에 미네랄을 두고 High Dirt 에 가스를 두면 기지가 한쪽에만
-    걸쳐 채집을 못 한다. 건물 칸에서 자원 칸까지 8타일 안이어야 한다.
+    셋 다 4×3 이고, 애드온은 그 오른쪽에 붙는다. 일꾼이 붙으려면 자원·
+    기지·애드온이 **같은 높이**여야 한다. 건물 칸에서 자원까지 8타일 안.
     """
     if grid is None:
         return anchor_x, anchor_y
+
+    def prop_at(tx, ty):
+        return _cell_prop(grid, tiles, tx, ty)
+
     elev = None
-    for (tx, ty) in resource_cells:
-        p = _cell_prop(grid, tiles, tx, ty)
-        # 기본 에디터는 짓기 비트가 없는 칸에 자원·건물을 안 놓는다.
-        # 걷기만 되면 캠페인 에디터 기준으로는 못 놓는 자리인데
-        # 여기선 놓이게 된다.
-        if p is None or not p[1] or not p[2]:
+    for tx, ty in resource_cells:
+        prop = prop_at(tx, ty)
+        if prop is None or not prop[1] or not prop[2]:
             return None
         if elev is None:
-            elev = p[0]
-        elif p[0] != elev:
+            elev = prop[0]
+        elif prop[0] != elev:
             return None
     blocked = set(resource_cells)
-    for oy in range(-8, 9):
-        for ox in range(-8, 9):
-            rect = [(anchor_x + ox + dx, anchor_y + oy + dy)
-                    for dy in range(3) for dx in range(4)]
-            if any(c in blocked or not (0 <= c[0] < width and 0 <= c[1] < height)
-                   for c in rect):
+
+    def bounded(tx, ty):
+        prop = prop_at(tx, ty) if 0 <= tx < width and 0 <= ty < height else None
+        return prop
+
+    rect = find_townhall(bounded, blocked, anchor_x, anchor_y, resource_cells, elev)
+    if rect is None:
+        return None
+    return min(x for x, _y in rect), min(y for _x, y in rect)
+
+
+def ray_gap_cells(origin: tuple[int, int], target: tuple[int, int],
+                  inner: int = 8, outer: int = 11, half_width: float = 1.05,
+                  extra: int = 4) -> list[tuple[int, int]]:
+    """자원 자리에서 다음 자원 자리로 향하는 고리 틈.
+
+    틈은 그 방향의 띠만 남긴다. 길찾기가 절벽을 돌아 고리 옆을 길게
+    여는 일을 막는다. extra 만큼 고리 밖까지 이어 바로 앞 절벽을 넘는다.
+    """
+    ox, oy = origin
+    vx, vy = target[0] - ox, target[1] - oy
+    length = math.hypot(vx, vy) or 1.0
+    ux, uy = vx / length, vy / length
+    px, py = -uy, ux
+    reach = outer + extra
+    cells = []
+    for y in range(oy - reach, oy + reach + 1):
+        for x in range(ox - reach, ox + reach + 1):
+            dx, dy = x - ox, y - oy
+            dist = max(abs(dx), abs(dy))
+            if dist < inner or dist > reach:
                 continue
-            if any((_cell_prop(grid, tiles, tx, ty) or (None, 0, 0))[0] != elev
-                   or not (_cell_prop(grid, tiles, tx, ty) or (0, 0, 0))[1]
-                   or not (_cell_prop(grid, tiles, tx, ty) or (0, 0, 0))[2]
-                   for tx, ty in rect):
+            along = dx * ux + dy * uy
+            across = abs(dx * px + dy * py)
+            if along > 0 and across <= half_width:
+                cells.append((x, y))
+    return cells
+
+
+def segment_corridor(ax: int, ay: int, bx: int, by: int,
+                     half: int = 1) -> list[tuple[int, int]]:
+    """두 점을 잇는 띠. half 1 이면 폭이 약 3칸이다."""
+    steps = max(abs(bx - ax), abs(by - ay), 1)
+    vx, vy = bx - ax, by - ay
+    length = math.hypot(vx, vy) or 1.0
+    px, py = -vy / length, vx / length
+    cells = []
+    seen = set()
+    for i in range(steps + 1):
+        x = ax + (bx - ax) * i / steps
+        y = ay + (by - ay) * i / steps
+        for k in range(-half, half + 1):
+            cx = int(round(x + px * k))
+            cy = int(round(y + py * k))
+            if (cx, cy) in seen:
                 continue
-            cx = anchor_x + ox + 1.5
-            cy = anchor_y + oy + 1.0
-            if all(math.hypot(tx - cx, ty - cy) <= 8 for tx, ty in resource_cells):
-                return anchor_x + ox, anchor_y + oy
-    return None
+            seen.add((cx, cy))
+            cells.append((cx, cy))
+    return cells
+
+
+def reopen_cells(pre_walk, changed, path) -> list[tuple[int, int]]:
+    """고리로 막힌 원래 길을 한 칸 여유만 다시 연다."""
+    if not pre_walk or not pre_walk[0]:
+        return []
+    height, width = len(pre_walk), len(pre_walk[0])
+    out = []
+    seen = set()
+    for x, y in path:
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                nx, ny = x + dx, y + dy
+                if not (0 <= ny < height and 0 <= nx < width):
+                    continue
+                if not pre_walk[ny][nx] or (nx, ny) not in changed:
+                    continue
+                if (nx, ny) in seen:
+                    continue
+                seen.add((nx, ny))
+                out.append((nx, ny))
+    return out
+
+
+def ring_wall_cells(width: int, height: int, sites, door, protected,
+                    inner: int = 8, outer: int = 11) -> list[tuple[int, int]]:
+    """자원 자리 고리에서 입구와 이미 놓인 발자국을 뺀 칸."""
+    door = door or set()
+    protected = protected or set()
+    cells = []
+    for sx, sy in sites:
+        y0 = max(1, sy - outer)
+        y1 = min(height - 1, sy + outer + 1)
+        x0 = max(1, sx - outer)
+        x1 = min(width - 1, sx + outer + 1)
+        for y in range(y0, y1):
+            for x in range(x0, x1):
+                dist = max(abs(x - sx), abs(y - sy))
+                if dist < inner or dist > outer:
+                    continue
+                if (x, y) in door or (x, y) in protected:
+                    continue
+                cells.append((x, y))
+    return cells
+
+
+def solid_floor(props: dict, elev: int = 0) -> int | None:
+    """같은 높이에서 걷고 지을 수 있는 타일 중 가장 흔한 무리의 기본 칸."""
+    def collect(full_mask: bool) -> dict[int, list[int]]:
+        groups: dict[int, list[int]] = {}
+        for tid, prop in props.items():
+            if not prop or len(prop) < 5:
+                continue
+            if prop[0] != elev or not prop[1] or not prop[2] or prop[3]:
+                continue
+            if full_mask and prop[4] != 0xFFFF:
+                continue
+            groups.setdefault(tid >> 4, []).append(tid)
+        return groups
+
+    groups = collect(True) or collect(False)
+    if not groups:
+        return None
+    best = max(groups, key=lambda group: (len(groups[group]), -group))
+    return min(groups[best])
+
+
+def solid_blocker(props: dict) -> int | None:
+    """걷기 마스크가 0인 타일 중, 같은 무리로 가장 많이 깔린 것."""
+    groups: dict[int, list[int]] = {}
+    for tid, prop in props.items():
+        if not prop or len(prop) < 5:
+            continue
+        if prop[1] or prop[2] or prop[3] or prop[4]:
+            continue
+        groups.setdefault(tid >> 4, []).append(tid)
+    if not groups:
+        return None
+    best = max(groups, key=lambda group: (len(groups[group]), -group))
+    return min(groups[best])
+
+
+def blocked_mini_pct(grid, props: dict) -> float:
+    """미니타일 기준 못 걷는 비율. 표에 없는 타일은 못 걷는 칸으로 센다."""
+    if not grid or not grid[0]:
+        return 0.0
+    blocked = 0
+    total = len(grid) * len(grid[0]) * 16
+    for row in grid:
+        for tid in row:
+            prop = props.get(tid)
+            mask = prop[4] if prop and len(prop) > 4 else 0
+            blocked += 16 - bin(mask & 0xFFFF).count("1")
+    return 100.0 * blocked / max(1, total)
 
 
 def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
@@ -686,12 +1019,17 @@ def place_base(cli: Cli, tile_x: int, tile_y: int, owner: int,
         if grid is None:
             return True
         tx, ty = px_x // TILE, px_y // TILE
+        elev = None
         for yy in range(ty - h // 2, ty + (h + 1) // 2):
             for xx in range(tx - w // 2, tx + (w + 1) // 2):
                 if not (0 <= yy < len(grid) and 0 <= xx < len(grid[0])):
                     return False
                 p = tiles.get(grid[yy][xx])
-                if p is None or not p[1] or not p[2]:   # 걷기·짓기
+                if p is None or not p[1] or not p[2]:
+                    return False
+                if elev is None:
+                    elev = p[0]
+                elif p[0] != elev:
                     return False
         return True
     if start_location:
@@ -842,6 +1180,65 @@ def set_all_resources(cli: Cli, mineral_amount: int = MINERAL_AMOUNT,
     return changed
 
 
+def place_price_mineral(cli: Cli, tile_x: int, tile_y: int, cost: int) -> bool:
+    """비콘 옆에 가격만큼의 미네랄을 놓는다. 자리가 없으면 False."""
+    spot = cli.nearest_legal("Mineral Field (Type 1)", tile_x, tile_y,
+                             cli.info()["width"], cli.info()["height"])
+    if spot is None:
+        return False
+    tx, ty = spot
+    cli.place("Mineral Field (Type 1)", tx, ty, owner=12, check=True)
+    px, py = tx * TILE, ty * TILE
+    for unit in cli.units():
+        if "Mineral Field" in unit["type_name"] and abs(unit["x"] - px) <= 16 and abs(unit["y"] - py) <= 16:
+            cli.set_resource(unit["index"], int(cost))
+            return True
+    return False
+
+
+def priced_name(name: str, cost: int) -> str:
+    """표시 이름에 가격을 붙인다. 따옴표는 트리거를 깨므로 넣지 않는다."""
+    text = f"{name} {int(cost)}광물"
+    return text.replace('"', "").replace("\n", " ")
+
+
+_CREATE_RE = re.compile(
+    r'Create Unit(?: with Properties)?\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*(\d+)\s*,\s*"([^"]+)"'
+)
+
+
+def assert_create_targets(cli: Cli) -> None:
+    """트리거가 유닛을 만드는 로케이션 중심에 그 유닛이 설 땅이 있는지."""
+    text = cli.trigger_text()
+    raw = cli.run("location", "list", cli.path)
+    locs = {}
+    for line in raw.splitlines():
+        m = re.match(
+            r"\s*\d+\s+\((-?\d+),\s*(-?\d+)\)\s*-\s*\((-?\d+),\s*(-?\d+)\)\s+\([^)]*\)\s+(.*)$",
+            line)
+        if m:
+            left, top, right, bottom = (int(m.group(i)) for i in range(1, 5))
+            locs[m.group(5).strip()] = (left, top, right, bottom)
+    bad = []
+    info = cli.info()
+    width, height = info["width"], info["height"]
+    for owner, unit, _count, loc in _CREATE_RE.findall(text):
+        box = locs.get(loc)
+        if box is None:
+            bad.append(f"{unit}@{loc} 로케이션 없음")
+            continue
+        left, top, right, bottom = box
+        tx = ((left + right) // 2) // TILE
+        ty = ((top + bottom) // 2) // TILE
+        if cli.nearest_legal(unit, tx, ty, width, height) != (tx, ty):
+            cli.stamp_footprint(unit, tx, ty)
+        if cli.nearest_legal(unit, tx, ty, width, height) != (tx, ty):
+            bad.append(f"{unit}@{loc} 중심 ({tx},{ty})")
+    if bad:
+        raise CliError("트리거 생성 위치가 지형 검사를 통과하지 못했습니다: "
+                       + ", ".join(bad[:4]))
+
+
 if __name__ == "__main__":
     # 손으로 확인할 때 쓴다.
     print("splash-cli :", find_cli())
@@ -940,7 +1337,7 @@ def find_elevation_edge(cli: Cli, tileset_id: int, tx: int, y_from: int, y_to: i
 def place_ramp_checked(cli: Cli, tileset_id: int, edge: int, fixed: int,
                        high_point, low_point, direction: str = "down",
                        candidates=None, shifts=range(-7, 8)):
-    """램프 두뎃을 놓고 **실제로 걸어서 통하는지** 확인한다. 안 되면 뺀다.
+    """램프 두대드를 놓고 **실제로 걸어서 통하는지** 확인한다. 안 되면 뺀다.
 
     direction 은 **내려가는 쪽**이다. down/up 이면 `edge` 는 고지대가
     끝나는 **줄**이고 `fixed` 는 가로 자리, left/right 면 `edge` 가
@@ -978,7 +1375,7 @@ def place_ramp_checked(cli: Cli, tileset_id: int, edge: int, fixed: int,
             seen.add((x, y, did))
 
             try:
-                # 두뎃은 가운데 기준이다. 왼위를 가운데로 옮겨 넘긴다.
+                # 두대드는 가운데 기준이다. 왼위를 가운데로 옮겨 넘긴다.
                 cx, cy = doodad_anchor(x, y, w, h)
                 if not cli.doodad_fits(did, cx, cy):
                     continue
@@ -994,7 +1391,7 @@ def place_ramp_checked(cli: Cli, tileset_id: int, edge: int, fixed: int,
             if a_ and b_ and walk_reachable(grid, a_, b_):
                 return did, x, y
 
-            # 안 통하면 두뎃 항목과 타일을 함께 되돌린다. 두뎃만 빼면
+            # 안 통하면 두대드 항목과 타일을 함께 되돌린다. 두대드만 빼면
             # 지형이 남고, 타일만 되돌리면 DD2 에 유령이 남는다.
             n_after = len(cli.doodads())
             if n_after > n_before:
@@ -1348,7 +1745,7 @@ class Palette:
         for g in order:
             # 그룹 0 은 검은 칸. 그룹 1 은 어느 타일셋에서나 같은 갈회색
             # 이 나오는 빈 자리용이다 — 바닥으로 쓰면 안 된다.
-            # 1024 부터는 두뎃 밑그림이라 통짜로 깔면 깨져 보인다.
+            # 1024 부터는 두대드 밑그림이라 통짜로 깔면 깨져 보인다.
             if g <= 1 or g >= 1024:
                 continue
             w = variants(g, True, 4)
@@ -1991,41 +2388,41 @@ def terrain_types_table(tileset_id: int) -> dict:
 
 
 def group_terrain_name(tileset_id: int) -> dict[int, str]:
-    """타일 그룹 → 지형 종류 이름. 두뎃 갈래와 짝지을 때 쓴다."""
+    """타일 그룹 → 지형 종류 이름. 두대드 갈래와 짝지을 때 쓴다."""
     out = {}
     for name, v in terrain_types_table(tileset_id).items():
         for g in v.get("groups", []):
             out.setdefault(int(g), name)
     return out
 
-# ------------------------------------------------------------ 두뎃 꾸미기
+# ------------------------------------------------------------ 두대드 꾸미기
 #
 # **왜 있는가.** 만든 유즈맵을 실제 인기 맵과 나란히 그려 보니, 실제
 # 맵의 방은 테두리에 바위·잔해가 둘려 있어 "방" 으로 읽혔다. 내 방은
-# 맨바닥이었다. 앞서 실측 표에 "유즈맵 두뎃 0개" 라고 적어 두었는데
-# **그건 DD2 섹션만 센 것**이었다. 에디터에서 놓은 두뎃은 저장할 때
+# 맨바닥이었다. 앞서 실측 표에 "유즈맵 두대드 0개" 라고 적어 두었는데
+# **그건 DD2 섹션만 센 것**이었다. 에디터에서 놓은 두대드는 저장할 때
 # 지형(MTXM)으로 눌러 담기므로 DD2 가 비어 있어도 타일에는 남는다.
 #
-# 다시 세어 보니 (내려받기 상위 유즈맵 76장, 두뎃 타일 = 그룹 1024 이상):
+# 다시 세어 보니 (내려받기 상위 유즈맵 76장, 두대드 타일 = 그룹 1024 이상):
 #
-#     두뎃 타일을 쓴 맵            70/76 = **92%**
-#     두뎃 칸 수                   중앙 **868칸** (사분위 398~3640)
+#     두대드 타일을 쓴 맵            70/76 = **92%**
+#     두대드 칸 수                   중앙 **868칸** (사분위 398~3640)
 #     걷기 경계 두 칸 안에 놓인 것  중앙 **89%** (아무 칸이나면 54%)
 #
-# 두뎃은 **경계에 몰려 있다.** 방 테두리를 꾸미는 것이 맞다.
+# 두대드는 **경계에 몰려 있다.** 방 테두리를 꾸미는 것이 맞다.
 #
-# **두뎃은 길을 막을 수 있다.** 바위를 방 가운데 놓으면 동선이 끊긴다.
+# **두대드는 길을 막을 수 있다.** 바위를 방 가운데 놓으면 동선이 끊긴다.
 # 그래서 놓은 뒤 미니타일 길찾기로 **연결이 그대로인지 확인하고**, 깨지면
 # 되돌려 성기게 다시 놓는다. 눈으로 좋아 보이려고 맵을 망가뜨리지 않는다.
 
 DECOR_SKIP_KINDS = ("Bridges", "Cliff", "Water", "Coastal")
 
 
-# 두뎃은 **가운데를 기준으로** 놓인다. `doodad place x y` 의 (x, y) 는
-# 왼위가 아니라 한가운데다 — 6x6 두뎃을 (20,20) 에 놓으면 (17,17)~(22,22)
+# 두대드는 **가운데를 기준으로** 놓인다. `doodad place x y` 의 (x, y) 는
+# 왼위가 아니라 한가운데다 — 6x6 두대드를 (20,20) 에 놓으면 (17,17)~(22,22)
 # 를 덮는다. 실제로 찍어 보고 확인했다.
 #
-# 앞서 이걸 왼위로 알고 썼다. 모든 두뎃이 제 크기의 절반만큼 밀려 놓여
+# 앞서 이걸 왼위로 알고 썼다. 모든 두대드가 제 크기의 절반만큼 밀려 놓여
 # 방 테두리를 뚫거나 벽 위에 얹혔다.
 
 def doodad_anchor(tile_x: int, tile_y: int, w: int, h: int) -> tuple[int, int]:
@@ -2040,7 +2437,7 @@ def doodad_topleft(center_x: int, center_y: int, w: int, h: int) -> tuple[int, i
 
 def place_doodad(cli: Cli, doodad_id: int, tile_x: int, tile_y: int,
                  w: int, h: int, owner: int | None = None):
-    """**왼위 좌표로** 두뎃을 놓는다. 가운데 변환을 여기서 한다."""
+    """**왼위 좌표로** 두대드를 놓는다. 가운데 변환을 여기서 한다."""
     cx, cy = doodad_anchor(tile_x, tile_y, w, h)
     args = ["doodad", "place", cli.path, str(doodad_id), str(cx), str(cy)]
     if owner is not None:
@@ -2052,10 +2449,10 @@ _DOODAD_WALK: dict | None = None
 
 
 def doodad_walk_table(tileset_id: int) -> dict[int, dict]:
-    """두뎃 번호 → 크기·갈래·**걷기를 막는가**.
+    """두대드 번호 → 크기·갈래·**걷기를 막는가**.
 
     `measure_doodads.py` 가 만든 `data/doodad-walk.json` 을 읽는다.
-    타일셋마다 두뎃 240~320종 중 걷기를 안 막는 것이 160~235종이다
+    타일셋마다 두대드 240~320종 중 걷기를 안 막는 것이 160~235종이다
     (Badlands 246종 중 188종). 막는 것을 걸러 쓰면 놓고 나서 길찾기로
     되돌릴 일이 없다 — 그렇게 하던 판은 밀도를 못 올려 실측의 15분의 1
     (48칸 대 중앙 868칸) 에서 멈췄고 맵 하나에 1분이 넘게 걸렸다.
@@ -2119,7 +2516,7 @@ def decorate_rim(cli: Cli, tileset_id: int, rooms, rng,
                  keep_clear=(), band: int = 3, density: float = 0.55,
                  max_area: int = 12, tries: int = 4,
                  want_tiles: int | None = 400, inset: int = 2) -> int:
-    """방 테두리 안쪽 띠에 작은 두뎃을 흩는다.
+    """방 테두리 안쪽 띠에 작은 두대드를 흩는다.
 
     `rooms` 는 방 네모 `(x, y, w, h)` 목록, `keep_clear` 는 건드리면 안 되는
     네모 목록(유닛 무리·비콘 발판·상점 자리)이다.
@@ -2128,16 +2525,16 @@ def decorate_rim(cli: Cli, tileset_id: int, rooms, rng,
     "이어져 있어야 하는 점" 으로 잡고, 놓기 전과 같은 덩이에 있는지 본다.
     깨지면 되돌리고 밀도를 반으로 줄여 다시 한다.
 
-    `want_tiles` 는 채우고 싶은 두뎃 **칸** 수다 (실측 중앙 868칸,
+    `want_tiles` 는 채우고 싶은 두대드 **칸** 수다 (실측 중앙 868칸,
     사분위 398~3640). 처음에 density 0.18·band 2 로 했더니 60칸이 나와
     실측의 15분의 1 이었다 — 눈으로도 티가 안 났다. 자리가 모자라면
     밀도를 올려 가며 채운다.
 
-    돌려주는 것은 실제로 놓인 두뎃 개수다.
+    돌려주는 것은 실제로 놓인 두대드 개수다.
     """
     import shutil
 
-    # **걷기를 막는 두뎃은 아예 쓰지 않는다.** 표가 없으면 옛 방식으로
+    # **걷기를 막는 두대드는 아예 쓰지 않는다.** 표가 없으면 옛 방식으로
     # 물러서지만, 그때는 밀도를 못 올린다.
     safe = doodad_walk_table(tileset_id)
     cat = [d for d in cli.doodad_catalogue()
@@ -2148,8 +2545,8 @@ def decorate_rim(cli: Cli, tileset_id: int, rooms, rng,
     if not cat or not rooms:
         return 0
 
-    # **두뎃 갈래는 지형 종류 이름과 같다.** High Dirt 바닥에는 갈래가
-    # "High Dirt" 인 두뎃을 놓아야 한다. Dirt 두뎃을 올리면 안 어울린다 —
+    # **두대드 갈래는 지형 종류 이름과 같다.** High Dirt 바닥에는 갈래가
+    # "High Dirt" 인 두대드를 놓아야 한다. Dirt 두대드를 올리면 안 어울린다 —
     # 실제로 그렇게 만들어 지적받았다. 갈래별로 나눠 두고, 놓을 자리
     # 밑의 타일 그룹이 무슨 지형인지 보고 고른다.
     by_kind: dict[str, list[dict]] = {}
@@ -2189,10 +2586,10 @@ def decorate_rim(cli: Cli, tileset_id: int, rooms, rng,
         for attempt in range(tries):
             spots = []
             for (x, y, w, h) in rooms:
-                # **테두리 바로 위에 놓으면 벽을 뚫는다.** 두뎃은 밑에
+                # **테두리 바로 위에 놓으면 벽을 뚫는다.** 두대드는 밑에
                 # 무엇이 있든 제 타일을 써 버리므로, 방 테두리에 걸치면
-                # 못 걷던 벽 칸이 걷는 두뎃 바닥으로 바뀌어 **방에 구멍이
-                # 난다.** 실제로 그렇게 해서 연결 검사가 떨어졌고 두뎃이
+                # 못 걷던 벽 칸이 걷는 두대드 바닥으로 바뀌어 **방에 구멍이
+                # 난다.** 실제로 그렇게 해서 연결 검사가 떨어졌고 두대드가
                 # 하나도 안 놓였다. `inset` 만큼 안으로 물린다.
                 x0, y0 = x + inset, y + inset
                 x1, y1 = x + w - inset, y + h - inset
@@ -2208,7 +2605,7 @@ def decorate_rim(cli: Cli, tileset_id: int, rooms, rng,
                 for (tx, ty) in edge[:want]:
                     pool = by_kind.get(kind_here(tx, ty) or "") or []
                     if not pool:
-                        continue          # 그 지형에 맞는 두뎃이 없으면 안 놓는다
+                        continue          # 그 지형에 맞는 두대드가 없으면 안 놓는다
                     d = rng.choice(pool)
                     if tx + d["w"] > x1 or ty + d["h"] > y1:
                         continue
@@ -2216,9 +2613,9 @@ def decorate_rim(cli: Cli, tileset_id: int, rooms, rng,
                         continue
                     spots.append((d["id"], tx, ty, d["w"], d["h"]))
             rng.shuffle(spots)
-            # **두뎃끼리 겹치면 안 된다.** 겹쳐 놓으면 앞의 두뎃 타일이
+            # **두대드끼리 겹치면 안 된다.** 겹쳐 놓으면 앞의 두대드 타일이
             # 반만 덮여 조각이 남고, 그 조각이 못 걷는 타일이라 길이
-            # 막힌다. 낱개로는 다 안전한 두뎃인데 117개를 섞어 놓으니
+            # 막힌다. 낱개로는 다 안전한 두대드인데 117개를 섞어 놓으니
             # 연결 검사가 떨어졌다 — 자리 순서대로 놓았을 때는 우연히
             # 안 겹쳐 통과했고, 섞고 나서야 드러났다.
             taken: list[tuple[int, int, int, int]] = []
@@ -2244,10 +2641,10 @@ def decorate_rim(cli: Cli, tileset_id: int, rooms, rng,
                     taken.append((tx, ty, dw, dh))
                 except CliError:
                     pass
-            # **DD2 항목을 지우고 지형만 남긴다.** 실제 맵의 두뎃은
+            # **DD2 항목을 지우고 지형만 남긴다.** 실제 맵의 두대드는
             # 저장할 때 지형으로 눌러 담겨 DD2 가 비어 있다 (실측 DD2
             # 중앙 0~18개, 타일은 868칸). 항목을 남겨 두면 나중에
-            # `doodad check` 가 자리 어긋남을 잡거나 에디터가 두뎃을
+            # `doodad check` 가 자리 어긋남을 잡거나 에디터가 두대드를
             # 통째로 옮겨 지형을 되돌릴 수 있다.
             if placed:
                 try:

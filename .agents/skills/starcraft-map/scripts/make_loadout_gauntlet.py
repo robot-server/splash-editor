@@ -92,6 +92,7 @@ def build_triggers(cfg, humans, offers, waves, labels, enemy_player, system_play
         f'Set Deaths("Player {system_player}", "{stage_state}", Set To, 0)',
         f'Set Countdown Timer(Set To, {cfg["rules"]["battle_seconds"]})',
         f'Remove Unit At Location("Player 12", "{waves[0]["unit"]}", All, "{labels["enemy_spawn"]}")',
+        f'Set Deaths("Player {enemy_player}", "{waves[0]["unit"]}", Set To, 0)',
         f'Create Unit("Player {enemy_player}", "{waves[0]["unit"]}", {waves[0]["count"]}, "{labels["enemy_spawn"]}")',
         f'Order("Player {enemy_player}", "{waves[0]["unit"]}", "{labels["enemy_spawn"]}", "{labels["arena"]}", attack)']))
     for p in range(1,humans+1):
@@ -103,10 +104,11 @@ def build_triggers(cfg, humans, offers, waves, labels, enemy_player, system_play
             f'Display Text Message(Always Display, "{cfg["text"]["messages"]["battle_start"]}")']))
     for i,wave in enumerate(waves):
         conds=[f'Switch("{cfg["launch_switch"]}", set)',f'Deaths("Player {system_player}", "{stage_state}", Exactly, {i})',
-               f'Command("Player {enemy_player}", "{wave["unit"]}", At most, 0)']
+               f'Deaths("Player {enemy_player}", "{wave["unit"]}", At least, {wave["count"]})']
         if i+1<len(waves):
             nxt=waves[i+1]
             actions=[f'Set Deaths("Player {system_player}", "{stage_state}", Set To, {i+1})',
+                     f'Set Deaths("Player {enemy_player}", "{nxt["unit"]}", Set To, 0)',
                      f'Create Unit("Player {enemy_player}", "{nxt["unit"]}", {nxt["count"]}, "{labels["enemy_spawn"]}")',
                      f'Order("Player {enemy_player}", "{nxt["unit"]}", "{labels["enemy_spawn"]}", "{labels["arena"]}", attack)']
             blocks.append(trig(f'"Player {system_player}"',conds,actions))
@@ -170,8 +172,8 @@ def main(argv=None):
         for key in ("unit", "marker"):
             if item[key] in reserved:
                 raise CliError(f"units.{key} must not reuse reserved counter/recruit unit {item[key]}")
-        for unit,name in ((item["unit"],item["unit_name"]),
-                          (item["marker"],item["marker_name"])):
+        for unit,name in ((item["unit"], scmap.priced_name(item["unit_name"], item["cost"])),
+                          (item["marker"], scmap.priced_name(item["marker_name"], item["cost"]))):
             if unit in custom_names and custom_names[unit] != name:
                 raise CliError(f"unit type {unit} is assigned conflicting map-wide display names")
             custom_names[unit]=name
@@ -246,14 +248,12 @@ def main(argv=None):
         scmap.pad(cli,pal,cx,cy,7,7)
         cli.place(draft_beacon_unit(cfg),cx,cy,owner=12)
         cli.place(offer["marker"],cx,cy-4,owner=12)
+        scmap.place_price_mineral(cli, cx + 2, cy - 4, offer["cost"])
     for p in range(humans):
         cli.place(cfg["units"]["home_marker"],HERO_XS[p],HERO_Y-2,owner=12)
     cli.place(scmap.START_LOCATION,64,103,owner=enemy_player)
-    # Keep the first enemy formation visibly staged but neutral until drafting
-    # closes. At launch the neutral preview is removed and a fresh P7 wave is
-    # created into the reserved, open spawn footprint.
-    for j in range(waves[0]["count"]):
-        cli.place(waves[0]["unit"], 54+(j%8)*2, 101+(j//8)*2, owner=12)
+    # 첫 무리는 전투 트리거가 만든다. 미리 놓으면 그 유닛의 죽음 수가
+    # 진행 변수와 겹친다.
 
     # Dress only room edges; keep units, purchase pads, and the center gate clear.
     keep_clear=[(u["x"]//32-2,u["y"]//32-2,5,5) for u in cli.units()]
@@ -266,6 +266,7 @@ def main(argv=None):
     cli.apply_triggers(scmap.TRIGGER_SEP.join(blocks))
     profile.apply_profile_metadata(cli,cfg,humans)
     print(f"\nCreated {a.out}: {humans} players, {len(offers)} draft offers, {len(waves)} waves, {len(blocks)} triggers")
+    scmap.assert_create_targets(cli)
     return 0
 
 

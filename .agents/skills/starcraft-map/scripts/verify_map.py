@@ -911,7 +911,7 @@ def check_basics(cli: Cli, m: dict) -> list[tuple[str, str]]:
                           f"길찾기 덩어리가 너무 많으면 게임이 맵을 아예 "
                           f"안 엽니다 — too many obstructions. 사각형으로 "
                           f"잘게 찍었을 때 걸립니다. 방과 통로를 크게 잡고 "
-                          f"두뎃을 흩뿌리지 마세요."))
+                          f"두대드를 흩뿌리지 마세요."))
     elif islands > 150:
         out.append(("? ", f"걷는 자리가 {islands}덩어리로 쪼개져 있습니다 "
                           f"(실측 중앙 31, 90%가 197 이하). 길찾기 덩어리가 "
@@ -1044,6 +1044,11 @@ def check_basics(cli: Cli, m: dict) -> list[tuple[str, str]]:
                              "지형이 거의 없는 벌판입니다."))
     except Exception as e:
         out.append(("?", f"지형을 못 쟀습니다: {e}"))
+
+    try:
+        out.extend(terrain_placement_findings(cli, m))
+    except Exception as e:
+        out.append(("?", f"배치 지형 검사를 못 했습니다: {e}"))
 
     return out
 
@@ -1190,6 +1195,424 @@ def check_race_balance(m: dict) -> list[tuple[str, str, str]]:
 _CLI = [None]
 
 
+def footprint_cells(tx: int, ty: int, w: int, h: int) -> list[tuple[int, int]]:
+    """유닛 중심 타일에서 발자국 칸. 미네랄 2×1, 가스 4×2 와 같다."""
+    return scmap.footprint_cells(tx, ty, w, h)
+
+
+def placement_faults(units: list[dict], prop_at) -> list[str]:
+    """놓인 유닛이 역할에 맞는 지형 위에 있는지.
+
+    units 항목은 name, tx, ty, role. 건물은 foot 이 있으면 그 발자국.
+    건물은 지을 수 있으면 겹침을 따지지 않는다. 지상 유닛·크리쳐·비콘은
+    발자국이 걸을 수 있어야 한다. 자원과 건물은 발자국 전체가 같은 높이의
+    건설 칸이어야 한다.
+    """
+    faults = []
+    for unit in units:
+        role = unit["role"]
+        tx, ty = unit["tx"], unit["ty"]
+        if role == "air":
+            continue
+        if role == "resource":
+            name = unit["name"]
+            w, h = (4, 2) if "Vespene" in name else (2, 1)
+        else:
+            w, h = unit.get("foot", (1, 1))
+        cells = footprint_cells(tx, ty, w, h)
+        props = []
+        bad = False
+        for xx, yy in cells:
+            prop = prop_at(xx, yy)
+            if prop is None:
+                faults.append(f"{unit['name']} ({tx},{ty}) 맵 밖")
+                bad = True
+                break
+            if role in ("resource", "building"):
+                if not prop[1] or not prop[2]:
+                    faults.append(f"{unit['name']} ({tx},{ty}) 건설 불가")
+                    bad = True
+                    break
+            elif not prop[1]:
+                faults.append(f"{unit['name']} ({tx},{ty}) 못 걷는 칸")
+                bad = True
+                break
+            props.append(prop)
+        if bad or role not in ("resource", "building"):
+            continue
+        if len({prop[0] for prop in props}) > 1:
+            faults.append(f"{unit['name']} ({tx},{ty}) 높이가 섞임")
+    return faults
+
+
+def melee_base_faults(clusters: list[list[dict]], prop_at) -> list[str]:
+    """본진·앞마당·멀티마다 미네랄, 가스, 같은 높이의 4×3 기지와 2×2 애드온."""
+    faults = []
+    for cluster in clusters:
+        names = " ".join(unit["name"] for unit in cluster)
+        has_min = any("Mineral" in unit["name"] for unit in cluster)
+        has_gas = any("Vespene" in unit["name"] for unit in cluster)
+        if not has_min or not has_gas:
+            faults.append(f"자원 자리에 미네랄과 가스가 함께 있지 않습니다 ({names[:40]})")
+            continue
+        elev = None
+        blocked = set()
+        for unit in cluster:
+            w, h = (4, 2) if "Vespene" in unit["name"] else (2, 1)
+            for cell in footprint_cells(unit["tx"], unit["ty"], w, h):
+                prop = prop_at(*cell)
+                blocked.add(cell)
+                if prop is None or not prop[1] or not prop[2]:
+                    faults.append("자원 칸이 건설 불능")
+                    elev = None
+                    break
+                if elev is None:
+                    elev = prop[0]
+                elif prop[0] != elev:
+                    faults.append("자원 높이가 섞임")
+                    elev = None
+                    break
+            if elev is None:
+                break
+        if elev is None:
+            continue
+        cells = []
+        for unit in cluster:
+            w, h = (4, 2) if "Vespene" in unit["name"] else (2, 1)
+            cells.extend(footprint_cells(unit["tx"], unit["ty"], w, h))
+        cx = sum(unit["tx"] for unit in cluster) // len(cluster)
+        cy = sum(unit["ty"] for unit in cluster) // len(cluster)
+        if scmap.find_townhall(prop_at, blocked, cx, cy, cells, elev) is None:
+            faults.append(f"({cx},{cy}) 근처에 같은 높이의 기지·애드온 자리가 없습니다")
+    return faults
+
+
+def choke_faults(walk: list[list[int]], sites: list[tuple[int, int]],
+                 lo: int = 4, hi: int = 110) -> list[str]:
+    """자원 자리 주변 고리 중 좁은 입구가 하나라도 있는지.
+
+    walk 는 타일 격자, 1 이 걸을 수 있음. 지도 밖은 벽으로 친다.
+    개활지는 어느 반지름에서도 고리가 넓다. 본진 쪽과 맵 쪽으로 입구가
+    하나씩 있어도 고리 전체가 이 폭 안이면 좁은 입구로 본다.
+    """
+    if not walk or not walk[0]:
+        return []
+    height, width = len(walk), len(walk[0])
+    faults = []
+    for cx, cy in sites:
+        saw = False
+        narrow = False
+        narrowest = None
+        for inner in range(6, 15):
+            outer = inner + 3
+            total = 0
+            count = 0
+            for y in range(cy - outer, cy + outer + 1):
+                for x in range(cx - outer, cx + outer + 1):
+                    dist = max(abs(x - cx), abs(y - cy))
+                    if not (inner <= dist <= outer):
+                        continue
+                    if not (0 <= y < height and 0 <= x < width):
+                        continue
+                    total += 1
+                    if walk[y][x]:
+                        count += 1
+            if total < 24:
+                continue
+            saw = True
+            narrowest = count if narrowest is None else min(narrowest, count)
+            if lo <= count <= hi:
+                narrow = True
+                break
+        if saw and not narrow:
+            faults.append(f"({cx},{cy}) 입구 폭 {narrowest}칸")
+    return faults
+
+
+def weapon_zero_faults(dat_damage: dict[int, int], map_damage: dict[int, int],
+                       any_custom: bool) -> list[str]:
+    """기본값을 끈 맵에서, 설치본 피해가 0이 아닌 무기가 맵에서 0이면 실패."""
+    if not any_custom:
+        return []
+    faults = []
+    for weapon, damage in dat_damage.items():
+        if damage > 0 and map_damage.get(weapon, 0) <= 0:
+            faults.append(f"무기 {weapon} 설치본 {damage} 맵 0")
+    return faults
+
+
+def _cmp_amount(op: str, have: int, need: int) -> bool:
+    if op == "At most":
+        return have <= need
+    if op == "At least":
+        return have >= need
+    if op == "Exactly":
+        return have == need
+    return False
+
+
+def initial_progress_faults(text: str, counts: dict[tuple[str, str], int]) -> list[str]:
+    """첫 트리거 통과에서 이미 승리·패배·단계 진행이 되는지.
+
+    배치된 유닛 수에서 시작한다. 죽음 수는 0, 스위치는 꺼짐, 경과·카운트는 0.
+    앞선 트리거가 맞으면 Set Deaths·Set Switch·Create Unit·Set Countdown 을
+    그 통과에 반영한 뒤 다음 트리거를 본다. Bring 이 있으면 그 트리거는
+    위치 없이 단정하지 않는다.
+    """
+    state_counts = dict(counts)
+    deaths: dict[tuple[str, str], int] = {}
+    switches: set[str] = set()
+    countdown = 0
+    faults = []
+    for block in re.split(r"//-{5,}(?:\r?\n)?", text):
+        cond = re.search(r"Conditions:\s*(.*?)\nActions:", block, re.S)
+        act = re.search(r"Actions:\s*(.*)", block, re.S)
+        if not cond or not act:
+            continue
+        lines = [ln.strip().rstrip(";") for ln in cond.group(1).splitlines() if ln.strip()]
+        if not lines:
+            continue
+        # 구분선 `//-----//` 의 끝 `//` 가 다음 트리거 앞에 남는다.
+        head = re.search(r"Trigger\(([^)]*)\)", block)
+        owners = []
+        if head:
+            owners = [part.strip().strip('"') for part in head.group(1).split(",") if part.strip()]
+        uses_current = any("Current Player" in line for line in lines)
+
+        def holds_for(current: str | None) -> tuple[bool, bool]:
+            known = True
+            holds = True
+            for line in lines:
+                if line == "Always()":
+                    continue
+                sw = re.match(r'Switch\("(?:Switch )?([^"]+)", (set|not set|clear)\)', line)
+                if sw:
+                    name = sw.group(1)
+                    is_set = name in switches
+                    holds = holds and (is_set if sw.group(2) == "set" else not is_set)
+                    continue
+                cd = re.match(r"Countdown Timer\((At most|At least|Exactly), (\d+)\)", line)
+                if cd:
+                    holds = holds and _cmp_amount(cd.group(1), countdown, int(cd.group(2)))
+                    continue
+                el = re.match(r"Elapsed Time\((At most|At least|Exactly), (\d+)\)", line)
+                if el:
+                    holds = holds and _cmp_amount(el.group(1), 0, int(el.group(2)))
+                    continue
+                death = re.match(
+                    r'Deaths\("([^"]+)", "([^"]+)", (At most|At least|Exactly), (\d+)\)', line)
+                if death:
+                    player = current if death.group(1) == "Current Player" else death.group(1)
+                    have = deaths.get((player, death.group(2)), 0)
+                    holds = holds and _cmp_amount(death.group(3), have, int(death.group(4)))
+                    continue
+                command = re.match(
+                    r'Command\("([^"]+)", "([^"]+)", (At most|At least|Exactly), (\d+)\)', line)
+                if command:
+                    player = current if command.group(1) == "Current Player" else command.group(1)
+                    have = state_counts.get((player, command.group(2)), 0)
+                    holds = holds and _cmp_amount(command.group(3), have, int(command.group(4)))
+                    continue
+                known = False
+                break
+            return known, holds
+
+        if uses_current:
+            if not owners or any(owner in ("All players", "All Players") for owner in owners):
+                candidates = sorted({player for player, _unit in state_counts}) or ["Player 1"]
+            else:
+                candidates = owners
+            known_holds = [holds_for(player) for player in candidates]
+            if not any(known and holds for known, holds in known_holds):
+                continue
+        else:
+            known, holds = holds_for(None)
+            if not known or not holds:
+                continue
+        actions = act.group(1)
+        if "Victory()" in actions or "Defeat()" in actions:
+            who = re.search(r"Trigger\(([^)]*)\)", block)
+            faults.append(who.group(1).strip() if who else "trigger")
+        if uses_current:
+            acted = [player for player, (known, held) in zip(candidates, known_holds)
+                     if known and held]
+        else:
+            acted = [owner for owner in owners if owner.startswith("Player ")]
+        for owner, unit, amount in re.findall(
+                r'Set Deaths\("([^"]+)", "([^"]+)", Set To, (\d+)\)', actions):
+            targets = acted if owner == "Current Player" else [owner]
+            for player in targets:
+                deaths[(player, unit)] = int(amount)
+        for name in re.findall(r'Set Switch\("(?:Switch )?([^"]+)", set\)', actions):
+            switches.add(name)
+        for owner, unit, amount, _loc in re.findall(
+                r'Create Unit(?: with Properties)?\("([^"]+)", "([^"]+)", (\d+), "([^"]+)"\)',
+                actions):
+            key = (owner, unit)
+            state_counts[key] = state_counts.get(key, 0) + int(amount)
+        for amount in re.findall(r"Set Countdown Timer\(Set To, (\d+)\)", actions):
+            countdown = int(amount)
+    return faults
+
+
+def _unit_role(name: str, group: int, flyer: bool) -> str:
+    if name.startswith("Mineral Field") or "Vespene" in name:
+        return "resource"
+    if group & 0x10:
+        return "building"
+    if flyer:
+        return "air"
+    return "ground"
+
+
+def _load_roles(cli: Cli) -> tuple[dict[str, str], dict[str, tuple[int, int]]]:
+    raw = json.loads(cli.run("unit-stats", cli.install, "--json"))
+    roles = {}
+    feet = {}
+    for row in raw.values():
+        name = row["name"]
+        role = _unit_role(name, int(row.get("staredit_group") or 0), bool(row.get("flyer")))
+        roles[name] = role
+        feet[name] = scmap.unit_footprint(
+            name, role, int(row.get("place_w") or 0), int(row.get("place_h") or 0))
+    return roles, feet
+
+
+def terrain_placement_findings(cli: Cli, m: dict) -> list[tuple[str, str]]:
+    """자원·크리쳐·최초 유닛·건물 발자국과, 밀리 입구."""
+    out = []
+    roles, feet = _load_roles(cli)
+    props = scmap.tileset_tiles(cli, m["tileset_id"])
+    grid = cli.tiles(0, 0, m["width"], m["height"])
+
+    def prop_at(tx: int, ty: int):
+        if not (0 <= ty < len(grid) and 0 <= tx < len(grid[0])):
+            return None
+        return props.get(grid[ty][tx])
+
+    placed = []
+    resources = []
+    for unit in cli.units():
+        name = unit["type_name"]
+        if name == "Start Location":
+            continue
+        role = roles.get(name, "ground")
+        item = {"name": name, "tx": unit["x"] // 32, "ty": unit["y"] // 32,
+                "role": role, "foot": feet.get(name, (1, 1))}
+        placed.append(item)
+        if role == "resource":
+            resources.append(item)
+    faults = placement_faults(placed, prop_at)
+    if faults:
+        out.append(("!!", "불법 지형 위 배치 "
+                          + ", ".join(faults[:4])))
+    if classify(m) == "melee" and resources:
+        clusters = _resource_clusters(resources)
+        base = melee_base_faults(clusters, prop_at)
+        if base:
+            out.append(("!!", "기지 자리 " + ", ".join(base[:3])))
+        walk = [[1 if (prop_at(x, y) or (0, 0, 0))[1] else 0
+                 for x in range(m["width"])] for y in range(m["height"])]
+        sites = []
+        for cluster in clusters:
+            sites.append((sum(u["tx"] for u in cluster) // len(cluster),
+                          sum(u["ty"] for u in cluster) // len(cluster)))
+        chokes = choke_faults(walk, sites)
+        if chokes:
+            out.append(("!!", "좁은 입구가 아닙니다: " + ", ".join(chokes[:3])))
+    if classify(m) != "melee":
+        try:
+            text = cli.trigger_text()
+        except Exception:
+            text = ""
+        counts: dict[tuple[str, str], int] = {}
+        for unit in cli.units():
+            key = (f"Player {unit['owner']}", unit["type_name"])
+            counts[key] = counts.get(key, 0) + 1
+        progress = initial_progress_faults(text, counts)
+        if progress:
+            out.append(("!!", "시작 배치만으로 진행되는 트리거: "
+                              + ", ".join(progress[:3])))
+        weapon = _weapon_findings(cli)
+        if weapon:
+            out.append(("!!", "기본값을 끈 유닛의 공격력이 0입니다: "
+                              + ", ".join(weapon[:3])))
+        create = _create_location_faults(cli, text)
+        if create:
+            out.append(("!!", "트리거 생성 위치가 불법입니다: "
+                              + ", ".join(create[:3])))
+    return out
+
+
+def _resource_clusters(resources: list[dict]) -> list[list[dict]]:
+    left = list(resources)
+    clusters = []
+    while left:
+        group = [left.pop()]
+        changed = True
+        while changed:
+            changed = False
+            for unit in list(left):
+                # 한 본진의 미네랄·가스는 8칸 안이고, 옆 멀티는 그보다 떨어져 있다.
+                if any(max(abs(unit["tx"] - have["tx"]), abs(unit["ty"] - have["ty"])) <= 8
+                       for have in group):
+                    group.append(unit)
+                    left.remove(unit)
+                    changed = True
+        clusters.append(group)
+    return clusters
+
+
+def _weapon_findings(cli: Cli) -> list[str]:
+    try:
+        dumped = cli.run("unitdef", "weapons", cli.path)
+    except Exception:
+        return []
+    map_damage = {}
+    custom = False
+    for line in dumped.splitlines():
+        parts = line.split()
+        if len(parts) == 4 and parts[0] == "weapon":
+            map_damage[int(parts[1])] = int(parts[2])
+        elif len(parts) == 2 and parts[0] == "custom":
+            custom = True
+    if not custom:
+        return []
+    raw = json.loads(cli.run("unit-stats", cli.install, "--json"))
+    dat = {}
+    for row in raw.values():
+        for key, bonus in (("ground_weapon", "ground_damage"), ("air_weapon", "air_damage")):
+            weapon = int(row.get(key) or 130)
+            if weapon < 130:
+                dat[weapon] = max(dat.get(weapon, 0), int(row.get(bonus) or 0))
+    return weapon_zero_faults(dat, map_damage, True)
+
+
+def _create_location_faults(cli: Cli, text: str) -> list[str]:
+    raw = cli.run("location", "list", cli.path)
+    locs = {}
+    for line in raw.splitlines():
+        match = re.match(
+            r"\s*\d+\s+\((-?\d+),\s*(-?\d+)\)\s*-\s*\((-?\d+),\s*(-?\d+)\)\s+\([^)]*\)\s+(.*)$",
+            line)
+        if match:
+            box = tuple(int(match.group(i)) for i in range(1, 5))
+            locs[match.group(5).strip()] = box
+    info = cli.info()
+    bad = []
+    for _owner, unit, _count, loc in scmap._CREATE_RE.findall(text):
+        box = locs.get(loc)
+        if box is None:
+            bad.append(f"{unit}@{loc}")
+            continue
+        left, top, right, bottom = box
+        tx = ((left + right) // 2) // 32
+        ty = ((top + bottom) // 2) // 32
+        if cli.nearest_legal(unit, tx, ty, info["width"], info["height"]) != (tx, ty):
+            bad.append(f"{unit}@{loc}")
+    return bad
+
+
 def assess(snapshot: dict) -> list[tuple[str, str]]:
     """CLI 없이 구조 결함과 컨셉 보고를 가른다.
 
@@ -1224,6 +1647,15 @@ def assess(snapshot: dict) -> list[tuple[str, str]]:
     if snapshot.get("modify_unit_reversed"):
         out.append(("!!", "Modify Unit 인자 순서가 거꾸로입니다: "
                           f"{snapshot['modify_unit_reversed']}."))
+    if snapshot.get("illegal_placement"):
+        out.append(("!!", "불법 지형 위 배치: "
+                          f"{snapshot['illegal_placement']}."))
+    if snapshot.get("weapon_zero"):
+        out.append(("!!", "기본값을 끈 유닛의 공격력이 0입니다: "
+                          f"{snapshot['weapon_zero']}."))
+    if snapshot.get("initial_progress"):
+        out.append(("!!", "시작 배치만으로 진행되는 트리거: "
+                          f"{snapshot['initial_progress']}."))
 
     if snapshot.get("symmetric") is False:
         out.append(("?", "완전 대칭인 축이 없습니다."))

@@ -260,8 +260,9 @@ def main(argv=None):
     # (docs/chk/anatomy.md — 유즈맵은 업그레이드를 고친다).
     names={}
     for squad in cfg["squads"]:
-        for unit,name in ((squad["unit"],squad["unit_name"]),
-                          (squad["marker"],squad["marker_name"])):
+        cost = cfg["rules"]["buy_cost"]
+        for unit,name in ((squad["unit"], scmap.priced_name(squad["unit_name"], cost)),
+                          (squad["marker"], scmap.priced_name(squad["marker_name"], cost))):
             if unit in names and names[unit] != name:
                 raise CliError(f"유닛 타입 {unit} 에 서로 다른 맵 이름이 지정됐습니다")
             names[unit]=name
@@ -302,6 +303,7 @@ def main(argv=None):
             scmap.pad(cli, pal, bx, by, 3, 3)
             cli.place(cfg["units"]["purchase_beacon"],bx,by,owner=p)
             cli.place(squad["marker"],bx,by-3,owner=12)
+            scmap.place_price_mineral(cli, bx + 2, by - 1, cfg["rules"]["buy_cost"])
     # 싸움터 가운데 장애물 — 트인 벌판이면 컨트롤이 안 나온다
     for k in range(cfg["rules"]["obstacle_count"]):
         ang = 2 * math.pi * k / max(1,cfg["rules"]["obstacle_count"])
@@ -313,14 +315,14 @@ def main(argv=None):
     scmap.reveal_for_all(cli, a.players)
 
 
-    # 방 테두리 두뎃은 실제 보행·시야·배치 검증 뒤 선택한다.
-    # 두뎃 타일을 쓰고, 중앙 868칸이며 그 89%가 걷기 경계 두 칸 안에
+    # 방 테두리 두대드는 실제 보행·시야·배치 검증 뒤 선택한다.
+    # 두대드 타일을 쓰고, 중앙 868칸이며 그 89%가 걷기 경계 두 칸 안에
     # 몰려 있다. 내 맵은 0칸이었다 — 그림으로 보고서야 알았다.
-    # 걷기를 막는 두뎃은 `data/doodad-walk.json` 을 보고 걸러 낸다.
-    print("방 테두리를 두뎃으로 꾸밉니다...")
+    # 걷기를 막는 두대드는 `data/doodad-walk.json` 을 보고 걸러 낸다.
+    print("방 테두리를 두대드로 꾸밉니다...")
     _clear = [(u["x"] // 32 - 2, u["y"] // 32 - 2, 5, 5) for u in cli.units()]
     _nd = scmap.decorate_rim(cli, ts, [(px, py, POCKET, POCKET) for (px, py) in spots], rng, keep_clear=_clear)
-    print(f"  두뎃 {_nd}개")
+    print(f"  두대드 {_nd}개")
 
     print("트리거를 짭니다...")
     cli.apply_triggers(build_triggers(cfg,names))
@@ -330,6 +332,7 @@ def main(argv=None):
     print(f"\n만들었습니다: {a.out}")
     print(f"  {info['width']}x{info['height']} {info['tileset']} {info['version']}")
     print(f"  유닛 {info['units']}  트리거 {info['triggers']}")
+    scmap.assert_create_targets(cli)
     return 0
 
 

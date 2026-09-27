@@ -17,16 +17,16 @@
 짐작할 일이 아니었다. 게임이 이미 알고 있다 — `sc.h` 의 미니타일 표에
 `Ramp = BIT_4` 가 있고, `tileset-tiles` 가 그 표시를 그대로 내준다.
 
-## 램프는 두뎃이다
+## 램프는 두대드다
 
 처음에는 생타일 덩이로 보고 `(그룹, 서브)` 평면에서 잘라 내려 했는데
 **하나도 못 찾았다.** 램프 표시가 붙은 타일이 전부 그룹 1024 이상 —
-**두뎃 영역**이었다. 손으로 적어 둔 표의 바탕값 0x4a70 도 그룹 1191 이니
-애초에 두뎃 번호를 생타일처럼 쓰고 있었던 것이다.
+**두대드 영역**이었다. 손으로 적어 둔 표의 바탕값 0x4a70 도 그룹 1191 이니
+애초에 두대드 번호를 생타일처럼 쓰고 있었던 것이다.
 
 그래서 이렇게 찾는다:
 
-1. 두뎃을 평지에 하나씩 놓아 보고 **램프 표시 타일이 나오는 것**을
+1. 두대드를 평지에 하나씩 놓아 보고 **램프 표시 타일이 나오는 것**을
    후보로 고른다. Badlands 에서는 `Cliff` 와 `Structure Wall` 갈래다.
 2. 후보마다 네 방향을 다 시험한다. 한쪽을 고지대로 올리고 경계에 놓는다.
    현재 CLI `doodad place` 는 `DoodadPlacibility` 를 검사하지 않는다.
@@ -69,9 +69,9 @@ def ramp_direction(cli: Cli, d: dict, tiles: dict, tmp: str,
     """**램프칸이 고지대 덩이의 어느 쪽에 붙어 있나**로 방향을 읽는다.
 
     앞서 세 방법이 다 실패했다 (고도 무늬·통과 여부·CLI 거절). 되는 것은
-    이것이다: 두뎃을 평지에 놓고 제가 쓴 타일만 보면,
+    이것이다: 두대드를 평지에 놓고 제가 쓴 타일만 보면,
 
-        두뎃 340 (8x5)          두뎃 78 (6x6)
+        두대드 340 (8x5)          두대드 78 (6x6)
         000000R0                0000RR
         000000R0                000RRR
         000000R0                000RR0
@@ -80,7 +80,7 @@ def ramp_direction(cli: Cli, d: dict, tiles: dict, tmp: str,
     고지대 덩이(숫자)와 램프칸(R)이 나뉘어 있고, **R 이 놓인 쪽이 내려
     가는 쪽**이다. 340 은 오른쪽, 78 은 오른쪽 아래다.
 
-    두뎃 크기와 실제로 쓰는 칸이 다르다는 것도 여기서 드러난다 — 6x6
+    두대드 크기와 실제로 쓰는 칸이 다르다는 것도 여기서 드러난다 — 6x6
     이라고 적혀 있어도 3x3 만 쓰기도 한다.
     """
     import shutil
@@ -118,13 +118,13 @@ def walk_check(cli: Cli, doodad_id: int, w: int, h: int, tileset_id: int,
                tmp: str, base_path: str) -> bool:
     """**고지대에서 저지대로 걸어서 통하는가**를 실제로 본다.
 
-    이것이 없으면 "램프" 가 아니라 "램프 깃발이 선 칸이 있는 두뎃" 일
+    이것이 없으면 "램프" 가 아니라 "램프 깃발이 선 칸이 있는 두대드" 일
     뿐이다. 앞서 이 단계를 빠뜨리고도 출력에는 "통하는 램프" 라고
     찍었다 — 적대적 검토에서 잡혔다.
 
     **절벽은 ISOM 으로만 생긴다.** 처음에 `terrain fill` 로 고지대
-    타일을 깔았더니 걷는 칸이 65536/65536 — 절벽이 없어 두뎃 없이도
-    통했고, 그래서 모든 두뎃이 "안 통함" 으로 나왔다. ISOM 으로
+    타일을 깔았더니 걷는 칸이 65536/65536 — 절벽이 없어 두대드 없이도
+    통했고, 그래서 모든 두대드가 "안 통함" 으로 나왔다. ISOM 으로
     칠하니 64212/65536 이 되고 막힌다.
     """
     import shutil
@@ -140,7 +140,7 @@ def walk_check(cli: Cli, doodad_id: int, w: int, h: int, tileset_id: int,
         return bool(a_ and b_ and scmap.walk_reachable(g, a_, b_))
 
     if probe():
-        return False        # 두뎃 없이도 통하면 시험이 안 된다
+        return False        # 두대드 없이도 통하면 시험이 안 된다
     try:
         scmap.place_doodad(c, doodad_id, MAPW // 2, mid, w, h)
     except CliError:
@@ -172,7 +172,7 @@ def measure_one(tmp: str, ts: int, install: str, verbose=False) -> list[dict]:
     #
     # 처음에는 `ids["high"][0]` 하나로만 시험했다가 Ice·Twilight 이
     # 0개로 나왔다. Ice 는 첫 고지대가 `Outpost` 인데 `Cliff` 램프는
-    # Ice↔High Ice 에 붙는 것이라 안 통한 것이다. **두뎃 갈래 이름이
+    # Ice↔High Ice 에 붙는 것이라 안 통한 것이다. **두대드 갈래 이름이
     # 곧 지형 종류 이름**이므로 (docs/tileset/doodads.md) 갈래에 맞는
     # 지형부터 시험하고, 안 되면 나머지도 돌아본다.
     inv = {v: k for k, v in ids["names"].items()}
@@ -192,7 +192,7 @@ def measure_one(tmp: str, ts: int, install: str, verbose=False) -> list[dict]:
         if n == 0:
             continue
         if verbose:
-            print(f"    두뎃 {d['id']:4d} {d['w']}x{d['h']} {d['kind']:22s} "
+            print(f"    두대드 {d['id']:4d} {d['w']}x{d['h']} {d['kind']:22s} "
                   f"→ {direction:5s} (램프칸 {n})")
         walks, walks_with = None, None
         if walkbases:
@@ -238,7 +238,7 @@ def main(argv=None):
             by_dir = collections.Counter(f["dir"] for f in found)
             data[NAMES[ts]] = found
             n_walk = sum(1 for f in found if f.get("walks"))
-            print(f"    램프 깃발이 선 두뎃 {len(found)}개 "
+            print(f"    램프 깃발이 선 두대드 {len(found)}개 "
                   f"(시험 지형에서 국소 경로가 이어진 후보 {n_walk}개)  " +
                   (", ".join(f"{d} {n}" for d, n in sorted(by_dir.items()))
                    or "없음"))

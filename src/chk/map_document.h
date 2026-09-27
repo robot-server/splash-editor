@@ -340,22 +340,22 @@ public:
     /// 보호를 풀어 저장할 수 있게 만든다. 무엇을 고쳤는지 알려 준다.
     bool unprotect(std::string * report = nullptr);
 
-    // --- 두들 (DD2) ---
+    // --- 두대드 (DD2) ---
 
-    /// 맵에 놓인 두들. 편집할 때마다 다시 읽어 두고 그대로 돌려준다.
+    /// 맵에 놓인 두대드. 편집할 때마다 다시 읽어 두고 그대로 돌려준다.
     const std::vector<io::MapArchive::RawDoodad> & doodads() const;
     bool placeDoodad(const io::GameGraphics & graphics, std::uint16_t doodadId,
                      int tileX, int tileY, std::uint8_t owner = 0);
     bool removeDoodad(const io::GameGraphics & graphics, std::size_t index);
 
-    /// 두들을 켜고 끈다 (DD2 의 enabled 칸).
+    /// 두대드를 켜고 끈다 (DD2 의 enabled 칸).
     bool setDoodadEnabled(std::size_t index, bool enabled);
 
-    /// 자리와 맞지 않는 두들을 찾고 고친다.
+    /// 자리와 맞지 않는 두대드를 찾고 고친다.
     std::vector<std::size_t> findBrokenDoodads(const io::GameGraphics & graphics) const;
     bool repairDoodads(const io::GameGraphics & graphics, std::size_t * outCount = nullptr);
 
-    /// 두들 항목을 모두 지우고 지형만 남긴다.
+    /// 두대드 항목을 모두 지우고 지형만 남긴다.
     bool convertDoodadsToTerrain(const io::GameGraphics & graphics,
                                  std::size_t * outCount = nullptr);
 
@@ -447,10 +447,10 @@ public:
     /// 렌더링 때마다 코어를 두드리지 않아도 된다.
     const std::vector<std::uint16_t> & tiles() const;
 
-    /// 맵 밖으로 나간 유닛·두들을 지우고 로케이션을 안으로 들인다.
+    /// 맵 밖으로 나간 유닛·두대드를 지우고 로케이션을 안으로 들인다.
     bool removeOutOfBounds(std::size_t * outCount = nullptr);
 
-    /// 두들을 걷어낸 밑 지형. 두들을 빼고 베낄 때 쓴다.
+    /// 두대드를 걷어낸 밑 지형. 두대드를 빼고 베낄 때 쓴다.
     const std::vector<std::uint16_t> & underlyingTiles() const;
 
 private:

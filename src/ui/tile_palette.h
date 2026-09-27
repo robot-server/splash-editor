@@ -44,7 +44,7 @@ public:
     void setTerrainTypeMode(bool on);
     bool terrainTypeMode() const { return terrainTypeMode_; }
 
-    /// 두들 목록을 보여 줄지. 켜면 지형 종류 모드보다 우선한다.
+    /// 두대드 목록을 보여 줄지. 켜면 지형 종류 모드보다 우선한다.
     void setDoodadMode(bool on);
     bool doodadMode() const { return doodadMode_; }
 
@@ -55,7 +55,7 @@ signals:
     /// ISOM 모드에서 지형 종류를 골랐다 (brushIndex).
     void terrainTypeSelected(std::size_t brushIndex);
 
-    /// 두들을 골랐다 (dddata.bin 번호).
+    /// 두대드를 골랐다 (dddata.bin 번호).
     void doodadSelected(std::uint16_t doodadId);
 
 protected:
@@ -84,7 +84,7 @@ private:
         QString name;
         std::uint16_t previewTileId = 0;
         bool hasPreview = false;
-        std::uint16_t doodadId = 0; ///< 두들 모드에서 쓴다
+        std::uint16_t doodadId = 0; ///< 두대드 모드에서 쓴다
         QString detail;             ///< "3 x 2" 처럼 크기를 적어 둔다
     };
     std::vector<TerrainEntry> terrainTypes_;

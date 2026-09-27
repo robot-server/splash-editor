@@ -220,6 +220,7 @@ def main(argv=None):
         scmap.pad(cli,pal,sx,shelter[1]+room_h-5,3,3)
         cli.place(units["shop_beacon"],sx,shelter[1]+room_h-5,owner=12)
         cli.place(shop["marker"],sx,shelter[1]+room_h-10,owner=12)
+        scmap.place_price_mineral(cli, sx + 2, shelter[1]+room_h-10, shop["cost"])
     cli.place(scmap.START_LOCATION,grave[0]+3,grave[1]+3,owner=enemy_no)
     cli.place(scmap.START_LOCATION,grave[0]+3,grave[1]+room_h-4,owner=boss_no)
     for k in range(placed_zombies(cfg)):
@@ -229,7 +230,7 @@ def main(argv=None):
 
     names={}
     for shop in cfg["shops"]:
-        names[shop["marker"]]=shop["marker_name"]
+        names[shop["marker"]]=scmap.priced_name(shop["marker_name"], shop["cost"])
     name_cfg=dict(cfg);name_cfg["unit_names"]={**names,**cfg.get("unit_names",{})}
     profile.apply_unit_names(cli,name_cfg)
     scmap.reveal_for_all(cli,players)
@@ -241,6 +242,7 @@ def main(argv=None):
     profile.apply_profile_metadata(cli,cfg,players)
     info=cli.info()
     print(f"\nCreated {a.out}: {info['width']}x{info['height']} {info['tileset']}; {info['units']} units, {info['triggers']} triggers")
+    scmap.assert_create_targets(cli)
     return 0
 
 

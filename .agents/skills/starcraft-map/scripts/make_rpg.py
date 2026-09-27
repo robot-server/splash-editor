@@ -106,13 +106,14 @@ Conditions:
 
 Actions:
 \tSet Switch("{labels["boss_switch"]}", set);
+	Set Deaths("{boss_p}", "{boss}", Set To, 0);
 \tCreate Unit with Properties("{boss_p}", "{boss}", {cfg["rules"]["boss_count"]}, "{boss_spawn}", 1);
 \tPreserve Trigger();
 }}''')
     T.append(f'''Trigger({humans}){{
 Conditions:
-\tBring("{boss_p}", "Any unit", "{boss_loc}", At most, 0);
-\tSwitch("{labels["boss_switch"]}", set);
+	Switch("{labels["boss_switch"]}", set);
+	Deaths("{boss_p}", "{boss}", At least, {cfg["rules"]["boss_count"]});
 
 Actions:
 \tDisplay Text Message(Always Display, "{messages["boss_win"]}");
@@ -356,6 +357,7 @@ def main(argv=None):
     for k,shop in enumerate(shops):
         sx = tx + 4 + k * 6
         cli.place(shop["marker"], sx, ty + th - 11, owner=12)
+        scmap.place_price_mineral(cli, sx + 2, ty + th - 11, shop["cost"])
         scmap.pad(cli, pal, sx, ty + th - 6, 3, 3)
         cli.place(units["shop_beacon"], sx, ty + th - 6, owner=12)
     # 구역마다 몬스터를 미리 깔아 둔다 (트리거가 채우기 전에도 보이게)
@@ -391,27 +393,34 @@ def main(argv=None):
         cli.place(obstacle_unit, px, py, owner=12)
     cli.place(scmap.START_LOCATION, cells[1][0] + 2, band_y + 2, owner=enemy_no)
     cli.place(scmap.START_LOCATION, bx + 2, by + 2, owner=boss_no)
-    cli.place(units["boss"], bx + bw // 2, by + bh // 2, owner=boss_no)
+    # 보스는 시작 트리거가 만든다. 맵에 미리 놓으면 그 죽음 수가
+    # 진행 변수와 겹친다.
 
     print("시야를 엽니다...")
     scmap.reveal_for_all(cli, a.players)
 
 
-    # 방 테두리 두뎃은 실제 보행·시야·배치 검증 뒤 선택한다.
-    # 두뎃 타일을 쓰고, 중앙 868칸이며 그 89%가 걷기 경계 두 칸 안에
+    # 방 테두리 두대드는 실제 보행·시야·배치 검증 뒤 선택한다.
+    # 두대드 타일을 쓰고, 중앙 868칸이며 그 89%가 걷기 경계 두 칸 안에
     # 몰려 있다. 내 맵은 0칸이었다 — 그림으로 보고서야 알았다.
-    # 걷기를 막는 두뎃은 `data/doodad-walk.json` 을 보고 걸러 낸다.
-    print("방 테두리를 두뎃으로 꾸밉니다...")
+    # 걷기를 막는 두대드는 `data/doodad-walk.json` 을 보고 걸러 낸다.
+    print("방 테두리를 두대드로 꾸밉니다...")
     _clear = [(u["x"] // 32 - 2, u["y"] // 32 - 2, 5, 5) for u in cli.units()]
     _nd = scmap.decorate_rim(cli, ts, cells, rng, keep_clear=_clear)
-    print(f"  두뎃 {_nd}개")
+    print(f"  두대드 {_nd}개")
 
     name_map={}
-    for collection,unit_key,name_key in ((shops,"marker","marker_name"),(zones,"marker","marker_name")):
+    for collection,unit_key,name_key in ((shops,"marker","marker_name"),):
         for item in collection:
-            if item[unit_key] in name_map and name_map[item[unit_key]] != item[name_key]:
+            label = item[name_key]
+            if "cost" in item:
+                label = scmap.priced_name(label, item["cost"])
+            if item[unit_key] in name_map and name_map[item[unit_key]] != label:
                 raise CliError(f"{item[unit_key]} is assigned conflicting display names")
-            name_map[item[unit_key]]=item[name_key]
+            name_map[item[unit_key]]=label
+    for zone in zones:
+        if zone["marker"] not in name_map:
+            name_map[zone["marker"]] = zone["marker_name"]
     name_cfg=dict(cfg); name_cfg["unit_names"]={**name_map,**cfg.get("unit_names",{})}
     profile.apply_unit_names(cli,name_cfg)
     print("트리거를 짭니다...")
@@ -422,6 +431,7 @@ def main(argv=None):
     print(f"\n만들었습니다: {a.out}")
     print(f"  {info['width']}x{info['height']} {info['tileset']} {info['version']}")
     print(f"  유닛 {info['units']}  트리거 {info['triggers']}")
+    scmap.assert_create_targets(cli)
     return 0
 
 

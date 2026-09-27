@@ -199,7 +199,7 @@ void TilePalette::paintEvent(QPaintEvent * event)
             painter.setPen(QColor(200, 200, 205));
             painter.drawText(viewport()->rect(), Qt::AlignCenter,
                              doodadMode_
-                                 ? tr("두들을 보려면\nStarCraft 설치 폴더가 필요합니다.")
+                                 ? tr("두대드를 보려면\nStarCraft 설치 폴더가 필요합니다.")
                                  : tr("지형 종류를 보려면\nStarCraft 설치 폴더가 필요합니다."));
             return;
         }
@@ -236,7 +236,7 @@ void TilePalette::paintEvent(QPaintEvent * event)
             painter.drawText(row.adjusted(56, 0, -4, 0), Qt::AlignVCenter | Qt::AlignLeft,
                              entry.name);
 
-            // 두들은 크기를 함께 적어 둔다 — 자리를 가늠하는 데 쓴다.
+            // 두대드는 크기를 함께 적어 둔다 — 자리를 가늠하는 데 쓴다.
             if (!entry.detail.isEmpty())
             {
                 painter.setPen(QColor(150, 150, 158));

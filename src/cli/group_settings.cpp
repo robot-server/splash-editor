@@ -4,6 +4,7 @@
 #include "cli_common.h"
 
 #include "chk/map_document.h"
+#include "io/game_graphics.h"
 #include "io/text_encoding.h"
 
 #include <algorithm>
@@ -960,6 +961,82 @@ int techSet(Args & args)
     });
 }
 
+// 기본값을 끄면 게임은 UNIx 의 무기 피해를 읽는다. 그 표의 초기값은 0 이라
+// 체력만 고치면 공격이 0 이 된다. 설치본 weapons.dat 의 피해를 통째로 옮긴다.
+int unitdefSyncWeapons(Args & args)
+{
+    const SaveTarget target = takeSaveTarget(args);
+    const std::string mapPath = args.at(0);
+    const std::string install = args.at(1);
+    args.finish();
+
+    io::GameGraphics graphics;
+    std::string error;
+    if (!graphics.load(install, &error))
+    {
+        std::cerr << "그래픽 로드 실패: " << error << "\n";
+        return 1;
+    }
+
+    std::array<std::uint16_t, 130> base {};
+    std::array<std::uint16_t, 130> bonus {};
+    std::array<bool, 130> seen {};
+    const auto take = [&](std::uint8_t weapon, std::uint16_t damage, std::uint16_t add) {
+        if (weapon >= 130 || seen[weapon])
+            return;
+        seen[weapon] = true;
+        base[weapon] = damage;
+        bonus[weapon] = add;
+    };
+    const std::size_t total = graphics.unitTypeCount();
+    for (std::uint16_t type = 0; type < total && type < 228; ++type)
+    {
+        const auto stats = graphics.unitStats(type);
+        take(stats.groundWeapon, stats.groundDamage, stats.groundDamageBonus);
+        take(stats.airWeapon, stats.airDamage, stats.airDamageBonus);
+    }
+
+    return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
+        int wrote = 0;
+        for (std::uint16_t weapon = 0; weapon < 130; ++weapon)
+        {
+            if (!seen[weapon])
+                continue;
+            if (auto r = archive.setWeaponDamage(weapon, base[weapon], bonus[weapon]); !r)
+            {
+                std::cerr << "무기 피해 기록 실패: " << r.message << "\n";
+                return false;
+            }
+            ++wrote;
+        }
+        std::cout << "  무기 피해 " << wrote << "종을 설치본 값으로 맞췄습니다.\n";
+        return true;
+    });
+}
+
+// 맵에 저장된 무기 피해와, 기본값을 끈 유닛 번호.
+int unitdefDumpWeapons(Args & args)
+{
+    args.finish();
+    return readMap(args.at(0), [&](io::MapArchive & archive) {
+        for (std::uint16_t weapon = 0; weapon < 130; ++weapon)
+        {
+            const auto damage = archive.weaponDamage(weapon);
+            if (!damage)
+                continue;
+            std::cout << "weapon " << weapon << " " << damage->base
+                      << " " << damage->bonus << "\n";
+        }
+        for (std::uint16_t type = 0; type < 228; ++type)
+        {
+            const auto stats = archive.unitStats(type);
+            if (stats && !stats->useDefault)
+                std::cout << "custom " << type << "\n";
+        }
+        return 0;
+    });
+}
+
 } // namespace
 
 std::vector<Group> settingsGroups()
@@ -1007,6 +1084,11 @@ std::vector<Group> settingsGroups()
                     "[--build-time N] [--minerals N] [--gas N] [--buildable 1,2|all|none] "
                     "[--uses-default 1,2|all|none] [--name 표시이름|--clear-name] -o <출력맵>",
                     "유닛 설정/타입 전체 표시 이름을 바꾼다. 체력은 표시값으로 적는다.", unitdefSet},
+            {"sync-weapons", "<맵> <설치폴더>",
+                    "기본값을 끈 뒤 무기 피해가 0이 되지 않게 설치본 피해를 UNIx에 적는다.",
+                    unitdefSyncWeapons},
+            {"weapons", "<맵>",
+                    "UNIx 무기 피해와 기본값을 끈 유닛 번호를 찍는다.", unitdefDumpWeapons},
         }},
         Group{"upgrade", "업그레이드 설정 (UPGS·UPGx)", {
             {"list", "", "업그레이드 번호와 이름을 나열한다.", upgradeList},

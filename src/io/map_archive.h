@@ -740,9 +740,9 @@ public:
     /// 선언을 정리한다. 무엇을 고쳤는지 message 에 적어 돌려준다.
     Result unprotect();
 
-    // --- 두들 (DD2) ---
+    // --- 두대드 (DD2) ---
 
-    /// 맵에 놓인 두들 하나.
+    /// 맵에 놓인 두대드 하나.
     struct RawDoodad
     {
         std::size_t index = 0;
@@ -759,34 +759,34 @@ public:
     std::optional<bool> doodadFits(const GameGraphics & graphics, std::uint16_t doodadId,
                                    int tileX, int tileY) const;
 
-    /// 두들을 놓는다. 지형 타일도 함께 바꾼다 — 두들은 타일로 그려진다.
+    /// 두대드를 놓는다. 지형 타일도 함께 바꾼다 — 두대드는 타일로 그려진다.
     Result placeDoodad(const GameGraphics & graphics, std::uint16_t doodadId,
                        int tileX, int tileY, std::uint8_t owner = 0);
 
-    /// 자리와 맞지 않는 두들을 찾는다. 두들 번호(DD2 자리)를 돌려준다.
+    /// 자리와 맞지 않는 두대드를 찾는다. 두대드 번호(DD2 자리)를 돌려준다.
     ///
-    /// 지형을 고치다 보면 두들이 깔아 둔 타일이 지워져 DD2 항목만 남는 일이
+    /// 지형을 고치다 보면 두대드가 깔아 둔 타일이 지워져 DD2 항목만 남는 일이
     /// 생긴다. 게임은 DD2 를 읽지 않으므로 화면에는 표가 안 나지만, 편집기가
-    /// 두들로 다루려 하면 어긋난다.
+    /// 두대드로 다루려 하면 어긋난다.
     std::vector<std::size_t> findBrokenDoodads(const GameGraphics & graphics) const;
 
-    /// 어긋난 두들의 타일을 다시 깐다. 고친 개수를 돌려준다.
+    /// 어긋난 두대드의 타일을 다시 깐다. 고친 개수를 돌려준다.
     std::size_t repairDoodads(const GameGraphics & graphics);
 
-    /// 두들 항목을 모두 지우고 지형만 남긴다.
+    /// 두대드 항목을 모두 지우고 지형만 남긴다.
     ///
-    /// 두들은 지형 타일 + DD2 항목으로 이뤄진다. 항목을 지우면 편집기가
-    /// 두들로 다루지 않고 보통 지형처럼 고칠 수 있게 된다. 게임에서 보이는
+    /// 두대드는 지형 타일 + DD2 항목으로 이뤄진다. 항목을 지우면 편집기가
+    /// 두대드로 다루지 않고 보통 지형처럼 고칠 수 있게 된다. 게임에서 보이는
     /// 모습은 그대로다 — 타일은 건드리지 않는다.
     std::size_t convertDoodadsToTerrain(const GameGraphics & graphics);
 
-    /// 두들 항목을 지운다. 지형 타일은 그대로 둔다 (무엇으로 되돌릴지
+    /// 두대드 항목을 지운다. 지형 타일은 그대로 둔다 (무엇으로 되돌릴지
     /// 알 수 없으므로, 지형은 따로 칠해야 한다).
     Result removeDoodad(const GameGraphics & graphics, std::size_t index);
 
-    /// 두들을 켜고 끈다 (DD2 의 enabled 칸).
+    /// 두대드를 켜고 끈다 (DD2 의 enabled 칸).
     ///
-    /// 꺼진 두들은 타일은 그대로 두고 항목만 죽은 것으로 표시된다. 놓을
+    /// 꺼진 두대드는 타일은 그대로 두고 항목만 죽은 것으로 표시된다. 놓을
     /// 때(placeDoodad)만 켜짐으로 박혀 있어 나중에 바꿀 길이 없었다 —
     /// 오려 붙일 때 꺼진 상태를 되살리려면 필요하다.
     Result setDoodadEnabled(std::size_t index, bool enabled);
@@ -946,6 +946,17 @@ public:
     /// 유닛 능력치를 바꾼다.
     Result setUnitStats(std::uint16_t unitType, const UnitStats & stats);
 
+    /// UNIx 무기 피해. 기본값을 끈 유닛은 이 표의 피해를 쓴다.
+    /// 번호가 130 이상이면 무기가 없다.
+    struct WeaponDamage
+    {
+        std::uint16_t base = 0;
+        std::uint16_t bonus = 0;
+    };
+    std::optional<WeaponDamage> weaponDamage(std::uint16_t weapon) const;
+    Result setWeaponDamage(std::uint16_t weapon, std::uint16_t baseDamage,
+                           std::uint16_t bonusDamage);
+
     /// 맵의 문자열 목록. 비어 있는 자리는 건너뛴다.
     std::vector<MapString> strings() const;
 
@@ -1004,17 +1015,17 @@ public:
     /// 편집기는 관례상 에디터 쪽을 표시한다.
     std::vector<std::uint16_t> terrainTiles() const;
 
-    /// 맵 밖으로 나간 유닛·두들을 지우고 로케이션을 안으로 들인다.
+    /// 맵 밖으로 나간 유닛·두대드를 지우고 로케이션을 안으로 들인다.
     ///
     /// 맵을 줄이거나 남의 맵에서 베껴 붙이다 보면 경계 밖에 놓인 것이
     /// 남는다. 게임은 그런 것을 무시하거나 이상하게 다룬다. 몇 개를
     /// 손봤는지 돌려준다.
     std::size_t removeOutOfBounds();
 
-    /// 두들을 걷어낸 밑 지형 (TILE 구역).
+    /// 두대드를 걷어낸 밑 지형 (TILE 구역).
     ///
-    /// 화면에 보이는 것은 MTXM 이지만, 두들 아래에 무슨 땅이 있었는지는
-    /// 여기 남아 있다. 두들을 빼고 지형만 베낄 때 쓴다. TILE 이 없으면
+    /// 화면에 보이는 것은 MTXM 이지만, 두대드 아래에 무슨 땅이 있었는지는
+    /// 여기 남아 있다. 두대드를 빼고 지형만 베낄 때 쓴다. TILE 이 없으면
     /// MTXM 을 돌려준다.
     std::vector<std::uint16_t> underlyingTiles() const;
 

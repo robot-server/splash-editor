@@ -46,6 +46,7 @@ def chase_triggers(cfg, enemy: str) -> str:
     # 한 번에 count 를 만들면 상한 이하인 동안 조건이 참이라 무리가 쌓인다.
     count = cfg["rules"]["pursuer_count"]
     below = count - 1
+    runners = ",".join(f'"Player {p}"' for p in range(1, cfg["rules"]["players"] + 1))
     start, checkpoint, goal = labels["start"], labels["checkpoint"], labels["goal"]
     return f'''Trigger("All players"){{
 Conditions:
@@ -89,7 +90,7 @@ Actions:
 \tVictory();
 }}
 
-Trigger("All players"){{
+Trigger({runners}){{
 Conditions:
 \tCommand("Current Player", "{units["runner"]}", Exactly, 0);
 
@@ -165,6 +166,7 @@ def main(argv=None):
     cli.apply_triggers(chase_triggers(cfg, enemy))
     profile.apply_profile_metadata(cli, cfg, players)
     print(f"만들었습니다: {args.out}")
+    scmap.assert_create_targets(cli)
     return 0
 
 

@@ -324,7 +324,7 @@ class Field:
     QUANT_RADIUS = 1.25
 
     def ascii(self, step: int = 2) -> str:
-        """사람이 읽을 그림. 렌더보다 이게 먼저다 — 두뎃이 눈을 속인다."""
+        """사람이 읽을 그림. 렌더보다 이게 먼저다 — 두대드가 눈을 속인다."""
         rows = []
         for y in range(0, self.h, step):
             rows.append("".join("#" if self.g[y][x] == HIGH else "."

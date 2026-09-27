@@ -319,8 +319,8 @@ void MainWindow::buildCentralWidget()
                      int(MapView::TerrainMode::Rectangular));
     modeBox->addItem(tr("Subtile — 한 칸씩 정밀하게"),
                      int(MapView::TerrainMode::Subtile));
-    // 두들은 지형 모드가 아니라 따로 놓는 물체라 -1 로 구분한다.
-    modeBox->addItem(tr("두들 — 나무·바위 같은 지형 장식"), -1);
+    // 두대드는 지형 모드가 아니라 따로 놓는 물체라 -1 로 구분한다.
+    modeBox->addItem(tr("두대드 — 나무·바위 같은 지형 장식"), -1);
     modeBox->setCurrentIndex(1); // Rectangular
 
     tilePalette_ = new TilePalette(terrainPanel);
@@ -336,7 +336,7 @@ void MainWindow::buildCentralWidget()
         {
             tilePalette_->setDoodadMode(true);
             mapView_->setTool(MapView::Tool::PlaceDoodad);
-            statusBar()->showMessage(tr("두들 — 팔레트에서 고르고 맵을 클릭하세요"), 4000);
+            statusBar()->showMessage(tr("두대드 — 팔레트에서 고르고 맵을 클릭하세요"), 4000);
             return;
         }
 
@@ -353,7 +353,7 @@ void MainWindow::buildCentralWidget()
     connect(tilePalette_, &TilePalette::doodadSelected, this, [this](std::uint16_t doodadId) {
         mapView_->setPlacementDoodad(doodadId);
         mapView_->setTool(MapView::Tool::PlaceDoodad);
-        statusBar()->showMessage(tr("두들을 골랐습니다 — 맵을 클릭하세요"), 3000);
+        statusBar()->showMessage(tr("두대드를 골랐습니다 — 맵을 클릭하세요"), 3000);
     });
 
     connect(tilePalette_, &TilePalette::terrainTypeSelected, this,
@@ -694,12 +694,12 @@ void MainWindow::buildMenus()
         QSettings().setValue(QStringLiteral("onLoadRemoveOutOfBounds"), on);
     });
 
-    QAction * autoDoodads = onLoadMenu->addAction(tr("어긋난 두들 고치기"));
+    QAction * autoDoodads = onLoadMenu->addAction(tr("어긋난 두대드 고치기"));
     autoDoodads->setCheckable(true);
     autoDoodads->setChecked(
         QSettings().value(QStringLiteral("onLoadRepairDoodads"), false).toBool());
     autoDoodads->setToolTip(
-        tr("일부러 겹쳐 놓은 두들도 되돌아갑니다. 무엇이 고쳐졌는지 알려 주지만 "
+        tr("일부러 겹쳐 놓은 두대드도 되돌아갑니다. 무엇이 고쳐졌는지 알려 주지만 "
            "되돌리려면 실행 취소를 눌러야 합니다."));
     connect(autoDoodads, &QAction::toggled, this, [](bool on) {
         QSettings().setValue(QStringLiteral("onLoadRepairDoodads"), on);
@@ -769,13 +769,13 @@ void MainWindow::buildMenus()
             return;
         }
 
-        // 두들 도구에서는 고른 두들을 담는다.
+        // 두대드 도구에서는 고른 두대드를 담는다.
         if (mapView_->tool() == MapView::Tool::PlaceDoodad)
         {
             if (mapView_->copySelectedDoodad())
-                statusBar()->showMessage(tr("두들을 복사했습니다"), 2000);
+                statusBar()->showMessage(tr("두대드를 복사했습니다"), 2000);
             else
-                statusBar()->showMessage(tr("복사할 두들을 먼저 고르세요"), 2000);
+                statusBar()->showMessage(tr("복사할 두대드를 먼저 고르세요"), 2000);
             return;
         }
 
@@ -844,9 +844,9 @@ void MainWindow::buildMenus()
         if (mapView_->tool() == MapView::Tool::PlaceDoodad)
         {
             if (mapView_->copySelectedDoodad() && mapView_->deleteSelectedDoodad())
-                statusBar()->showMessage(tr("두들을 잘라냈습니다"), 2000);
+                statusBar()->showMessage(tr("두대드를 잘라냈습니다"), 2000);
             else
-                statusBar()->showMessage(tr("잘라낼 두들을 먼저 고르세요"), 2000);
+                statusBar()->showMessage(tr("잘라낼 두대드를 먼저 고르세요"), 2000);
             return;
         }
 
@@ -870,7 +870,7 @@ void MainWindow::buildMenus()
         if (mapView_->tool() == MapView::Tool::PlaceDoodad && mapView_->hasDoodadClipboard())
         {
             if (mapView_->pasteDoodadAtCentre())
-                statusBar()->showMessage(tr("두들을 붙였습니다"), 2000);
+                statusBar()->showMessage(tr("두대드를 붙였습니다"), 2000);
             else
                 statusBar()->showMessage(
                     QString::fromStdString(document().lastError()), 3000);
@@ -972,7 +972,7 @@ void MainWindow::buildMenus()
             tr("스프라이트 놓기 — 팔레트의 '스프라이트' 분류에서 고르세요"), 4000);
     });
 
-    QAction * doodadTool = toolMenu->addAction(tr("두들 놓기(&D)"));
+    QAction * doodadTool = toolMenu->addAction(tr("두대드 놓기(&D)"));
     doodadTool->setCheckable(true);
     doodadTool->setShortcut(QKeySequence(Qt::Key_D));
     toolGroup->addAction(doodadTool);
@@ -982,7 +982,7 @@ void MainWindow::buildMenus()
             paletteDock_->show();
         if (tilePalette_ != nullptr)
             tilePalette_->setDoodadMode(true);
-        statusBar()->showMessage(tr("두들 놓기 — 팔레트에서 고르세요"), 4000);
+        statusBar()->showMessage(tr("두대드 놓기 — 팔레트에서 고르세요"), 4000);
     });
 
     QAction * terrainTool = toolMenu->addAction(tr("지형 칠하기(&T)"));
@@ -1335,10 +1335,10 @@ void MainWindow::buildMenus()
 
     batchMenu->addSeparator();
 
-    QAction * repairDoodads = batchMenu->addAction(tr("어긋난 두들 고치기"));
+    QAction * repairDoodads = batchMenu->addAction(tr("어긋난 두대드 고치기"));
     repairDoodads->setToolTip(
-        tr("지형을 고치다 타일이 지워진 두들을 찾아 다시 깝니다. 일부러 겹쳐 "
-           "놓은 두들도 되돌려지니 미리 살펴보세요."));
+        tr("지형을 고치다 타일이 지워진 두대드를 찾아 다시 깝니다. 일부러 겹쳐 "
+           "놓은 두대드도 되돌려지니 미리 살펴보세요."));
     connect(repairDoodads, &QAction::triggered, this, [this] {
         if (!document().isOpen() || !tileset_.isLoaded())
         {
@@ -1349,13 +1349,13 @@ void MainWindow::buildMenus()
         const auto broken = document().findBrokenDoodads(tileset_);
         if (broken.empty())
         {
-            statusBar()->showMessage(tr("어긋난 두들이 없습니다"), 2500);
+            statusBar()->showMessage(tr("어긋난 두대드가 없습니다"), 2500);
             return;
         }
 
-        const auto answer = QMessageBox::question(this, tr("어긋난 두들"),
-            tr("두들 %1개가 자리와 맞지 않습니다. 타일을 다시 깔까요?\n\n"
-               "두들을 일부러 겹쳐 놓았거나 위에 지형을 덧그렸다면 그것도 "
+        const auto answer = QMessageBox::question(this, tr("어긋난 두대드"),
+            tr("두대드 %1개가 자리와 맞지 않습니다. 타일을 다시 깔까요?\n\n"
+               "두대드를 일부러 겹쳐 놓았거나 위에 지형을 덧그렸다면 그것도 "
                "되돌아갑니다. 마음에 안 들면 실행 취소로 되돌릴 수 있습니다.")
                 .arg(broken.size()),
             QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
@@ -1371,12 +1371,12 @@ void MainWindow::buildMenus()
 
         mapView_->refresh();
         onDocumentEdited();
-        statusBar()->showMessage(tr("두들 %1개를 고쳤습니다").arg(repaired), 3000);
+        statusBar()->showMessage(tr("두대드 %1개를 고쳤습니다").arg(repaired), 3000);
     });
 
     QAction * cleanBounds = batchMenu->addAction(tr("맵 밖으로 나간 것 치우기"));
     cleanBounds->setToolTip(
-        tr("경계 밖에 놓인 유닛·두들을 지우고 로케이션을 안으로 들입니다. "
+        tr("경계 밖에 놓인 유닛·두대드를 지우고 로케이션을 안으로 들입니다. "
            "맵을 줄이거나 남의 맵에서 베껴 붙인 뒤에 씁니다."));
     connect(cleanBounds, &QAction::triggered, this, [this] {
         if (!document().isOpen())
@@ -1394,9 +1394,9 @@ void MainWindow::buildMenus()
         statusBar()->showMessage(tr("%1개를 치웠습니다").arg(removed), 3000);
     });
 
-    QAction * convertDoodads = batchMenu->addAction(tr("두들을 지형으로 풀기"));
+    QAction * convertDoodads = batchMenu->addAction(tr("두대드를 지형으로 풀기"));
     convertDoodads->setToolTip(
-        tr("두들 항목을 지우고 지형 타일만 남깁니다. 게임에서 보이는 모습은 "
+        tr("두대드 항목을 지우고 지형 타일만 남깁니다. 게임에서 보이는 모습은 "
            "그대로이고, 편집기가 보통 지형처럼 고칠 수 있게 됩니다."));
     connect(convertDoodads, &QAction::triggered, this, [this] {
         if (!document().isOpen())
@@ -1411,7 +1411,7 @@ void MainWindow::buildMenus()
 
         mapView_->refresh();
         onDocumentEdited();
-        statusBar()->showMessage(tr("두들 %1개를 지형으로 풀었습니다").arg(converted), 3000);
+        statusBar()->showMessage(tr("두대드 %1개를 지형으로 풀었습니다").arg(converted), 3000);
     });
 
     QAction * randomizeResources = batchMenu->addAction(tr("자원량 섞기…"));
@@ -1690,7 +1690,7 @@ void MainWindow::buildMenus()
         QAction * toggleTree = objectTree_->toggleViewAction();
         toggleTree->setText(tr("오브젝트 목록(&J)"));
         toggleTree->setToolTip(
-            tr("맵에 놓인 유닛·스프라이트·두들·로케이션을 목록에서 짚어 갑니다."));
+            tr("맵에 놓인 유닛·스프라이트·두대드·로케이션을 목록에서 짚어 갑니다."));
         viewMenu->addAction(toggleTree);
     }
 
@@ -3276,7 +3276,7 @@ void MainWindow::applyOnLoadFixes()
         std::size_t repaired = 0;
         document().repairDoodads(tileset_, &repaired);
         if (repaired > 0)
-            done << tr("어긋난 두들 %1개").arg(repaired);
+            done << tr("어긋난 두대드 %1개").arg(repaired);
     }
 
     if (done.isEmpty())

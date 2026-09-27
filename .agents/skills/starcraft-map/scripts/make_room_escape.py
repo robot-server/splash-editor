@@ -138,6 +138,7 @@ def main(argv=None):
     profile.apply_profile_metadata(cli, cfg, 1)
     print(f"\nCreated {a.out}: 3 ordered room states, connected room graph, "
           f"{len(blocks)} triggers")
+    scmap.assert_create_targets(cli)
     return 0
 
 

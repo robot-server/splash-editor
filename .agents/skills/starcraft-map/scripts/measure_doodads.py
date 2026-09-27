@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""**두뎃이 길을 막는지 미리 잰다** — `data/doodad-walk.json` 을 만든다.
+"""**두대드가 길을 막는지 미리 잰다** — `data/doodad-walk.json` 을 만든다.
 
-왜 필요한가. 방 테두리를 두뎃으로 꾸미려다 동선이 끊겼다. 놓은 뒤
+왜 필요한가. 방 테두리를 두대드로 꾸미려다 동선이 끊겼다. 놓은 뒤
 길찾기로 확인하고 되돌리는 식으로 하니 밀도를 올릴 수가 없고 (실측
 중앙 868칸인데 48칸에서 멈췄다) 맵 하나에 1분이 넘게 걸렸다.
 
-두뎃이 걷기를 막는지는 **두뎃 종류가 정하는 성질**이다. 맵마다 다시
+두대드가 걷기를 막는지는 **두대드 종류가 정하는 성질**이다. 맵마다 다시
 재지 말고 타일셋마다 한 번 재서 표로 남긴다. 그러면 꾸미기는 안전한
 것만 골라 쓰면 되고, 되돌릴 일이 없으니 빠르다.
 
-재는 방법: 빈 맵에 걷는 바닥을 깔고 두뎃을 격자로 다 놓은 뒤, 타일을
-한 번에 읽어 두뎃이 덮은 칸이 여전히 걷을 수 있는지 본다.
+재는 방법: 빈 맵에 걷는 바닥을 깔고 두대드를 격자로 다 놓은 뒤, 타일을
+한 번에 읽어 두대드가 덮은 칸이 여전히 걷을 수 있는지 본다.
 
     python3 measure_doodads.py            # 여덟 타일셋 모두
 """
@@ -29,7 +29,7 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                    "..", "data", "doodad-walk.json")
 NAMES = {0: "badlands", 1: "space", 2: "installation", 3: "ashworld",
          4: "jungle", 5: "desert", 6: "ice", 7: "twilight"}
-CELL = 10                 # 두뎃 하나에 10x10 칸을 준다 (가장 큰 것이 14x9)
+CELL = 10                 # 두대드 하나에 10x10 칸을 준다 (가장 큰 것이 14x9)
 COLS = 25                 # 250x... 격자
 
 
@@ -91,11 +91,11 @@ def main():
                 continue
             ok = sum(1 for v in c.values() if v["walk"])
             data[NAMES[ts]] = c
-            print(f"  {NAMES[ts]:13s} 두뎃 {len(c):3d}종 중 "
+            print(f"  {NAMES[ts]:13s} 두대드 {len(c):3d}종 중 "
                   f"**걷기를 안 막는 것 {ok}종**")
     path = os.path.normpath(OUT)
     with open(path, "w", encoding="utf-8") as f:
-        json.dump({"_about": "두뎃 번호 → 크기·갈래·걷기를 막는가. "
+        json.dump({"_about": "두대드 번호 → 크기·갈래·걷기를 막는가. "
                              "measure_doodads.py 가 만든다. 걷는 바닥에 "
                              "놓아 보고 덮인 칸이 여전히 걷을 수 있는지 잰 값.",
                    "doodads": data}, f, ensure_ascii=False)

@@ -1,4 +1,4 @@
-// 맵에 놓이는 것들 — 유닛, 스프라이트, 두들, 로케이션.
+// 맵에 놓이는 것들 — 유닛, 스프라이트, 두대드, 로케이션.
 
 #include "cli_common.h"
 
@@ -543,7 +543,7 @@ int spriteSet(Args & args)
     });
 }
 
-// --- 두들 ---
+// --- 두대드 ---
 
 int doodadList(Args & args)
 {
@@ -573,7 +573,7 @@ int doodadList(Args & args)
                           << std::setw(2) << doodad.tileHeight << "  "
                           << doodad.name << "\n";
             }
-            std::cout << "  타일셋 " << tileset << " 의 두들 " << known.size() << "종\n";
+            std::cout << "  타일셋 " << tileset << " 의 두대드 " << known.size() << "종\n";
             return 0;
         }
 
@@ -584,7 +584,7 @@ int doodadList(Args & args)
             std::cout << "  " << std::setw(4) << i << "  ("
                       << doodad.x << ", " << doodad.y << ")  타일 ("
                       << (doodad.x / kTilePixels) << ", " << (doodad.y / kTilePixels) << ")"
-                      << "  두들 " << doodad.type;
+                      << "  두대드 " << doodad.type;
             if (haveNames)
             {
                 const auto & known = named.doodads(tileset);
@@ -596,7 +596,7 @@ int doodadList(Args & args)
             std::cout << "  P" << (doodad.owner + 1)
                       << (doodad.enabled ? "" : "  [꺼짐]") << "\n";
         }
-        std::cout << "  두들 " << placed.size() << "개\n";
+        std::cout << "  두대드 " << placed.size() << "개\n";
         return 0;
     });
 }
@@ -621,7 +621,7 @@ int doodadPlace(Args & args)
             std::cerr << "놓기 실패: " << r.message << "\n";
             return false;
         }
-        std::cout << "  놓음      : 두들 " << doodadId
+        std::cout << "  놓음      : 두대드 " << doodadId
                   << " @ 타일 (" << tileX << ", " << tileY << ")\n";
         return true;
     });
@@ -642,7 +642,7 @@ int doodadFits(Args & args)
         const auto fits = archive.doodadFits(graphics, doodadId, tileX, tileY);
         const char * verdict = !fits ? "판정 불가" : (*fits ? "예" : "아니오");
         std::cout << "  배치 가능: " << verdict
-                  << "  두들 " << doodadId << " @ 타일 ("
+                  << "  두대드 " << doodadId << " @ 타일 ("
                   << tileX << ", " << tileY << ")\n";
         return 0;
     });
@@ -659,7 +659,7 @@ int doodadRemove(Args & args)
     const auto texts = args.from(1);
 
     return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
-        const auto indices = descendingIndices(texts, archive.doodads().size(), "두들");
+        const auto indices = descendingIndices(texts, archive.doodads().size(), "두대드");
         for (std::size_t index : indices)
         {
             if (auto r = archive.removeDoodad(graphics, index); !r)
@@ -668,7 +668,7 @@ int doodadRemove(Args & args)
                 return false;
             }
         }
-        std::cout << "  지움      : 두들 " << indices.size() << "개\n";
+        std::cout << "  지움      : 두대드 " << indices.size() << "개\n";
         return true;
     });
 }
@@ -683,7 +683,7 @@ int doodadToTerrain(Args & args)
     const std::string mapPath = args.at(0);
     return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
         const std::size_t count = archive.convertDoodadsToTerrain(graphics);
-        std::cout << "  풀었음    : 두들 " << count << "개를 지형으로\n";
+        std::cout << "  풀었음    : 두대드 " << count << "개를 지형으로\n";
         return true;
     });
 }
@@ -703,11 +703,11 @@ int doodadCheck(Args & args)
             std::cout << "  " << std::setw(4) << index;
             if (index < placed.size())
                 std::cout << "  타일 (" << (placed[index].x / kTilePixels) << ", "
-                          << (placed[index].y / kTilePixels) << ")  두들 "
+                          << (placed[index].y / kTilePixels) << ")  두대드 "
                           << placed[index].type;
             std::cout << "\n";
         }
-        std::cout << "  어긋난 두들 " << broken.size() << "개 / 전체 " << placed.size() << "개\n";
+        std::cout << "  어긋난 두대드 " << broken.size() << "개 / 전체 " << placed.size() << "개\n";
         return broken.empty() ? 0 : 1;
     });
 }
@@ -722,7 +722,7 @@ int doodadRepair(Args & args)
     const std::string mapPath = args.at(0);
     return editMap(mapPath, target, args, [&](io::MapArchive & archive) {
         const std::size_t count = archive.repairDoodads(graphics);
-        std::cout << "  고침      : 두들 " << count << "개\n";
+        std::cout << "  고침      : 두대드 " << count << "개\n";
         return true;
     });
 }
@@ -744,7 +744,7 @@ int doodadEnabled(Args & args)
             std::cerr << "켜고 끄기 실패: " << r.message << "\n";
             return false;
         }
-        std::cout << "  두들 " << index << " -> " << (state == "on" ? "켜짐" : "꺼짐") << "\n";
+        std::cout << "  두대드 " << index << " -> " << (state == "on" ? "켜짐" : "꺼짐") << "\n";
         return true;
     });
 }
@@ -1043,20 +1043,20 @@ std::vector<Group> objectGroups()
             {"set",    "<맵> <번호> [--owner P] [--as-sprite on|off] [--disabled on|off] -o <출력맵>",
                        "스프라이트 속성을 바꾼다.", spriteSet},
         }},
-        Group{"doodad", "지형에 얹는 두들 (DD2)", {
+        Group{"doodad", "지형에 얹는 두대드 (DD2)", {
             {"list",       "<맵> [--install 설치폴더] [--catalogue]",
-                           "맵에 놓인 두들을, --catalogue 면 타일셋의 두들 종류를 나열한다.", doodadList},
-            {"fits",       "<맵> <두들번호> <중앙타일x> <중앙타일y> --install 설치폴더",
+                           "맵에 놓인 두대드를, --catalogue 면 타일셋의 두대드 종류를 나열한다.", doodadList},
+            {"fits",       "<맵> <두대드번호> <중앙타일x> <중앙타일y> --install 설치폴더",
                            "배치 가능 표를 검사한다. 표가 없으면 판정 불가.", doodadFits},
-            {"place",      "<맵> <두들번호> <타일x> <타일y> [--owner P] --install 설치폴더 -o <출력맵>",
-                           "두들을 놓는다.", doodadPlace},
-            {"remove",     "<맵> <번호...> --install 설치폴더 -o <출력맵>", "두들을 지운다.", doodadRemove},
+            {"place",      "<맵> <두대드번호> <타일x> <타일y> [--owner P] --install 설치폴더 -o <출력맵>",
+                           "두대드를 놓는다.", doodadPlace},
+            {"remove",     "<맵> <번호...> --install 설치폴더 -o <출력맵>", "두대드를 지운다.", doodadRemove},
             {"to-terrain", "<맵> --install 설치폴더 -o <출력맵>",
-                           "두들 항목을 지우고 지형만 남긴다.", doodadToTerrain},
-            {"check",      "<맵> --install 설치폴더", "자리와 어긋난 두들을 찾는다.", doodadCheck},
-            {"repair",     "<맵> --install 설치폴더 -o <출력맵>", "어긋난 두들을 고친다.", doodadRepair},
+                           "두대드 항목을 지우고 지형만 남긴다.", doodadToTerrain},
+            {"check",      "<맵> --install 설치폴더", "자리와 어긋난 두대드를 찾는다.", doodadCheck},
+            {"repair",     "<맵> --install 설치폴더 -o <출력맵>", "어긋난 두대드를 고친다.", doodadRepair},
             {"enabled",    "<맵> <번호> <on|off> -o <출력맵>",
-                           "두들을 켜고 끈다 (DD2 의 enabled 칸).", doodadEnabled},
+                           "두대드를 켜고 끈다 (DD2 의 enabled 칸).", doodadEnabled},
         }},
         Group{"location", "로케이션 (MRGN)", {
             {"list",      "<맵>", "로케이션을 나열한다.", locationList},

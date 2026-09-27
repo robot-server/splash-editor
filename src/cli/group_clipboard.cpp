@@ -1,7 +1,7 @@
 // 맵에 놓인 것들을 네모째 오려 두었다가 다른 자리에 붙이기.
 //
 // 지형·가리개는 칸마다 값 하나라 숫자만 옮기면 되지만(terrain/fog copy),
-// 유닛·스프라이트·두들·로케이션은 좌표 말고도 소유자·체력·상태·애드온
+// 유닛·스프라이트·두대드·로케이션은 좌표 말고도 소유자·체력·상태·애드온
 // 연결을 함께 옮겨야 한다. 그래서 꼴을 따로 두고 갈래도 따로 뒀다.
 
 #include "cli_common.h"
@@ -272,7 +272,7 @@ std::optional<Clipboard> readClipboard(const std::string & path)
             ClipDoodad doodad;
             int owner = 0, enabled = 1;
             parts >> doodad.dx >> doodad.dy >> doodad.type >> owner >> enabled;
-            if (!parts) { fail("두들 줄을 읽지 못했습니다."); return std::nullopt; }
+            if (!parts) { fail("두대드 줄을 읽지 못했습니다."); return std::nullopt; }
             doodad.owner = static_cast<std::uint8_t>(owner);
             doodad.enabled = enabled != 0;
             clip.doodads.push_back(doodad);
@@ -467,7 +467,7 @@ int objectCopy(Args & args)
         std::cout << "  베낌      : " << tileW << "x" << tileH << " 타일에서"
                   << "  유닛 " << clip.units.size()
                   << ", 스프라이트 " << clip.sprites.size()
-                  << ", 두들 " << clip.doodads.size()
+                  << ", 두대드 " << clip.doodads.size()
                   << ", 로케이션 " << clip.locations.size() << "\n";
 
         const std::size_t links = static_cast<std::size_t>(
@@ -516,7 +516,7 @@ int objectShow(Args & args)
         const auto & doodad = clip->doodads[i];
         std::cout << "  doodad   " << std::setw(4) << i
                   << "  +" << std::setw(5) << doodad.dx << ",+" << std::setw(5) << doodad.dy
-                  << "  두들 " << doodad.type
+                  << "  두대드 " << doodad.type
                   << (doodad.enabled ? "" : "  [꺼짐]") << "\n";
     }
     for (std::size_t i = 0; i < clip->locations.size(); ++i)
@@ -550,13 +550,13 @@ int objectPaste(Args & args)
     if (!clip)
         return 1;
 
-    // 두들은 타일을 함께 써야 해서 게임 자료가 필요하다.
+    // 두대드는 타일을 함께 써야 해서 게임 자료가 필요하다.
     const bool needDoodads = kinds.doodads && !clip->doodads.empty();
     io::GameGraphics graphics;
     if (needDoodads)
     {
         if (!installPath)
-            throw CliError("두들이 든 파일을 붙이려면 게임 자료가 필요합니다: "
+            throw CliError("두대드가 든 파일을 붙이려면 게임 자료가 필요합니다: "
                            "--install <StarCraft 설치폴더>  (빼고 붙이려면 --only unit,sprite,location)");
         std::string error;
         if (!graphics.load(*installPath, &error))
@@ -583,7 +583,7 @@ int objectPaste(Args & args)
         std::size_t clipped = 0;
         std::size_t placedUnits = 0, placedSprites = 0, placedDoodads = 0, placedLocations = 0;
 
-        // 두들을 먼저 놓는다. 두들은 지형 타일도 바꾸므로, 나중에 놓으면
+        // 두대드를 먼저 놓는다. 두대드는 지형 타일도 바꾸므로, 나중에 놓으면
         // 위에 얹힌 유닛·스프라이트와 그리는 차례가 어긋난다.
         std::vector<io::RawSprite> overlaysBefore;
         if (needDoodads)
@@ -591,7 +591,7 @@ int objectPaste(Args & args)
             overlaysBefore = archive.sprites();
             const auto & catalogue = graphics.doodads(info.tilesetId);
 
-            // 꺼져 있던 두들은 놓은 다음 다시 꺼 준다 — placeDoodad 는 늘
+            // 꺼져 있던 두대드는 놓은 다음 다시 꺼 준다 — placeDoodad 는 늘
             // 켜진 채로 놓는다.
             std::vector<std::size_t> toDisable;
 
@@ -605,7 +605,7 @@ int objectPaste(Args & args)
                     [&](const auto & entry) { return entry.id == doodad.type; });
                 if (found == catalogue.end())
                 {
-                    std::cerr << "이 타일셋에 없는 두들이라 건너뜁니다: " << doodad.type << "\n";
+                    std::cerr << "이 타일셋에 없는 두대드라 건너뜁니다: " << doodad.type << "\n";
                     ++clipped;
                     continue;
                 }
@@ -620,7 +620,7 @@ int objectPaste(Args & args)
                                                  left + found->tileWidth / 2,
                                                  top + found->tileHeight / 2, owner); !r)
                 {
-                    std::cerr << "두들을 놓지 못했습니다(" << doodad.type << "): "
+                    std::cerr << "두대드를 놓지 못했습니다(" << doodad.type << "): "
                               << r.message << "\n";
                     ++clipped;
                     continue;
@@ -634,16 +634,16 @@ int objectPaste(Args & args)
             {
                 if (auto r = archive.setDoodadEnabled(at, false); !r)
                 {
-                    std::cerr << "두들을 끄지 못했습니다(" << at << "): " << r.message << "\n";
+                    std::cerr << "두대드를 끄지 못했습니다(" << at << "): " << r.message << "\n";
                     return false;
                 }
             }
             if (!toDisable.empty())
-                std::cout << "  알림      : 꺼져 있던 두들 " << toDisable.size()
+                std::cout << "  알림      : 꺼져 있던 두대드 " << toDisable.size()
                           << "개를 그대로 꺼 두었습니다.\n";
         }
 
-        // placeDoodad 는 움직이는 두들에 그림 조각을 하나 더 얹는다.
+        // placeDoodad 는 움직이는 두대드에 그림 조각을 하나 더 얹는다.
         // 파일에도 그 조각이 들어 있으면 두 번 놓이므로 걸러낸다.
         std::vector<io::RawSprite> autoOverlays;
         if (needDoodads)
@@ -728,7 +728,7 @@ int objectPaste(Args & args)
                 const int y = originY + sprite.dy;
                 if (!insideMap(x, y)) { ++clipped; continue; }
 
-                // 두들이 방금 얹어 준 조각과 같은 것이면 건너뛴다.
+                // 두대드가 방금 얹어 준 조각과 같은 것이면 건너뛴다.
                 const auto same = std::find_if(autoOverlays.begin(), autoOverlays.end(),
                     [&](const auto & made) {
                         return made.type == sprite.type && made.x == x && made.y == y;
@@ -752,7 +752,7 @@ int objectPaste(Args & args)
                 ++placedSprites;
             }
             if (skippedOverlays != 0)
-                std::cout << "  알림      : 두들이 스스로 얹는 그림 조각 "
+                std::cout << "  알림      : 두대드가 스스로 얹는 그림 조각 "
                           << skippedOverlays << "개는 두 번 놓지 않았습니다.\n";
         }
 
@@ -808,7 +808,7 @@ int objectPaste(Args & args)
         std::cout << "  붙임      : @ 타일 (" << tileX << ", " << tileY << ")"
                   << "  유닛 " << placedUnits
                   << ", 스프라이트 " << placedSprites
-                  << ", 두들 " << placedDoodads
+                  << ", 두대드 " << placedDoodads
                   << ", 로케이션 " << placedLocations << "\n";
         if (clipped != 0)
             std::cout << "  알림      : 맵 밖으로 나간 " << clipped << "개는 버렸습니다.\n";
@@ -821,7 +821,7 @@ int objectPaste(Args & args)
 std::vector<Group> clipboardGroups()
 {
     return {
-        Group{"object", "유닛·스프라이트·두들·로케이션을 네모째 오려 붙이기", {
+        Group{"object", "유닛·스프라이트·두대드·로케이션을 네모째 오려 붙이기", {
             {"copy",  "<맵> <타일x> <타일y> <w> <h> <출력.objects> "
                       "[--units] [--sprites] [--doodads] [--locations]",
                       "네모 안의 것을 파일로 베낀다. 갈래를 안 고르면 전부. "
@@ -830,7 +830,7 @@ std::vector<Group> clipboardGroups()
             {"paste", "<맵> <타일x> <타일y> <입력.objects> [--owner P] "
                       "[--only unit,sprite,doodad,location] [--install 설치폴더] -o <출력맵>",
                       "베낀 것을 붙인다. 애드온·나이더스 연결도 함께 되살린다. "
-                      "두들이 들어 있으면 --install 이 필요하다.",
+                      "두대드가 들어 있으면 --install 이 필요하다.",
                       objectPaste},
             {"show",  "<입력.objects>", "오려 둔 파일 안을 보여 준다.", objectShow},
         }},

@@ -45,7 +45,7 @@ TILESETS = {"badlands": 0, "space": 1, "ashworld": 3, "jungle": 4,
 LANE = 13       # 길 너비 — 길과 길목 방이 맵에서 충분한 걷는 면적을 차지한다
 WALLT = 1       # 길 양옆 벽 두께 — 128x128 Jungle 에서 불가 지형 41% (기존 59%)
 LANE_MARGIN = 12  # 맵 가장자리에서 길까지
-STOP_W, STOP_H = 12, 10   # 길목 방 (두뎃이 들어갈 만큼 넉넉히)
+STOP_W, STOP_H = 12, 10   # 길목 방 (두대드가 들어갈 만큼 넉넉히)
 
 def lane_turns(W: int) -> int:
     """굽이 수를 **맵 너비에서 셈한다.**
@@ -78,7 +78,7 @@ def lane_points(W, H, turns=None):
 def paint_lane(cli, pal, pts, W, H):
     """길을 깔고 **양옆에 벽을 세운다.** 벽부터 세우고 길을 덮는다.
 
-    깐 길 네모를 돌려준다 — 두뎃은 **걷기 경계 두 칸 안**에 몰려 있어야
+    깐 길 네모를 돌려준다 — 두대드는 **걷기 경계 두 칸 안**에 몰려 있어야
     하고(실측 89%), 이 맵에서 경계는 방 테두리가 아니라 길 가장자리다.
     """
     segs = []
@@ -216,6 +216,7 @@ Conditions:
 
 Actions:
 	Set Switch("Switch {boss_switch}", set);
+	Set Deaths("{boss_p}", "{units["boss"]}", Set To, 0);
 	Create Unit with Properties("{boss_p}", "{units["boss"]}", {cfg["rules"]["boss_count"]}, "{labels["entry"]}", 1);
 	Preserve Trigger();
 }}''')
@@ -275,7 +276,7 @@ Actions:
 }}''')
     T+=scmap.part_win(HUM,[f'Switch("Switch {boss_switch}", set);',
         f'Deaths("{enemy}", "{LIFE}", At least, 1);',
-        f'Command("{boss_p}", "Any unit", Exactly, 0);'],msg=msg["victory"])
+        f'Deaths("{boss_p}", "{units["boss"]}", At least, {cfg["rules"]["boss_count"]});'],msg=msg["victory"])
     return T
 
 
@@ -379,13 +380,14 @@ def main(argv=None):
             bx,by=sx+1+k*3,sy+1
             cli.place(shop["beacon"],bx,by,owner=i+1)
             cli.place(shop["icon"],bx,by+3,owner=12)
+            scmap.place_price_mineral(cli, bx + 2, by + 3, shop["cost"])
 
     print("시야를 엽니다...")
     scmap.reveal_for_all(cli, a.players)
 
-    print("방 테두리를 두뎃으로 꾸밉니다...")
+    print("방 테두리를 두대드로 꾸밉니다...")
     # **길 가장자리에 놓는다.** 길목 방은 비콘·병력·스타팅으로 꽉 차서
-    # 한 칸도 안 남았다 (0개가 나왔다). 두뎃이 몰려야 할 곳은 어차피
+    # 한 칸도 안 남았다 (0개가 나왔다). 두대드가 몰려야 할 곳은 어차피
     # 걷기 경계 두 칸 안이고, 이 맵의 경계는 길 가장자리다.
     #
     # `Map Revealer` 는 비켜 둘 필요가 없다 — 날아다니는 것이라 지형과
@@ -394,13 +396,14 @@ def main(argv=None):
               if u.get("type_name") != "Map Revealer"]
     nd = scmap.decorate_rim(cli, ts, lane_rects + list(stops), rng,
                             keep_clear=_clear)
-    print(f"  두뎃 {nd}개")
+    print(f"  두대드 {nd}개")
 
     names={}
     for shop in shops:
-        if shop["icon"] in names and names[shop["icon"]] != shop["icon_name"]:
+        label = scmap.priced_name(shop["icon_name"], shop["cost"])
+        if shop["icon"] in names and names[shop["icon"]] != label:
             raise scmap.CliError(f"unit type {shop['icon']} has conflicting map display names")
-        names[shop["icon"]]=shop["icon_name"]
+        names[shop["icon"]] = label
     name_cfg=dict(cfg);name_cfg["unit_names"]={**names,**cfg.get("unit_names",{})}
     profile.apply_unit_names(cli,name_cfg)
     res=scmap.MapResources(in_play=scmap.units_in_play(cli))
@@ -413,6 +416,7 @@ def main(argv=None):
     print(f"  {info['width']}x{info['height']} {info['tileset']}  "
           f"유닛 {info['units']}  로케이션 {info['locations']}  "
           f"트리거 {info['triggers']}")
+    scmap.assert_create_targets(cli)
     return 0
 
 

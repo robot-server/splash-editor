@@ -37,7 +37,7 @@ public:
         Terrain,     ///< 지형 칠하기
         PlaceUnit,   ///< 유닛 놓기
         PlaceSprite, ///< 맵 장식 스프라이트 놓기
-        PlaceDoodad,   ///< 두들(지형 장식) 놓기
+        PlaceDoodad,   ///< 두대드(지형 장식) 놓기
         SelectTerrain, ///< 지형을 네모로 고르기 (복사·붙여넣기)
         Location,      ///< 로케이션 그리기·크기 조절
         Fog          ///< 시야 가리개 칠하기
@@ -68,7 +68,7 @@ public:
     /// 그 로케이션이 보이도록 화면을 옮기고 고른 상태로 만든다.
     void focusLocation(std::size_t index);
 
-    /// 그 유닛·스프라이트·두들이 보이도록 옮기고 고른 상태로 만든다.
+    /// 그 유닛·스프라이트·두대드가 보이도록 옮기고 고른 상태로 만든다.
     void focusUnit(std::size_t index);
     void focusSprite(std::size_t index);
     void focusDoodad(std::size_t index);
@@ -209,24 +209,24 @@ public:
 
     bool hasSpriteClipboard() const { return spriteClipboard_.valid; }
 
-    /// 지금 고른 두들. 없으면 -1.
+    /// 지금 고른 두대드. 없으면 -1.
     int selectedDoodad() const { return selectedDoodad_; }
 
-    /// 고른 두들을 담는다. 담았으면 참.
+    /// 고른 두대드를 담는다. 담았으면 참.
     bool copySelectedDoodad();
 
-    /// 담아 둔 두들을 커서 자리에 놓는다.
+    /// 담아 둔 두대드를 커서 자리에 놓는다.
     bool pasteDoodadAt(const QPointF & screenPos);
     bool pasteDoodadAtCentre();
 
     bool hasDoodadClipboard() const { return doodadClipboard_.valid; }
 
-    /// 고른 두들을 지운다. 지웠으면 참.
+    /// 고른 두대드를 지운다. 지웠으면 참.
     bool deleteSelectedDoodad();
 
-    /// 지형을 베낄 때 두들 타일까지 가져올지.
+    /// 지형을 베낄 때 두대드 타일까지 가져올지.
     ///
-    /// 끄면 두들을 걷어낸 밑 지형을 가져온다 — 두들이 놓인 곳의 땅만
+    /// 끄면 두대드를 걷어낸 밑 지형을 가져온다 — 두대드가 놓인 곳의 땅만
     /// 베끼고 싶을 때 쓴다.
     bool copiesDoodadTiles() const { return copyDoodadTiles_; }
     void setCopyDoodadTiles(bool copy) { copyDoodadTiles_ = copy; }
@@ -277,7 +277,7 @@ public:
     /// 스프라이트 놓기 도구가 놓을 스프라이트.
     void setPlacementSprite(std::uint16_t spriteType, std::uint8_t owner);
 
-    /// 두들 놓기 도구가 놓을 두들 (dddata.bin 번호).
+    /// 두대드 놓기 도구가 놓을 두대드 (dddata.bin 번호).
     void setPlacementDoodad(std::uint16_t doodadId);
 
     /// 유닛·스프라이트를 놓을 때 좌표를 격자에 맞출지.
@@ -719,7 +719,7 @@ public:
     };
     SpriteClipboard spriteClipboard_;
 
-    /// 담아 둔 두들.
+    /// 담아 둔 두대드.
     struct DoodadClipboard
     {
         bool valid = false;
@@ -730,10 +730,10 @@ public:
 
     int selectedDoodad_ = -1;
 
-    /// 그 자리에 있는 두들 번호. 없으면 -1. 맵 픽셀 좌표를 받는다.
+    /// 그 자리에 있는 두대드 번호. 없으면 -1. 맵 픽셀 좌표를 받는다.
     int doodadAt(const QPointF & mapPos) const;
 
-    /// 그 두들이 덮는 자리 (맵 픽셀).
+    /// 그 두대드가 덮는 자리 (맵 픽셀).
     QRectF doodadBounds(std::size_t index) const;
     QRectF doodadBounds(std::uint16_t type, int pixelX, int pixelY) const;
 

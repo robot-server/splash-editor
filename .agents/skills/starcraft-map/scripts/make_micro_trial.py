@@ -50,6 +50,7 @@ def build_triggers(cfg, stages, time_limit, player_unit, state_token):
         f'Set Deaths("Player 1", "{state_token}", Set To, 0)',
         *profile.resource_actions(cfg, ["Player 1"]),
         f'Set Countdown Timer(Set To, {time_limit})',
+        f'Set Deaths("Player 2", "{first_unit}", Set To, 0)',
         f'Create Unit("Player 2", "{first_unit}", {first_count}, "{cfg["labels"]["bays"][0]}")',
         f'Order("Player 2", "{first_unit}", "{cfg["labels"]["bays"][0]}", "{cfg["labels"]["player_start"]}", attack)',
         f'Display Text Message(Always Display, "{cfg["text"]["messages"]["start"]}")']))
@@ -57,10 +58,11 @@ def build_triggers(cfg, stages, time_limit, player_unit, state_token):
         wave = waves[i]
         enemy, count, message = wave["unit"], wave["count"], wave["clear_message"]
         conds = [f'Deaths("Player 1", "{state_token}", Exactly, {i})',
-                 f'Command("Player 2", "{enemy}", At most, 0)']
+                 f'Deaths("Player 2", "{enemy}", At least, {count})']
         if i < stages - 1:
             next_enemy, next_count = waves[i + 1]["unit"], waves[i + 1]["count"]
             acts = [f'Set Deaths("Player 1", "{state_token}", Set To, {i + 1})',
+                    f'Set Deaths("Player 2", "{next_enemy}", Set To, 0)',
                     f'Set Resources("Player 1", Add, {wave["reward"]}, ore)',
                     f'Display Text Message(Always Display, "{message}")',
                     f'Create Unit("Player 2", "{next_enemy}", {next_count}, "{cfg["labels"]["bays"][i+1]}")',
@@ -154,6 +156,7 @@ def main(argv=None):
     profile.apply_profile_metadata(cli, cfg, 1)
     print(f"\nCreated {a.out}: {a.stages} enemy waves, connected walk graph, "
           f"{len(blocks)} triggers")
+    scmap.assert_create_targets(cli)
     return 0
 
 

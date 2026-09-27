@@ -575,6 +575,9 @@ def apply_unit_settings(cli, cfg: dict) -> int:
             args.extend(("--uses-default", "none"))
         cli.edit(*args)
         applied += 1
+    # 기본값을 끄면 UNIx 무기 피해가 0인 채로 남는다. 설치본 값으로 채운다.
+    if applied:
+        cli.edit("unitdef", "sync-weapons", cli.path, cli.install)
     return applied
 
 

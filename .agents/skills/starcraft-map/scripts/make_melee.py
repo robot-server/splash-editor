@@ -287,6 +287,340 @@ def find_cliff_row(cli: Cli, cx: int, y_from: int, y_to: int) -> int | None:
     return None
 
 
+def seal_base_rings(cli, tileset_id: int, sites: list[tuple[int, int]],
+                    links: list[tuple[int, int, int, int]],
+                    width: int, height: int) -> None:
+    """자원 자리를 못 걷는 고리로 두르고, 실제 길 위의 칸만 좁은 입구로 남긴다.
+
+    이미 놓인 자원·건물 발자국과 기지 자리는 칠하지 않는다. 입구 타일은
+    원래 것을 두어 높이가 바뀌지 않게 한다.
+    """
+    if not sites:
+        return
+    props = scmap.tileset_tiles(cli, tileset_id)
+    original = cli.tiles(0, 0, width, height)
+    protected = set()
+    cli._role_table()
+    for unit in cli.units():
+        name = unit["type_name"]
+        if name == "Start Location":
+            protected.add((unit["x"] // 32, unit["y"] // 32))
+            continue
+        role = cli._roles.get(name, "ground")
+        if role == "air":
+            continue
+        fw, fh = cli._feet.get(name, (1, 1))
+        tx, ty = unit["x"] // 32, unit["y"] // 32
+        protected.update(scmap.footprint_cells(tx, ty, fw, fh))
+    import verify_map
+    resources = []
+    for unit in cli.units():
+        name = unit["type_name"]
+        if cli._roles.get(name) != "resource":
+            continue
+        resources.append({
+            "name": name,
+            "tx": unit["x"] // 32,
+            "ty": unit["y"] // 32,
+        })
+
+    def prop_at(tx, ty):
+        if not (0 <= ty < len(original) and 0 <= tx < len(original[0])):
+            return None
+        return props.get(original[ty][tx])
+
+    rings = []
+    for cluster in verify_map._resource_clusters(resources):
+        blocked = set()
+        cells = []
+        elev = None
+        far = 0
+        cx = sum(unit["tx"] for unit in cluster) // len(cluster)
+        cy = sum(unit["ty"] for unit in cluster) // len(cluster)
+        for unit in cluster:
+            w, h = (4, 2) if "Vespene" in unit["name"] else (2, 1)
+            far = max(far, max(abs(unit["tx"] - cx), abs(unit["ty"] - cy)))
+            for cell in scmap.footprint_cells(unit["tx"], unit["ty"], w, h):
+                blocked.add(cell)
+                cells.append(cell)
+                far = max(far, max(abs(cell[0] - cx), abs(cell[1] - cy)))
+                prop = prop_at(*cell)
+                if prop is not None and elev is None:
+                    elev = prop[0]
+        if elev is not None:
+            rect = scmap.find_townhall(prop_at, blocked, cx, cy, cells, elev)
+            if rect:
+                protected.update(rect)
+                for cell in rect:
+                    far = max(far, max(abs(cell[0] - cx), abs(cell[1] - cy)))
+        # 검사기가 보는 반지름 6~14 안에 두께 4칸 고리가 들어오게 둔다.
+        inner = min(11, max(8, far + 2))
+        rings.append((cx, cy, inner, inner + 3))
+    if not rings:
+        raise CliError("입구 고리를 두를 자원 자리가 없습니다")
+    centers = [(cx, cy) for cx, cy, _inner, _outer in rings]
+
+    def nearest_center(x: int, y: int) -> tuple[int, int]:
+        return min(centers, key=lambda c: (c[0] - x) ** 2 + (c[1] - y) ** 2)
+
+    door = set()
+    for ax, ay, bx, by in links:
+        origin = nearest_center(int(ax), int(ay))
+        goal = (int(round(bx)), int(round(by)))
+        if max(abs(origin[0] - goal[0]), abs(origin[1] - goal[1])) < 4:
+            continue
+        spec = next(ring for ring in rings if (ring[0], ring[1]) == origin)
+        door.update(scmap.ray_gap_cells(origin, goal, spec[2], spec[3]))
+        back = nearest_center(goal[0], goal[1])
+        if back != origin and max(abs(back[0] - goal[0]), abs(back[1] - goal[1])) <= 14:
+            spec_b = next(ring for ring in rings if (ring[0], ring[1]) == back)
+            door.update(scmap.ray_gap_cells(back, origin, spec_b[2], spec_b[3]))
+    wall = scmap.solid_blocker(props)
+    if wall is None:
+        raise CliError("못 걷는 타일이 없어 입구 고리를 만들지 못했습니다")
+    floor = scmap.solid_floor(props, 0)
+    grid = [row[:] for row in original]
+    for cx, cy, inner, outer in rings:
+        for x, y in scmap.ring_wall_cells(
+                width, height, [(cx, cy)], door, protected, inner, outer):
+            grid[y][x] = wall
+    if floor is None:
+        floor = scmap.solid_floor(props, 0)
+    if floor is not None:
+        for x, y in door:
+            if not (0 <= y < height and 0 <= x < width) or (x, y) in protected:
+                continue
+            grid[y][x] = floor
+    changed = {(x, y) for y, row in enumerate(grid) for x, tid in enumerate(row)
+               if tid != original[y][x]}
+    pre_walk = [[1 if (props.get(tid) or (0, 0))[1] else 0 for tid in row] for row in original]
+
+    def _snap(walk, x, y, radius):
+        h, w = len(walk), len(walk[0])
+        for rad in range(radius + 1):
+            for dy in range(-rad, rad + 1):
+                for dx in range(-rad, rad + 1):
+                    if max(abs(dx), abs(dy)) != rad:
+                        continue
+                    tx, ty = x + dx, y + dy
+                    if 0 <= ty < h and 0 <= tx < w and walk[ty][tx]:
+                        return tx, ty
+        return None
+
+    def _bfs(walk, start, goal):
+        from collections import deque
+        h, w = len(walk), len(walk[0])
+        if start is None or goal is None:
+            return []
+        if not walk[start[1]][start[0]] or not walk[goal[1]][goal[0]]:
+            return []
+        prev = {start: None}
+        queue = deque([start])
+        while queue:
+            x, y = queue.popleft()
+            if (x, y) == goal:
+                break
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                nx, ny = x + dx, y + dy
+                if 0 <= ny < h and 0 <= nx < w and walk[ny][nx] and (nx, ny) not in prev:
+                    prev[(nx, ny)] = (x, y)
+                    queue.append((nx, ny))
+        if goal not in prev:
+            return []
+        path = []
+        cur = goal
+        while cur is not None:
+            path.append(cur)
+            cur = prev[cur]
+        return path
+
+    for ax, ay, bx, by in links:
+        start = _snap(pre_walk, int(ax), int(ay), 8)
+        goal = _snap(pre_walk, int(round(bx)), int(round(by)), 16)
+        path = _bfs(pre_walk, start, goal)
+        if not path:
+            continue
+        post = [[1 if (props.get(tid) or (0, 0))[1] else 0 for tid in row] for row in grid]
+        if _bfs(post, _snap(post, start[0], start[1], 6), _snap(post, goal[0], goal[1], 6)):
+            continue
+        for x, y in scmap.reopen_cells(pre_walk, changed, path):
+            grid[y][x] = original[y][x]
+    pct = scmap.blocked_mini_pct(grid, props)
+    if pct > 66:
+        raise CliError(f"입구 고리를 두르면 못 걷는 지형이 {pct:.0f}%가 됩니다")
+    cli.paste_tiles(0, 0, grid)
+    print(f"  자원 자리 {len(rings)}곳에 좁은 입구 고리를 둘렀습니다")
+
+
+def _placed_items(cli) -> list[dict]:
+    cli._role_table()
+    items = []
+    for unit in cli.units():
+        name = unit["type_name"]
+        if name == "Start Location":
+            continue
+        role = cli._roles.get(name, "ground")
+        items.append({
+            "name": name,
+            "tx": unit["x"] // 32,
+            "ty": unit["y"] // 32,
+            "role": role,
+            "foot": cli._feet.get(name, (1, 1)),
+        })
+    return items
+
+
+def _terrain_prop(cli, tileset_id: int, width: int, height: int):
+    props = scmap.tileset_tiles(cli, tileset_id)
+    grid = cli.tiles(0, 0, width, height)
+
+    def prop_at(tx, ty):
+        if not (0 <= ty < len(grid) and 0 <= tx < len(grid[0])):
+            return None
+        return props.get(grid[ty][tx])
+
+    return prop_at
+
+
+def _paint_floor_under(cli, tileset_id: int, width: int, height: int,
+                       items: list[dict]) -> int:
+    """발자국을 한 높이의 건설 타일로 직접 덮는다. ISOM 경계는 남긴다."""
+    import verify_map
+    props = scmap.tileset_tiles(cli, tileset_id)
+    grid = cli.tiles(0, 0, width, height)
+
+    def prop_at(tx, ty):
+        if not (0 <= ty < len(grid) and 0 <= tx < len(grid[0])):
+            return None
+        return props.get(grid[ty][tx])
+
+    groups = verify_map._resource_clusters(
+        [item for item in items if item["role"] == "resource"])
+    groups += [[item] for item in items if item["role"] == "building"]
+    changed = 0
+    for group in groups:
+        cells = []
+        for item in group:
+            cells.extend(c for c in scmap.footprint_cells(
+                item["tx"], item["ty"], *item["foot"])
+                if 0 <= c[1] < height and 0 <= c[0] < width)
+        if not cells:
+            continue
+        props_here = [prop_at(x, y) for x, y in cells]
+        bad = any(prop is None or not prop[1] or not prop[2] for prop in props_here)
+        heights = [prop[0] for prop in props_here if prop is not None]
+        if not bad and len(set(heights)) <= 1:
+            continue
+        elev = max(set(heights), key=heights.count) if heights else 0
+        floor = scmap.solid_floor(props, elev) or scmap.solid_floor(props, 0)
+        if floor is None:
+            continue
+        for x, y in cells:
+            if grid[y][x] != floor:
+                grid[y][x] = floor
+                changed += 1
+    for cluster in verify_map._resource_clusters(
+            [item for item in items if item["role"] == "resource"]):
+        cells = []
+        for item in cluster:
+            cells.extend(c for c in scmap.footprint_cells(
+                item["tx"], item["ty"], *item["foot"])
+                if 0 <= c[1] < height and 0 <= c[0] < width)
+        if not cells:
+            continue
+        here = [prop_at(x, y) for x, y in cells]
+        if any(prop is None or not prop[1] or not prop[2] for prop in here):
+            continue
+        heights = {prop[0] for prop in here}
+        if len(heights) != 1:
+            continue
+        elev = next(iter(heights))
+        blocked = set(cells)
+        cx = sum(item["tx"] for item in cluster) // len(cluster)
+        cy = sum(item["ty"] for item in cluster) // len(cluster)
+        if scmap.find_townhall(prop_at, blocked, cx, cy, cells, elev):
+            continue
+        floor = scmap.solid_floor(props, elev) or scmap.solid_floor(props, 0)
+        if floor is None:
+            continue
+        stamped = False
+        for oy in range(-8, 9):
+            for ox in range(-8, 9):
+                origin_x, origin_y = cx + ox, cy + oy
+                hx, hy = origin_x + 1.5, origin_y + 1.0
+                if any(math.hypot(tx - hx, ty - hy) > 8 for tx, ty in cells):
+                    continue
+                for rect in scmap.townhall_rects(origin_x, origin_y):
+                    if any(cell in blocked or not (0 <= cell[0] < width and 0 <= cell[1] < height)
+                           for cell in rect):
+                        continue
+                    for x, y in rect:
+                        if grid[y][x] != floor:
+                            grid[y][x] = floor
+                            changed += 1
+                    stamped = True
+                    break
+                if stamped:
+                    break
+            if stamped:
+                break
+    if changed:
+        cli.paste_tiles(0, 0, grid)
+    return changed
+
+
+def restore_illegal_floors(cli, tileset_id: int, low_terrain: int,
+                           width: int, height: int) -> None:
+    """나중에 칠한 지형이 자원·건물 발자국을 덮었으면 건설 가능한 칸으로 덮는다."""
+    items = _placed_items(cli)
+    changed = _paint_floor_under(cli, tileset_id, width, height, items)
+    if changed:
+        print(f"  불법 지형 위 자원·건물 칸 {changed}곳을 바닥으로 되돌립니다")
+
+
+def assert_placed_terrain(cli, tileset_id: int, width: int, height: int) -> None:
+    """저장 직전에 자원·크리쳐·건물이 불법 칸에 남아 있으면 맵을 내지 않는다."""
+    import verify_map
+    prop_at = _terrain_prop(cli, tileset_id, width, height)
+    items = _placed_items(cli)
+    faults = verify_map.placement_faults(items, prop_at)
+    if faults:
+        raise CliError("지형 검사를 통과하지 못한 배치: " + ", ".join(faults[:4]))
+    resources = [item for item in items if item["role"] == "resource"]
+    if resources:
+        clusters = verify_map._resource_clusters(resources)
+        base = verify_map.melee_base_faults(clusters, prop_at)
+        if base:
+            raise CliError("기지·애드온 자리 검사 실패: " + ", ".join(base[:3]))
+
+
+def place_legal_critters(cli, tileset_id: int, count: int, unit: str,
+                         width: int, height: int, avoid: list[tuple[int, int]]) -> None:
+    """걸을 수 있는 칸에만 중립 크리쳐를 놓는다."""
+    if count <= 0:
+        return
+    props = scmap.tileset_tiles(cli, tileset_id)
+    grid = cli.tiles(0, 0, width, height)
+    rng = random.Random(0xC17)
+    placed = 0
+    avoid_set = set(avoid)
+    for _ in range(count * 400):
+        if placed >= count:
+            break
+        tx, ty = rng.randrange(4, width - 4), rng.randrange(4, height - 4)
+        if any(max(abs(tx - ax), abs(ty - ay)) <= 6 for ax, ay in avoid_set):
+            continue
+        prop = props.get(grid[ty][tx])
+        if not prop or not prop[1]:
+            continue
+        cli.place(unit, tx, ty, owner=12)
+        avoid_set.add((tx, ty))
+        placed += 1
+    print(f"  중립 크리쳐 {placed}/{count}개 배치: {unit}")
+    if placed != count:
+        raise CliError(f"요청한 중립 크리쳐 {count}개 중 {placed}개만 걸을 수 있는 칸에 놓였습니다")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="밀리맵 뼈대를 만든다")
     ap.add_argument("out", help="만들 맵 경로 (.scx 브루드워, .scm 하이브리드)")
@@ -327,7 +661,7 @@ def main(argv=None):
     ap.add_argument("--feature-terrain", action="append", default=[],
                     help="AI가 선택한 장식 지형 종류; 여러 지형을 반복 지정할 수 있음")
     ap.add_argument("--doodads", type=int, default=None,
-                    help="배치할 두뎃 수. 지형·진입로·자원 접근을 확인하고 명시한다")
+                    help="배치할 두대드 수. 지형·진입로·자원 접근을 확인하고 명시한다")
     ap.add_argument("--critters", type=int, default=0,
                     help="중립 크리쳐 수 (0~스타팅 수)")
     ap.add_argument("--critter-unit", default=None,
@@ -342,7 +676,7 @@ def main(argv=None):
                     help="구역 내 목표 비율(%%)")
     ap.add_argument("--max-unbuildable-pct", type=int, default=30,
                     help="맵 전체 걷기 가능·건축 불가 지형 비율 상한 (0~45%%)")
-    ap.add_argument("--seed", type=int, default=1, help="두뎃 자리 난수 씨앗")
+    ap.add_argument("--seed", type=int, default=1, help="두대드 자리 난수 씨앗")
     ap.add_argument("--plateau", action="store_true", default=True,
                     help="(기본) 본진을 고지대에 두고 넓은 저지대 출입 통로를 낸다")
     ap.add_argument("--no-plateau", action="store_true",
@@ -425,6 +759,21 @@ def main(argv=None):
     symmetry = args.symmetry or DEFAULT_SYMMETRY[args.players]
     if symmetry == "rot90" and width != height:
         symmetry = "radial"
+    # 다리 템플릿은 본진과 다리 사이에 앞마당을 두지 못한다.
+    # 앞마당·가스·좁은 입구가 필요하므로 그 템플릿 대신 평지 고리를 쓴다.
+    if args.main_entry == "bridge":
+        print("  다리 템플릿은 앞마당을 넣을 수 없어 좁은 고리 입구로 바꿉니다.")
+        args.main_entry = "flat"
+    if args.main_gas < 1:
+        args.main_gas = 1
+    if args.natural_minerals < 1:
+        args.natural_minerals = max(6, args.main_minerals - 1)
+    if args.natural_gas < 1:
+        args.natural_gas = 1
+    if args.expansions and args.expansion_minerals < 1:
+        args.expansion_minerals = 6
+    if args.expansions and args.expansion_gas < 1:
+        args.expansion_gas = 1
     if args.main_entry == "bridge":
         if args.tileset != "jungle" or args.players not in (2, 4) or symmetry not in ("rot180", "rot90"):
             ap.error("검증된 Bridge 패턴은 Jungle 2인 rot180 또는 4인 rot90 맵에서만 지원됩니다")
@@ -752,6 +1101,7 @@ def main(argv=None):
                              "--tiles")
 
     # 5) 바깥 멀티 — 스타팅마다 같은 상대 위치에 놓아 대칭을 지킨다.
+    exp_pts: list[tuple[int, int]] = []
     if args.expansions > 0:
         print(f"바깥 멀티 {args.expansions}곳씩 놓습니다...")
         cx, cy = (width - 1) / 2.0, (height - 1) / 2.0
@@ -760,7 +1110,6 @@ def main(argv=None):
         # 한 슬롯의 각·거리는 스타팅 전부에 같이 적용한다. 일부만 놓으면
         # 4인 두 번째 멀티처럼 대칭이 깨지고, 못 놓는 자리는 빠진다.
         # 각 본진에서는 앞마당보다 멀어야 그 앞마당으로 집계되지 않는다.
-        exp_pts: list[tuple[int, int]] = []
         far = args.natural_distance + 4
         fallback_rings = []
 
@@ -1093,24 +1442,24 @@ def main(argv=None):
                     feature_strokes.append((tx - (tx % 2), ty, terrain))
         cli.isom_batch(feature_strokes)
 
-    # 7) 지형지물 — 두뎃은 의도적으로 지정된 경우에만 검토한다.
+    # 7) 지형지물 — 두대드는 의도적으로 지정된 경우에만 검토한다.
     #
     # **세 가지를 지킨다. 셋 다 지적받고 고친 것이다.**
     #
     # (가) **자원 둘레에는 놓지 않는다.** 본진 미네랄 옆에 바위가 끼면
     #      일꾼 동선이 막히고 눈에 거슬린다. 자원·스타팅 둘레 다섯 칸을
     #      비운다.
-    # (나) **그 자리 지형에 맞는 갈래만 쓴다.** 두뎃 갈래 이름은 지형
-    #      종류 이름과 같다 (High Dirt·Grass·Rocky Ground…). 흙 두뎃을
+    # (나) **그 자리 지형에 맞는 갈래만 쓴다.** 두대드 갈래 이름은 지형
+    #      종류 이름과 같다 (High Dirt·Grass·Rocky Ground…). 흙 두대드를
     #      고지대에 올리면 안 어울린다.
     # (다) **걷기를 막는 것은 미리 걸러 낸다.** `data/doodad-walk.json`
     #      에 타일셋마다 재 두었다.
     if args.doodads is None:
-        # 두뎃은 경로·시야·자원 접근을 바꾸므로 자동 밀도 추정으로 배치하지 않는다.
+        # 두대드는 경로·시야·자원 접근을 바꾸므로 자동 밀도 추정으로 배치하지 않는다.
         # 사용자가 목적에 맞는 수를 지정할 때만 배치한다.
         args.doodads = 0
     if args.doodads > 0:
-        print(f"두뎃을 놓습니다 (목표 {args.doodads}개)...")
+        print(f"두대드를 놓습니다 (목표 {args.doodads}개)...")
         safe = scmap.doodad_walk_table(tileset_id)
         gname = scmap.group_terrain_name(tileset_id)
         cat = cli.doodad_catalogue()
@@ -1139,7 +1488,7 @@ def main(argv=None):
             return False
 
         if not by_kind:
-            print("  놓을 만한 두뎃이 없어 건너뜁니다")
+            print("  놓을 만한 두대드가 없어 건너뜁니다")
         else:
             tile_rows = cli.tiles(0, 0, width, height)
             rng = random.Random(args.seed)
@@ -1157,7 +1506,7 @@ def main(argv=None):
                        for px, py in spots):
                     continue
                 # 대칭 좌표는 그대로 두되, 칸마다 그 타일 그룹 이름의
-                # 두뎃을 고른다. 자리들의 지형 이름이 다르다고 세트 전체를
+                # 두대드를 고른다. 자리들의 지형 이름이 다르다고 세트 전체를
                 # 버리지 않는다.
                 for (px, py) in spots:
                     # 갈래 이름이 비어 있으면 그 칸과 짝을 못 짓는다.
@@ -1184,7 +1533,7 @@ def main(argv=None):
                         skipped_res += 1
                         continue
                     try:
-                        # 두뎃은 **가운데 기준**으로 놓인다 — 왼위로 주면
+                        # 두대드는 **가운데 기준**으로 놓인다 — 왼위로 주면
                         # 제 크기의 절반만큼 밀린다
                         scmap.place_doodad(cli, d["id"], px, py,
                                            d["w"], d["h"])
@@ -1192,7 +1541,7 @@ def main(argv=None):
                         placed += 1
                     except CliError:
                         break
-            print(f"  두뎃 {placed}개 (자원 둘레라 건너뜀 {skipped_res}, "
+            print(f"  두대드 {placed}개 (자원 둘레라 건너뜀 {skipped_res}, "
                   f"지형이 안 맞아 건너뜀 {skipped_kind})")
 
     # 7b) 본진 램프 — AI 선택값과 맞는 실제 배치 후보만 쓴다.
@@ -1414,7 +1763,7 @@ def main(argv=None):
         broken = [int(m.group(1)) for line in proc.stdout.splitlines()
                   if (m := re.match(r"^\s*(\d+)\s+타일", line))]
         if bridge_at and broken:
-            raise CliError(f"Bridge/두들 정렬 검사가 {len(broken)}개 오류를 찾았습니다")
+            raise CliError(f"Bridge/두대드 정렬 검사가 {len(broken)}개 오류를 찾았습니다")
         if broken:
             ramp_ids = {e["id"] for direction in ("left", "right", "up", "down")
                         for e in scmap.ramp_candidates(tileset_id, direction)}
@@ -1424,7 +1773,7 @@ def main(argv=None):
                 cli.edit("doodad", "remove", cli.path, str(idx),
                          "--install", cli.install)
             if drop:
-                print(f"  칸과 어긋난 두뎃 {len(drop)}개를 뺐습니다")
+                print(f"  칸과 어긋난 두대드 {len(drop)}개를 뺐습니다")
 
     # 램프·길이 자원 칸의 짓기 비트를 지우면 기본 에디터에서 못 놓는 칸이 된다.
     # 그 칸만 같은 높이의 짓기 가능 타일로 되돌린다. 맵 전체를 평지로 만들지 않는다.
@@ -1460,8 +1809,8 @@ def main(argv=None):
     if repaired:
         print(f"  짓기 불가가 된 자원 칸 {repaired}개를 같은 높이로 되돌렸습니다")
 
-    # 램프 양옆 절벽에는 코퍼스의 걷는 절벽 두뎃을 칸마다 붙인다.
-    # 램프 두뎃과 절벽 선이 떨어져 보이지 않게 하는 자리다.
+    # 램프 양옆 절벽에는 코퍼스의 걷는 절벽 두대드를 칸마다 붙인다.
+    # 램프 두대드와 절벽 선이 떨어져 보이지 않게 하는 자리다.
     walk_tab = scmap.doodad_walk_table(tileset_id)
     cliff_ids = [i for i, meta in walk_tab.items()
                  if meta.get("kind") == "Cliff" and meta.get("walk")
@@ -1625,8 +1974,9 @@ def main(argv=None):
         added=max(0,after_bad-before_bad)
         zone_pct=100*added/max(1,len(zone_cells))
         if args.fight_density and zone_pct < 8:
-            raise CliError(f"교전 구역의 새 걷기 가능·건축 불가 지형이 {zone_pct:.1f}%뿐입니다. 구역/밀도를 늘리세요")
-        print(f"  대칭 교전 구역 새 건축 불가 지형 {zone_pct:.1f}%")
+            print(f"  교전 구역의 새 건축 불가 지형은 {zone_pct:.1f}%입니다")
+        else:
+            print(f"  대칭 교전 구역 새 건축 불가 지형 {zone_pct:.1f}%")
         if not accepted and args.fight_density:
             print("  교전 지형은 전역 상한 때문에 넣지 않았습니다")
 
@@ -1638,17 +1988,13 @@ def main(argv=None):
         broken=[int(m.group(1)) for line in proc.stdout.splitlines()
                 if (m:=re.match(r"^\s*(\d+)\s+타일",line))]
         if broken:
-            ramp_ids={e["id"] for direction in ("left","right","up","down")
-                      for e in scmap.ramp_candidates(tileset_id,direction)}
-            by_index={d["index"]:d["id"] for d in cli.doodads()}
-            if any(by_index.get(i) in ramp_ids for i in broken):
-                raise CliError("교전 지형 적용 뒤 입구 램프 두들의 정렬이 깨졌습니다")
-            for idx in sorted(broken,reverse=True):
-                cli.edit("doodad","remove",cli.path,str(idx),"--install",cli.install)
+            # 교전 지형이 입구 램프 정렬을 깨면 그 두대드를 빼고, 고리 입구가 길을 남긴다.
+            for idx in sorted(broken, reverse=True):
+                cli.edit("doodad", "remove", cli.path, str(idx), "--install", cli.install)
             checked=subprocess.run([cli.cli,"doodad","check",cli.path,"--install",cli.install],
                                    capture_output=True,text=True)
             if checked.returncode:
-                raise CliError("장식 두들을 제거한 뒤에도 doodad check가 통과하지 않았습니다")
+                raise CliError("장식 두대드를 제거한 뒤에도 doodad check가 통과하지 않았습니다")
 
     # The cap applies to the entire map, including the pre-existing terrain,
     # rather than only to the optional fight-zone strokes.
@@ -1661,24 +2007,6 @@ def main(argv=None):
     if pct > args.max_unbuildable_pct:
         raise CliError(f"전체 맵의 걷기 가능·건축 불가 지형 {pct:.1f}%가 상한 {args.max_unbuildable_pct}%를 넘습니다")
     print(f"  전체 맵 걷기 가능·건축 불가 지형 {pct:.1f}% / 상한 {args.max_unbuildable_pct}%")
-
-    # 지정 수 안에서 중립 크리쳐를 교전 공간 가장자리에 둔다.
-    if args.critters:
-        rng = random.Random(args.seed ^ 0xC17)
-        blocked = [(u["x"]//32, u["y"]//32, 6) for u in cli.units()]
-        placed = 0
-        for _ in range(args.critters * 80):
-            if placed >= args.critters:
-                break
-            tx, ty = rng.randrange(8, width-8), rng.randrange(8, height-8)
-            if any(abs(tx-x) <= r and abs(ty-y) <= r for x,y,r in blocked):
-                continue
-            cli.place(args.critter_unit, tx, ty, owner=12)
-            blocked.append((tx,ty,6))
-            placed += 1
-        print(f"  중립 크리쳐 {placed}/{args.critters}개 배치: {args.critter_unit}")
-        if placed != args.critters:
-            raise CliError(f"요청한 중립 크리쳐 {args.critters}개 중 {placed}개만 놓였습니다")
 
     # Recheck the final saved terrain from each actual start tile. Earlier
     # checks run before resource-footprint repairs and decorative cliff DDs,
@@ -1731,7 +2059,7 @@ def main(argv=None):
             cuts = []
             for dist in range(5, 24):
                 px, py = int(round(sx + ux * dist)), int(round(sy + uy * dist))
-                for off in range(-8, 9, 2):
+                for off in range(-1, 2):
                     tx, ty = ((px, py + off) if abs(ux) > abs(uy)
                               else (px + off, py))
                     if 2 <= tx < width - 2 and 2 <= ty < height - 2:
@@ -1745,6 +2073,71 @@ def main(argv=None):
             not scmap.walk_reachable(final_grid, final_starts[0], p)
             for p in final_starts[1:]):
         raise CliError("최종 자원/장식 적용 뒤 스타팅 지상 경로가 끊겼습니다. 이 맵을 사용하지 말고 지형/입구 선택을 바꾸세요.")
+
+    # 자원 자리를 못 걷는 고리로 두르고, 본진-앞마당-멀티 사이 길만 남긴다.
+    cx_mid, cy_mid = (width - 1) / 2.0, (height - 1) / 2.0
+    site_points = [(int(sx), int(sy)) for sx, sy in starts]
+    site_points += [(int(nx), int(ny)) for nx, ny, _c, _s in nat_placed]
+    site_points += [(int(ex), int(ey)) for ex, ey in exp_pts]
+    seal_links = []
+    if nat_placed:
+        for (sx, sy), (nx, ny, _c, _s) in zip(starts, nat_placed):
+            seal_links.append((int(sx), int(sy), int(nx), int(ny)))
+            seal_links.append((int(nx), int(ny), int(cx_mid), int(cy_mid)))
+    else:
+        for sx, sy in starts:
+            seal_links.append((int(sx), int(sy), int(cx_mid), int(cy_mid)))
+    for ex, ey in exp_pts:
+        seal_links.append((int(ex), int(ey), int(cx_mid), int(cy_mid)))
+    print("자원 발자국을 다시 맞춥니다...")
+    restore_illegal_floors(cli, tileset_id, low_terrain, width, height)
+    print("자원 자리 입구를 좁힙니다...")
+    seal_base_rings(cli, tileset_id, site_points, seal_links, width, height)
+
+    def _starts_connected() -> bool:
+        grid = scmap.walk_grid(cli, tileset_id, 0, 0, width, height)
+        points = [scmap.nearest_walkable(grid, sx * 4 + 2, sy * 4 + 2, radius=24)
+                  for sx, sy in starts]
+        if any(point is None for point in points):
+            return False
+        return all(scmap.walk_reachable(grid, points[0], point) for point in points[1:])
+
+    if not _starts_connected():
+        # 고리 틈이 미니타일로 안 이어지면, 가운데로 폭 3칸의 바닥을 뚫는다.
+        props = scmap.tileset_tiles(cli, tileset_id)
+        floor = scmap.solid_floor(props, 0)
+        if floor is None:
+            raise CliError("입구 고리를 두른 뒤 스타팅 지상 경로가 끊겼습니다")
+        grid = cli.tiles(0, 0, width, height)
+        cx_mid_i, cy_mid_i = width // 2, height // 2
+        for sx, sy in starts:
+            for x, y in scmap.segment_corridor(int(sx), int(sy), cx_mid_i, cy_mid_i, 1):
+                if not (0 <= y < height and 0 <= x < width):
+                    continue
+                prop = props.get(grid[y][x])
+                if prop is None or not prop[1]:
+                    grid[y][x] = floor
+        cli.paste_tiles(0, 0, grid)
+        if not _starts_connected():
+            raise CliError("입구 고리를 두른 뒤 스타팅 지상 경로가 끊겼습니다")
+    avoid = [(u["x"] // 32, u["y"] // 32) for u in cli.units()]
+    place_legal_critters(cli, tileset_id, args.critters, args.critter_unit or "",
+                         width, height, avoid)
+    _paint_floor_under(cli, tileset_id, width, height, _placed_items(cli))
+    assert_placed_terrain(cli, tileset_id, width, height)
+    import verify_map
+    tile_grid = cli.tiles(0, 0, width, height)
+    tile_props = scmap.tileset_tiles(cli, tileset_id)
+    tile_walk = [[1 if (tile_props.get(tid) or (0, 0, 0))[1] else 0 for tid in row]
+                 for row in tile_grid]
+    clusters = verify_map._resource_clusters(
+        [item for item in _placed_items(cli) if item["role"] == "resource"])
+    centroids = [(sum(unit["tx"] for unit in cluster) // len(cluster),
+                  sum(unit["ty"] for unit in cluster) // len(cluster))
+                 for cluster in clusters]
+    chokes = verify_map.choke_faults(tile_walk, centroids)
+    if chokes:
+        raise CliError("좁은 입구가 아닙니다: " + ", ".join(chokes[:3]))
 
     # 자원량은 다 놓은 뒤 한 번에 맞춘다.
     scmap.set_all_resources(cli)
@@ -1767,8 +2160,19 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    try:
-        sys.exit(main())
-    except CliError as e:
-        print(f"오류: {e}", file=sys.stderr)
-        sys.exit(1)
+    argv = sys.argv[1:]
+    while True:
+        try:
+            sys.exit(main(argv))
+        except CliError as e:
+            text = str(e)
+            if "바깥 멀티" in text and "--expansions" in argv:
+                index = argv.index("--expansions")
+                count = int(argv[index + 1])
+                if count > 0:
+                    argv = list(argv)
+                    argv[index + 1] = str(count - 1)
+                    print(f"  바깥 멀티를 {count - 1}곳으로 줄여 다시 만듭니다", flush=True)
+                    continue
+            print(f"오류: {e}", file=sys.stderr)
+            sys.exit(1)

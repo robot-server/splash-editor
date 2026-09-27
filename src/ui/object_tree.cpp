@@ -189,7 +189,7 @@ void ObjectTree::refresh()
 
     if (!doodads.empty())
     {
-        auto * root = makeGroup(tree_, tr("두들 (%1)").arg(doodads.size()));
+        auto * root = makeGroup(tree_, tr("두대드 (%1)").arg(doodads.size()));
 
         // 이름은 타일셋이 알려 준다. 타일셋이 없으면 번호로만 적는다.
         const auto known = tileset_ != nullptr
@@ -205,7 +205,7 @@ void ObjectTree::refresh()
             makeLeaf(root, Kind::Doodad, i,
                      info != known.end()
                          ? QString::fromStdString(info->name)
-                         : tr("두들 %1").arg(doodad.type),
+                         : tr("두대드 %1").arg(doodad.type),
                      tileText(doodad.x, doodad.y));
         }
     }

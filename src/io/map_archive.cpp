@@ -1119,7 +1119,7 @@ Result MapArchive::unprotect()
     return Result{true, message};
 }
 
-// ---------------------------------------------------------------- 두들
+// ---------------------------------------------------------------- 두대드
 
 std::vector<MapArchive::RawDoodad> MapArchive::doodads() const
 {
@@ -1199,11 +1199,11 @@ Result MapArchive::placeDoodad(const GameGraphics & graphics, std::uint16_t dood
             [doodadId](const auto & entry) { return entry.id == doodadId; });
 
         if (found == list.end())
-            return Result::failure("이 타일셋에 없는 두들입니다.");
+            return Result::failure("이 타일셋에 없는 두대드입니다.");
 
         const auto tiles = graphics.doodadTiles(tileset, doodadId);
         if (tiles.empty())
-            return Result::failure("두들 타일을 읽지 못했습니다.");
+            return Result::failure("두대드 타일을 읽지 못했습니다.");
 
         const int width = found->tileWidth;
         const int height = found->tileHeight;
@@ -1211,15 +1211,15 @@ Result MapArchive::placeDoodad(const GameGraphics & graphics, std::uint16_t dood
         const int mapWidth = static_cast<int>(map.getTileWidth());
         const int mapHeight = static_cast<int>(map.getTileHeight());
 
-        // 두들은 놓는 자리를 가운데로 삼는다.
+        // 두대드는 놓는 자리를 가운데로 삼는다.
         const int left = tileX - width / 2;
         const int top = tileY - height / 2;
 
         if (left < 0 || top < 0 || left + width > mapWidth || top + height > mapHeight)
-            return Result::failure("두들이 맵 밖으로 나갑니다.");
+            return Result::failure("두대드가 맵 밖으로 나갑니다.");
 
-        // 타일은 MTXM(게임용)에만 쓴다. TILE(에디터용)은 두들을 걷어낸 밑
-        // 지형으로 남겨 둬야 나중에 두들을 지울 때 원래 땅이 돌아온다.
+        // 타일은 MTXM(게임용)에만 쓴다. TILE(에디터용)은 두대드를 걷어낸 밑
+        // 지형으로 남겨 둬야 나중에 두대드를 지울 때 원래 땅이 돌아온다.
         int actions = 0;
         for (int y = 0; y < height; ++y)
         {
@@ -1227,7 +1227,7 @@ Result MapArchive::placeDoodad(const GameGraphics & graphics, std::uint16_t dood
             {
                 const std::uint16_t tile = tiles[static_cast<std::size_t>(y) * width + x];
                 if (tile == 0)
-                    continue; // 두들에 속하지 않는 빈 칸
+                    continue; // 두대드에 속하지 않는 빈 칸
 
                 map.setTile(static_cast<std::size_t>(left + x),
                             static_cast<std::size_t>(top + y), tile, Chk::Scope::Game);
@@ -1248,7 +1248,7 @@ Result MapArchive::placeDoodad(const GameGraphics & graphics, std::uint16_t dood
         map.addDoodad(doodad);
         ++actions;
 
-        // 움직이는 두들은 타일 위에 그림 조각을 하나 더 얹는다.
+        // 움직이는 두대드는 타일 위에 그림 조각을 하나 더 얹는다.
         if (found->overlayIndex != 0)
         {
             Chk::Sprite sprite {};
@@ -1266,7 +1266,7 @@ Result MapArchive::placeDoodad(const GameGraphics & graphics, std::uint16_t dood
     }
     catch (const std::exception & e)
     {
-        return Result::failure(std::string("두들을 놓지 못했습니다: ") + e.what());
+        return Result::failure(std::string("두대드를 놓지 못했습니다: ") + e.what());
     }
     return Result::success();
 }
@@ -1305,7 +1305,7 @@ std::vector<std::size_t> MapArchive::findBrokenDoodads(const GameGraphics & grap
 
             // 타일 번호가 아니라 눈에 보이는 그림으로 따진다. 같은 그림을
             // 가리키는 타일은 에디터마다 번호가 달라, 번호로 재면 멀쩡한
-            // 두들까지 어긋났다고 하게 된다.
+            // 두대드까지 어긋났다고 하게 된다.
             bool broken = false;
             for (int y = 0; y < info->tileHeight && !broken; ++y)
             {
@@ -1313,7 +1313,7 @@ std::vector<std::size_t> MapArchive::findBrokenDoodads(const GameGraphics & grap
                 {
                     const std::size_t slot = static_cast<std::size_t>(y) * info->tileWidth + x;
                     if (expected[slot] == 0)
-                        continue; // 두들에 속하지 않는 빈 칸
+                        continue; // 두대드에 속하지 않는 빈 칸
 
                     const int mapX = left + x;
                     const int mapY = top + y;
@@ -1437,7 +1437,7 @@ std::size_t MapArchive::convertDoodadsToTerrain(const GameGraphics & graphics)
 
         int actions = 0;
 
-        // 두들 타일을 TILE(에디터용)에도 적어 굳힌다. 이렇게 해야 DD2 를
+        // 두대드 타일을 TILE(에디터용)에도 적어 굳힌다. 이렇게 해야 DD2 를
         // 지운 뒤에도 그 자리가 그냥 지형으로 남는다.
         for (std::size_t i = 0; i < count; ++i)
         {
@@ -1511,7 +1511,7 @@ Result MapArchive::setDoodadEnabled(std::size_t index, bool enabled)
     try
     {
         if (index >= map.numDoodads())
-            return Result::failure("두들 번호가 범위를 벗어났습니다.");
+            return Result::failure("두대드 번호가 범위를 벗어났습니다.");
 
         Chk::Doodad doodad = map.getDoodad(index);
         const auto want = enabled ? Chk::Doodad::Enabled::Enabled
@@ -1531,7 +1531,7 @@ Result MapArchive::setDoodadEnabled(std::size_t index, bool enabled)
     }
     catch (const std::exception & e)
     {
-        return Result::failure(std::string("두들을 켜고 끄지 못했습니다: ") + e.what());
+        return Result::failure(std::string("두대드를 켜고 끄지 못했습니다: ") + e.what());
     }
     return Result::success();
 }
@@ -1545,7 +1545,7 @@ Result MapArchive::removeDoodad(const GameGraphics & graphics, std::size_t index
     try
     {
         if (index >= map.numDoodads())
-            return Result::failure("두들 번호가 범위를 벗어났습니다.");
+            return Result::failure("두대드 번호가 범위를 벗어났습니다.");
 
         const Chk::Doodad doodad = map.getDoodad(index);
         const auto doodadId = static_cast<std::uint16_t>(doodad.type);
@@ -1566,7 +1566,7 @@ Result MapArchive::removeDoodad(const GameGraphics & graphics, std::size_t index
             const int left = doodadOriginTile(doodad.xc, info->tileWidth);
             const int top = doodadOriginTile(doodad.yc, info->tileHeight);
 
-            // 아직 두들 타일이 깔려 있는 칸만 밑 지형으로 되돌린다. 그 뒤에
+            // 아직 두대드 타일이 깔려 있는 칸만 밑 지형으로 되돌린다. 그 뒤에
             // 다른 지형을 덧그렸다면 그 편집을 지우지 않는다.
             for (int y = 0; y < info->tileHeight && !tiles.empty(); ++y)
             {
@@ -1619,7 +1619,7 @@ Result MapArchive::removeDoodad(const GameGraphics & graphics, std::size_t index
     }
     catch (const std::exception & e)
     {
-        return Result::failure(std::string("두들을 지우지 못했습니다: ") + e.what());
+        return Result::failure(std::string("두대드를 지우지 못했습니다: ") + e.what());
     }
     return Result::success();
 }
@@ -3813,6 +3813,49 @@ Result MapArchive::setUnitStats(std::uint16_t unitType, const UnitStats & stats)
     catch (const std::exception & e)
     {
         return Result::failure(std::string("유닛 능력치를 바꾸지 못했습니다: ") + e.what());
+    }
+    return Result::success();
+}
+
+std::optional<MapArchive::WeaponDamage> MapArchive::weaponDamage(std::uint16_t weapon) const
+{
+    if (!impl_->isOpen() || weapon >= 130)
+        return std::nullopt;
+    try
+    {
+        const MapFile & map = *impl_->mapFile;
+        const auto type = static_cast<Sc::Weapon::Type>(weapon);
+        WeaponDamage out;
+        out.base = map.getWeaponBaseDamage(type, Chk::UseExpSection::Yes);
+        out.bonus = map.getWeaponUpgradeDamage(type, Chk::UseExpSection::Yes);
+        return out;
+    }
+    catch (const std::exception &)
+    {
+        return std::nullopt;
+    }
+}
+
+Result MapArchive::setWeaponDamage(std::uint16_t weapon, std::uint16_t baseDamage,
+                                   std::uint16_t bonusDamage)
+{
+    if (!impl_->isOpen())
+        return Result::failure("열린 맵이 없습니다.");
+    if (weapon >= 130)
+        return Result::failure("무기 번호가 UNIx 범위를 벗어났습니다.");
+    try
+    {
+        MapFile & map = *impl_->mapFile;
+        const auto type = static_cast<Sc::Weapon::Type>(weapon);
+        // 브루드워 맵은 UNIx 만 쓴다. UNIS 원본 표는 무기 100개까지만 있다.
+        map.setWeaponBaseDamage(type, baseDamage, Chk::UseExpSection::Yes);
+        map.setWeaponUpgradeDamage(type, bonusDamage, Chk::UseExpSection::Yes);
+        impl_->undoSteps.clear();
+        impl_->redoSteps.clear();
+    }
+    catch (const std::exception & e)
+    {
+        return Result::failure(std::string("무기 피해를 바꾸지 못했습니다: ") + e.what());
     }
     return Result::success();
 }
@@ -6425,7 +6468,7 @@ std::vector<std::uint16_t> MapArchive::terrainTiles() const
             return {};
 
         // MTXM(게임용)이 화면에 실제로 나오는 지형이다. TILE(에디터용)은
-        // 두들을 걷어낸 밑 지형이라, 그쪽을 그리면 캠페인 맵의 절벽이며
+        // 두대드를 걷어낸 밑 지형이라, 그쪽을 그리면 캠페인 맵의 절벽이며
         // 바위가 통째로 사라진다.
         //
         // 섹션이 없는 맵에서도 MappingCore 는 자리만 0 으로 채워 두므로,

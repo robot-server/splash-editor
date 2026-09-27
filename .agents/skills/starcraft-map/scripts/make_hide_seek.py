@@ -38,12 +38,15 @@ def trig(owner: str, conditions: list[str], actions: list[str]) -> str:
             "".join(f"\t{a};\n" for a in actions) + "}")
 
 
-def connect_rooms(cli, palette):
-    # Cut four doorways through the room rims and join them to the hall.
-    for x, y in ((43, 23), (78, 23), (43, 93), (78, 93)):
-        palette.fill(cli, "path", x, y, 8, 7)
-    palette.fill(cli, "path", 60, 29, 8, 21)
-    palette.fill(cli, "path", 60, 78, 8, 21)
+def connect_rooms(cli, palette, rooms):
+    # 쓰는 방만 홀로 잇는다. 비어 있는 방은 길을 내지 않는다.
+    doors = ((43, 23), (78, 23), (43, 93), (78, 93))
+    for door, _room in zip(doors, rooms):
+        palette.fill(cli, "path", door[0], door[1], 8, 7)
+    if any(room[1] < 40 for room in rooms):
+        palette.fill(cli, "path", 60, 29, 8, 21)
+    if any(room[1] > 40 for room in rooms):
+        palette.fill(cli, "path", 60, 78, 8, 21)
     palette.fill(cli, "path", 48, 58, 16, 8)
     palette.fill(cli, "path", 64, 58, 16, 8)
 
@@ -142,11 +145,15 @@ def main(argv=None):
     cli.edit("unitdef", "set", cli.path, cfg["units"]["room_marker"],
              "--name", cfg["units"]["room_marker_name"])
     pal = scmap.Palette(cli, ts, random.Random(a.seed), "usemap")
+    used_rooms = ROOMS[:a.hiders]
     scmap.cover_map(cli, pal, W, H, margin=2)
-    for x, y, w, h in ROOMS:
+    for x, y, w, h in used_rooms:
         scmap.room(cli, pal, x, y, w, h, rim=2, wall=True)
+    # 이번 판에 쓰지 않는 방 자리는 걸어 다니는 빈 마당으로 두지 않는다.
+    for x, y, w, h in ROOMS[a.hiders:]:
+        pal.fill(cli, "wall", x, y, w, h)
     scmap.room(cli, pal, *HALL, rim=2, wall=True)
-    connect_rooms(cli, pal)
+    connect_rooms(cli, pal, used_rooms)
 
     grid = scmap.walk_grid(cli, ts, 0, 0, W, H)
     points = [(64, 64)] + [(x + w // 2, y + h // 2)
@@ -180,6 +187,7 @@ def main(argv=None):
     profile.apply_profile_metadata(cli, cfg, humans)
     print(f"\nCreated {a.out}: {humans} humans, 4 rooms, "
           f"{len(blocks)} triggers; walk graph connected")
+    scmap.assert_create_targets(cli)
     return 0
 
 

@@ -425,6 +425,7 @@ def main(argv=None):
     print(f"  유닛 {info['units']}  로케이션 {info['locations']}  "
           f"트리거 {info['triggers']}")
     print(f"\n  python3 preview.py {a.out} look.png   ← 반드시 그려 볼 것")
+    scmap.assert_create_targets(cli)
     return 0
 
 

@@ -15,7 +15,7 @@ namespace splash::ui {
 
 /// 맵에 놓인 것들을 종류별로 늘어놓는 나무.
 ///
-/// 화면에서 눈으로 찾기 어려운 것 — 지형에 묻힌 두들, 겹쳐 놓은 유닛,
+/// 화면에서 눈으로 찾기 어려운 것 — 지형에 묻힌 두대드, 겹쳐 놓은 유닛,
 /// 맵 구석의 스프라이트 — 을 목록에서 짚어 갈 수 있게 한다.
 class ObjectTree : public QDockWidget
 {
@@ -27,7 +27,7 @@ public:
     /// 소유하지 않는다 — 호출부가 수명을 관리한다.
     void setDocument(const chk::MapDocument * document);
 
-    /// 두들 이름을 읽는 데 쓴다. 없어도 목록은 나온다.
+    /// 두대드 이름을 읽는 데 쓴다. 없어도 목록은 나온다.
     void setTileset(const io::GameGraphics * tileset);
 
     /// 맵이 바뀌었을 때 다시 채운다.
