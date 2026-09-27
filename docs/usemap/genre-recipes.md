@@ -19,7 +19,7 @@
 - 범위: 이 표본에서 확인한 구현 관찰이다. Room별 Bring 판정은 방 안 어디에
   있든 같은 방이면 잡힌 것으로 처리하는 영역 단위 판정이다. 모든 숨바꼭질
   맵이 이 변환·시간·팀 구조를 쓴다고 일반화하지 않는다.
-- 생성 레시피: [숨바꼭질 생성기](../../.agents/skills/starcraft-map/scripts/make_hide_seek.py).
+- 생성 레시피: [숨바꼭질 생성기](../../.agents/skills/starcraft-map-usemap/scripts/make_hide_seek.py).
   단순한 민간인과 Deaths 상태를 써서 EUD 없이 역할과 포획 흐름을 구성한다.
   이는 코퍼스 구현을 그대로 옮긴 것이 아니라 대체 구현이다. 방 안 동시
   유닛·포획 판정, Alliance/Victory 공유, 타이머 종료는 실제 게임에서 확인한다.
@@ -33,7 +33,7 @@
   무리를 생성한다. Player 8 소유 Broodling 사망 수가 정확한 경계에 도달하면
   다음 적 종류를 생성하고, 플레이어 Vulture를 다시 주며, 광물을 더한다.
   Firebat·Zergling·Zealot 등 적 종류별 Deaths 경계가 단계 전이에 쓰인다.
-- 생성 레시피: [벌처 실기 시험 생성기](../../.agents/skills/starcraft-map/scripts/make_micro_trial.py).
+- 생성 레시피: [벌처 실기 시험 생성기](../../.agents/skills/starcraft-map-usemap/scripts/make_micro_trial.py).
   이 레시피는 한 단계에 한 적 무리만 활동하게 하고 단계별 방에서 처치를
   완료해야 다음 무리와 보상이 나오도록 구성한다. 코퍼스의 시간 스폰·Deaths
   단계를 공간화한 권고이며, 실제 Create Unit 점유 실패와 적 Order 경로는
@@ -47,9 +47,9 @@
 - 직접 읽은 범위: 현재 CLI로 읽힌 방탈출 표본은 Set Memory와 Set Deaths를
   사용하며, 세부적인 비EUD 퍼즐 진행을 일반화할 만큼 근거가 충분하지 않다.
   읽지 못한 MPQ를 동작 증거로 취급하지 않는다.
-- 기존 [일반 탈출 뼈대](../../.agents/skills/starcraft-map/scripts/make_usemap.py)는
+- 기존 [일반 탈출 뼈대](../../.agents/skills/starcraft-map-usemap/scripts/make_usemap.py)는
   추격 적과 체크포인트가 있는 통과형 경로다. 방 탐색은 다른 공간·진행
-  구조이므로 [방별 봉인 퍼즐 생성기](../../.agents/skills/starcraft-map/scripts/make_room_escape.py)를
+  구조이므로 [방별 봉인 퍼즐 생성기](../../.agents/skills/starcraft-map-usemap/scripts/make_room_escape.py)를
   별도 레시피로 제공한다. 이 레시피는 Bring과 예약 Deaths 카운터로 세 방을
   순서대로 기록하고 출구 승리를 연다. 이 상태 흐름은 문서의 Bring·Deaths
   조립 원칙을 적용한 새 권고이며, 코퍼스 원본에서 직접 관찰한 체인과는
@@ -72,7 +72,7 @@
   Beacon 상태를 확인했다. 성공하면 선택 유닛을 상점 위치에서 치우고 맞는 영웅을
   다른 구역에 만든 뒤 자원을 차감한다. 새 레시피는 Player 7 Beacon 분기를 복제하지
   않고 각 사람의 선택 Deaths를 1회 구매 잠금으로 사용한다.
-- 생성 레시피: [드래프트 협동 방어 생성기](../../.agents/skills/starcraft-map/scripts/make_loadout_gauntlet.py).
+- 생성 레시피: [드래프트 협동 방어 생성기](../../.agents/skills/starcraft-map-usemap/scripts/make_loadout_gauntlet.py).
   이 레시피는 구매 루프를 전투 전 한 번짜리 팀 구성 단계로 사용하고, 모든 사람이
   고르거나 제한 시간이 끝나면 협동 웨이브를 연다. 프로필이 상점 비용·결과 유닛·
   마커·웨이브 수치·문구를 정한다. 선택 뒤 토큰을 상태 Deaths로 잠그고,
@@ -139,8 +139,8 @@ Comsat Station(86), Civilian(85), Flag(65) 등이 있었다. 이 측정은 공�
 
 ## 생성기 프로필
 
-새 장르 레시피는 `scripts/recipe_config.py`의 JSON 프로필을 필수 입력으로
-받는다. `scripts/recipe_profiles/`의 파일은 필드 모양 예시이며, 생성기는
+새 장르 레시피는 `.agents/skills/starcraft-map-usemap/scripts/recipe_config.py`의 JSON 프로필을 필수 입력으로
+받는다. `.agents/skills/starcraft-map-usemap/scripts/recipe_profiles/`의 파일은 필드 모양 예시이며, 생성기는
 그 경로를 기본값으로 열지 않는다. 문구·초상화·유닛·웨이브·타이머·보상·
 초기 자원·업그레이드·기술은 맵마다 AI가 새로 적은 프로필에서만 온다.
 예시 문장과 숫자를 그대로 맵 데이터로 쓰지 않는다. Python은 좌표·수량

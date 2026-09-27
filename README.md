@@ -315,17 +315,16 @@ Claude Code 는 `.claude/skills/` 만 뒤지므로 `.claude` 를 `.agents` 로
 
 ```sh
 export SC_INSTALL=/경로/StarCraft
-S=.agents/skills/starcraft-map/scripts
 
 # 밀리맵 뼈대 — 대칭 스타팅, 본진 고지대, 램프, 앞마당, 바깥 멀티
-python3 $S/make_melee.py out.scx --players 4 --tileset jungle
+python3 .agents/skills/starcraft-map-melee/scripts/make_melee.py out.scx --players 4 --tileset jungle
 
 # 유즈맵 뼈대 — 장르에 맞는 트리거 고리까지
-python3 $S/make_usemap.py out.scx --genre defense --players 6
+python3 .agents/skills/starcraft-map-usemap/scripts/make_usemap.py out.scx --config profile.json
 
 # 재기 (자리 밸런스 + 종족 밸런스 기울기) 와 그려 보기
-python3 $S/verify_map.py out.scx
-python3 $S/preview.py out.scx look.png
+python3 tools/mapgen/verify_map.py out.scx
+python3 tools/mapgen/preview.py out.scx look.png
 ```
 
 스킬에는 공식 리그 맵 56개와 인기 유즈맵 93개를 실제로 뜯어 잰 값이

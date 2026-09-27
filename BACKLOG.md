@@ -15,7 +15,7 @@
 `(8)Jungle Radial.scx`를 이 파라미터로 만들어 `verify_map.py` exit 0 확인함).
 
 **막고 있는 것**: badlands+128+inset32류에서 실패 좌표는 여전히 위쪽 극점
-스타팅 옆 한 칸으로 재현된다. 원인은 `resource_anchor`(scripts/make_melee.py
+스타팅 옆 한 칸으로 재현된다. 원인은 `resource_anchor`(.agents/skills/starcraft-map-melee/scripts/make_melee.py
 225~268행)의 나선 탐색 반경(12칸)이 작은 맵·큰 inset에서 고지대/경계에
 막히는 것으로 추정되나, `design_lanes` vs 자원 앵커 탐색 중 어느 쪽이
 근본 원인인지는 아직 좁히지 못했다. jungle 같은 관대한 타일셋 + 192 이상
@@ -268,8 +268,9 @@ CLI 쪽으로는: 갈래별 명령(unit·sprite·doodad·location·terrain·fog�
 ## 맵 생성 (AI 로 맵 만들기)
 
 `.agents/skills/starcraft-map-melee`(밀리맵)·`.agents/skills/starcraft-map-usemap`(유즈맵)에
-프롬프트로 맵을 만드는 스킬을 두었다. 공통 절차는 `.agents/skills/starcraft-map/COMMON.md`,
-생성기·측정 스크립트와 코퍼스 데이터는 `.agents/skills/starcraft-map/scripts`·`data`에 있다.
+프롬프트로 맵을 만드는 스킬을 두었다. 공통 절차는 `docs/agent-workflow.md`,
+장르별 생성기 스크립트는 각 스킬 자신의 `scripts/`, 둘이 공유하는 핵심 도구와
+코퍼스 데이터는 `tools/mapgen/`(스크립트)·`tools/mapgen/data/`에 있다.
 그 작업에서 드러난, 아직 못 고친 것들.
 
 ### `terrain mirror` 가 절벽을 뒤집지 못한다
@@ -331,6 +332,6 @@ MappingCore 의 `Sc::Isom::TerrainTypeInfo` 표에도 램프 항목이 없다.
 지금은 `tileset-ramps` 명령으로 그 타일을 찾고 스킬이 직접 찍는다.
 **다시 붙는다면**: 지형 팔레트에 램프 브러시를 더해 GUI 에서도 놓을 수
 있게 하는 것이 남았다. 어느 램프가 어느 지형 짝을 잇는지는 공식 맵을
-훑어 세는 방법으로 알아냈다 (`.agents/skills/starcraft-map/scripts/measure_ramps.py`가
-만든 `.agents/skills/starcraft-map/data/ramps.json`, 정리한 문서는
+훑어 세는 방법으로 알아냈다 (`.agents/skills/starcraft-map-melee/scripts/measure_ramps.py`가
+만든 `tools/mapgen/data/ramps.json`, 정리한 문서는
 [docs/tileset/ramps.md](docs/tileset/ramps.md)).

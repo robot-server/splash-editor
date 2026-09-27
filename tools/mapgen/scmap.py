@@ -65,8 +65,8 @@ def find_cli() -> str:
         return env
 
     here = os.path.dirname(os.path.realpath(__file__))
-    # .claude/skills/starcraft-map/scripts → 저장소 뿌리
-    root = os.path.abspath(os.path.join(here, "..", "..", "..", ".."))
+    # tools/mapgen → 저장소 뿌리
+    root = os.path.abspath(os.path.join(here, "..", ".."))
     for build in ("build", "build-cli"):
         candidate = os.path.join(root, build, "src", "cli", "splash-cli")
         if os.path.exists(candidate):
@@ -622,7 +622,7 @@ def _ramp_table() -> dict:
     except NameError:
         pass
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                        "..", "data", "ramps.json")
+                        "data", "ramps.json")
     try:
         with open(os.path.normpath(path), encoding="utf-8") as f:
             _RAMP_TABLE = json.load(f).get("ramps", {})
@@ -1930,7 +1930,7 @@ def _tile_colors(tileset_id: int) -> dict[int, tuple[int, int, int]]:
     global _COLOR_CACHE
     if _COLOR_CACHE is None:
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                            "..", "data", "tile-colors.json")
+                            "data", "tile-colors.json")
         try:
             with open(os.path.normpath(path), encoding="utf-8") as f:
                 raw = json.load(f)["colors"]
@@ -2634,7 +2634,7 @@ def terrain_types_table(tileset_id: int) -> dict:
     global _TERRAIN_TYPES
     if _TERRAIN_TYPES is None:
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                            "..", "data", "terrain-types.json")
+                            "data", "terrain-types.json")
         try:
             with open(os.path.normpath(path), encoding="utf-8") as f:
                 _TERRAIN_TYPES = json.load(f)["types"]
@@ -2716,7 +2716,7 @@ def doodad_walk_table(tileset_id: int) -> dict[int, dict]:
     global _DOODAD_WALK
     if _DOODAD_WALK is None:
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                            "..", "data", "doodad-walk.json")
+                            "data", "doodad-walk.json")
         try:
             with open(os.path.normpath(path), encoding="utf-8") as f:
                 raw = json.load(f)["doodads"]

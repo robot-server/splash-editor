@@ -8,7 +8,7 @@
 그래서 평균이 아니라 **본진마다 모양을 따로** 본다.
 """
 import os, sys, math, collections, subprocess, re
-sys.path.insert(0, ".agents/skills/starcraft-map/scripts")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import scmap
 
 D = sys.argv[1]

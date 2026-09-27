@@ -12,4 +12,4 @@
 - 지형 간 연결 규칙: 낮은 지형·높은 지형의 경계와 doodad의 방향/높이 단계가 맞아야 한다. SCMDraft `Height Transition`, `Pathfinder Regions`는 경사 위치와 보행 영역 단절을 찾는 진단 표시다. [오버레이 강좌](https://cafe.naver.com/edac/book5095361/76372).
 - 유닛 길막/동선 보장 규칙: 실제 타일셋의 `walkable` 미니타일을 사용해 양쪽 평지에서 램프를 통과하는지 검사한다. 램프 양끝, 접근 초크, 착지 공간을 실제 게임에서도 확인한다. 코드의 국소 연결 검사를 전체 맵 통과 보장으로 간주하지 않는다.
 
-생성기 근거: [램프 후보 측정 코드](../../.agents/skills/starcraft-map/scripts/measure_ramps.py), [타일셋별 후보 데이터](../../.agents/skills/starcraft-map/data/ramps.json), [배치·국소 경로 검사](../../.agents/skills/starcraft-map/scripts/scmap.py). `doodad place` 단독 명령은 배치 가능 표 검사를 하지 않으므로, 후보를 놓기 전에 `doodad fits`를 호출한다. 이 검사는 설치 데이터의 `DoodadPlacibility`와 현재 지형 타일 그룹을 비교한다.
+생성기 근거: [램프 후보 측정 코드](../../.agents/skills/starcraft-map-melee/scripts/measure_ramps.py), [타일셋별 후보 데이터](../../tools/mapgen/data/ramps.json), [배치·국소 경로 검사](../../tools/mapgen/scmap.py). `doodad place` 단독 명령은 배치 가능 표 검사를 하지 않으므로, 후보를 놓기 전에 `doodad fits`를 호출한다. 이 검사는 설치 데이터의 `DoodadPlacibility`와 현재 지형 타일 그룹을 비교한다.

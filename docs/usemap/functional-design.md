@@ -88,7 +88,7 @@
   결제만 되고 보상이 안 나올 수 있다. 소비 전에 자리 조건을 확인하거나
   실패/환불 분기를 둔다. 동시 구매나 영구 반복이 의도된 것이 아니라면
   선택 토큰 제거 또는 Deaths 상태 변경을 보상 생성과 함께 실행한다.
-- 새 레시피 예: [`make_loadout_gauntlet.py`](../../.agents/skills/starcraft-map/scripts/make_loadout_gauntlet.py)는
+- 새 레시피 예: [`make_loadout_gauntlet.py`](../../.agents/skills/starcraft-map-usemap/scripts/make_loadout_gauntlet.py)는
   코퍼스의 성공 구매 고리를 드래프트 선택으로 한 번만 사용하고, 선택 완료 후
   별도 협동 웨이브 상태로 넘어간다. 원본 관찰과 새 연결 방식은 같은 것으로
   취급하지 않는다.
