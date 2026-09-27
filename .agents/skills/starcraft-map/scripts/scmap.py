@@ -1339,10 +1339,42 @@ def set_all_resources(cli: Cli, mineral_amount: int = MINERAL_AMOUNT,
     return changed
 
 
+def price_mineral_spot(tile_x: int, tile_y: int, legal, taken: set,
+                      radius: int = 12):
+    """가격 미네랄 칸. 이미 쓰인 칸은 피하고, 합법 칸만 고른다."""
+    for rad in range(0, radius + 1):
+        for dy in range(-rad, rad + 1):
+            for dx in range(-rad, rad + 1):
+                if max(abs(dx), abs(dy)) != rad:
+                    continue
+                cell = (tile_x + dx, tile_y + dy)
+                if cell in taken or not legal(cell):
+                    continue
+                return cell
+    return None
+
+
 def place_price_mineral(cli: Cli, tile_x: int, tile_y: int, cost: int) -> bool:
-    """비콘 옆에 가격만큼의 미네랄을 놓는다. 자리가 없으면 False."""
-    spot = cli.nearest_legal("Mineral Field (Type 1)", tile_x, tile_y,
-                             cli.info()["width"], cli.info()["height"])
+    """비콘 옆에 가격만큼의 미네랄을 놓는다. 자리가 없으면 False.
+
+    이미 있는 가격 미네랄과 같은 칸을 다시 쓰지 않는다. 지을 칸이
+    반경 안에 없으면 그 발자국만 건설 바닥으로 맞춘 뒤 놓는다.
+    """
+    info = cli.info()
+    width, height = info["width"], info["height"]
+    taken = set()
+    for unit in cli.units():
+        if "Mineral" in unit["type_name"]:
+            taken.add((unit["x"] // TILE, unit["y"] // TILE))
+    spot = price_mineral_spot(
+        tile_x, tile_y,
+        lambda cell: cli.nearest_legal(
+            "Mineral Field (Type 1)", cell[0], cell[1], width, height) == cell,
+        taken)
+    if spot is None:
+        cli.stamp_footprint("Mineral Field (Type 1)", tile_x, tile_y)
+        if cli.nearest_legal("Mineral Field (Type 1)", tile_x, tile_y, width, height) == (tile_x, tile_y):
+            spot = (tile_x, tile_y)
     if spot is None:
         return False
     tx, ty = spot

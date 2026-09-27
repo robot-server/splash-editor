@@ -410,6 +410,11 @@ Actions:
         self.assertEqual(names["Terran Marine"], "해병 돌격")
         self.assertEqual(names["Protoss Zealot"], "질럿")
         self.assertNotIn("광물", names["Protoss Zealot"])
+        spot = scmap.price_mineral_spot(5, 5, lambda cell: True, {(5, 5)})
+        self.assertNotEqual(spot, (5, 5))
+        self.assertEqual(max(abs(spot[0] - 5), abs(spot[1] - 5)), 1)
+        self.assertEqual(scmap.price_mineral_spot(
+            5, 5, lambda cell: cell == (5, 7), set()), (5, 7))
         self.assertEqual(scmap.shop_preview_count(
             ['Create Unit("{player}", "Protoss Dragoon", 2, "{center}")']), 2)
         self.assertEqual(scmap.shop_preview_count(
