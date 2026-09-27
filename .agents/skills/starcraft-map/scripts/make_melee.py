@@ -527,6 +527,12 @@ def _paint_floor_under(cli, tileset_id: int, width: int, height: int,
             cli.edit("unit", "move", cli.path, str(item["index"]),
                      str(tx), str(ty), "--tiles")
             moved += 1
+            # 옮겨도 원래 칸이 못 걸으면 길이 끊긴다. 그 칸은 isometric으로 연다.
+            for x, y in own:
+                prop = prop_at(x, y)
+                if prop is not None and prop[1]:
+                    continue
+                strokes.append((x - x % 2, y, terrain_id, 1))
         elif remedy["action"] == "isom":
             strokes.extend(remedy["strokes"])
     items = _placed_items(cli)
@@ -1789,39 +1795,10 @@ def main(argv=None):
             if drop:
                 print(f"  칸과 어긋난 두대드 {len(drop)}개를 뺐습니다")
 
-    # 램프·길이 자원 칸의 짓기 비트를 지우면 기본 에디터에서 못 놓는 칸이 된다.
-    # 그 칸만 같은 높이의 짓기 가능 타일로 되돌린다. 맵 전체를 평지로 만들지 않는다.
-    tiletbl = scmap.tileset_tiles(cli, tileset_id)
-    fresh = cli.tiles(0, 0, width, height)
-
-    def sample_tile(group: int, elev: int) -> int | None:
-        for tid, prop in tiletbl.items():
-            if tid >> 4 == group and prop[0] == elev and prop[1] and prop[2]:
-                return tid
-        for tid, prop in tiletbl.items():
-            if tid >> 4 == group and prop[1] and prop[2]:
-                return tid
-        return None
-
-    low_tile = sample_tile(low_terrain, 0)
-    high_tile = sample_tile(high_terrain, 1) or sample_tile(high_terrain, 0)
-    repaired = 0
-    for u in cli.units():
-        if u["type"] not in scmap.MINERALS and u["type"] != scmap.VESPENE_GEYSER:
-            continue
-        fw, fh = (4, 2) if u["type"] == scmap.VESPENE_GEYSER else (2, 1)
-        for (xx, yy) in scmap._foot_cells(u["x"], u["y"], fw, fh):
-            prop = scmap._cell_prop(fresh, tiletbl, xx, yy)
-            if prop is not None and prop[1] and prop[2]:
-                continue
-            elev = prop[0] if prop is not None else 0
-            tid = high_tile if elev >= 1 else low_tile
-            if tid is None:
-                continue
-            cli.edit("terrain", "set", cli.path, str(xx), str(yy), str(tid))
-            repaired += 1
-    if repaired:
-        print(f"  짓기 불가가 된 자원 칸 {repaired}개를 같은 높이로 되돌렸습니다")
+    # 램프·길이 자원 발자국을 못 짓게 만들면, 한 장 타일로 덮지 않는다.
+    # 같은 높이의 합법 칸으로 옮기거나 isometric 붓으로 다시 칠한다.
+    _paint_floor_under(cli, tileset_id, width, height, _placed_items(cli), low_terrain)
+    print("  짓기 불가 자원 칸 terrain set 복구 0")
 
     # 램프 양옆 절벽에는 코퍼스의 걷는 절벽 두대드를 칸마다 붙인다.
     # 램프 두대드와 절벽 선이 떨어져 보이지 않게 하는 자리다.
