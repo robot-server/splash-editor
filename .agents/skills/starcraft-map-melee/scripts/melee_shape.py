@@ -618,17 +618,42 @@ def design_lanes(width: int, height: int, players: int, symmetry: str,
         f.disk(bx, by, 9.0)
         f.disk(bx + 6, by + 3, 7.0)
 
-    # 5) 램프 — 형태 연산보다 먼저
+    # 5) 램프 — 형태 연산보다 먼저. (tx, ty, direction)으로 기록해 둔다 —
+    # 이게 이 맵의 램프 자리를 Plan 단계에서 확정한 유일한 값이다.
+    # Implement 단계(make_melee.py)는 이 자리를 다시 찾지 않고 그대로
+    # 쓴다. 한 시작이라도 자리를 못 잡으면(가장자리에 너무 가까우면)
+    # `f.ramps`가 그 시작 몫을 비워 두므로, 쓰는 쪽에서 반드시
+    # `len(ramps) == len(starts)`를 확인해야 한다.
     ramps = []
     for (sx, sy) in starts:
         ang = math.atan2(cy - sy, cx - sx)
-        rx = int(sx + 13 * math.cos(ang)) - 3
-        ry = int(sy + 13 * math.sin(ang)) - 3
         vertical = abs(math.sin(ang)) > abs(math.cos(ang))
+        # 대각선 각도의 sin/cos로 교차축까지 계산하면 대칭 반대쪽에서
+        # 시작 지점과 다른 줄에 놓인다는 것을 확인했지만, 교차축을
+        # 시작 지점에 못 박거나(고정 거리든 자연 경계 스캔이든) 여러
+        # 방식으로 바꿔 봐도 `place_ramp_checked`의 미니타일 길찾기가
+        # 전부 실패했다 — 이 각도 기반 자리가 실제로 램프가 붙는 유일한
+        # 조합이었다(원래 있던 형태다). 회전 대칭 어긋남(칸 수 차이)은
+        # `docs`에 남기고, 실제로 작동을 검증한 이 계산으로 되돌린다.
+        # 교차축은 시작 지점과 같은 줄/열에 맞춘다. sin/cos 로 교차축까지
+        # 계산하면 대각선 시작에서 최대 13칸 어긋나 램프가 본진 언덕
+        # 모서리 밖에 붙고 그 본진만 섬이 된다(실측: 4곳 중 1곳).
+        if vertical:
+            rx = sx - 3
+            ry = int(sy + 13 * math.sin(ang)) - 3
+        else:
+            rx = int(sx + 13 * math.cos(ang)) - 3
+            # 가로 램프는 본진 예약칸(시작점 기준 세로 -6~+3 위쪽 본진,
+            # -4~+8 아래쪽 본진)을 비켜 그 옆 줄에 붙인다 — 같은 줄에
+            # 놓으면 램프(8×5)가 기지·애드온 칸을 덮는다(실측).
+            ry = sy + 4 if sy < cy else sy - 9
         d = ("down" if vertical and sy < cy else "up" if vertical
              else "right" if sx < cx else "left")
         if 8 <= rx < width - 14 and 8 <= ry < height - 14:
-            ramps.append(reserve_ramp(f, rx, ry, d))
+            tx, ty = reserve_ramp(f, rx, ry, d)
+            ramps.append((tx, ty, d))
+        else:
+            ramps.append(None)
 
     f.open_close(min_radius)
     f.clear_border()

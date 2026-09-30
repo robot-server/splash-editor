@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
-"""이미 있는 맵에서 구조를 통째로 떠낸다 — 본진·앞마당·가운데 지형.
+"""이미 있는 맵에서 물건(유닛·스프라이트·두대드·로케이션)을 떠낸다.
 
-절차적으로 지형을 만들어 내면 아무리 꾸며도 기계 티가 난다. 타일 변종을
-고르게 섞어도, 덩이 모양을 흐트러뜨려도 마찬가지다. 사람이 만든 맵에서
-**있는 구조를 그대로 떠다 쓰는 편**이 결과가 낫고, 램프·절벽·두대드가
-한 벌로 따라오므로 이어지지 않는 문제도 같이 사라진다.
+**지형(타일)은 raw로 떠내거나 붙이지 않는다.** `terrain copy`/`terrain
+paste`로 (x,y,w,h) 사각형 타일을 그대로 옮기는 것은 isom 붓이 아닌
+"다른 수단"이라 금지한다. 지형을 재현하려면 `make_melee.py --clone-from`
+처럼 좌표마다 `cli.isom_batch`로 지형 종류를 다시 칠해야 한다.
 
-떠낸 것은 지형(.tiles)과 물건(.objects) 두 파일이다. 물건에는 유닛·
-스프라이트·두대드·로케이션이 들어간다.
+이 스크립트가 다루는 것은 물건뿐이다 — 유닛·스프라이트·두대드·
+로케이션은 isom 붓과 무관하므로 `object copy`/`object paste`로 그대로
+옮겨도 된다.
 
 **떠낸 파일은 원본 맵에서 나온 것이다.** 남이 만든 맵에서 떠냈다면 그
 맵의 저작물이다. 저장소에 넣지 말고, 쓸 때마다 사용자가 가진 맵에서
 떠내 쓴다 — 그래서 이 스크립트는 도구만 주고 결과물은 담지 않는다.
 
 보기:
-    # 맵의 본진을 모두 떠낸다 (스타팅마다 하나씩)
+    # 맵의 본진 물건을 모두 떠낸다 (스타팅마다 하나씩)
     python3 extract_stamps.py bases <원본맵> <떠낼폴더> --size 30
 
-    # 아무 네모나 떠낸다
+    # 아무 네모의 물건이나 떠낸다
     python3 extract_stamps.py region <원본맵> <떠낼폴더> --at 40 40 --size 24
 
     # 떠낸 것을 붙인다
@@ -38,11 +39,9 @@ from scmap import Cli, CliError
 
 def save_stamp(cli: Cli, name: str, out_dir: str,
                tile_x: int, tile_y: int, w: int, h: int) -> dict:
-    """네모 하나를 지형 + 물건으로 떠낸다."""
+    """네모 하나 안의 물건(유닛·스프라이트·두대드)만 떠낸다. 지형은 떠내지 않는다."""
     os.makedirs(out_dir, exist_ok=True)
     base = os.path.join(out_dir, name)
-    cli.run("terrain", "copy", cli.path, str(tile_x), str(tile_y),
-            str(w), str(h), base + ".tiles")
     cli.run("object", "copy", cli.path, str(tile_x), str(tile_y),
             str(w), str(h), base + ".objects",
             "--units", "--sprites", "--doodads")
@@ -63,10 +62,9 @@ def load_stamp(prefix: str) -> dict:
 
 def place_stamp(cli: Cli, prefix: str, tile_x: int, tile_y: int,
                 owner: int | None = None):
-    """떠낸 것을 붙인다. 지형을 먼저, 물건을 나중에."""
+    """떠낸 물건을 붙인다. 지형은 이 도구로 옮기지 않는다 — 대상 맵의
+    지형은 미리 (예: isom 붓으로) 갖춰져 있어야 한다."""
     meta = load_stamp(prefix)
-    cli.edit("terrain", "paste", cli.path, str(tile_x), str(tile_y),
-             prefix + ".tiles")
     args = ["object", "paste", cli.path, str(tile_x), str(tile_y),
             prefix + ".objects", "--install", cli.install]
     if owner is not None:

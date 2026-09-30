@@ -1259,8 +1259,25 @@ def placement_faults(units: list[dict], prop_at) -> list[str]:
     return faults
 
 
-def melee_base_faults(clusters: list[list[dict]], prop_at) -> list[str]:
-    """본진·앞마당·멀티마다 미네랄, 가스, 같은 높이의 4×3 기지와 2×2 애드온."""
+def melee_base_faults(clusters: list[list[dict]], prop_at,
+                      main_centers: list[tuple[int, int]] | None = None) -> list[str]:
+    """본진·앞마당·멀티마다 미네랄, 가스, 같은 높이의 4×3 기지와 2×2 애드온.
+
+    기지·애드온 자리 자체가 없으면(최소 하한 `scmap.MIN_BASE_RADIUS` 미달)
+    위 두 검사에서 이미 실패한다. 그와 별도로 자리마다 확보 반경을
+    재고, 목표(`scmap.TARGET_BASE_RADIUS`, 공식 밀리맵 실측 기반)에
+    못 미치면 "여유 부족"을 보고한다.
+
+    목표 미달은 **정보로만 출력**하고 실패로 넣지 않는다.
+    `base_site_radius`는 고리 전체가 막히면 그 반지름에서 측정을
+    멈추는데, 이 생성기는 모든 자리에 `seal_base_rings`로 좁은 입구
+    고리를 두르는 게 설계다 — 즉 "여유 반경"과 "의도한 좁은 입구"가
+    같은 잣대에서 부딪힌다(실측: 고리를 두른 뒤 본진 반경이 8~9칸으로
+    나오는 정상 맵이 있었다). 입구가 실제로 좁은지는 `choke_faults`가
+    따로 본다. 반경 측정을 고리 통과까지 반영하는 flood-fill로 바꾸기
+    전까지는 이 미달을 실패 사유로 쓰지 않는다 — 남은 과제다.
+    """
+    del main_centers  # 아직 쓰지 않는다 — 위 docstring의 flood-fill 과제 참고.
     faults = []
     for cluster in clusters:
         names = " ".join(unit["name"] for unit in cluster)
@@ -1296,8 +1313,17 @@ def melee_base_faults(clusters: list[list[dict]], prop_at) -> list[str]:
             cells.extend(footprint_cells(unit["tx"], unit["ty"], w, h))
         cx = sum(unit["tx"] for unit in cluster) // len(cluster)
         cy = sum(unit["ty"] for unit in cluster) // len(cluster)
-        if scmap.find_townhall(prop_at, blocked, cx, cy, cells, elev) is None:
-            faults.append(f"({cx},{cy}) 근처에 같은 높이의 기지·애드온 자리가 없습니다")
+        rect = scmap.find_townhall(prop_at, blocked, cx, cy, cells, elev)
+        if rect is None:
+            faults.append(f"({cx},{cy}) 근처에 같은 높이의 기지·애드온 자리가 없습니다 "
+                          f"(최소 반경 {scmap.MIN_BASE_RADIUS}칸 미달)")
+            continue
+        radius = scmap.base_site_radius(prop_at, cx, cy, elev, blocked | set(rect))
+        margin = radius - scmap.MIN_BASE_RADIUS
+        under_target = radius < scmap.TARGET_BASE_RADIUS
+        print(f"  ({cx},{cy}) 확보 반경 {radius}칸 / 목표 {scmap.TARGET_BASE_RADIUS}칸 "
+              f"(최소 {scmap.MIN_BASE_RADIUS}칸 대비 여유 {margin}칸)"
+              + (" — 목표 미달" if under_target else ""))
     return faults
 
 

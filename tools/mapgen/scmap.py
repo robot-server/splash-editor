@@ -698,6 +698,80 @@ COMPACT_GAS_OFFSET = (0, 160)
 MAIN_PLATEAU_HALF_W = 17
 MAIN_PLATEAU_HALF_H = 17
 
+# --- 기지 자리 최소·목표 반경 ---
+#
+# **최소(하한)**: 커맨드센터/넥서스/해처리 4×3 과 테란 애드온 2×2 이
+# 겹치지 않고 들어가는 가장 작은 바운딩 상자다. `townhall_rects(0, 0)`
+# 이 실제로 내는 칸으로 잰다(가로 6, 세로 3). 이 밑으로 반경을 주면
+# 애드온이 원천적으로 들어갈 수 없으니 무조건 실패다. 이 값은 "설계
+# 목표"가 아니라 "이 밑이면 안 되는 바닥"이다.
+#
+# **목표(설계 반경)**: 자원 9덩이+가스 접근과 일꾼 동선까지 감안한
+# 실제로 넉넉한 반경이다. 감으로 정하지 않고 공식 밀리맵 6장
+# (2인 Challenger·Volcanis, 3인 Three Kingdoms, 4인 Alpha Draconis·
+# Ruins of the Ancients·Blood Bath) 에서 시작 지점부터 그 본진 자원
+# 클러스터의 가장 먼 자원까지 실측한 반경이 7.2~10.2 타일(평균 8.3)
+# 이었다. 목표 반경은 이 실측 최대값(10.2)에 여유를 더해 11로 잡는다
+# — 최소(3)보다 뚜렷하게 크고, 실측 상한보다도 여유가 있다.
+MIN_BASE_RADIUS = 3
+TARGET_BASE_RADIUS = 11
+
+
+def base_pad_cells(tile_x: int, tile_y: int, minerals: int, gas: int,
+                   out_x: int, out_y: int, pack: float = 1.0,
+                   compact: bool = False) -> set[tuple[int, int]]:
+    """자원 9덩이·가스와 기지 4×3+애드온 2×2 가 차지할 칸 전부.
+
+    **지형을 한 칸도 보지 않는다.** `layout_resources`의 순수 좌표
+    계산만 쓰고, 기지+애드온은 자원이 뻗어나가는 `out_x`/`out_y`
+    반대쪽(자원과 겹치지 않는 쪽)에 앵커를 대략 중앙에 두고 고정
+    오프셋으로 붙인다. Plan 단계에서 앵커를 확정한 직후, 지형을
+    그리기 전에 "이 칸들은 반드시 건설 가능해야 한다"를 계산하는 데
+    쓴다 — 지형을 그린 뒤 자리를 찾는 `resource_anchor` 나선 탐색을
+    대신한다.
+    """
+    mins, gases = layout_resources(tile_x, tile_y, minerals, gas,
+                                   out_x, out_y, pack, compact)
+    cells = {c for group in mins + gases for c in group}
+    hx = tile_x - 2 if out_x < 0 else tile_x - 1
+    hy = tile_y - 1
+    hall, addon = townhall_rects(hx, hy)
+    cells.update(hall)
+    cells.update(addon)
+    return cells
+
+
+def min_base_pad() -> tuple[int, int]:
+    """기지 4×3 + 애드온 2×2 가 겹치지 않는 최소 바운딩 상자 (가로, 세로)."""
+    _hall, top = townhall_rects(0, 0)
+    xs = [x for x, _y in top]
+    ys = [y for _x, y in top]
+    return max(xs) - min(xs) + 1, max(ys) - min(ys) + 1
+
+
+def base_site_radius(prop_at, cx: int, cy: int, elev: int,
+                     blocked: set | None = None, cap: int = 14) -> int:
+    """anchor 중심에서 같은 높이의 건설 가능 칸이 사방으로 몇 칸 이어지는지.
+
+    한 고리가 통째로 막히면 거기서 멈춘다(테두리 일부만 막히는 것은
+    절벽 진입부 같은 정상 경계라 계속 본다). Plan 단계 최소/목표 반경과
+    같은 잣대로, 완성된 지형에서 실제로 확보된 여유를 재는 데 쓴다.
+    """
+    blocked = blocked or set()
+    for r in range(cap):
+        ring = [(cx + dx, cy + dy)
+                for dy in range(-r - 1, r + 2) for dx in range(-r - 1, r + 2)
+                if max(abs(dx), abs(dy)) == r + 1]
+        ring = [c for c in ring if c not in blocked]
+        if not ring:
+            continue
+        bad = [c for c in ring
+               if (p := prop_at(*c)) is None or p[0] != elev
+               or not p[1] or not p[2]]
+        if len(bad) == len(ring):
+            return r
+    return cap
+
 # 램프 방향은 고정하지 않고 후보별 배치와 보행 연결을 검증한다.
 MAIN_RAMP_DISTANCE = 18
 
@@ -1576,7 +1650,7 @@ def find_elevation_edge(cli: Cli, tileset_id: int, tx: int, y_from: int, y_to: i
 
 def place_ramp_checked(cli: Cli, tileset_id: int, edge: int, fixed: int,
                        high_point, low_point, direction: str = "down",
-                       candidates=None, shifts=range(-7, 8)):
+                       candidates=None, shifts=range(-7, 8), avoid=None):
     """램프 두대드를 놓고 **실제로 걸어서 통하는지** 확인한다. 안 되면 뺀다.
 
     direction 은 **내려가는 쪽**이다. down/up 이면 `edge` 는 고지대가
@@ -1613,16 +1687,26 @@ def place_ramp_checked(cli: Cli, tileset_id: int, edge: int, fixed: int,
             if (x, y, did) in seen:
                 continue
             seen.add((x, y, did))
+            if avoid and any((x + i, y + j) in avoid
+                             for i in range(w) for j in range(h)):
+                continue
 
             try:
-                # 두대드는 가운데 기준이다. 왼위를 가운데로 옮겨 넘긴다.
-                cx, cy = doodad_anchor(x, y, w, h)
-                if not cli.doodad_fits(did, cx, cy):
-                    continue
+                # **여기서 `doodad_fits`(DoodadPlacibility 표)를 게이트로
+                # 쓰지 않는다.** 이 표는 정확한 타일 그룹 번호까지 요구하는
+                # 엄격한 표인데, 이 후보 목록(`ramps.json`)을 만든
+                # `measure_ramps.py`는 애초에 이 표를 검증하지 않았다
+                # (걷기 연결만 봤다 — 스크립트 자체 docstring에 그렇게
+                # 적혀 있다). 실제로 이 게이트를 넣었더니 대각선 시작지
+                # 4곳 모두에서 후보 전부가 "배치 불가"로 걸려 램프가
+                # 하나도 안 붙었다. 아래 미니타일 길찾기가 진짜 판정
+                # 기준이다 — 놓아 보고 실제로 통하는지만 본다.
                 before = cli.tiles(x, y, w, h)
                 n_before = len(cli.doodads())
                 place_doodad(cli, did, x, y, w, h)
-            except CliError:
+            except CliError as e:
+                if os.environ.get("RAMP_DEBUG"):
+                    print(f"    [ramp-dbg] place err did={did} x={x} y={y}: {e}")
                 continue
 
             grid = walk_grid(cli, tileset_id, rx0, ry0, rw, rh)
@@ -1630,6 +1714,8 @@ def place_ramp_checked(cli: Cli, tileset_id: int, edge: int, fixed: int,
             b_ = nearest_walkable(grid, (lx - rx0) * 4 + 2, (ly - ry0) * 4 + 2)
             if a_ and b_ and walk_reachable(grid, a_, b_):
                 return did, x, y
+            if os.environ.get("RAMP_DEBUG"):
+                print(f"    [ramp-dbg] no-reach did={did} x={x} y={y} a={a_} b={b_}")
 
             # 안 통하면 두대드 항목과 타일을 함께 되돌린다. 두대드만 빼면
             # 지형이 남고, 타일만 되돌리면 DD2 에 유령이 남는다.
@@ -1831,59 +1917,6 @@ def scatter_tile_variants(cli: Cli, tileset_id: int, rng, chance: float = 0.6,
     if changed:
         cli.paste_tiles(x0, y0, grid)
     return changed
-
-
-def paint_floor_mixed(cli: Cli, tileset_id: int, rng, regions, groups,
-                      need_build: bool = False, elevation: int | None = None) -> int:
-    """바닥을 **여러 지형 그룹을 덩이로 섞어** 칠한다.
-
-    한 그룹만 쓰면 서로 다른 타일이 16개를 못 넘는다. 실측 유즈맵의
-    아래 사분위가 141개다 — 그룹을 여럿 써야 닿는다.
-
-    덩이(가장 가까운 씨앗)로 칠해야 얼룩덜룩하지 않고 결이 생긴다.
-    `need_build` 를 켜면 건물을 지을 수 있는 타일만 쓴다. 바닥 대부분은
-    걷기만 되면 되므로 기본은 끈다 — 켜면 쓸 수 있는 변종이 확 줄어
-    타일 가짓수가 모자란다.
-
-    **고도는 반드시 하나로 묶는다.** 스타크래프트는 낮은 곳에서 높은
-    곳을 치면 빗나간다. 싸움터 바닥에 고도가 섞이면 같은 자리에서도
-    명중률이 들쭉날쭉해진다. `elevation` 을 주지 않으면 첫 그룹의
-    고도를 따르고 다른 고도의 그룹은 버린다.
-    """
-    tiles = tileset_tiles(cli, tileset_id)
-    pool = {}
-    for g in groups:
-        good = [t for t in range(g * 16, g * 16 + 16)
-                if t in tiles and tiles[t][1] and (tiles[t][2] or not need_build)]
-        if not good:
-            continue
-        lvl = tiles[good[0]][0]
-        if elevation is None:
-            elevation = lvl                 # 첫 그룹의 고도로 맞춘다
-        if lvl != elevation:
-            continue
-        pool[g] = good
-    if not pool:
-        raise CliError("바닥으로 쓸 타일을 찾지 못했습니다.")
-    keys = list(pool)
-    painted = 0
-    for (rx, ry, rw, rh) in regions:
-        if rw <= 0 or rh <= 0:
-            continue
-        grid = cli.tiles(rx, ry, rw, rh)
-        seeds = [(rng.randrange(rw), rng.randrange(rh), rng.choice(keys))
-                 for _ in range(max(4, rw * rh // 70))]
-        for y in range(rh):
-            for x in range(rw):
-                best, bg = None, keys[0]
-                for (sx, sy, g) in seeds:
-                    d = (sx - x) ** 2 + (sy - y) ** 2
-                    if best is None or d < best:
-                        best, bg = d, g
-                grid[y][x] = rng.choice(pool[bg])
-        cli.paste_tiles(rx, ry, grid)
-        painted += rw * rh
-    return painted
 
 
 
