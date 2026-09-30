@@ -1160,7 +1160,7 @@ bool MapDocument::repairDoodads(const io::GameGraphics & graphics, std::size_t *
 
     if (repaired == 0)
     {
-        lastError_ = "고칠 두들이 없습니다.";
+        lastError_ = "고칠 두대드가 없습니다.";
         return false;
     }
 
@@ -1180,7 +1180,7 @@ bool MapDocument::convertDoodadsToTerrain(const io::GameGraphics & graphics,
 
     if (converted == 0)
     {
-        lastError_ = "풀어 낼 두들이 없습니다.";
+        lastError_ = "풀어 낼 두대드가 없습니다.";
         return false;
     }
 

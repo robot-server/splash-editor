@@ -1400,6 +1400,9 @@ int cmdUnitStats(const std::string & installPath, bool json)
                       << ", \"air_hits\": " << int(d.maxAirHits)
                       << ", \"air_range\": " << d.airRange
                       << ", \"air_damage\": " << d.airDamage
+                      << ", \"air_bonus\": " << d.airDamageBonus
+                      << ", \"place_w\": " << (d.placeWidth > 0 ? (d.placeWidth + 31) / 32 : 0)
+                      << ", \"place_h\": " << (d.placeHeight > 0 ? (d.placeHeight + 31) / 32 : 0)
                       << ", \"ai_comp_idle\": " << int(d.aiCompIdle)
                       << ", \"ai_human_idle\": " << int(d.aiHumanIdle)
                       << ", \"ai_return_idle\": " << int(d.aiReturnToIdle)
@@ -1620,7 +1623,7 @@ int cmdDoodads(const std::string & installPath, std::uint16_t tilesetId)
     }
 
     const auto list = graphics.doodads(tilesetId);
-    std::cout << "  두들 " << list.size() << "개\n";
+    std::cout << "  두대드 " << list.size() << "개\n";
     std::size_t shown = 0;
     for (const auto & doodad : list)
     {

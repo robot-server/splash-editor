@@ -17,7 +17,7 @@ CLI="${SPLASH_CLI:-./build-cli/src/cli/splash-cli}"
 | MPQ/CHK·메타데이터 | `info <맵>`, `map info <맵>`, `chk <맵> <임시.chk>`, `roundtrip <맵>` | 버전/형식, 크기, 타일셋, 이름/설명, 섹션 보존, CHK 바이트. 추출 CHK는 임시 위치에 둔다. |
 | 문자열 인코딩 | `map encoding <맵> [--encoding cp949|cp932|cp936|cp1252|utf8|ascii] [--limit N]` | 저장을 바꾸지 않고 표시되는 코드 페이지별 문자열 해석을 비교한다. |
 | 설치 에셋 | `assets <설치경로>`, `unit-stats <설치경로> [--json]`, `unit-classes <설치경로>`, `images-tbl <설치경로> [검색어]`, `has-asset <설치경로> <아카이브경로>` | 사용 가능한 타일셋·에셋, 유닛/무기 속성, 이미지 및 파일 이름. |
-| 타일·두들 에셋 | `tileset-info <설치경로> <타일셋>`, `tileset-groups <설치경로> <타일셋>`, `tileset-tiles <설치경로> <타일셋>`, `tileset-ramps <설치경로> <타일셋>`, `find-creep <설치경로> <타일셋>`, `creep-kin <설치경로> <타일셋> <메가타일> <개수>`, `tile-sheet`, `mega-sheet` — 정확한 인자는 현재 도움말 참조 | 지형 그룹/타일 속성, 램프 후보, 크립 관련 자료, 시각 타일 근거. 지역 램프 후보가 실제 배치된 경로 전체의 연결을 증명하지는 않는다. |
+| 타일·두대드 에셋 | `tileset-info <설치경로> <타일셋>`, `tileset-groups <설치경로> <타일셋>`, `tileset-tiles <설치경로> <타일셋>`, `tileset-ramps <설치경로> <타일셋>`, `find-creep <설치경로> <타일셋>`, `creep-kin <설치경로> <타일셋> <메가타일> <개수>`, `tile-sheet`, `mega-sheet` — 정확한 인자는 현재 도움말 참조 | 지형 그룹/타일 속성, 램프 후보, 크립 관련 자료, 시각 타일 근거. 지역 램프 후보가 실제 배치된 경로 전체의 연결을 증명하지는 않는다. |
 | 유닛 이미지 | `unit types [--find]`, `unit-image <설치경로> <유닛ID> <임시.ppm> [소유자] [타일셋]`, `icon`, `icon-histogram` | 정확한 유닛 이름/ID, 기능에 필요한 이미지·아이콘 구분. |
 | 맵 렌더 | `render <맵> <설치경로> <임시.ppm> [--units] [--locations] [--creep]`, `scenario image`(그룹 명령) | 지형, 유닛, 로케이션, 크립과 알 수 없는 타일 경고. 로그뿐 아니라 렌더 이미지를 직접 확인한다. |
 
@@ -27,7 +27,7 @@ CLI="${SPLASH_CLI:-./build-cli/src/cli/splash-cli}"
 | --- | --- | --- |
 | 유닛·자원 | `unit list <맵> [--owner] [--type] [--limit]`, `unit types [--find]` | 유닛 종류/ID, 소유자, 픽셀 좌표, 자원, 스타팅, 배치 관계. `--limit`으로 잘렸는지 확인하고 필터/상향 제한으로 전체를 읽는다. |
 | 스프라이트 | `sprite list <맵> [--limit]` | 스프라이트 ID·좌표·소유자·상태. |
-| 두들 | `doodad list <맵> [--install] [--catalogue]`, `doodad fits <맵> <ID> <타일x> <타일y> --install`, `doodad check <맵> --install` | 배치된/카탈로그 두들, 배치 적합성, 어긋남 진단. 표가 없으면 `fits`는 알 수 없음일 수 있다. |
+| 두대드 | `doodad list <맵> [--install] [--catalogue]`, `doodad fits <맵> <ID> <타일x> <타일y> --install`, `doodad check <맵> --install` | 배치된/카탈로그 두대드, 배치 적합성, 어긋남 진단. 표가 없으면 `fits`는 알 수 없음일 수 있다. |
 | 로케이션 | `location list <맵>`, `location ai-towns <맵>` | 이름·범위·고도/레이어 조건, AI 타운 사용 여부. |
 | 지형 | `terrain show <맵> <x> <y> [w h] [--underlying]`, `terrain types <맵> --install` | 화면 지형 MTXM, 선택적 밑 지형 TILE, 타일 ID, ISOM 지형 이름. 기능 관련 구역을 각각 확인하고 작은 샘플 하나만으로 전체를 추정하지 않는다. |
 | 시야 가림 | `fog show <맵> <x> <y> [w h]` | 구역별 플레이어 MASK 비트. |
@@ -52,5 +52,5 @@ CLI="${SPLASH_CLI:-./build-cli/src/cli/splash-cli}"
 - `--limit` 출력이 잘리지 않았는지 확인한다. 더 있다는 문구가 있으면 필터나 큰 제한으로 나눠 읽는다. 대용량 결과는 임시 조사 폴더나 코퍼스 메타데이터에 두고 문서 본문으로 복사하지 않는다.
 - 구조 출력과 `render`, `terrain show`를 짝지어 본다. 렌더는 CHK의 모든 필드를 보여 주지 않고, 목록 출력은 트리거와 공간의 관계를 보여 주지 않는다. 여러 뷰를 결합한다.
 - 유즈맵은 `소유자 → 활성 트리거 → 조건 → 순서가 있는 액션 → 상태 변경 → 다음 트리거/종료`를 따라가고, 참조 로케이션·유닛·문자열을 렌더 위치와 연결한다.
-- 밀리맵은 `스타팅 → 본진 자원 → 앞마당/확장 → 경로/램프 → 중앙/상대` 관계를 따라간다. 건물 footprint, 애드온 여유, 일꾼 접근, 지형·두들을 확인한다. 거리나 자원 수만으로 공정함 또는 실제 길찾기를 증명하지 않는다.
+- 밀리맵은 `스타팅 → 본진 자원 → 앞마당/확장 → 경로/램프 → 중앙/상대` 관계를 따라간다. 건물 footprint, 애드온 여유, 일꾼 접근, 지형·두대드를 확인한다. 거리나 자원 수만으로 공정함 또는 실제 길찾기를 증명하지 않는다.
 - 명령 출력, 렌더 관찰, 원본에서 관찰한 사실, 제작 권고를 구분한다. 뷰가 없거나 설치 에셋이 없으면 그 한계를 쓰고 빈 곳을 추측으로 채우지 않는다.

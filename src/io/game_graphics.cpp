@@ -57,7 +57,7 @@ struct GameGraphics::Impl
     /// 미니맵은 맵을 열거나 지형을 고칠 때마다 다시 그리므로 캐시가 필요하다.
     mutable std::map<std::uint32_t, std::array<std::uint8_t, 3>> miniColors;
 
-    /// 타일셋별 두들 목록. 만들 때마다 정렬까지 해야 해서, 두들을 놓는
+    /// 타일셋별 두대드 목록. 만들 때마다 정렬까지 해야 해서, 두대드를 놓는
     /// 동안 마우스를 움직일 때마다 다시 만들면 눈에 띄게 굼떠진다.
     mutable std::map<std::uint16_t, std::vector<DoodadInfo>> doodadLists;
 
@@ -162,7 +162,7 @@ bool GameGraphics::load(const std::string & installPath, std::string * error,
         fresh->cluster = std::make_shared<ArchiveCluster>(std::move(sources));
         fresh->scData = std::make_unique<Sc::Data>();
 
-        // 두들 이름이 stat_txt.tbl 에 있으므로 함께 넘긴다. 없으면
+        // 두대드 이름이 stat_txt.tbl 에 있으므로 함께 넘긴다. 없으면
         // 이름 없이 번호로만 보인다.
         std::shared_ptr<Sc::TblFile> statTxt = std::make_shared<Sc::TblFile>();
         if (!statTxt->load(*fresh->cluster, "rez\\stat_txt.tbl"))
@@ -537,6 +537,8 @@ GameGraphics::UnitStats GameGraphics::unitStats(std::uint16_t unitType) const
         out.maxGroundHits = d.maxGroundHits;
         out.maxAirHits = d.maxAirHits;
         out.flags = d.flags;
+        out.placeWidth = d.starEditPlacementBoxWidth;
+        out.placeHeight = d.starEditPlacementBoxHeight;
         const auto has = [&](std::uint32_t bit) { return (d.flags & bit) != 0; };
         out.hero = has(Sc::Unit::Flags::Hero);
         out.invincible = has(Sc::Unit::Flags::Invincible);
@@ -600,6 +602,7 @@ GameGraphics::UnitStats GameGraphics::unitStats(std::uint16_t unitType) const
         {
             out.airRange = aw->maximumRange;
             out.airDamage = aw->damageAmount;
+            out.airDamageBonus = aw->damageBonus;
             out.airDamageUpgrade = aw->damageUpgrade;
             out.airDamageType = aw->weaponType;
             out.airDamageFactor = aw->damageFactor;
@@ -741,8 +744,8 @@ bool GameGraphics::isCreepBuilding(std::uint16_t unitType) const
 
 namespace {
 
-/// CV5 의 두들 영역은 타일 그룹과 크기가 같은 다른 구조다. 같은 자리를
-/// 두들로 읽어야 크기와 이름을 알 수 있다.
+/// CV5 의 두대드 영역은 타일 그룹과 크기가 같은 다른 구조다. 같은 자리를
+/// 두대드로 읽어야 크기와 이름을 알 수 있다.
 const Sc::Terrain::DoodadCv5 & asDoodad(const Sc::Terrain::TileGroup & group)
 {
     return reinterpret_cast<const Sc::Terrain::DoodadCv5 &>(group);
@@ -766,7 +769,7 @@ GameGraphics::doodads(std::uint16_t tilesetId) const
     std::vector<DoodadInfo> out;
     const Sc::Terrain::Tiles & tiles = impl_->tiles(tilesetId);
 
-    // doodadIdToTileGroup 이 두들 번호와 시작 그룹을 이어 준다.
+    // doodadIdToTileGroup 이 두대드 번호와 시작 그룹을 이어 준다.
     for (const auto & [doodadId, tileGroupIndex] : tiles.doodadIdToTileGroup)
     {
         if (tileGroupIndex >= tiles.tileGroups.size())
@@ -782,7 +785,7 @@ GameGraphics::doodads(std::uint16_t tilesetId) const
         info.overlayIndex = doodad.overlayIndex;
         info.spriteOverlay = (doodad.flags & 0x1000) != 0;
 
-        // 팔레트에는 두들의 첫 타일을 보여 준다.
+        // 팔레트에는 두대드의 첫 타일을 보여 준다.
         info.previewTileId = static_cast<std::uint16_t>(tileGroupIndex * 16);
 
         // 이름은 stat_txt.tbl 에서 온다. 묶음 목록에 이름이 들어 있다.
@@ -859,7 +862,7 @@ std::optional<bool> GameGraphics::doodadFits(std::uint16_t tilesetId,
             if (slot >= 256)
                 continue;
 
-            // 두들에 속하지 않는 빈 칸은 어떤 지형이든 상관없다.
+            // 두대드에 속하지 않는 빈 칸은 어떤 지형이든 상관없다.
             if (group >= tiles.tileGroups.size() || x >= 16 ||
                 tiles.tileGroups[group].megaTileIndex[x] == 0)
                 continue;
@@ -909,8 +912,8 @@ std::vector<std::uint16_t> GameGraphics::doodadTiles(std::uint16_t tilesetId,
     if (width <= 0 || height <= 0)
         return out;
 
-    // 두들은 줄 하나가 CV5 그룹 하나다. 그룹 안에서 칸 번호가 곧 x 이고,
-    // 그 자리의 메가타일이 0 이면 그 칸은 두들에 속하지 않는다 — 바위
+    // 두대드는 줄 하나가 CV5 그룹 하나다. 그룹 안에서 칸 번호가 곧 x 이고,
+    // 그 자리의 메가타일이 0 이면 그 칸은 두대드에 속하지 않는다 — 바위
     // 그림의 네 귀퉁이처럼 뚫린 자리라 원래 지형을 그대로 둬야 한다.
     out.reserve(static_cast<std::size_t>(width) * height);
     for (int y = 0; y < height; ++y)

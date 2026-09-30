@@ -89,7 +89,7 @@ std::optional<Patch> readPatch(const std::string & path, const char * magic)
 }
 
 /// 지형을 쓰면 밑 지형(TILE)도 함께 맞춰진다 — 브러시가 하는 일과 같다.
-/// 두들이 깔아 둔 자리라면 밑 지형이 달라지므로 미리 알린다.
+/// 두대드가 깔아 둔 자리라면 밑 지형이 달라지므로 미리 알린다.
 ///
 /// 게임이 보는 MTXM 은 쓴 값 그대로다. 달라지는 것은 에디터가 보는
 /// 밑 지형뿐이다.
@@ -112,7 +112,7 @@ void warnIfUnderlyingDiffers(const io::MapArchive & archive,
     if (differing == 0)
         return;
 
-    std::cout << "  알림      : 두들이 깔아 둔 자리 " << differing
+    std::cout << "  알림      : 두대드가 깔아 둔 자리 " << differing
               << "칸의 밑 지형(TILE)도 함께 맞춰집니다. 게임이 보는 MTXM 은"
                  " 쓴 값 그대로입니다.\n";
 }
@@ -231,7 +231,7 @@ int terrainCopy(Args & args)
 
     return readMap(args.at(0), [&](io::MapArchive & archive) {
         const auto info = archive.info();
-        // 두들을 빼고 베끼려면 화면에 보이는 MTXM 이 아니라 밑 지형을 쓴다.
+        // 두대드를 빼고 베끼려면 화면에 보이는 MTXM 이 아니라 밑 지형을 쓴다.
         const auto tiles = underlying ? archive.underlyingTiles() : archive.terrainTiles();
         if (tiles.size() != std::size_t(info.tileWidth) * info.tileHeight)
         {
@@ -255,7 +255,7 @@ int terrainCopy(Args & args)
         if (!writePatch(outPath, "splash-tiles", patch))
             return 1;
         std::cout << "  베낌      : " << rect.w << "x" << rect.h << " -> " << outPath
-                  << (underlying ? "  (두들 뺌)" : "") << "\n";
+                  << (underlying ? "  (두대드 뺌)" : "") << "\n";
         return 0;
     });
 }
@@ -410,7 +410,7 @@ int terrainMirror(Args & args)
             return false;
         }
         std::cout << "  대칭      : " << axis << "  " << writes.size() << "칸을 고침\n";
-        std::cout << "  알림      : 지형만 옮깁니다. 유닛·두들·로케이션은 그대로입니다.\n";
+        std::cout << "  알림      : 지형만 옮깁니다. 유닛·두대드·로케이션은 그대로입니다.\n";
         return true;
     });
 }
@@ -723,7 +723,7 @@ std::vector<Group> terrainGroups()
             {"set",    "<맵> <x> <y> <타일값> -o <출력맵>", "타일 하나를 칠한다.", terrainSet},
             {"fill",   "<맵> <x> <y> <w> <h> <타일값> -o <출력맵>", "네모를 칠한다.", terrainFill},
             {"copy",   "<맵> <x> <y> <w> <h> <출력.tiles> [--no-doodads]",
-                       "지형을 파일로 베낀다. --no-doodads 면 두들을 뺀 밑 지형을.", terrainCopy},
+                       "지형을 파일로 베낀다. --no-doodads 면 두대드를 뺀 밑 지형을.", terrainCopy},
             {"paste",  "<맵> <x> <y> <입력.tiles> -o <출력맵>",
                        "베낀 지형을 붙인다. 밑 지형(TILE)도 함께 맞춰진다.", terrainPaste},
             {"mirror", "<맵> <horizontal|vertical|both|rot180|rot90> [--from left|right|top|bottom] -o <출력맵>",

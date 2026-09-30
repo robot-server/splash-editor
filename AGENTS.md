@@ -46,7 +46,7 @@ Splash Editor 는 StarCraft: Brood War / Remastered 맵 에디터다. 목표는
   로 CHK 를 만들고 `MpqFile` 로 직접 넣는다.
 - **`strTailData` 를 되살린다.** MappingCore 는 STR 뒤에 남은 바이트를 읽을
   때는 보존하지만 쓸 때는 붙이지 않는다. 맵 보호나 서명에 쓰이는 경우가 있다.
-- **화면에 그리는 지형은 MTXM 이다.** TILE 은 두들을 걷어낸 밑 지형이라
+- **화면에 그리는 지형은 MTXM 이다.** TILE 은 두대드를 걷어낸 밑 지형이라
   그쪽을 그리면 캠페인 맵의 절벽이며 바위가 사라진다.
 - **round-trip 은 맵 파일이 아니라 CHK 바이트로 견준다.** MPQ 컨테이너는
   해시 테이블 배치·압축 결과가 달라질 수 있다.

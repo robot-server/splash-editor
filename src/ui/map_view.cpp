@@ -1422,7 +1422,7 @@ void MapView::focusDoodad(std::size_t index)
     if (index >= doodads.size())
         return;
 
-    // 두들은 두들 도구에서만 고를 수 있다.
+    // 두대드는 두대드 도구에서만 고를 수 있다.
     tool_ = Tool::PlaceDoodad;
     emit toolChanged(tool_);
 
@@ -2379,7 +2379,7 @@ void MapView::paintTerrainCursor(QPainter & painter)
 
     if (tool_ == Tool::PlaceDoodad)
     {
-        // 두들이 덮을 타일 범위를 보여 준다.
+        // 두대드가 덮을 타일 범위를 보여 준다.
         if (tileset_ == nullptr)
         {
             painter.restore();
@@ -2408,7 +2408,7 @@ void MapView::paintTerrainCursor(QPainter & painter)
         painter.setPen(QPen(line, 2));
         painter.drawRect(box);
 
-        // 고른 두들을 표시한다.
+        // 고른 두대드를 표시한다.
         if (selectedDoodad_ >= 0)
         {
             const QRectF bounds = doodadBounds(static_cast<std::size_t>(selectedDoodad_));
@@ -2706,7 +2706,7 @@ bool MapView::copyTerrainSelection()
 
     const auto & info = document_->info();
 
-    // 두들을 뺄 때는 밑 지형에서 가져온다.
+    // 두대드를 뺄 때는 밑 지형에서 가져온다.
     const auto & tiles = copyDoodadTiles_ ? document_->tiles()
                                           : document_->underlyingTiles();
     if (tiles.empty())
@@ -2940,8 +2940,8 @@ int MapView::doodadAt(const QPointF & mapPos) const
     if (document_ == nullptr || !document_->isOpen() || tileset_ == nullptr)
         return -1;
 
-    // 두 목록 모두 한 번만 받아 온다 — 두들이 팔백 개 넘는 맵도 있고
-    // 타일셋의 두들 표도 매번 새로 만들어지므로, 칸마다 다시 받으면
+    // 두 목록 모두 한 번만 받아 온다 — 두대드가 팔백 개 넘는 맵도 있고
+    // 타일셋의 두대드 표도 매번 새로 만들어지므로, 칸마다 다시 받으면
     // 누를 때마다 눈에 띄게 굼떠진다.
     const auto doodads = document_->doodads();
     const auto list = tileset_->doodads(document_->info().tilesetId);
@@ -3595,7 +3595,7 @@ void MapView::mousePressEvent(QMouseEvent * event)
         const int tileX = static_cast<int>(std::max(0.0, mapPos.x())) / io::kTilePixels;
         const int tileY = static_cast<int>(std::max(0.0, mapPos.y())) / io::kTilePixels;
 
-        // 이미 놓인 두들을 누르면 그것을 고른다 — 복사하거나 지우려면
+        // 이미 놓인 두대드를 누르면 그것을 고른다 — 복사하거나 지우려면
         // 고를 수 있어야 한다. 그 자리에 겹쳐 놓고 싶으면 Shift 를 누른다.
         if ((event->modifiers() & Qt::ShiftModifier) == 0)
         {
@@ -3921,7 +3921,7 @@ void MapView::mouseMoveEvent(QMouseEvent * event)
         return;
     }
 
-    // 지형·두들 도구는 덮을 자리를 커서 둘레에 보여 준다.
+    // 지형·두대드 도구는 덮을 자리를 커서 둘레에 보여 준다.
     if (tool_ == Tool::Terrain || tool_ == Tool::PlaceDoodad || tool_ == Tool::SelectTerrain)
     {
         if (document_ != nullptr && document_->isOpen())

@@ -1,0 +1,1 @@
+../../../../tools/mapgen/verify_map.py
